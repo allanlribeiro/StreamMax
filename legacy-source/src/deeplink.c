@@ -106,7 +106,8 @@ int deeplink_parse(const char *url, DeepLink *o) {
   memset(o, 0, sizeof *o);
   if (!url || strnlen(url, DL_URL_MAX + 1) > DL_URL_MAX) return 0;
 
-  if (cmpPrefixo(url, "nuvio-legacy://")) { p = url + 15; nativo = 1; }
+  if (cmpPrefixo(url, "streammax://")) { p = url + 12; nativo = 1; }
+  else if (cmpPrefixo(url, "nuvio-legacy://")) { p = url + 15; nativo = 1; }
   else if (cmpPrefixo(url, "stremio://")) p = url + 10;
   else if (cmpPrefixo(url, "https://www.imdb.com/") || cmpPrefixo(url, "https://m.imdb.com/")) {
     p = strchr(url + 8, '/') + 1; imdbWeb = 1;
