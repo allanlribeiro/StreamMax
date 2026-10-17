@@ -15,6 +15,15 @@ checks = {
         "p.setMediaItem(item, s.inicioMs.toLong())",
         "p.seekTo(d * f / 10000L)",
     ],
+    "src/fontevolta.c": [
+        "int fontevolta_toca_guardada(",
+        "if (escolherManual || falhaAtiva || canal || !playerAberto) return 0;",
+    ],
+    "src/fontevolta.h": [
+        "FONTEVOLTA_PRAZO_MS",
+        "FONTE_MANUAL_PRAZO_MS",
+        "fontevolta_decidir(",
+    ],
     "src/ajustes.c": [
         "int ajustes_cw_estilo(void)",
         "int ajustes_cw_fonte(void)",
