@@ -17,6 +17,8 @@ checks = {
     ],
     "src/fontevolta.c": [
         "int fontevolta_toca_guardada(",
+        "if (idadeLink >= FONTEVOLTA_VALIDADE_MS) return;",
+        "strlen(alvo) >= sizeof eAlvo || strlen(conta) >= sizeof eConta",
         "if (escolherManual || falhaAtiva || canal || !playerAberto) return 0;",
     ],
     "src/fontevolta.h": [
