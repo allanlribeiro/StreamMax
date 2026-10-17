@@ -11,6 +11,7 @@
 3. Português brasileiro (`pt-BR`) como idioma inicial, respeitando escolha posterior do usuário.
 4. TV ao vivo via IPTV integrada, aproveitando os recursos existentes no Legacy.
 5. Home com **Continuar Assistindo** prioritário e opção de trailer automático no destaque.
+6. **Execução e reprodução dos conteúdos no estilo do Nuvio original:** priorizar a experiência ao selecionar/abrir filmes e séries e a interface/fluxo de reprodução do original, mantendo o núcleo fluido e o IPTV do Legacy. Comparar telas e comportamentos antes de implementar; não transplantar o player Kotlin diretamente para a arquitetura nativa sem validação.
 6. Imagens estáticas, sem GIFs, com foco em TCL P7K e TX6 com 2 GB RAM.
 7. Preservar perfis, addons, catálogos, player, navegação por controle remoto e login QR (validar em dispositivo).
 8. Build de APK Android com GitHub Actions e teste real de instalação e abertura.
