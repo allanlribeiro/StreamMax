@@ -32,7 +32,7 @@ old = '<string name="app_name">Nuvio Legacy</string>'
 assert text.count(old) == 1, "Recurso do nome mudou"
 strings.write_text(text.replace(old, '<string name="app_name">StreamMax</string>'))
 
-# Em uma instalação nova, o idioma automático do StreamMax começa em pt-BR.
+# Na falta de uma preferência detectável, o idioma automático usa pt-BR.
 # A escolha manual gravada no Legacy continua tendo prioridade, pois
 # idiomaResolver() já retorna se valor[AJ_IDIOMA] != 0.
 ajustes = root / "src/ajustes.c"
@@ -42,7 +42,7 @@ resolver = 'novo = idiomaauto_resolver(contaTmdbLing, contaLegLing, sistemaLoc, 
 assert text.count(initial) == 1, "Inicialização de idioma alterada no upstream"
 assert text.count(resolver) == 1, "Resolução automática de idioma alterada no upstream"
 text = text.replace(initial, 'static int idiomaEfetivo = IDIOMA_PT;')
-text = text.replace(resolver, 'novo = IDIOMA_PT; fonte = IDA_PADRAO; /* StreamMax: padrão pt-BR */')
+text = text.replace(resolver, resolver + '\n  if (fonte == IDA_PADRAO) novo = IDIOMA_PT; /* StreamMax: fallback pt-BR */')
 ajustes.write_text(text)
 
 # TV ao vivo: validar que a fonte continua fornecendo os módulos nativos
@@ -58,7 +58,7 @@ assert "sessao_login_comecar()" in login, "Login QR removido"
 
 # Conferência estática antes de qualquer build Android.
 assert 'if (valor[AJ_IDIOMA] != 0) return;' in text
-assert 'novo = IDIOMA_PT; fonte = IDA_PADRAO;' in text
+assert 'if (fonte == IDA_PADRAO) novo = IDIOMA_PT;' in text
 PY
 python3 "$SCRIPT_DIR/check-legacy-auth.py" "$DEST"
 echo "Base Legacy preparada em $DEST"
