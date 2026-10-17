@@ -16,6 +16,12 @@ static Uint32 eObtido;   // SDL_GetTicks de quando o link saiu do addon
 void fontevolta_guardar(const char *alvo, const char *conta, int perfil,
                         const Stream *s, Uint32 idadeLink, Uint32 agora) {
   if (!alvo || !*alvo || !conta || !*conta || !s || !s->url[0]) return;
+  // Evita guardar link ja vencido: ir direto aos addons e mais rapido que
+  // registrar uma entrada que sera descartada no proximo Retomar.
+  if (idadeLink >= FONTEVOLTA_VALIDADE_MS) return;
+  // Uma chave truncada pode coincidir com outra conta/titulo. Nunca usar
+  // cache compartilhado quando os identificadores nao cabem inteiros.
+  if (strlen(alvo) >= sizeof eAlvo || strlen(conta) >= sizeof eConta) return;
   pthread_mutex_lock(&trava);
   tem = 1;
   snprintf(eAlvo, sizeof eAlvo, "%s", alvo);
