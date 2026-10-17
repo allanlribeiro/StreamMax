@@ -13,7 +13,7 @@
 5. Home com **Continuar Assistindo** prioritário e opção de trailer automático no destaque.
 6. **Execução e reprodução dos conteúdos no estilo do Nuvio original:** reproduzir a experiência de abrir filmes e séries, escolher fontes, retomar e usar controles do player original, sem descartar o núcleo nativo do Legacy.
 7. Imagens estáticas, sem GIFs, com foco em TCL P7K e TX6 com 2 GB RAM.
-8. Preservar perfis, addons, catálogos, controle remoto e login QR (validar em dispositivo).
+8. Preservar perfis, addons, catálogos e controle remoto. **Validar login QR e login por e-mail/senha antes da compilação final**, com verificações estáticas e testes de autenticação disponíveis; a autenticação real de ponta a ponta depende do backend e do dispositivo. Não incluir credenciais reais em testes de CI.
 9. **Validar a autenticação antes da compilação final do APK:** revisar login por e-mail/senha, QR Code, persistência da sessão e sincronização de perfis; testar com backend funcional quando possível. O login por e-mail/senha deve funcionar como alternativa ao QR Code. Não declarar autenticação funcional apenas com análise estática.
 10. Build Android no GitHub Actions **somente após implementação e revisão das alterações**. Não gerar APK intermediário.
 
@@ -25,6 +25,14 @@
 - **Nuvio original:** usa arquitetura Android Kotlin/Compose e Media3 diferente. Comparar as jornadas **selecionar título → detalhes → escolher fonte → iniciar reprodução → retomar → legenda/áudio → próximo episódio**; adaptar o comportamento ao Legacy, não copiar diretamente a implementação Kotlin.
 - **Critérios de aceite do player:** filme e episódio iniciam corretamente; fontes selecionáveis; posição de retomada respeitada; idiomas/legendas configuráveis; reprodução e navegação por controle remoto estáveis; IPTV continua separado de VOD e funcional.
 - **Ainda pendente:** incorporar a árvore do Legacy à estrutura definitiva do fork, aplicar marca no núcleo nativo, definir paleta, logo, home e CI; compilar e testar somente no fim.
+
+### Porta de qualidade obrigatória: login (antes de gerar APK)
+
+- O Legacy atual possui em `src/login.c` a opção de **e-mail e senha**, chamando `sessao_login_email(email, senha)`, além do caminho QR `sessao_login_comecar()`.
+- Verificar no código: ambos os fluxos aparecem na interface, entrada de e-mail e senha é funcional, tratamento de erros e dados sensíveis é seguro, persistência/renovação da sessão existe e retorno à tela principal é correto.
+- Executar testes de autenticação independentes que não precisem de APK. **Não afirmar login funcionando apenas pela inspeção estática.**
+- Caso não exista ambiente backend de teste, marcar o teste real de credenciais e QR como bloqueado, sem pedir senha do usuário nem gravar tokens em GitHub.
+- Só autorizar o APK final após revisão de autenticação; o teste real na TV ainda precisará ser feito após a compilação.
 
 ### Notas técnicas e limites
 
