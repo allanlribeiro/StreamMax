@@ -122,9 +122,10 @@ void fontevolta_conferir(const char *url, const char *cabecalhos) {
   // Na duvida, deixar o player decidir, sem emitir requisicao truncada.
   if (!url || !*url || strlen(url) >= sizeof p->url ||
       (cabecalhos && strlen(cabecalhos) >= sizeof p->cab)) {
+    unsigned geracao = p->geracao;
     free(p);
     pthread_mutex_lock(&trava);
-    confEstado = FV_NADA;
+    if (geracao == confGeracao) confEstado = FV_NADA;
     pthread_mutex_unlock(&trava);
     return;
   }
