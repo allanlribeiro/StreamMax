@@ -31,6 +31,9 @@ jobs:
             --exclude=local.properties --exclude='*.jks' --exclude='tests/seeker_vivo.c' \
             -cf - . | tar -xf - -C "$GITHUB_WORKSPACE/legacy-source"
           cd "$GITHUB_WORKSPACE"
+          # Defesa adicional: remover explicitamente o teste que contém chave Stripe.
+          rm -f legacy-source/tests/seeker_vivo.c
+          test ! -e legacy-source/tests/seeker_vivo.c || { echo "Arquivo sensivel ainda presente"; exit 1; }
           python3 migration/check-legacy-auth.py legacy-source
           test -f legacy-source/android/app/build.gradle.kts
       - name: Registrar codigo importado (sem compilar)
