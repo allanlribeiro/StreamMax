@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nuvio</string>
+    <string name="app_name">StreamMax</string>
     <string name="tv_channel_continue_watching">Continuar Assistindo</string>
     <string name="type_movie">Filme</string>
     <string name="type_movies">Filmes</string>
@@ -366,13 +366,13 @@
     <string name="appearance_settings_style">Estilo das Configurações</string>
     <string name="appearance_settings_style_subtitle">Escolha como deseja visualizar as telas de configuração</string>
     <string name="appearance_launcher_artwork">Arte do App</string>
-    <string name="appearance_launcher_artwork_subtitle">Escolha como o Nuvio aparece na tela inicial da sua TV</string>
+    <string name="appearance_launcher_artwork_subtitle">Escolha como o StreamMax aparece na tela inicial da sua TV</string>
     <string name="appearance_app_icon_and_banner">Ícone e Banner do App</string>
     <string name="appearance_app_icon_and_banner_subtitle">Troque o ícone e o banner do app</string>
     <string name="appearance_app_icon_picker_title">Escolher Ícone e Banner</string>
     <string name="appearance_app_icon_picker_subtitle">Cada estilo vem com um ícone quadrado e um banner para TV combinando</string>
     <string name="appearance_app_icon_confirmation_title">Trocar Ícone do App?</string>
-    <string name="appearance_app_icon_confirmation_message">Ao mudar para %1$s o Nuvio será fechado. O banner da TV pode precisar que você reinicie o aparelho para atualizar. Toque em OK para continuar.</string>
+    <string name="appearance_app_icon_confirmation_message">Ao mudar para %1$s o StreamMax será fechado. O banner da TV pode precisar que você reinicie o aparelho para atualizar. Toque em OK para continuar.</string>
     <string name="appearance_app_icon_change_failed">Não foi possível trocar o ícone e o banner. Tente novamente.</string>
     <string name="appearance_app_icon_original">Original</string>
     <string name="appearance_app_icon_arctic_blue">Azul Ártico</string>
@@ -486,7 +486,7 @@
     <string name="settings_advanced_subtitle">Desempenho, navegação, cache e diagnósticos</string>
     <string name="experience_mode_essential">Essencial</string>
     <string name="experience_mode_advanced">Avançado</string>
-    <string name="experience_mode_choose_title">Escolha sua experiência Nuvio</string>
+    <string name="experience_mode_choose_title">Escolha sua experiência StreamMax</string>
     <string name="experience_mode_choose_subtitle">Simples ou completo, mude a qualquer hora</string>
     <string name="experience_mode_essential_card_subtitle">Configurações básicas, addons e Trakt</string>
     <string name="experience_mode_advanced_card_subtitle">Configurações, layout, catálogo e diagnósticos</string>
