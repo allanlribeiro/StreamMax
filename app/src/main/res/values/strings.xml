@@ -369,7 +369,7 @@
     <string name="appearance_settings_style">Settings Style</string>
     <string name="appearance_settings_style_subtitle">Choose how the settings screens are presented</string>
     <string name="appearance_launcher_artwork">Launcher Artwork</string>
-    <string name="appearance_launcher_artwork_subtitle">Choose how Nuvio appears on your TV home screen</string>
+    <string name="appearance_launcher_artwork_subtitle">Choose how StreamMax appears on your TV home screen</string>
     <string name="ambient_mode_title">Ambient Mode</string>
     <string name="ambient_mode_subtitle">Show artwork from your catalogs while the TV sits idle</string>
     <string name="ambient_mode_enabled_subtitle">Fill the screen with backdrops after a period with no remote input</string>
@@ -389,7 +389,7 @@
     <string name="appearance_app_icon_picker_title">Choose App Icon &amp; Banner</string>
     <string name="appearance_app_icon_picker_subtitle">Each style includes a matching square icon and TV banner</string>
     <string name="appearance_app_icon_confirmation_title">Change App Icon?</string>
-    <string name="appearance_app_icon_confirmation_message">Changing to %1$s will close Nuvio. The TV banner may require a device restart before it updates. Select OK to continue.</string>
+    <string name="appearance_app_icon_confirmation_message">Changing to %1$s will close StreamMax. The TV banner may require a device restart before it updates. Select OK to continue.</string>
     <string name="appearance_app_icon_change_failed">The icon and banner could not be changed. Please try again.</string>
     <string name="appearance_app_icon_original">Original</string>
     <string name="appearance_app_icon_arctic_blue">Arctic Blue</string>
@@ -507,7 +507,7 @@
     <string name="settings_advanced_subtitle">Performance, navigation, cache, and diagnostics</string>
     <string name="experience_mode_essential">Essential</string>
     <string name="experience_mode_advanced">Advanced</string>
-    <string name="experience_mode_choose_title">Choose your Nuvio experience</string>
+    <string name="experience_mode_choose_title">Choose your StreamMax experience</string>
     <string name="experience_mode_choose_subtitle">Start simple or unlock every customization. You can switch anytime.</string>
     <string name="experience_mode_essential_card_subtitle">Focused setup, add-ons, playback basics, Trakt, and account settings.</string>
     <string name="experience_mode_advanced_card_subtitle">Full settings, layout controls, catalog order, collections, plug-ins, and diagnostics.</string>
