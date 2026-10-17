@@ -24,14 +24,14 @@ Criar e manter um aplicativo Android TV independente, chamado **StreamMax**, der
 4. Nunca embutir senhas ou chaves privadas no repositório. Configurar URLs e chaves públicas necessárias à autenticação pelo ambiente de build; credenciais sensíveis devem ficar em GitHub Secrets.
 5. Gerar APKs reproduzíveis via GitHub Actions e publicá-los como artefatos para testes no Android TV.
 
-## Estado observado do código em 17/10/2026
+## Estado verificado em 17/10/2026 (após PR #2)
 
 - Repositório: `allanlribeiro/StreamMax`, branch padrão `dev`.
-- O código recebido do upstream ainda declara `applicationId = "com.nuvio.tv"` e `app_name = "Nuvio"`. **A mudança efetiva de pacote e marca ainda está pendente.**
-- `app/build.gradle.kts` lê `NUVIO_SUPABASE_URL` e `NUVIO_SUPABASE_ANON_KEY` de configurações locais. Sem esses valores, **não é possível validar o login por QR Code em um APK de CI**.
-- `AuthManager.kt` usa as funções RPC de início/poll de login e troca de sessão; verificar se o servidor configurado responde antes de considerar o fluxo concluído.
-- PR [#1](https://github.com/allanlribeiro/StreamMax/pull/1) prepara uma rotina alternativa de build `fullDebug` com artefatos. **Não assumir sucesso da compilação até conferir o resultado da execução do Actions.**
-- O repositório também possui um workflow preexistente chamado **PR Full Debug Build**. Evitar duplicação permanente de rotinas após a estabilização.
+- PR #2 incorporada na branch `dev` (commit `5305e114`): nome de exibição StreamMax e identificador independente no flavor `full`.
+- Flavor `full`: `applicationId = "com.streammax.tv"`; a build `fullDebug` usa o sufixo `.debug`. Isso permite instalar o APK de testes ao lado do aplicativo original, sujeito a testes no dispositivo.
+- GitHub Actions **PR Full Debug Build**, execução [#39059592307](https://github.com/allanlribeiro/StreamMax/actions/runs/39059592307), concluída com sucesso. A execução disponibilizou artefato `app-full-universal-debug.apk` (~155 MB). Testes unitários do updater e compilação foram executados; isso **não comprova** abertura na TV nem funcionamento do login.
+- A configuração de backend do QR Code no workflow é opcional: utiliza a variável `NUVIO_SUPABASE_URL` e o secret `NUVIO_SUPABASE_ANON_KEY`, ou propriedades locais previamente supridas. O êxito do workflow não confirma que essas opções estavam preenchidas, nem que o QR Code funciona.
+- A arte final do logo aprovada ainda precisa ser incorporada a partir do arquivo fornecido. Pendentes: teste real da instalação e abertura, autenticação por QR Code, navegação e desempenho na TCL e na TX6.
 
 ## Próximas tarefas recomendadas (ordem)
 
