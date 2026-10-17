@@ -23,6 +23,19 @@ def main(root: Path) -> int:
         "src/stalker.c": [],
         "src/guia.c": [],
     }
+    # Verificações específicas da identidade do StreamMax após a adaptação.
+    gradle = root / "android/app/build.gradle.kts"
+    app_name = root / "android/app/src/main/res/values/strings.xml"
+    settings = root / "src/ajustes.c"
+    required.update({
+        "android/app/build.gradle.kts": ['applicationId = "com.streammax.tv"'],
+        "android/app/src/main/res/values/strings.xml": ['<string name="app_name">StreamMax</string>'],
+        "src/ajustes.c": [
+            "static int idiomaEfetivo = IDIOMA_PT;",
+            "novo = IDIOMA_PT; fonte = IDA_PADRAO;",
+            "if (valor[AJ_IDIOMA] != 0) return;",
+        ],
+    })
     errors = []
     for relative, needles in required.items():
         file = root / relative
