@@ -1,4 +1,4 @@
-// Links externos (docs/deeplink.md): nuvio-legacy://, stremio:// e imdb.com
+// Links externos (docs/deeplink.md): streammax://, links legados nuvio-legacy:// e stremio://, e imdb.com
 // viram um pedido para o app abrir titulo, tocar ou buscar. O parser e puro
 // (testado em tests/deeplink.c); postar/pegar levam o pedido do fio da
 // plataforma (Intent do Android, parametros de lancamento do webOS) ao laco
