@@ -19,7 +19,7 @@ gradle = root / "android/app/build.gradle.kts"
 text = gradle.read_text()
 old = 'applicationId = "space.nuvio.nativelegacy"'
 assert text.count(old) == 1, "ID do Legacy mudou; revisar antes de adaptar"
-gradle.write_text(text.replace(old, 'applicationId = "com.streammax.legacy"'))
+gradle.write_text(text.replace(old, 'applicationId = "com.streammax.tv"'))
 
 strings = root / "android/app/src/main/res/values/strings.xml"
 text = strings.read_text()
