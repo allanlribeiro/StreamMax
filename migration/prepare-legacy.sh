@@ -4,13 +4,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UPSTREAM_URL="https://github.com/iqui27/nuvio-native-legacy.git"
+# Revisão fixada para evitar que mudanças futuras do Legacy quebrem a migração.
+UPSTREAM_COMMIT="549e2273ce898e514cefd60fa2cbbbb53643c199"
 DEST="${1:-../StreamMax-Legacy}"
 if [[ -e "$DEST" ]]; then
   echo "Destino já existe: $DEST (não sobrescrevo)" >&2
   exit 1
 fi
 
-git clone --depth 1 "$UPSTREAM_URL" "$DEST"
+git clone --no-checkout "$UPSTREAM_URL" "$DEST"
+git -C "$DEST" checkout --detach "$UPSTREAM_COMMIT"
+ACTUAL_COMMIT="$(git -C "$DEST" rev-parse HEAD)"
+[[ "$ACTUAL_COMMIT" == "$UPSTREAM_COMMIT" ]] || { echo "Revisão inesperada do Legacy" >&2; exit 1; }
 python3 - "$DEST" <<'PY'
 from pathlib import Path
 import sys
