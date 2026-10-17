@@ -27,14 +27,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android API 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      # GitHub's Ubuntu runner already includes the Android SDK.
+      # Avoid the obsolete SDK "tools" package installation.
 
       - name: Configure Gradle cache
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Optional QR login backend settings
+        env:
+          NUVIO_SUPABASE_URL: ${{ vars.NUVIO_SUPABASE_URL }}
+          NUVIO_SUPABASE_ANON_KEY: ${{ secrets.NUVIO_SUPABASE_ANON_KEY }}
+        run: |
+          if [[ -n "$NUVIO_SUPABASE_URL" && -n "$NUVIO_SUPABASE_ANON_KEY" ]]; then
+            printf 'NUVIO_SUPABASE_URL=%s\nNUVIO_SUPABASE_ANON_KEY=%s\n' \
+              "$NUVIO_SUPABASE_URL" "$NUVIO_SUPABASE_ANON_KEY" > local.dev.properties
+            echo "QR login backend configuration provided."
+          else
+            echo "::warning::QR login requires NUVIO_SUPABASE_URL and NUVIO_SUPABASE_ANON_KEY in GitHub repository settings."
+          fi
 
       - name: Use debug signing only during CI
         run: |
