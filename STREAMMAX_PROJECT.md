@@ -1,5 +1,28 @@
 # StreamMax — guia de continuidade do projeto
 
+## Diretriz de migração para Nuvio Native Legacy (17/10/2026)
+
+**Prioridade máxima:** desenvolver o StreamMax em cima da implementação Android de [iqui27/nuvio-native-legacy](https://github.com/iqui27/nuvio-native-legacy/tree/master/android), e não continuar usando o Nuvio original como base do novo APK. O código atual na branch `dev` fica preservado como referência/backup até haver um build funcional da nova base.
+
+### Requisitos aprovados, na ordem de trabalho
+
+1. Base Android do Legacy, preservando sua arquitetura nativa e fluidez.
+2. Identidade StreamMax: nome próprio, instalação lado a lado com Nuvio e Legacy, visual azul cinematográfico e logo previamente aprovada (pendente fornecimento do arquivo final).
+3. Português brasileiro (`pt-BR`) como idioma inicial, respeitando escolha posterior do usuário.
+4. TV ao vivo via IPTV integrada, aproveitando os recursos existentes no Legacy.
+5. Home com **Continuar Assistindo** prioritário e opção de trailer automático no destaque.
+6. Imagens estáticas, sem GIFs, com foco em TCL P7K e TX6 com 2 GB RAM.
+7. Preservar perfis, addons, catálogos, player, navegação por controle remoto e login QR (validar em dispositivo).
+8. Build de APK Android com GitHub Actions e teste real de instalação e abertura.
+
+### Notas técnicas e limites
+
+- O repositório Legacy contém `android/` e uma implementação nativa C/SDL/GLES; não é um fork Kotlin/Compose que possa substituir diretamente o código Android anterior.
+- Migrar em branch separada e verificar dependências/build do Legacy antes de mexer na branch `dev`.
+- A compilação anterior do StreamMax usa o código original e **não** constitui APK Legacy.
+- Verificar no código e no dispositivo a presença e compatibilidade de cada recurso; não registrar como implementado antes disso.
+
+
 Documento de referência para desenvolvimento no GitHub/Codex. Atualizado em 17/10/2026.
 
 ## Objetivo
