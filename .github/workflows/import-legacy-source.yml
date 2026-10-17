@@ -28,12 +28,12 @@ jobs:
           mkdir legacy-source
           cd "$RUNNER_TEMP/streammax-legacy"
           tar --exclude=.git --exclude=build --exclude=.gradle --exclude=.idea \
-            --exclude=local.properties --exclude='*.jks' --exclude='tests/seeker_vivo.c' \
+            --exclude=local.properties --exclude='*.jks' --exclude='./tests' --exclude='tests' \
             -cf - . | tar -xf - -C "$GITHUB_WORKSPACE/legacy-source"
           cd "$GITHUB_WORKSPACE"
           # Defesa adicional: remover explicitamente o teste que contém chave Stripe.
-          rm -f legacy-source/tests/seeker_vivo.c
-          test ! -e legacy-source/tests/seeker_vivo.c || { echo "Arquivo sensivel ainda presente"; exit 1; }
+          rm -rf legacy-source/tests
+          test ! -e legacy-source/tests || { echo "Pasta de testes ainda presente"; exit 1; }
           python3 migration/check-legacy-auth.py legacy-source
           test -f legacy-source/android/app/build.gradle.kts
       - name: Registrar codigo importado (sem compilar)
@@ -43,6 +43,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add legacy-source
+          if git diff --cached --name-only | grep -E '^legacy-source/tests(/|$)'; then
+            echo "ERRO: testes nao devem entrar no commit"
+            exit 1
+          fi
+          if git ls-files --cached | grep -E '^legacy-source/tests(/|$)'; then
+            echo "ERRO: arquivo de teste no indice Git"
+            exit 1
+          fi
           git diff --cached --quiet && { echo "Nenhuma alteracao"; exit 1; }
           git commit -m "feat(legacy): importar codigo-fonte Android Legacy adaptado, sem APK"
           git push origin HEAD:streammax/legacy-migration
