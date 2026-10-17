@@ -98,7 +98,7 @@
 
     <string name="home_no_addons">Nenhum addon instalado. Adicione um para começar.</string>
     <string name="home_no_catalog_addons">Nenhum addon de catálogo instalado. Instale um para ver conteúdos.</string>
-    <string name="auth_notice_nuvio_logged_out">Você foi desconectado do Nuvio. Faça login novamente.</string>
+    <string name="auth_notice_nuvio_logged_out">Você foi desconectado do StreamMax. Faça login novamente.</string>
     <string name="auth_notice_trakt_logged_out">Você foi desconectado do Trakt. Reconecte-se.</string>
     <string name="error_generic">Ocorreu um erro</string>
 
