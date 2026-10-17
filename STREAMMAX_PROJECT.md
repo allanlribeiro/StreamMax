@@ -7,14 +7,23 @@
 ### Requisitos aprovados, na ordem de trabalho
 
 1. Base Android do Legacy, preservando sua arquitetura nativa e fluidez.
-2. Identidade StreamMax: nome próprio, instalação lado a lado com Nuvio e Legacy, visual azul cinematográfico e logo previamente aprovada (pendente fornecimento do arquivo final).
+2. Identidade StreamMax: nome próprio, instalação lado a lado com Nuvio e Legacy, visual azul cinematográfico e logo aprovada (requer arquivo final).
 3. Português brasileiro (`pt-BR`) como idioma inicial, respeitando escolha posterior do usuário.
-4. TV ao vivo via IPTV integrada, aproveitando os recursos existentes no Legacy.
+4. TV ao vivo por IPTV, aproveitando os recursos existentes no Legacy.
 5. Home com **Continuar Assistindo** prioritário e opção de trailer automático no destaque.
-6. **Execução e reprodução dos conteúdos no estilo do Nuvio original:** priorizar a experiência ao selecionar/abrir filmes e séries e a interface/fluxo de reprodução do original, mantendo o núcleo fluido e o IPTV do Legacy. Comparar telas e comportamentos antes de implementar; não transplantar o player Kotlin diretamente para a arquitetura nativa sem validação.
-6. Imagens estáticas, sem GIFs, com foco em TCL P7K e TX6 com 2 GB RAM.
-7. Preservar perfis, addons, catálogos, player, navegação por controle remoto e login QR (validar em dispositivo).
-8. Build de APK Android com GitHub Actions e teste real de instalação e abertura.
+6. **Execução e reprodução dos conteúdos no estilo do Nuvio original:** reproduzir a experiência de abrir filmes e séries, escolher fontes, retomar e usar controles do player original, sem descartar o núcleo nativo do Legacy.
+7. Imagens estáticas, sem GIFs, com foco em TCL P7K e TX6 com 2 GB RAM.
+8. Preservar perfis, addons, catálogos, controle remoto e login QR (validar em dispositivo).
+9. Build Android no GitHub Actions **somente após implementação e revisão das alterações**. Não gerar APK intermediário.
+
+### Mapeamento técnico inicial (análise, não implementação concluída)
+
+- **Base nativa Legacy:** `iqui27/nuvio-native-legacy` — `src/app.c` coordena o aplicativo; `src/player.c`/`src/player.h` implementam o fluxo de reprodução, e `android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt` usa Media3 ExoPlayer como player Android.
+- **Idioma:** `src/ajustes.c` e `src/idiomaauto.h`; a escolha manual tem prioridade. O script em `migration/prepare-legacy.sh` aplica o padrão PT-BR à cópia do Legacy, ainda sem execução e sem validação.
+- **TV ao vivo:** `src/xtream.c`, `src/stalker.c`, `src/guia.c`; preservar cadastro, listas e guia. A presença dos módulos no código não prova que a reprodução IPTV funciona após a migração.
+- **Nuvio original:** usa arquitetura Android Kotlin/Compose e Media3 diferente. Comparar as jornadas **selecionar título → detalhes → escolher fonte → iniciar reprodução → retomar → legenda/áudio → próximo episódio**; adaptar o comportamento ao Legacy, não copiar diretamente a implementação Kotlin.
+- **Critérios de aceite do player:** filme e episódio iniciam corretamente; fontes selecionáveis; posição de retomada respeitada; idiomas/legendas configuráveis; reprodução e navegação por controle remoto estáveis; IPTV continua separado de VOD e funcional.
+- **Ainda pendente:** incorporar a árvore do Legacy à estrutura definitiva do fork, aplicar marca no núcleo nativo, definir paleta, logo, home e CI; compilar e testar somente no fim.
 
 ### Notas técnicas e limites
 
