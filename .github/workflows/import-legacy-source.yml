@@ -14,13 +14,6 @@ jobs:
         with:
           ref: streammax/legacy-migration
           persist-credentials: true
-      - name: Obter revisao fixa do Legacy
-        shell: bash
-        run: |
-          set -euo pipefail
-          git clone --filter=blob:none --no-checkout https://github.com/iqui27/nuvio-native-legacy.git "$RUNNER_TEMP/legacy"
-          git -C "$RUNNER_TEMP/legacy" checkout --detach 549e2273ce898e514cefd60fa2cbbbb53643c199
-          test "$(git -C "$RUNNER_TEMP/legacy" rev-parse HEAD)" = 549e2273ce898e514cefd60fa2cbbbb53643c199
       - name: Aplicar ajustes StreamMax na base Legacy
         shell: bash
         run: |
