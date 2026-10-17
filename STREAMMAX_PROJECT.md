@@ -14,7 +14,8 @@
 6. **Execução e reprodução dos conteúdos no estilo do Nuvio original:** reproduzir a experiência de abrir filmes e séries, escolher fontes, retomar e usar controles do player original, sem descartar o núcleo nativo do Legacy.
 7. Imagens estáticas, sem GIFs, com foco em TCL P7K e TX6 com 2 GB RAM.
 8. Preservar perfis, addons, catálogos, controle remoto e login QR (validar em dispositivo).
-9. Build Android no GitHub Actions **somente após implementação e revisão das alterações**. Não gerar APK intermediário.
+9. **Validar a autenticação antes da compilação final do APK:** revisar login por e-mail/senha, QR Code, persistência da sessão e sincronização de perfis; testar com backend funcional quando possível. O login por e-mail/senha deve funcionar como alternativa ao QR Code. Não declarar autenticação funcional apenas com análise estática.
+10. Build Android no GitHub Actions **somente após implementação e revisão das alterações**. Não gerar APK intermediário.
 
 ### Mapeamento técnico inicial (análise, não implementação concluída)
 
