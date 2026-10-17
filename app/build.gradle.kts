@@ -156,6 +156,11 @@ android {
     productFlavors {
         create("full") {
             dimension = "distribution"
+            // Independent fork: installs alongside the original Nuvio TV package.
+            applicationId = "com.streammax.tv"
+            // Never offer upstream Nuvio releases as StreamMax updates.
+            buildConfigField("String", "GITHUB_OWNER", "\"allanlribeiro\"")
+            buildConfigField("String", "GITHUB_REPO", "\"StreamMax\"")
             buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "true")
@@ -336,7 +341,8 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuviodebug.com")
+        // Keep StreamMax test APKs independent of both upstream and production apps.
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.streammax.tv.debug")
     }
 }
 
