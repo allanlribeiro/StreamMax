@@ -21,6 +21,7 @@ jobs:
           test -f legacy-source/src/deeplink.h
           test -f migration/tests/streammax-deeplink.c
           python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
       - name: Compilar somente teste C de links (nao APK)
         shell: bash
         run: |
