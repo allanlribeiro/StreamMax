@@ -34,6 +34,14 @@
 - Caso não exista ambiente backend de teste, marcar o teste real de credenciais e QR como bloqueado, sem pedir senha do usuário nem gravar tokens em GitHub.
 - Só autorizar o APK final após revisão de autenticação; o teste real na TV ainda precisará ser feito após a compilação.
 
+### Critério obrigatório de autenticação antes do APK final
+
+- O Legacy já contém login por **e-mail e senha**, além de QR Code, em `src/login.c` (#216). Preservar ambas as opções no StreamMax, com e-mail e senha como alternativa funcional.
+- Antes da compilação final, inspecionar `src/login.c`, `src/sessao.c`, dependências de rede e configurações de servidor. Executar testes de código/protocolo disponíveis, sem inserir senhas, tokens ou contas reais no repositório.
+- **Não declarar login funcionando** apenas por revisão estática: autenticação real precisa de backend acessível e teste integrado com conta de teste. A compilação do APK pode permanecer bloqueada até essa validação, conforme a decisão do usuário.
+- Critérios de aceite: entrar com e-mail/senha, identificar mensagens de erro com credenciais inválidas, persistir sessão, sair e entrar novamente, testar QR se disponível e confirmar sincronização de perfil.
+- Se a verificação ponta a ponta não puder ser feita antes do APK, informar a limitação explicitamente e decidir com o usuário como proceder, sem alegar validação que não ocorreu.
+
 ### Notas técnicas e limites
 
 - O repositório Legacy contém `android/` e uma implementação nativa C/SDL/GLES; não é um fork Kotlin/Compose que possa substituir diretamente o código Android anterior.
