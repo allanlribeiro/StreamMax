@@ -2,6 +2,7 @@
 # Bootstrap de uma árvore separada do StreamMax Legacy, sem tocar no app Kotlin.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UPSTREAM_URL="https://github.com/iqui27/nuvio-native-legacy.git"
 DEST="${1:-../StreamMax-Legacy}"
 if [[ -e "$DEST" ]]; then
@@ -54,6 +55,7 @@ assert "sessao_login_comecar()" in login, "Login QR removido"
 assert 'if (valor[AJ_IDIOMA] != 0) return;' in text
 assert 'novo = IDIOMA_PT; fonte = IDA_PADRAO;' in text
 PY
+python3 "$SCRIPT_DIR/check-legacy-auth.py" "$DEST"
 echo "Base Legacy preparada em $DEST"
-echo "Próximos passos: revisar aliases/identidade, idioma inicial no núcleo C, IPTV e dependências nativas."
+echo "Próximos passos: incorporar o Legacy ao repositório, revisar identidade, player, idioma e dependências nativas."
 echo "Não distribua um APK antes de testar a instalação, deep links, QR login e IPTV."
