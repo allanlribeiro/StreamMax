@@ -1,0 +1,52 @@
+name: Importar base Legacy (sem APK)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-legacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: streammax/legacy-migration
+          persist-credentials: true
+      - name: Obter revisao fixa do Legacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout https://github.com/iqui27/nuvio-native-legacy.git "$RUNNER_TEMP/legacy"
+          git -C "$RUNNER_TEMP/legacy" checkout --detach 549e2273ce898e514cefd60fa2cbbbb53643c199
+          test "$(git -C "$RUNNER_TEMP/legacy" rev-parse HEAD)" = 549e2273ce898e514cefd60fa2cbbbb53643c199
+      - name: Aplicar ajustes StreamMax na base Legacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          # O preparo faz clone proprio e nao sobrescreve caminho existente.
+          bash migration/prepare-legacy.sh "$RUNNER_TEMP/streammax-legacy"
+      - name: Incorporar fontes sem artefatos de build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e legacy-source || { echo "legacy-source ja existe; nada sera sobrescrito"; exit 1; }
+          mkdir legacy-source
+          cd "$RUNNER_TEMP/streammax-legacy"
+          tar --exclude=.git --exclude=build --exclude=.gradle --exclude=.idea \
+            --exclude=local.properties --exclude='*.jks' \
+            -cf - . | tar -xf - -C "$GITHUB_WORKSPACE/legacy-source"
+          cd "$GITHUB_WORKSPACE"
+          python3 migration/check-legacy-auth.py legacy-source
+          test -f legacy-source/android/app/build.gradle.kts
+      - name: Registrar codigo importado (sem compilar)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add legacy-source
+          git diff --cached --quiet && { echo "Nenhuma alteracao"; exit 1; }
+          git commit -m "feat(legacy): importar codigo-fonte Android Legacy adaptado, sem APK"
+          git push origin HEAD:streammax/legacy-migration
