@@ -81,14 +81,7 @@
                 <!-- Esquema exclusivo para evitar capturar links do Legacy ou Stremio. -->
                 <data android:scheme="streammax" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="www.imdb.com" android:pathPrefix="/title/" />
-                <data android:host="m.imdb.com" />
-                <data android:host="imdb.com" />
-            </intent-filter>
+            <!-- Links HTTPS do IMDb continuam acessiveis internamente; nao os interceptar no Android. -->
         </activity>
 
         <!-- ICONE DO APP (apoiadores, src/iconeapp.h). A entrada do launcher NAO
