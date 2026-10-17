@@ -1,0 +1,31 @@
+name: Testes nativos StreamMax (sem APK)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deeplink:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: streammax/legacy-migration
+      - name: Validar arquivos importados
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f legacy-source/src/deeplink.c
+          test -f legacy-source/src/deeplink.h
+          test -f migration/tests/streammax-deeplink.c
+          python3 migration/check-legacy-auth.py legacy-source
+      - name: Compilar somente teste C de links (nao APK)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Werror -pthread -Ilegacy-source/src \
+            legacy-source/src/deeplink.c migration/tests/streammax-deeplink.c \
+            -o /tmp/streammax-deeplink-test
+          /tmp/streammax-deeplink-test
