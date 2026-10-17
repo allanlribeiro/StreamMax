@@ -39,6 +39,11 @@ text = text.replace(initial, 'static int idiomaEfetivo = IDIOMA_PT;')
 text = text.replace(resolver, 'novo = IDIOMA_PT; fonte = IDA_PADRAO; /* StreamMax: padrão pt-BR */')
 ajustes.write_text(text)
 
+# TV ao vivo: validar que a fonte continua fornecendo os módulos nativos
+# responsáveis pelo cadastro, guia e resolução das fontes de IPTV.
+for module in ("src/xtream.c", "src/xtream.h", "src/stalker.c", "src/stalker.h", "src/guia.c"):
+    assert (root / module).is_file(), f"Modulo IPTV ausente: {module}"
+
 # Conferência estática antes de qualquer build Android.
 assert 'if (valor[AJ_IDIOMA] != 0) return;' in text
 assert 'novo = IDIOMA_PT; fonte = IDA_PADRAO;' in text
