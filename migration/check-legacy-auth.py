@@ -32,6 +32,7 @@ def main(root: Path) -> int:
         "android/app/src/main/res/values/strings.xml": ['<string name="app_name">StreamMax</string>'],
         "src/ajustes.c": [
             "static int idiomaEfetivo = IDIOMA_PT;",
+            "valor[AJ_IDIOMA] = IDIOMA_PT + 1;",
             "if (fonte == IDA_PADRAO) novo = IDIOMA_PT;",
             "if (valor[AJ_IDIOMA] != 0) return;",
         ],
