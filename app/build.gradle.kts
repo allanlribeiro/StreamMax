@@ -341,7 +341,8 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuviodebug.com")
+        // Keep StreamMax test APKs independent of both upstream and production apps.
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.streammax.tv.debug")
     }
 }
 
