@@ -43,6 +43,9 @@ assert text.count(initial) == 1, "Inicialização de idioma alterada no upstream
 assert text.count(resolver) == 1, "Resolução automática de idioma alterada no upstream"
 text = text.replace(initial, 'static int idiomaEfetivo = IDIOMA_PT;')
 text = text.replace(resolver, resolver + '\n  if (fonte == IDA_PADRAO) novo = IDIOMA_PT; /* StreamMax: fallback pt-BR */')
+first_run = "    // Nunca gravou nada: o idioma nasce automatico (o padrao de valor[]).\\n    valor[AJ_IDIOMA] = 0;"
+assert text.count(first_run) == 1, "Regra da primeira instalação mudou no Legacy"
+text = text.replace(first_run, "    // StreamMax: primeira instalação inicia em português brasileiro.\\n    // Preferência manual posterior continua salva e respeitada.\\n    valor[AJ_IDIOMA] = IDIOMA_PT + 1;")
 ajustes.write_text(text)
 
 # TV ao vivo: validar que a fonte continua fornecendo os módulos nativos
