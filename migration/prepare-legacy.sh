@@ -41,8 +41,14 @@ ajustes.write_text(text)
 
 # TV ao vivo: validar que a fonte continua fornecendo os módulos nativos
 # responsáveis pelo cadastro, guia e resolução das fontes de IPTV.
-for module in ("src/xtream.c", "src/xtream.h", "src/stalker.c", "src/stalker.h", "src/guia.c"):
+for module in ("src/xtream.c", "src/xtream.h", "src/stalker.c", "src/stalker.h", "src/guia.c", "src/login.c", "src/sessao.c"):
     assert (root / module).is_file(), f"Modulo IPTV ausente: {module}"
+
+# Autenticação: o Legacy já oferece QR e login por e-mail/senha.
+# Proteger os dois fluxos de uma remoção acidental durante a migração.
+login = (root / "src/login.c").read_text()
+assert "sessao_login_email(email, senha)" in login, "Login por e-mail/senha removido"
+assert "sessao_login_comecar()" in login, "Login QR removido"
 
 # Conferência estática antes de qualquer build Android.
 assert 'if (valor[AJ_IDIOMA] != 0) return;' in text
