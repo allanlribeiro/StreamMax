@@ -28,7 +28,7 @@ jobs:
           mkdir legacy-source
           cd "$RUNNER_TEMP/streammax-legacy"
           tar --exclude=.git --exclude=build --exclude=.gradle --exclude=.idea \
-            --exclude=local.properties --exclude='*.jks' \
+            --exclude=local.properties --exclude='*.jks' --exclude='tests/seeker_vivo.c' \
             -cf - . | tar -xf - -C "$GITHUB_WORKSPACE/legacy-source"
           cd "$GITHUB_WORKSPACE"
           python3 migration/check-legacy-auth.py legacy-source
