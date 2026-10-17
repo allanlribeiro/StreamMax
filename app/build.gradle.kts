@@ -158,6 +158,9 @@ android {
             dimension = "distribution"
             // Independent fork: installs alongside the original Nuvio TV package.
             applicationId = "com.streammax.tv"
+            // Never offer upstream Nuvio releases as StreamMax updates.
+            buildConfigField("String", "GITHUB_OWNER", "\"allanlribeiro\"")
+            buildConfigField("String", "GITHUB_REPO", "\"StreamMax\"")
             buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "true")
