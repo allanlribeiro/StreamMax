@@ -78,8 +78,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="nuvio-legacy" />
-                <data android:scheme="stremio" />
+                <!-- Esquema exclusivo para evitar capturar links do Legacy ou Stremio. -->
+                <data android:scheme="streammax" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
