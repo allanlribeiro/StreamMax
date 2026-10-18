@@ -9,6 +9,16 @@
 #include <stdio.h>
 #include <string.h>
 
+// StreamMax Android: controles familiares, com assinatura azul cinematográfica.
+// Mesmas primitivas de desenho: nenhuma textura ou animacao extra por quadro.
+static void acentoStreamMax(float *r, float *g, float *b) {
+#ifdef NV_ANDROID
+  *r = 0.14f; *g = 0.59f; *b = 0.96f;  // #2496F5
+#else
+  ajustes_acento(r, g, b);
+#endif
+}
+
 static float raioDe(GfxRect r, float px) {
   float m = r.h > 1.0f ? r.h : 1.0f, f = px / m;
   return f > 0.5f ? 0.5f : f;
@@ -25,7 +35,11 @@ void plrui_material(GfxRect r, float raioPx, int modal, float a) {
   } else {
     gfx_sombra_sob((GfxRect){ r.x - 16.0f, r.y - 4.0f, r.w + 32.0f, r.h + 30.0f }, 1.0f, 0, 0.5f,
                    0, 0, 0, 0.45f * a, r, raio * r.h, a);
+#ifdef NV_ANDROID
+    gfx_cor(r, raio, 0.038f, 0.059f, 0.098f, a);  // azul-marinho StreamMax
+#else
     gfx_cor(r, raio, 0.082f, 0.086f, 0.102f, a);
+#endif
   }
 }
 
@@ -47,7 +61,11 @@ void plrui_linha_foco(GfxRect r, float raioPx, float a) {
   if (ajustes_vidro()) { gfx_cor(r, raio, 1, 1, 1, 0.12f * a); return; }
   gfx_rect((GfxRect){ r.x - 14.0f, r.y - 2.0f, r.w + 28.0f, r.h + 30.0f }, 0, GFX_SOMBRA,
            1.0f, 0, 0, 0.5f, 0, 0, 0, 0.40f * a);
+#ifdef NV_ANDROID
+  gfx_cor(r, raio, 0.094f, 0.158f, 0.258f, a);  // foco discreto
+#else
   gfx_cor(r, raio, 0.169f, 0.176f, 0.204f, a);
+#endif
   // inset 0 1px 0 rgba(255,255,255,.06): o filete claro de cima.
   gfx_brilho_topo(r, raio, 2.0f / (r.h > 2.0f ? r.h : 2.0f), 1, 1, 1, 0.06f * a);
 }
@@ -55,7 +73,7 @@ void plrui_linha_foco(GfxRect r, float raioPx, float a) {
 void plrui_pilula_foco(GfxRect r, float a) {
   float ar, ag, ab;
   if (a <= 0.002f) return;
-  ajustes_acento(&ar, &ag, &ab);
+  acentoStreamMax(&ar, &ag, &ab);
   gfx_rect((GfxRect){ r.x - 22.0f, r.y - 4.0f, r.w + 44.0f, r.h + 40.0f }, 0, GFX_SOMBRA,
            1.0f, 0, 0, 0.5f, ar, ag, ab, 0.42f * a);
   gfx_cor(r, 0.5f, ar, ag, ab, a);
@@ -63,12 +81,20 @@ void plrui_pilula_foco(GfxRect r, float a) {
 
 void plrui_botao_repouso(GfxRect r, float a) {
   if (ajustes_vidro()) gfx_vidro_painel(r, 0.5f, 0.55f, a);
+#ifdef NV_ANDROID
+  else gfx_cor(r, 0.5f, 0.067f, 0.094f, 0.149f, a);
+#else
   else gfx_cor(r, 0.5f, 0.141f, 0.149f, 0.173f, a);
+#endif
 }
 
 void plrui_disco_osd(GfxRect r, float a) {
   if (ajustes_vidro()) gfx_vidro_material(r, 0.5f, 0.52f, a);
+#ifdef NV_ANDROID
+  else gfx_cor(r, 0.5f, 0.038f, 0.059f, 0.098f, a);
+#else
   else gfx_cor(r, 0.5f, 0.082f, 0.086f, 0.102f, a);
+#endif
 }
 
 int plrui_tinta(void) { return ajustes_tinta_foco(); }
@@ -228,7 +254,7 @@ void plrui_barra(float x, float y, float w, float frac, float buf, int foco,
   if (a <= 0.002f) return;
   if (frac < 0.0f) frac = 0.0f;
   if (frac > 1.0f) frac = 1.0f;
-  ajustes_acento(&ar, &ag, &ab);
+  acentoStreamMax(&ar, &ag, &ab);
   gfx_cor((GfxRect){ x, yy, w, h }, 0.5f, 1, 1, 1, 0.20f * a);
   if (buf > frac + 0.002f) {
     if (buf > 1.0f) buf = 1.0f;
@@ -251,7 +277,7 @@ void plrui_barra(float x, float y, float w, float frac, float buf, int foco,
 }
 
 void plrui_trilho(GfxRect r, float frac, float cr, float cg, float cb, float a) {
-  if (cr < 0.0f) ajustes_acento(&cr, &cg, &cb);
+  if (cr < 0.0f) acentoStreamMax(&cr, &cg, &cb);
   if (ajustes_vidro()) gfx_vidro_chip(r, 0.5f, 0.55f, a);
   else gfx_cor(r, 0.5f, 1, 1, 1, 0.16f * a);
   if (frac > 1.0f) frac = 1.0f;
@@ -272,7 +298,7 @@ void plrui_anel_solto(float cx, float cy, float d, Uint32 agora, float a) {
 static void anelPontos(float cx, float cy, float d, int cinza, int sombra, Uint32 agora, float a) {
   float cr = 0.953f, cg = 0.949f, cb = 0.937f, rp = d / 14.0f, ra = d * 0.5f - 6.0f;
   int k, giro;
-  if (!cinza && !sombra) ajustes_acento(&cr, &cg, &cb);   // solto: branco, o acento some em cena clara
+  if (!cinza && !sombra) acentoStreamMax(&cr, &cg, &cb);   // solto: branco, o acento some em cena clara
   // Gira por passos de 1/12 (o desenho do mockup e parado; aqui a cauda anda).
   giro = ajustes_animacoes_reduzidas() ? 0 : (int)((agora / 83u) % 12u);
   for (k = 0; k < 12; k++) {

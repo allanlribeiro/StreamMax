@@ -42,6 +42,14 @@ checks = {
         "#ifdef NV_ANDROID\n  0,                /* espera pelos add-ons: Instantaneo",
         "#else\n  2,                /* outras plataformas: manter os 5 s",
     ],
+    "src/plrui.c": [
+        "static void acentoStreamMax(float *r, float *g, float *b)",
+        "void plrui_pilula_foco(GfxRect r, float a)",
+        "void plrui_barra(float x, float y, float w, float frac",
+        "void plrui_disco_osd(GfxRect r, float a)",
+        "acentoStreamMax(&ar, &ag, &ab);",
+    ],
+
 
 }
 errors = []
