@@ -561,9 +561,29 @@ static int pedeP2P(const Stream *s) {
           ((ntohl(addr.s_addr) >> 24) == 127 || addr.s_addr == 0));
 }
 
+// Diagnostico da folha, sem registrar URLs, hashes, tokens ou arquivos.
+// O addon pode responder com fontes que o player ainda nao consegue resolver;
+// distinguir isso de um filtro de idioma ou da resposta vazia e essencial.
+static int motivoNaoOferecida(const Stream *s) {
+  if (pedeP2P(s) && !p2p_ativo()) return 1; // exige motor P2P
+  if (!s->url[0] && !debrid_ativo() && !p2p_ativo()) return 2; // hash sem resolver
+  return 0;
+}
 static int fonteOferecida(const Stream *s) {
-  return (!pedeP2P(s) || p2p_ativo()) &&
-         (s->url[0] || debrid_ativo() || p2p_ativo());
+  return motivoNaoOferecida(s) == 0;
+}
+static void fonteContagemRecebidas(const Stream *l, int qtd) {
+  int naoP2P = 0, naoDebrid = 0, aceitas = 0;
+  const char *provedor = qtd > 0 && l ? l[0].provedor : "(sem addon)";
+  for (int i = 0; i < qtd && l; i++) {
+    int motivo = motivoNaoOferecida(&l[i]);
+    naoP2P += motivo == 1;
+    naoDebrid += motivo == 2;
+    aceitas += motivo == 0;
+  }
+  printf("[fontes/visibilidade] %s: recebidas=%d, exibiveis=%d, "
+         "requerem_p2p=%d, sem_url_ou_debrid=%d\\n",
+         provedor, qtd, aceitas, naoP2P, naoDebrid);
 }
 
 static Uint32 recebidaEm;
@@ -604,6 +624,7 @@ void stream_definir_lista_idade(const Stream *l, int qtd, Uint32 idade) {
   int i, k = 0;
   Stream *nova = l && qtd > 0 ? malloc(sizeof(Stream) * (size_t)qtd) : NULL;
   if (l && qtd > 0 && !nova) return;
+  if (l && qtd > 0) fonteContagemRecebidas(l, qtd);
   // Torrent sem url so fica se ha debrid para resolve-lo; senao seria uma linha
   // que nunca toca (shouldListStream do web). O servidor P2P experimental
   // (p2p.h) tambem o resolve, e so quando ligado.
@@ -677,6 +698,7 @@ void stream_lista_acrescentar(const Stream *l, int qtd, int ordemAddon) {
   unsigned *c2;
   int *e2;
   if (!l || qtd <= 0) return;
+  fonteContagemRecebidas(l, qtd);
   nova = malloc(sizeof(Stream) * (size_t)qtd);
   if (!nova) return;
   for (i = 0; i < qtd; i++)
