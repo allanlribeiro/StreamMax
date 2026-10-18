@@ -189,3 +189,10 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - **Ainda pendente:** confirmar que a camada aparece na TCL durante reprodução real e que formatos gráficos específicos são decodificados; avaliar fidelidade completa de estilo/animações ASS em relação ao AssSubtitleView do Nuvio original. Não confundir implementação e aprovação em dispositivo.
 - A checagem estática migration/check-player-original-engine.py cobre o novo caminho e a compilação Android determina se o código Kotlin/Media3 integra sem erros. A exigência de não enviar APK intermediário permanece.
 
+## Feedback real TCL — motor de vídeo e seletor visual (18/10/2026)
+
+- **Confirmado pelo usuário na TCL:** reprodução de conteúdo 4K, Dolby Vision e HDR está funcionando no APK gerado pelo GitHub Actions #39156897487. Não inferir desta validação que todas as demais funções de reprodução e faixas estão aprovadas.
+- **Diferença visual comprovada:** a escolha de legenda ainda surgia como painel Legacy no canto superior direito, ligado à ilha do relógio. A adaptação anterior de barra e botões do player **não incluía** esse painel; não descrever a estética inteira como equivalente ao Nuvio original.
+- **Correção nesta PR #15:** a folha de legendas e a aba de estilo pedem cartão independente ancorado embaixo à esquerda, preservando seleção, foco, faixas e o mesmo motor Media3; a folha de áudio permanece temporariamente como estava. Testes estáticos adicionados.
+- **Escopo ainda pendente de fidelidade visual:** as colunas específicas de idiomas, opções e estilo de `SubtitleSelectionOverlay.kt` (Compose) ainda não foram totalmente reproduzidas no painel nativo SDL/C. Não confundir mudança de posição com paridade completa.
+- **Pendente:** compilação e validação do novo painel na TCL — abertura via botão Legendas, setas/OK/Voltar, textos sem corte e uso da aba Estilo; repetir o teste 4K/DV/HDR após a mudança antes de declarar a interface homologada.
