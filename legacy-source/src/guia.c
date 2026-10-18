@@ -79,6 +79,7 @@
 #include "guialembrete.h"
 #include "streams.h"    /* Stream: url do preview vinda do fio */
 #include "livetv_regras.h" /* variantes FHD/HD/SD do mesmo canal */
+#include "streammax_livetv_columns.h"  /* StreamMax: guia em 3 colunas na TCL */
 #include "teclado.h"       /* a busca do guia */
 #include "buscanorm.h"     /* guia_buscar_canais (Spotlight) */
 #include <stdio.h>
@@ -385,6 +386,14 @@ static void favAlternar(GCanal *c) {
 // 1 = lista, 0 = cartoes. Persistido por perfil: quem escolheu lista
 // espera reabrir em lista, senao a escolha vira um gesto a repetir por sessao.
 static int modoLista, modoLido;
+// Nova tela nao modifica nem apaga os modos originais Cartoes / Lista.
+// Android TV comeca em tres colunas; Amarelo / L alterna com o guia classico.
+#if defined(__ANDROID__)
+static int tvTresColunas = 1;
+#else
+static int tvTresColunas;
+#endif
+static int tvColunaFoco = SM_TV_COL_CATEGORIAS;
 
 static void modoLer(void) {
   char *t = lerPerfil("modo");
@@ -1658,6 +1667,7 @@ void guia_abrir(void) {
   if (!previewLido) previewLer();
   aberta = 1; querSair = 0; entrada = 0.0f;
   focoTopo = 0; painel = 0;
+  tvColunaFoco = SM_TV_COL_CATEGORIAS;
   previewPreso = 0; previewId[0] = 0;
   previewUltLin = previewUltCol = -1; previewFocoMudou = SDL_GetTicks();
   focoValido();
@@ -2233,6 +2243,40 @@ void guia_evento(const SDL_Event *e) {
     return;
   }
 
+  // A tela StreamMax usa as duas colunas de selecao (categoria e canal);
+  // a terceira mostra somente dados reais da EPG. Foco nunca dispara video
+  // sozinho. OK no canal usa a MESMA acao do guia classico.
+  if (tvTresColunas && !gRetrato()) {
+    if (e->key.keysym.scancode == G_SCANCODE_YELLOW || k == SDLK_l) {
+      tvTresColunas = 0; modoLista = 1; janelaDesl = 0; focoTopo = 0;
+      return;
+    }
+    if (k == SDLK_LEFT) { tvColunaFoco = SM_TV_COL_CATEGORIAS; return; }
+    if (k == SDLK_RIGHT) { tvColunaFoco = SM_TV_COL_CANAIS; return; }
+    if (k == SDLK_UP || k == SDLK_DOWN) {
+      int d = k == SDLK_DOWN ? 1 : -1;
+      if (tvColunaFoco == SM_TV_COL_CATEGORIAS) {
+        focoLin = streammax_tv_limitar(focoLin + d, nLinhas());
+        focoCol = 0;
+      } else {
+        focoCol = streammax_tv_limitar(focoCol + d, linhaN(focoLin));
+      }
+      focoValido(); return;
+    }
+    if (k == SDLK_RETURN || k == SDLK_KP_ENTER) {
+      if (tvColunaFoco == SM_TV_COL_CATEGORIAS) tvColunaFoco = SM_TV_COL_CANAIS;
+      else if (!okDesde) { okDesde = agora; okLongo = 0; }
+      return;
+    }
+    return;
+  }
+  // Quando esta no guia classico, Amarelo / L reabre a tela StreamMax.
+  if (!gRetrato() && (e->key.keysym.scancode == G_SCANCODE_YELLOW || k == SDLK_l)) {
+    tvTresColunas = 1; tvColunaFoco = SM_TV_COL_CANAIS;
+    focoTopo = 0; catAberto = 0; janelaDesl = 0;
+    return;
+  }
+
   // O painel de addons captura tudo que nao e Voltar (tratado acima).
   if (painel) { painelEvento(k, agora); return; }
 
@@ -2597,7 +2641,7 @@ void guia_atualizar(float dt, Uint32 agora) {
   // O foco mudou de canal: o relogio do descanso recomeca.
   { static int ul = -1, uc = -1;
     if (focoLin != ul || focoCol != uc) { ul = focoLin; uc = focoCol; previewFocoMudou = agora; } }
-  if (aberta && !overlay && previewLigado && !previewPreso && !player_aberto() &&
+  if (aberta && !overlay && !tvTresColunas && previewLigado && !previewPreso && !player_aberto() &&
       nCanais > 0 && (estado == G_PRONTO || estado == G_BAIXANDO) &&
       (focoLin != previewUltLin || focoCol != previewUltCol) &&
       agora - previewFocoMudou >= G_PREVIEW_ESPERA_MS) {
