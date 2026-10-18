@@ -40,6 +40,12 @@ checks = {
     "original first frame ready watchdog available": "ForcePlayWhenReady" in original_watchdog,
     "StreamMax watchdog checks READY without automatic play": "p.playbackState == Player.STATE_READY && !p.playWhenReady" in source,
     "watchdog checks selected video track": "(0 until g.length).any { g.isTrackSelected(it) }" in source,
+    "subtitle track changes invalidate stale cues only when selection changes": (
+        "if (tipo == 1 && novosParametros != p.trackSelectionParameters)" in source
+        and 'nativeLegenda("", 0)' in source
+    ),
+    "subtitle delay changes invalidate old pending cues": "if (atrasoMs != idx) versaoLegenda++" in source,
+    "old subtitle cues are rejected after track or delay changes": "atual(minha) && versao == versaoLegenda" in source,
     "system pause disables READY watchdog before pausing": (
         "pausaPedida = true" in pausa_sistema
         and "principal.removeCallbacks(vigiaPrimeiroQuadro)" in pausa_sistema
