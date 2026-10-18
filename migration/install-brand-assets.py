@@ -22,7 +22,7 @@ if not (root / "android/app/src/main/AndroidManifest.xml").exists():
 dest = root / "android/app/src/main/res/drawable-nodpi"
 dest.mkdir(parents=True, exist_ok=True)
 # Validar TODO o pacote antes de copiar qualquer arquivo.
-dimensions = {"icon": (512, 512), "banner": (320, 180), "splash": (1280, 720)}
+dimensions = {"icon": (512, 512), "banner": (640, 360), "splash": (1280, 720)}
 for name, expected in dimensions.items():
     source = assets / f"streammax_{name}.png"
     if not source.is_file():
