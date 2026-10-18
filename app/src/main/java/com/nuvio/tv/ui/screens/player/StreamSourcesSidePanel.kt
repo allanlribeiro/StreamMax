@@ -50,6 +50,8 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import com.nuvio.tv.domain.model.Stream
+import com.nuvio.tv.core.streams.StreamAudioLanguageDetector
+import androidx.tv.material3.Button
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.SourceChipStatus
 import com.nuvio.tv.ui.theme.NuvioTheme
@@ -70,6 +72,15 @@ internal fun StreamSourcesSidePanel(
     modifier: Modifier = Modifier
 ) {
     val isRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    var filterPortuguese by remember { mutableStateOf(false) }
+    val visibleStreams = remember(uiState.sourceFilteredStreams, uiState.sourceAllStreams, uiState.sourceSelectedAddonFilter, filterPortuguese) {
+        if (!filterPortuguese) uiState.sourceFilteredStreams
+        else uiState.sourceAllStreams.filter { stream ->
+            (uiState.sourceSelectedAddonFilter == null || stream.addonName == uiState.sourceSelectedAddonFilter) &&
+                StreamAudioLanguageDetector.portugueseAudio(stream) ==
+                    StreamAudioLanguageDetector.PortugueseAudio.CONFIRMED
+        }
+    }
     val streamListState = rememberLazyListState()
     var userMovedFromFirstResult by remember { mutableStateOf(false) }
     var firstResultFocusAssigned by remember { mutableStateOf(false) }
@@ -100,9 +111,9 @@ internal fun StreamSourcesSidePanel(
         }
     }
 
-    val streamKeys = remember(uiState.sourceFilteredStreams) {
+    val streamKeys = remember(visibleStreams) {
         val seen = mutableMapOf<String, Int>()
-        uiState.sourceFilteredStreams.map { stream ->
+        visibleStreams.map { stream ->
             val base = stream.stableKey(0)
             val count = seen.getOrDefault(base, 0)
             seen[base] = count + 1
@@ -305,6 +316,14 @@ internal fun StreamSourcesSidePanel(
                 }
             }
 
+            Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
+            Button(onClick = {
+                filterPortuguese = !filterPortuguese
+                userMovedFromFirstResult = false
+                firstResultFocusAssigned = false
+            }) {
+                Text(if (filterPortuguese) "Áudio: Português identificado" else "Áudio: Todos")
+            }
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
 
             when {
@@ -327,7 +346,7 @@ internal fun StreamSourcesSidePanel(
                     )
                 }
 
-                uiState.sourceFilteredStreams.isEmpty() -> {
+                visibleStreams.isEmpty() -> {
                     Text(
                         text = stringResource(R.string.sources_no_streams),
                         style = MaterialTheme.typography.bodyLarge,
@@ -337,7 +356,7 @@ internal fun StreamSourcesSidePanel(
 
                 else -> {
                     val currentStreamIndex = findCurrentStreamIndex(
-                        streams = uiState.sourceFilteredStreams,
+                        streams = visibleStreams,
                         currentStreamInfoHash = uiState.currentStreamInfoHash,
                         currentStreamFileIdx = uiState.currentStreamFileIdx,
                         currentStreamAddonName = uiState.currentStreamAddonName,
@@ -352,8 +371,8 @@ internal fun StreamSourcesSidePanel(
                             streamListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
                         }
                     }
-                    LaunchedEffect(lastVisibleIndex.value, uiState.sourceFilteredStreams.size) {
-                        if (lastVisibleIndex.value >= uiState.sourceFilteredStreams.size - 20) {
+                    LaunchedEffect(lastVisibleIndex.value, visibleStreams.size, filterPortuguese) {
+                        if (!filterPortuguese && lastVisibleIndex.value >= visibleStreams.size - 20) {
                             onExpandStreams()
                         }
                     }
@@ -428,7 +447,7 @@ internal fun StreamSourcesSidePanel(
                                 }
                             }
                     ) {
-                        itemsIndexed(uiState.sourceFilteredStreams, key = { index, _ ->
+                        itemsIndexed(visibleStreams, key = { index, _ ->
                             streamKeys[index]
                         }) { index, stream ->
                             StreamItem(
