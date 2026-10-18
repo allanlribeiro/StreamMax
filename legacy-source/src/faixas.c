@@ -2101,16 +2101,19 @@ static void faixas_desenharCorpo_(Uint32 agora) {
   pilPedir();   // a pilula da legenda automatica (so com a folha fechada)
   if (anim < .01f) return;
   { int dir = plrilha_direita(), est = faixas_estilo_topo();
-    // O video fica sem veu cheio: so o degrade do lado da ilha (a lista) ou o
-    // de cima (o estilo, com a previa no video), pelo shader com dither.
-    if (est) gfx_veu_css((GfxRect){ 0, 0, NV_TELA_W, 260.0f }, 1, 1.38f, 1.0f, 0.52f * anim);
+    // Legendas (incluindo Estilo) usam painel PROPRIO no canto inferior
+    // esquerdo, como o overlay do Nuvio original. Audio ainda conserva sua
+    // ilha atual. O motor Media3, as faixas e as teclas nao mudam aqui.
+    if (modo) gfx_veu_css((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, 2, 1.38f, 1.0f, 0.42f * anim);
     else gfx_veu_css((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, dir ? 3 : 2, 1.38f, 1.0f, 0.42f * anim);
-    if (!aberta) return;   // fechando: a ilha encolhe com o ultimo corpo
+    if (!aberta) return;   // fechando: o painel anterior sai pela mesma animacao
     { PlrIlhaPedido p;
       memset(&p, 0, sizeof p);
       p.w = est ? NV_TELA_W - 192.0f : IL_W;
       p.h = est ? alturaEstilo() : modo ? legendasui_altura() : alturaLista(0);
       p.corpo = corpoIlha;
+      p.centro = modo;
+      p.painelEsquerdo = modo;
       plrilha_pedir(&p); } }
 }
 
