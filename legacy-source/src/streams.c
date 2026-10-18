@@ -689,7 +689,7 @@ void stream_lista_acrescentar(const Stream *l, int qtd, int ordemAddon) {
       else outros++;
     }
     // Safe summary only: do not log URLs, hashes, addon tokens or file names.
-    printf("[fonte] %s: %d recebidas, %d oferecidas, %d sem link/debrid, %d exigem P2P, %d outras descartadas\\n",
+    printf("[fonte] %s: %d recebidas, %d oferecidas, %d sem link/debrid, %d exigem P2P, %d outras descartadas\n",
            l[0].provedor, qtd, k, semLinkSemDebrid, exigeP2P, outros);
   }
   for (i = 0; i < qtd; i++)
