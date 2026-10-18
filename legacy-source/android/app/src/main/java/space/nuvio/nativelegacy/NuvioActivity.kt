@@ -600,6 +600,7 @@ class NuvioActivity : SDLActivity() {
         aplicarOrientacaoTouch()
         telaCheiaTouch()
         vigia?.frente(true)
+        NvPlayer.retomarPeloSistema()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
