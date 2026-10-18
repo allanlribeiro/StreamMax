@@ -4,6 +4,7 @@
 #include "text.h"
 #include "dobra.h"
 #include "idioma.h"
+#include "streammax_ui_brand.h"
 #include "ajustes.h"
 #include "gfx.h"
 #include "uisizing.h"
@@ -1954,16 +1955,16 @@ int txt_largura(TxtEstilo estilo, const char *s) {
   // Consultas de layout antes de txt_iniciar nao devem marcar fontes como
   // ausentes para sempre nem guardar uma largura zero no cache.
   if (!TTF_WasInit()) return 0;
-  return larguraLinha(estilo, i18n(s), fonteInterface, 0);
+  return larguraLinha(estilo, streammax_nome_visivel(i18n(s)), fonteInterface, 0);
 }
 
 TxtLinha txt_linha(TxtEstilo estilo, const char *s, int r, int g, int b, int a) {
-  return linhaFamilia(estilo, i18n(s), r, g, b, a, fonteInterface, 0);
+  return linhaFamilia(estilo, streammax_nome_visivel(i18n(s)), r, g, b, a, fonteInterface, 0);
 }
 
 TxtLinha txt_linha_familia(TxtEstilo estilo, const char *s, int r, int g,
                            int b, int a, TxtFamilia familia) {
-  return linhaFamilia(estilo, i18n(s), r, g, b, a, familia, 0);
+  return linhaFamilia(estilo, streammax_nome_visivel(i18n(s)), r, g, b, a, familia, 0);
 }
 
 void txt_desenhar(TxtLinha l, float x, float y) { txt_desenhar_alpha(l, x, y, 1.0f); }
@@ -2099,7 +2100,7 @@ static TxtLinha cortaFamilia(TxtEstilo estilo, const char *s, int r, int g,
   // Traduzir ANTES de cortar: o corte mede a largura e insere as reticencias,
   // e medir o portugues para desenhar o ingles poe as reticencias no lugar
   // errado — ou corta um texto que caberia inteiro.
-  s = i18n(s);
+  s = streammax_nome_visivel(i18n(s));
   // Mede sem rasterizar: so a linha FINAL vira textura (ver larguraLinha).
   if (!s || !*s || (float)larguraLinha(estilo, s, familia, enfase) <= maxW)
     return linhaFamilia(estilo, s, r, g, b, a, familia, enfase);
@@ -2238,7 +2239,7 @@ static float txt_bloco_impl(TxtEstilo estilo, const char *s, int r, int g, int b
                             float x, float y, float larg, float leading,
                             float alpha, int maxLinhas, int reticencias) {
   // Mesma razao do corte: a quebra de linha e feita no texto final.
-  s = i18n(s);
+  s = streammax_nome_visivel(i18n(s));
   if (!s || !*s) return 0.0f;
   char linha[512]; linha[0] = 0;
   float usado = 0.0f;
@@ -2366,7 +2367,7 @@ float txt_bloco_dir(TxtEstilo estilo, const char *s, int r, int g, int b,
                     float xDir, float y, float larg, float leading,
                     float alpha, int maxLinhas) {
   // Mesma razao do corte: a quebra de linha e feita no texto final.
-  s = i18n(s);
+  s = streammax_nome_visivel(i18n(s));
   if (!s || !*s) return 0.0f;
   char linha[512]; linha[0] = 0;
   float usado = 0.0f;

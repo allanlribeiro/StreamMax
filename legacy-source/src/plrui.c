@@ -247,8 +247,8 @@ float plrui_seg(const char *const *rotulos, const int *contagem, int n, float se
   return tot;
 }
 
-void plrui_barra(float x, float y, float w, float frac, float buf, int foco,
-                 const float *caps, int nCaps, float a) {
+static void plrui_barra_base(float x, float y, float w, float frac, float buf, int foco,
+                 const float *caps, int nCaps, float a, int cabecaBranca) {
   float ar, ag, ab, h = foco ? 10.0f : 6.0f, yy = foco ? y - 2.0f : y;
   int i;
   if (a <= 0.002f) return;
@@ -268,12 +268,24 @@ void plrui_barra(float x, float y, float w, float frac, float buf, int foco,
   }
   for (i = 0; i < nCaps; i++)
     gfx_cor((GfxRect){ x + w * caps[i] - 1.5f, yy - 4.0f, 3.0f, h + 8.0f }, 0.5f, 1, 1, 1, 0.55f * a);
-  if (foco) {
+  if (foco && cabecaBranca) {
     float cx = x + w * frac, cy = yy + h * 0.5f;
     gfx_rect((GfxRect){ cx - 26.0f, cy - 20.0f, 52.0f, 56.0f }, 0, GFX_SOMBRA, 1.0f, 0, 0, 0.5f,
              0, 0, 0, 0.5f * a);
     gfx_cor((GfxRect){ cx - 13.0f, cy - 13.0f, 26.0f, 26.0f }, 0.5f, 1, 1, 1, a);
   }
+}
+
+// Variante do player oficial: o foco engrossa o trilho, sem a bolinha
+// branca flutuante. Os outros usos continuam com o estilo Legacy intacto.
+void plrui_barra(float x, float y, float w, float frac, float buf, int foco,
+                 const float *caps, int nCaps, float a) {
+  plrui_barra_base(x, y, w, frac, buf, foco, caps, nCaps, a, 1);
+}
+
+void plrui_barra_original(float x, float y, float w, float frac, float buf, int foco,
+                          const float *caps, int nCaps, float a) {
+  plrui_barra_base(x, y, w, frac, buf, foco, caps, nCaps, a, 0);
 }
 
 void plrui_trilho(GfxRect r, float frac, float cr, float cg, float cb, float a) {

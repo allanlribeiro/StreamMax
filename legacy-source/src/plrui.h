@@ -62,6 +62,11 @@ float plrui_seg(const char *const *rotulos, const int *contagem, int n, float se
 void plrui_barra(float x, float y, float w, float frac, float buf, int foco,
                  const float *caps, int nCaps, float a);
 
+// Variante nativa da barra do Nuvio original (sem a cabeca branca no foco).
+// Somente a tela de reproducao StreamMax a utiliza.
+void plrui_barra_original(float x, float y, float w, float frac, float buf, int foco,
+                          const float *caps, int nCaps, float a);
+
 // TRILHO FINO (4 px, .trilho): carregando, Seekr carregando, lembrete.
 // `cr/cg/cb` < 0 = acento.
 void plrui_trilho(GfxRect r, float frac, float cr, float cg, float cb, float a);

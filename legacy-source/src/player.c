@@ -26,6 +26,7 @@
 //      congelado sem saber o que houve.
 #include "horafmt.h"
 #include "player.h"
+#include "streammax_player_layout.h"
 #include "memlog.h"
 #include "dvtela.h"
 #include "abrecine.h"
@@ -2960,15 +2961,18 @@ static int transporteSerie(void) { return !ehCanal() && epT >= 0 && epE > 0; }
 static int transporteAcoes(PlrAcao a[PLR_NBTNS]) {
   int n = 0, serie = transporteSerie();
   int pronto = serie && !trocaEpisodio && !pedRecarregar && !player_carregando() && !erroFonte && !saindo;
+  // Paridade visual com PlayerControlsOverlay do Nuvio original (Compose):
+  // Play, proximo episodio, legendas, audio, fontes e episodios primeiro.
+  // Proporcao e reinicio ficam no fim sem perder recursos do motor Legacy.
   a[n++] = (PlrAcao){PLR_PLAY, 1};
   if (serie) a[n++] = (PlrAcao){PLR_PROXIMO, pronto && player_proximo_episodio() != NULL};
-  if (!ehCanal()) a[n++] = (PlrAcao){PLR_REINICIAR,
-      player_recarregar_contexto() != 0 && video_duracao() > 0.5};
   a[n++] = (PlrAcao){PLR_CC, 1};
   a[n++] = (PlrAcao){PLR_AUDIO, 1};
-  a[n++] = (PlrAcao){PLR_ASPECTO, 1};
   a[n++] = (PlrAcao){PLR_FONTES, 1};
   if (temUltimoBotao()) a[n++] = (PlrAcao){PLR_EPISODIOS, 1};
+  a[n++] = (PlrAcao){PLR_ASPECTO, 1};
+  if (!ehCanal()) a[n++] = (PlrAcao){PLR_REINICIAR,
+      player_recarregar_contexto() != 0 && video_duracao() > 0.5};
   return n;
 }
 static int transporteHabilitado(int id) {
@@ -6189,18 +6193,16 @@ void player_desenhar(Uint32 agora) {
     desenharAcoesEpisodio(); return;
   }   // tocando limpo
 
-  // OS VEUS DO GLASS UI (mockup aprovado em 03/10): so dois degrades, o de
-  // cima (260, preto .52 -> 0) e o de baixo (520, .80 -> 0), pelo shader com
-  // dither (GFX_VEU_CSS): no painel de 8 bits da OLED um degrade escuro longo
-  // em faixas de gfx_cor sai em degraus. Na busca so com a barra o de baixo
-  // fica no leve (300, .60), o .veu-b.leve do mockup.
+  // O original apresenta duas faixas discretas: topo em preto 70% e rodape
+  // em preto 80%. Mantemos o shader com dither do Legacy para nao gerar banding
+  // nem novos buffers de GPU na TCL. Busca com barra usa a faixa leve.
   // OSD = CAMADA AMPLIADA (escala.h): veus, barra, titulo, botoes, tempo e
   // selos na tela virtual. A legenda logo abaixo e conteudo do filme: ela
   // sai da escala e fica no tamanho escolhido para ela.
   { ESCALA_INI();
-    gfx_veu_css((GfxRect){ 0, NV_VTELA_H - 520.0f, NV_VTELA_W, 520.0f }, 0, 1.25f, 1.0f, 0.80f * a * cheio);
+    gfx_veu_css((GfxRect){ 0, NV_VTELA_H - 400.0f, NV_VTELA_W, 400.0f }, 0, 1.25f, 1.0f, 0.80f * a * cheio);
     gfx_veu_css((GfxRect){ 0, NV_VTELA_H - 300.0f, NV_VTELA_W, 300.0f }, 0, 1.0f, 1.0f, 0.60f * a * (1.0f - cheio));
-    gfx_veu_css((GfxRect){ 0, 0, NV_VTELA_W, 260.0f }, 1, 1.38f, 1.0f, 0.52f * ac);
+    gfx_veu_css((GfxRect){ 0, 0, NV_VTELA_W, 300.0f }, 1, 1.38f, 1.0f, 0.70f * ac);
     ESCALA_FIM(); }
 
   /*
@@ -6231,9 +6233,9 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
   float desce = (1.0f - anim) * PLR_DESLIZE
               + (1.0f - eEnt) * PLR_DESLIZE * 1.8f;
 
-  // GEOMETRIA DO MOCKUP: a barra no y 902 (960 na busca so com a barra), os
-  // botoes 38 abaixo dela, o tempo na linha dos botoes, o titulo 36 acima.
-  // Tudo entre as margens da ilha (PLR_MARGEM): a barra nao vai de ponta a ponta.
+  // Layout de reproducao do original: titulo/logo acima da barra,
+  // progresso em toda a largura util e controles redondos fixos logo abaixo.
+  // A coordenada e virtual para preservar escala na TCL P7K.
   float ySo = ajustes_seekr_ligado() ? PLR_BARRA_Y_SEEKR : PLR_BARRA_Y_SO;
   float yCheio = transporteBarraY();
   float yBarra   = (yCheio + (ySo - yCheio) * (1.0f - cheio)) + desce;
@@ -6269,7 +6271,7 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
       }
       for (i = 0; i < nCaps; i++) if (caps[i] <= 0.0f || caps[i] >= 1.0f) caps[i--] = caps[--nCaps];
     }
-    plrui_barra(bx, yBarra, bw, frac, bufFrac, barraFoco, caps, nCaps, a); }
+    plrui_barra_original(bx, yBarra, bw, frac, bufFrac, barraFoco, caps, nCaps, a); }
 
   // --- O TITULO: o LOGO, e o texto so na falta dele -------------------------
   // (O dono tinha pedido texto em 2026-09; o mockup aprovado em 03/10 volta ao
@@ -6335,55 +6337,50 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
   // Depois do titulo: a miniatura fica POR CIMA dele enquanto a pessoa procura.
   seekrMiniatura(bx, bw, frac, yBarra, a);
 
-  // --- fileira de BOTOES ---------------------------------------------------
-  // Discos de 68 no material da ilha; o focado vira PILULA cheia no acento com
-  // o NOME DENTRO (o rotulo solto embaixo caia em y~1042, zona de overscan). A
-  // largura acompanha a mola do foco, entao os vizinhos andam junto.
-  // Com o foco na barra a fileira desce PLR_DESLIZE/2 e apaga (`fileira`).
+  // --- CONTROLES NO ESTILO DO ORIGINAL --------------------------------------
+  // O player original usa IconButton circular: fundo transparente em repouso,
+  // foco branco e icone preto. Nenhum botao cresce ou empurra seus vizinhos.
+  // Os IDs, eventos de D-pad, ponteiro e recursos continuam os do motor Legacy.
   if (fileira > 0.01f) {
     float x = cx, af = ac * fileira, dy = (1.0f - fileira) * PLR_DESLIZE * 0.5f;
     PlrAcao acoes[PLR_NBTNS]; int nAcoes = transporteAcoes(acoes);
     int toque = transporteToque(), duas = transporteDuasLinhas(), primeira = transportePrimeiraLinha();
     float celulaH = transporteCelulaH(), espaco = 12.0f / gfx_escala_ui();
-    float diametro = toque ? (PLR_TOQUE_CELULA - 16.0f) / gfx_escala_ui() : transporteCurto ?
-        fminf(PLR_BTN_D, (cw - (nAcoes - 1) * PLR_BTN_GAP) / nAcoes) : PLR_BTN_D;
+    float diametro = toque ? (PLR_TOQUE_CELULA - 16.0f) / gfx_escala_ui()
+      : streammax_player_controle_diametro(cw, nAcoes, PLR_BTN_D, PLR_BTN_GAP);
     float yRow = yRowTopo + dy;
     for (int j = 0; j < nAcoes; j++) {
       int i = acoes[j].id, habilitada = acoes[j].habilitada;
-      float f = habilitada ? focoB[i] : 0.0f, alpha = habilitada ? af : af * 0.35f;
-      const char *ic = iconeBotao(i), *rot = rotuloBotao(i);
-      TxtLinha lr = txt_linha(TXT_G21B, rot, 0, 0, 0, 255);
-      float wCheio = 22.0f + 30.0f + 12.0f + (float)lr.w + 28.0f;
-      float w = transporteCurto ? diametro : PLR_BTN_D + (wCheio - PLR_BTN_D) * f;
-      GfxRect r = { x, yRow, w, diametro }, alvo = r;
+      float f = streammax_player_foco_opacidade(habilitada ? focoB[i] : 0.0f);
+      float alpha = habilitada ? af : af * 0.35f;
+      const char *ic = iconeBotao(i);
+      GfxRect r = { x, yRow, diametro, diametro }, alvo = r;
       if (toque) {
         int linha = duas && j >= primeira, inicio = linha ? primeira : 0;
         int colunas = duas ? (linha ? nAcoes - primeira : primeira) : nAcoes;
         float celulaW = cw / colunas;
-        alvo = (GfxRect){cx + (j - inicio) * celulaW, yRow + linha * (celulaH + espaco), celulaW, celulaH};
-        r = (GfxRect){alvo.x + (celulaW - diametro) * 0.5f,
-                      alvo.y + (celulaH - diametro) * 0.5f, diametro, diametro};
+        alvo = (GfxRect){ cx + (j - inicio) * celulaW,
+                          yRow + linha * (celulaH + espaco), celulaW, celulaH };
+        r = (GfxRect){ alvo.x + (celulaW - diametro) * 0.5f,
+                       alvo.y + (celulaH - diametro) * 0.5f, diametro, diametro };
       }
-      float cyB = r.y + r.h * 0.5f;
-      int tinta = (int)(242.0f + (plrui_tinta() - 242.0f) * f);
-      float k = tinta / 255.0f;
-      if (f > 0.02f) plrui_pilula_foco(r, alpha * f);
-      if (f < 0.98f) plrui_disco_osd(r, alpha * (1.0f - f));
+      // Igual aos IconButtonDefaults do original: apenas o foco ganha fundo.
+      // O contraste preto/branco usa a mesma interpolacao da mola de foco.
+      if (f > 0.005f) gfx_cor(r, 0.5f, 1.0f, 1.0f, 1.0f, alpha * f);
       if (ponteiroNoPlayer() && af > 0.3f)
-        ponteiro_alvo(alvo.x, alvo.y, alvo.w, alvo.h, habilitada ? ponteiroBotao : NULL,
+        ponteiro_alvo(alvo.x, alvo.y, alvo.w, alvo.h,
+                      habilitada ? ponteiroBotao : NULL,
                       habilitada ? ponteiroAtivarBotao : ponteiroBotaoInativo, i, 0);
       { float tamanho = toque ? 64.0f / gfx_escala_ui() : 30.0f;
-        float ix = transporteCurto ? r.x + (diametro - tamanho) * 0.5f :
-          x + (PLR_BTN_D - 30.0f) * 0.5f + (22.0f - (PLR_BTN_D - 30.0f) * 0.5f) * f;
-        gfx_icone((GfxRect){ ix, cyB - tamanho * 0.5f, tamanho, tamanho }, ic, k, k, k, alpha * 0.96f);
-        if (!transporteCurto && f > 0.05f) {
-          TxtLinha l = txt_linha(TXT_G21B, rot, tinta, tinta, tinta, 255);
-          gfx_recorte(r.x, r.y, r.w, r.h);
-          txt_desenhar_alpha(l, ix + 30.0f + 12.0f, cyB - (float)l.h * 0.5f, af * f);
-          gfx_sem_recorte();
-        } }
-      if (!toque) x += w + PLR_BTN_GAP;
+        float ix = r.x + (r.w - tamanho) * 0.5f;
+        float iy = r.y + (r.h - tamanho) * 0.5f;
+        float tinta = 0.96f * (1.0f - f);
+        gfx_icone((GfxRect){ ix, iy, tamanho, tamanho }, ic, tinta, tinta, tinta, alpha);
+      }
+      if (!toque) x += diametro + PLR_BTN_GAP;
     }
+    // O rotulo solto e exclusivo do modo compacto/movel: na TCL a linha
+    // fica limpa, como a do Nuvio original. O tempo continua a direita.
     if (transporteCurto && !barraFoco && transporteHabilitado(botao)) {
       char atual[24], dur[24], total[32];
       plrui_tempo(atual, sizeof atual, posVisSolto ? posVis : posSeg);

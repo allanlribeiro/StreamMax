@@ -110,3 +110,22 @@ Criar e manter um aplicativo Android TV independente, chamado **StreamMax**, der
 Cada alteração deve ter escopo definido, build/teste quando possível e anotação do que foi ou não verificado. Não alterar mecanismos de reprodução/autenticação sem necessidade. Se uma etapa depender de teste na TV, marcar como **pendente**, nunca como concluída.
 
 Este documento descreve decisões do fork; não é documentação oficial do projeto upstream.
+
+## Feedback TCL P7K — 18/10/2026 (teste real do usuário)
+
+- **Confirmado na TV:** todas as artes de “Continuar assistindo” apareceram; preservar o fallback de imagem.
+- **Problema reproduzido:** início de filmes/episódios ainda lento e seleção automática da primeira fonte indesejada.
+- **Regra desejada:** perguntar a fonte na primeira reprodução, persistir a escolha do título/perfil e continuar automaticamente nos próximos episódios quando houver fonte equivalente. Se não houver correspondência, permitir nova escolha; não trocar sem avisar uma escolha manual recém-feita.
+- **Visual:** reproduzir o *estilo de interface* do player do Nuvio original, com marca e acentos StreamMax. Não substituir cegamente o motor nativo do Legacy por classes Kotlin: preservar desempenho e compatibilidade com TCL.
+- **Marca:** não mostrar “Nuvio” nos textos da interface. Preservar endpoints, IDs, pacotes e chaves de sincronização necessárias à conta existente.
+- **Alterações preparadas em `streammax/tcl-player-source-branding-1018`:** padrão de escolha manual ativado em instalações novas (preferências gravadas mantidas); substituição do nome no fluxo central de desenho de textos; teste C isolado. **Pendente:** refazer desenho do OSD/player, auditar imagens, caminhos que não passam pelo desenho de texto, compilar APK e confirmar em TCL.
+
+## Player nativo — aproximação visual do Nuvio original (18/10/2026)
+
+- **Código alterado na PR #13:** `legacy-source/src/player.c` passa a renderizar botões redondos fixos com foco branco e ícone preto, na ordem Play / Próximo / Legendas / Áudio / Fontes / Episódios / Proporção / Reiniciar. Nas séries, Próximo aparece quando aplicável; os últimos botões preservam ações úteis do Legacy sem impor um menu novo.
+- Barra de progresso: variante `plrui_barra_original`, com tamanho realçado ao focar sem cabeça circular flutuante. Preserva marcadores de capítulo, cor azul StreamMax e buffer.
+- Fundo do vídeo: degradês superior/inferior aproximados do player Compose original, reutilizando o shader com dither e sem novos buffers de GPU.
+- Preservadas as logos dos títulos sobre os controles, retorno textual quando não há arte e indicação do episódio. Preservados motor nativo, HDR, legendas, fonte selecionada, tempo de reprodução, retomada e navegação por controle.
+- Arquitetura: o player oficial em `app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerScreen.kt` (branch `dev`) é Kotlin/Compose, enquanto o Legacy roda SDL/GLES em C. A implementação **adapta o visual** e não substitui motor; não declarar que ambos são tecnicamente idênticos.
+- **Validações:** testes estáticos de paridade visual e geometria; compilação Linux nativa em CI proposta sem gerar APK. Revisão visual na TCL e desempenho ainda necessários para homologar.
+- **Nenhum APK novo** deve ser disparado enquanto a adaptação visual não estiver revisada e aprovada para teste.

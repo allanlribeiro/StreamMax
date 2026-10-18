@@ -1,0 +1,48 @@
+name: StreamMax TCL - source and UI checks
+
+on:
+  pull_request:
+    branches:
+      - streammax/legacy-migration
+    paths:
+      - 'legacy-source/src/app.c'
+      - 'legacy-source/src/player.c'
+      - 'legacy-source/src/plrui.c'
+      - 'legacy-source/src/plrui.h'
+      - 'legacy-source/src/streammax_player_layout.h'
+      - 'legacy-source/tests/test_streammax_player_layout.c'
+      - 'legacy-source/tests/streammax-player-layout.sh'
+      - 'migration/check-player-original-style.py'
+      - 'legacy-source/src/text.c'
+      - 'legacy-source/src/streammax_ui_brand.h'
+      - 'legacy-source/src/ajustes_ux_padrao.inc'
+      - 'legacy-source/tests/test_streammax_ui_brand.c'
+      - 'legacy-source/tests/streammax-ui-brand.sh'
+      - 'migration/check-playback-contracts.py'
+      - '.github/workflows/streammax-tcl-ui-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar marca apenas na interface
+        run: bash legacy-source/tests/streammax-ui-brand.sh
+      - name: Testar geometria dos controles fixos
+        run: bash legacy-source/tests/streammax-player-layout.sh
+      - name: Validar paridade visual do player sem APK
+        run: python3 migration/check-player-original-style.py legacy-source
+      - name: Validar contratos de reproducao do Legacy
+        run: python3 migration/check-playback-contracts.py legacy-source
+      - name: Preparar compilacao nativa Linux sem gerar APK
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+            libgles2-mesa-dev libegl1-mesa-dev zlib1g-dev
+      - name: Compilar player nativo e restante da interface (sem APK)
+        working-directory: legacy-source
+        run: bash tools/linux.sh --build
