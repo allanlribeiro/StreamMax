@@ -83,6 +83,7 @@ import com.nuvio.tv.ui.util.localizeEpisodeTitle
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.Button
+import com.nuvio.tv.core.streams.StreamSourceTechnicalSummary
 import com.nuvio.tv.core.streams.StreamAudioLanguageDetector
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -1462,19 +1463,7 @@ private fun StreamCard(
                     }
                 }
 
-                val parsedSource = stream.clientResolve?.stream?.raw?.parsed
-                val technicalSummary = remember(stream) {
-                    buildList {
-                        parsedSource?.resolution?.takeIf(String::isNotBlank)?.let(::add)
-                        parsedSource?.codec?.takeIf(String::isNotBlank)?.let(::add)
-                        parsedSource?.hdr.orEmpty().filter(String::isNotBlank).forEach(::add)
-                        parsedSource?.audio.orEmpty().filter(String::isNotBlank).forEach(::add)
-                        parsedSource?.languages.orEmpty().filter(String::isNotBlank).forEach(::add)
-                        if (StreamAudioLanguageDetector.portugueseAudio(stream) ==
-                            StreamAudioLanguageDetector.PortugueseAudio.CONFIRMED
-                        ) add("Áudio português indicado")
-                    }.distinct().joinToString(" · ")
-                }
+                val technicalSummary = remember(stream) { StreamSourceTechnicalSummary.describe(stream) }
                 if (technicalSummary.isNotBlank()) {
                     Text(
                         text = technicalSummary,
