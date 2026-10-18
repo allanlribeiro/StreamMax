@@ -1951,7 +1951,7 @@ object NvPlayer {
                 if (pausaPedida) principal.removeCallbacks(vigiaPrimeiroQuadro)
                 else if (p.playbackState == Player.STATE_READY && !quadroVisto) agendarVigiaPrimeiroQuadro()
             }
-            if (!playWhenReady && !p.isPlaying && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
+            if (!playWhenReady && pausaPedida && !p.isPlaying && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
             medirEstado(p)
         }
 
@@ -1968,7 +1968,7 @@ object NvPlayer {
             val p = player ?: return
             if (isPlaying) { if (pronto) ev(EV_TOCANDO) }
             // Parar de tocar por buffer nao e pausa (o evento 7 ja disse).
-            else if (!p.playWhenReady && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
+            else if (!p.playWhenReady && pausaPedida && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
