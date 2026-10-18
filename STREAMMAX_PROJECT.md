@@ -4,6 +4,13 @@
 
 **Prioridade máxima:** desenvolver o StreamMax em cima da implementação Android de [iqui27/nuvio-native-legacy](https://github.com/iqui27/nuvio-native-legacy/tree/master/android), e não continuar usando o Nuvio original como base do novo APK. O código atual na branch `dev` fica preservado como referência/backup até haver um build funcional da nova base.
 
+### Backlog futuro — Smart TVs Samsung (pedido de 18/10/2026)
+
+- Preparar posteriormente uma distribuicao **StreamMax para Samsung Tizen**, separada do APK Android.
+- Aproveitar, quando chegar a etapa, o suporte Tizen que ja existe na base nativa Legacy (`.tpk` e, conforme compatibilidade, `.wgt`), revisando nome, identidade visual, login, controle remoto, reproducao e atualizacoes.
+- **Nao implementar, compilar ou publicar a versao Samsung nesta fase.** O pedido e para o futuro.
+- Prioridades atuais: corrigir as artes do Continuar Assistindo; aproximar o fluxo e a tela de reproducao do Nuvio original; reduzir a demora do inicio de filmes e episodios sem perder fluidez e desempenho.
+
 ### Requisitos aprovados, na ordem de trabalho
 
 1. Base Android do Legacy, preservando sua arquitetura nativa e fluidez.
