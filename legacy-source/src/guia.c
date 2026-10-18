@@ -4832,7 +4832,7 @@ static void desenharStreammaxTv(float a, time_t agoraT) {
           NV_COR_FUNDO_R, NV_COR_FUNDO_G, NV_COR_FUNDO_B, a);
   { TxtLinha titulo = txt_linha(TXT_HEADLINE, i18n("TV ao vivo"), 243, 246, 253, 255);
     TxtLinha ajuda = txt_linha_corta(TXT_CAPTION,
-       i18n("Categorias  \\xe2\\x86\\x92  Canais  \\xc2\\xb7  OK para assistir"),
+       i18n("Categorias  \xe2\x86\x92  Canais  \xc2\xb7  OK para assistir"),
        153, 174, 196, 255, G_AREA_W * 0.6f);
     txt_desenhar_alpha(titulo, x, 54.0f, a);
     txt_desenhar_alpha(ajuda, G_AREA_DIR - (float)ajuda.w, 76.0f, a);
@@ -4926,7 +4926,7 @@ static void desenharStreammaxTv(float a, time_t agoraT) {
     txt_desenhar_alpha(vazio, infoX + 24.0f, y + 122.0f, a);
   }
   { TxtLinha help = txt_linha_corta(TXT_CAPTION,
-      i18n("\\xe2\\x86\\x91\\xe2\\x86\\x93 navegam  \\xc2\\xb7  \\xe2\\x86\\x90\\xe2\\x86\\x92 alternam colunas  \\xc2\\xb7  Voltar sai"),
+      i18n("\xe2\x86\x91\xe2\x86\x93 navegam  \xc2\xb7  \xe2\x86\x90\xe2\x86\x92 alternam colunas  \xc2\xb7  Voltar sai"),
       139, 159, 181, 255, G_AREA_W);
     txt_desenhar_alpha(help, G_AREA_X, NV_TELA_H - 54.0f, a);
   }
