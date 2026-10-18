@@ -7,6 +7,9 @@ root = Path(sys.argv[1]) if len(sys.argv) == 2 else Path("legacy-source")
 player = (root / "src/player.c").read_text(encoding="utf-8")
 plrui = (root / "src/plrui.c").read_text(encoding="utf-8")
 header = (root / "src/plrui.h").read_text(encoding="utf-8")
+faixas = (root / "src/faixas.c").read_text(encoding="utf-8")
+ilha = (root / "src/plrilha.c").read_text(encoding="utf-8")
+ilha_header = (root / "src/plrilha.h").read_text(encoding="utf-8")
 original = Path("app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerScreen.kt")
 if not original.exists():
     raise SystemExit("Referencia original nao encontrada no repositorio")
@@ -46,6 +49,31 @@ controls = player.split("static int transporteAcoes(PlrAcao a[PLR_NBTNS]) {", 1)
 order = ["PLR_PLAY", "PLR_PROXIMO", "PLR_CC", "PLR_AUDIO", "PLR_FONTES", "PLR_EPISODIOS", "PLR_ASPECTO", "PLR_REINICIAR"]
 spots = [controls.find("(PlrAcao){" + x) for x in order]
 checks["ordem dos controles do original primeiro"] = all(p >= 0 for p in spots) and spots == sorted(spots)
+checks["referencia original tem seletor independente de legendas"] = (
+    "SubtitleSelectionOverlay(" in (Path("app/src/main/java/com/nuvio/tv/ui/screens/player/SubtitleSelectionOverlay.kt")).read_text(encoding="utf-8")
+)
+checks["legendas e estilo fora da ilha do relogio"] = (
+    "p.centro = modo;" in faixas
+    and "p.painelEsquerdo = modo;" in faixas
+    and "int painelEsquerdo;" in ilha_header
+)
+checks["cartao de legendas alinhado a esquerda e na base"] = (
+    "if (c->painelEsquerdo)" in ilha
+    and "R.x = F.x = x;" in ilha
+    and "NV_TELA_H - h - margemBaixo" in ilha
+    and "NV_TELA_H - c->h - margemBaixo" in ilha
+)
+checks["audio continua no fluxo anterior, video fica intocado"] = (
+    "p.centro = modo;" in faixas
+    and "p.painelEsquerdo = modo;" in faixas
+    and "else gfx_veu_css(" in faixas
+    and "void player_abrir(" in player
+)
+checks["sobreposicao de legenda preserva recorte e hitbox"] = (
+    "cenUlt.painelEsquerdo && painelLegRect.w > 0.0f" in ilha
+    and "if (r) *r = painelLegRect;" in ilha
+    and "painelLegRect = c->painelEsquerdo ? R" in ilha
+)
 
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
