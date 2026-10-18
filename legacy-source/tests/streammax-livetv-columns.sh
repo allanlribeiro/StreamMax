@@ -17,7 +17,7 @@ assert 'tvColunaFoco = SM_TV_COL_CANAIS;' in src
 assert 'focoLin = streammax_tv_limitar(focoLin + d, nLinhas());' in src
 assert 'focoCol = streammax_tv_limitar(focoCol + d, linhaN(focoLin));' in src
 assert 'else if (!okDesde) { okDesde = agora; okLongo = 0; }' in src
-assert '!tvTresColunas && previewLigado && !previewPreso' in src
+assert '(previewLigado || tvTresColunas)' in src
 assert 'if (tvTresColunas && !gRetrato()) {' in src
 section = src.split('static void streammaxTvDesenhar(', 1)[1].split('void guia_desenhar(', 1)[0]
 assert 'gAgora(canal, agoraT, &ag)' in section
