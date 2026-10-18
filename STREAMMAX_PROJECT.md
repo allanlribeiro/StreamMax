@@ -146,3 +146,13 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - Regra de primeira escolha VOD isolada em `streammax_first_source.h` e exercitada em teste C para casos de primeira reprodução, mesma fonte no próximo episódio, desaparecimento da fonte, lista vazia e opção automática escolhida pelo usuário.
 - CI de UI/player passa a rodar também na PR de correção, com compilação nativa Linux e regressões; **não gera APK**.
 - Ainda não aprovado em dispositivo: o teste com vídeo real na TCL P7K, áudio/legendas, continuidade de episódios, foco do controle remoto, HDR e tempos de carregamento depende de APK de validação posterior. Não chamar o player de homologado antes desses testes.
+
+## Reproducao baseada no Nuvio original — primeira migracao funcional (18/10/2026)
+
+- A PR #14 de escolha inicial e memoria da fonte foi integrada em `streammax/legacy-migration` com testes de fluxo e compilacao Linux aprovados; o proximo trabalho e o **player**, nao TV ao vivo ou Android 14.
+- Comparacao real no codigo: o original `PlayerRuntimeControllerInitialization.kt` usa Media3 ExoPlayer, com caminho `DefaultLoadControl.Builder()`. O Legacy Android ja reproduz por Media3 ExoPlayer em `NvPlayer.kt` (por SurfaceView). Trocar para o player original exige migrar **comportamento, OSD e tratamento de sessoes**, nao instalar simplesmente outra biblioteca de video.
+- Etapa da PR #15: no VOD com buffer automatico (preset 0) e sem preparo, usar a janela 15–45 s inspirada em `NuvioExoPlayerPerformanceHelper` e os limiares stock Media3 para inicio/rebuffer. Preservar os tetos de bytes dependentes da RAM da TCL. Presets de buffer explicitos e a instancia invisivel de preparo conservam os limiares Legacy.
+- Aceleracao esperada: menor espera imposta pelo buffer apos uma fonte valida; **nao** resolve atrasos de consulta a addon ou disponibilidade de link. Monitorar travamentos/rebuffer em fontes lentas e reverter a politica se necessario.
+- Teste estatico em `migration/check-player-original-engine.py` e workflow sem APK; falta compilacao Android com Media3/NDK e teste de duracao ate o primeiro quadro com a TCL.
+- Criterios da migracao completa **antes do proximo APK**: abertura manual de primeira fonte, continuidade de episodios com mesma fonte quando disponivel, retomada sem voltar ao inicio ao trocar de fonte, OSD e foco proximos do Nuvio original com logo de titulo e acento azul StreamMax, idioma/legendas, 4K HDR10+/Dolby Vision, controle de erros, troca de faixa e fluxo de retorno usando controle remoto.
+- Manter compatibilidade Android 12 da TCL P7K; Android 14 e Tizen fora desta etapa.
