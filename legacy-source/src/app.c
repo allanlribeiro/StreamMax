@@ -1200,15 +1200,15 @@ static int tocarFonteGuardada(void) {
   if (!fontevolta_toca_guardada(0, fontefalha_ativa(),
                                 player_id_canal()[0], player_aberto()))
     return 0;
+  if (manual) {
+    idBaseDoTitulo(base, sizeof base);
+    if (!base[0] || !fontepref_tem(base)) return 0;
+  }
   alvoPlayer(alvo, sizeof alvo);
   if (!alvo[0] || !fontevolta_pegar(alvo, sessao_usuario(), perfis_ativo(), SDL_GetTicks(), &s))
     return 0;
-  if (manual) {
-    idBaseDoTitulo(base, sizeof base);
-    if (!base[0] || !fontepref_tem(base) ||
-        fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)
-      return 0;
-  }
+  if (manual && fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)
+    return 0;
   // A regra de fontes pode mudar entre uma sessao e outra. Se a fonte
   // lembrada ficou proibida, descarte-a e abra a selecao normal dos addons.
   if (!stream_filtro_permite(&s)) {
