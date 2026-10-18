@@ -22,9 +22,15 @@ checks = {
     "legacy automatic buffer uses original 15-45s window": "else Triple(15_000, 45_000, tetoBuffer)" in source,
     "legacy user preset buffer untouched": "Triple(50_000, 150_000, minOf(preset.toLong() shl 20, heap / 3).toInt())" in source,
     "low-RAM byte cap untouched": "val tetoBuffer = if (poucaRam)" in source,
-    "stock threshold only for unprepared automatic VOD": "val inicioOriginal = !preparando && preset == 0" in source,
+    "stock threshold for cold and adopted prepared VOD": "val inicioOriginal = preset == 0" in source,
+    "prepared playback keeps 2.5s threshold before adoption": "else parameters.bufferedDurationUs >= 2_500_000L" in source,
+    "adopted preload switches to inherited stock Media3 playback thresholds": (
+        "if (adotada) super.shouldStartPlayback(parameters)" in source
+        and "carga.adotada = true" in source
+    ),
     "original stock back buffer retains 1.5s for short rewind": ".setBackBuffer(1_500, /* retainBackBufferFromKeyframe = */ true)" in original_controller,
-    "streammax keeps 1.5s back buffer on stock VOD": "val backBufferMs = if (inicioOriginal) 1_500 else 0" in source,
+    "cold stock VOD keeps 1.5s back buffer": "val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0" in source,
+    "prepared stock VOD does not enlarge its back-buffer memory": "val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0" in source,
     "back buffer uses keyframe retention only when enabled": "backBufferMs, backBufferMs > 0) {" in source,
     "stock VOD forwards retention setting to load control": "CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs)" in source,
     "back buffer telemetry present": '"inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms backBuffer=${backBufferMs}ms "' in source,

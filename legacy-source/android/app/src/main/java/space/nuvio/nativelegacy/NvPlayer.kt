@@ -1217,12 +1217,13 @@ object NvPlayer {
         // Nao ampliar o teto em bytes: a TCL P7K pode ser low-RAM.
         else Triple(15_000, 45_000, tetoBuffer)
 
-        // O original tambem tem o modo stock Media3. Para VOD sem preset
-        // personalizado, seu inicio usa os limiares oficiais do LoadControl:
-        // nao reter o primeiro quadro por 2,5 s e um rebuffer por 5 s.
-        // O player invisivel de preparo e presets manuais mantem os limiares
-        // Legacy, pois o preparo precisa de uma margem antes de ser adotado.
-        val inicioOriginal = !preparando && preset == 0
+        // O VOD automatico deve continuar com os limiares stock Media3
+        // mesmo quando chega de um player preparado. CargaPlayer so usa
+        // 2,5 s durante o preparo invisivel (!adotada); promover() liga
+        // adotada=true e passa a usar super.shouldStartPlayback (stock).
+        // Presets manuais conservam os limiares Legacy. Nao mudar o teto
+        // de bytes: a TCL tem memoria limitada.
+        val inicioOriginal = preset == 0
         val inicioMs = if (inicioOriginal)
             DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500
         val recuoBufferMs = if (inicioOriginal)
@@ -1230,7 +1231,9 @@ object NvPlayer {
         // O Nuvio original conserva 1,5 s no stock Media3 para que um
         // pequeno retrocesso nao force nova leitura. Nao muda o teto em bytes
         // na TCL, nem o preparo invisivel ou buffers personalizados.
-        val backBufferMs = if (inicioOriginal) 1_500 else 0
+        // O buffer retroativo de 1,5 s fica so nas aberturas frias; o
+        // preparo do proximo episodio conserva sua reserva reduzida de RAM.
+        val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0
         val r = RecursosPlayer(
             CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs),
             maxMs, if (preparando) idiomaAudio else ""

@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           grep -Fq 'player_definir_retomada_fonte(posTroca)' legacy-source/src/app.c
           grep -Fq 't == epTrocaT && e == epTrocaE' legacy-source/src/app.c
-          grep -Fq 'val backBufferMs = if (inicioOriginal) 1_500 else 0' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt
+          grep -Fq 'val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt
           grep -Fq 'val vigiaPrimeiroQuadro = Runnable' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt
           grep -Fq 'streammax_should_ask_episode_source(' legacy-source/src/detail.c
           python3 migration/check-player-original-engine.py
