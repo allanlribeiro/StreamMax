@@ -771,10 +771,16 @@ static int luVis(void) {
 }
 
 float legendasui_altura(void) {
-  int n;
+  int n, idiomasVis;
+  float alturaOpcoes, alturaIdiomas;
   montarLinhas();
+  atualizarIdiomas();
   n = nLinhasV < luVis() ? nLinhasV : luVis();
-  return LU_PAD_Y + LU_TIT_H + 14.0f + n * LU_LN_H + (n > 0 ? (n - 1) * LU_LN_VAO : 0.0f) +
+  idiomasVis = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
+  alturaOpcoes = n * LU_LN_H + (n > 0 ? (n - 1) * LU_LN_VAO : 0.0f);
+  alturaIdiomas = 38.0f + idiomasVis * LU_IDIOMA_LINHA;
+  return LU_PAD_Y + LU_TIT_H + 14.0f +
+         (alturaOpcoes > alturaIdiomas ? alturaOpcoes : alturaIdiomas) +
          14.0f + LU_PE_H + LU_PAD_Y;
 }
 
@@ -1231,6 +1237,12 @@ void legendasui_corpo(GfxRect c, float a) {
       desenharLinha(&linhas[i], i, i == foco, x0, y + (i - rolagem) * (LU_LN_H + LU_LN_VAO), w, a);
     y += (fim - rolagem) * LU_LN_H + (fim - rolagem > 0 ? (fim - rolagem - 1) * LU_LN_VAO : 0.0f) + 14.0f;
   }
+  // O rodape vem DEPOIS da coluna mais alta. Numa fonte com apenas uma
+  // legenda, a coluna de idiomas nao pode atravessar o rodape nem o painel.
+  { int linhasIdioma = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
+    float rodapeMin = c.y + LU_PAD_Y + LU_TIT_H + 14.0f +
+                      38.0f + linhasIdioma * LU_IDIOMA_LINHA + 14.0f;
+    if (y < rodapeMin) y = rodapeMin; }
   gfx_cor((GfxRect){ x0, y, w, 1.0f }, 0.0f, 1, 1, 1, 0.07f * a);
   { float yc = y + 16.0f + 15.0f;
     if (aviso[0] && (Sint32)(avisoAte - SDL_GetTicks()) > 0) {
