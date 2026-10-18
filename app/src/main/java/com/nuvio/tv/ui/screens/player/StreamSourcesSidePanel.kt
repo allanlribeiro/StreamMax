@@ -221,7 +221,7 @@ internal fun StreamSourcesSidePanel(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .width(520.dp)
+            .width(600.dp)
             .clip(RoundedCornerShape(topStart = NuvioTheme.spacing.lg, bottomStart = NuvioTheme.spacing.lg))
             .background(NuvioTheme.colors.BackgroundElevated)
     ) {
@@ -286,6 +286,14 @@ internal fun StreamSourcesSidePanel(
                 overflow = TextOverflow.Ellipsis
             )
 
+            Text(
+                text = "${visibleStreams.size} fontes exibidas" +
+                    if (filterPortuguese) " · Áudio português identificado" else "",
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.extendedColors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
 
             AnimatedVisibility(
