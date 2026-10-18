@@ -1,0 +1,27 @@
+name: StreamMax TCL - source and UI checks
+
+on:
+  pull_request:
+    branches:
+      - streammax/legacy-migration
+    paths:
+      - 'legacy-source/src/text.c'
+      - 'legacy-source/src/streammax_ui_brand.h'
+      - 'legacy-source/src/ajustes_ux_padrao.inc'
+      - 'legacy-source/tests/test_streammax_ui_brand.c'
+      - 'legacy-source/tests/streammax-ui-brand.sh'
+      - 'migration/check-playback-contracts.py'
+      - '.github/workflows/streammax-tcl-ui-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar marca apenas na interface
+        run: bash legacy-source/tests/streammax-ui-brand.sh
+      - name: Validar contratos de reproducao do Legacy
+        run: python3 migration/check-playback-contracts.py legacy-source
