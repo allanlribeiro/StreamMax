@@ -15,6 +15,247 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: streammax/legacy-migration
+      - name: Configurar autenticacao por e-mail (obrigatoria)
+        shell: bash
+        env:
+          STREAMMAX_URL_VAR: ${{ vars.NUVIO_SUPABASE_URL }}
+          STREAMMAX_URL_SECRET: ${{ secrets.NUVIO_SUPABASE_URL }}
+          STREAMMAX_PUBLIC_KEY: ${{ secrets.NUVIO_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          url="${STREAMMAX_URL_VAR:-${STREAMMAX_URL_SECRET:-}}"
+          key="${STREAMMAX_PUBLIC_KEY:-}"
+          if [[ -z "$url" || -z "$key" ]]; then
+            echo "::error::APK bloqueada: configure NUVIO_SUPABASE_URL e NUVIO_SUPABASE_ANON_KEY em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          if [[ "$url" != https://* || "$url" == *example* || "$url" == *your_* || "$url" == *        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK pelo ambiente do runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          test -d "${ANDROID_HOME:?ANDROID_HOME nao definido no runner}"
+          test -d "$ANDROID_HOME/cmdline-tools" || { echo "Ferramentas Android ausentes no runner"; exit 1; }
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          "$SDKMANAGER" --version
+      - name: Instalar SDK e ferramentas nativas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          echo "NDKs instalados:"
+          ls -la "$ANDROID_HOME/ndk" || true
+          test -d "$ANDROID_HOME/ndk/27.2.12479018" || { echo "::error::NDK 27.2.12479018 nao foi instalado"; exit 1; }
+          test -d "$ANDROID_HOME/cmake/3.22.1" || { echo "::error::CMake 3.22.1 ausente"; exit 1; }
+      - name: Dependências de compilação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Validar contratos da migração
+        run: |
+          set -euo pipefail
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+      - name: Compilar versão experimental sem assinatura de distribuição
+        working-directory: legacy-source
+        env:
+          NUVIO_SEM_CURL: '1'
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android.sh
+      - name: Disponibilizar APK de teste
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-APK-EXPERIMENTAL
+          path: legacy-source/build/android/*-android-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+\\n'* ||
+                "$key" == *        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK pelo ambiente do runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          test -d "${ANDROID_HOME:?ANDROID_HOME nao definido no runner}"
+          test -d "$ANDROID_HOME/cmdline-tools" || { echo "Ferramentas Android ausentes no runner"; exit 1; }
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          "$SDKMANAGER" --version
+      - name: Instalar SDK e ferramentas nativas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          echo "NDKs instalados:"
+          ls -la "$ANDROID_HOME/ndk" || true
+          test -d "$ANDROID_HOME/ndk/27.2.12479018" || { echo "::error::NDK 27.2.12479018 nao foi instalado"; exit 1; }
+          test -d "$ANDROID_HOME/cmake/3.22.1" || { echo "::error::CMake 3.22.1 ausente"; exit 1; }
+      - name: Dependências de compilação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Validar contratos da migração
+        run: |
+          set -euo pipefail
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+      - name: Compilar versão experimental sem assinatura de distribuição
+        working-directory: legacy-source
+        env:
+          NUVIO_SEM_CURL: '1'
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android.sh
+      - name: Disponibilizar APK de teste
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-APK-EXPERIMENTAL
+          path: legacy-source/build/android/*-android-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+\\n'* || "$key" == *        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK pelo ambiente do runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          test -d "${ANDROID_HOME:?ANDROID_HOME nao definido no runner}"
+          test -d "$ANDROID_HOME/cmdline-tools" || { echo "Ferramentas Android ausentes no runner"; exit 1; }
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          "$SDKMANAGER" --version
+      - name: Instalar SDK e ferramentas nativas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          echo "NDKs instalados:"
+          ls -la "$ANDROID_HOME/ndk" || true
+          test -d "$ANDROID_HOME/ndk/27.2.12479018" || { echo "::error::NDK 27.2.12479018 nao foi instalado"; exit 1; }
+          test -d "$ANDROID_HOME/cmake/3.22.1" || { echo "::error::CMake 3.22.1 ausente"; exit 1; }
+      - name: Dependências de compilação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Validar contratos da migração
+        run: |
+          set -euo pipefail
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+      - name: Compilar versão experimental sem assinatura de distribuição
+        working-directory: legacy-source
+        env:
+          NUVIO_SEM_CURL: '1'
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android.sh
+      - name: Disponibilizar APK de teste
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-APK-EXPERIMENTAL
+          path: legacy-source/build/android/*-android-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+\\r'* || "$url" == *        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK pelo ambiente do runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          test -d "${ANDROID_HOME:?ANDROID_HOME nao definido no runner}"
+          test -d "$ANDROID_HOME/cmdline-tools" || { echo "Ferramentas Android ausentes no runner"; exit 1; }
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          "$SDKMANAGER" --version
+      - name: Instalar SDK e ferramentas nativas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          echo "NDKs instalados:"
+          ls -la "$ANDROID_HOME/ndk" || true
+          test -d "$ANDROID_HOME/ndk/27.2.12479018" || { echo "::error::NDK 27.2.12479018 nao foi instalado"; exit 1; }
+          test -d "$ANDROID_HOME/cmake/3.22.1" || { echo "::error::CMake 3.22.1 ausente"; exit 1; }
+      - name: Dependências de compilação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Validar contratos da migração
+        run: |
+          set -euo pipefail
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+      - name: Compilar versão experimental sem assinatura de distribuição
+        working-directory: legacy-source
+        env:
+          NUVIO_SEM_CURL: '1'
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android.sh
+      - name: Disponibilizar APK de teste
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-APK-EXPERIMENTAL
+          path: legacy-source/build/android/*-android-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+\\r'* ]]; then
+            echo "::error::Dados de servidor invalidos: informe uma URL HTTPS e uma chave publica valida."
+            exit 1
+          fi
+          umask 077
+          {
+            printf 'NUVIO_SUPABASE_URL=%s\\n' "$url"
+            printf 'NUVIO_SUPABASE_ANON_KEY=%s\\n' "$key"
+          } > legacy-source/local.properties
+          echo "Configuracao publica do backend recebida, sem expor valores nos logs."
       - name: Java 17
         uses: actions/setup-java@v4
         with:
