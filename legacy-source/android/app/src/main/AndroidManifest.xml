@@ -99,8 +99,8 @@
             android:targetActivity=".NuvioActivity"
             android:enabled="true"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:banner="@drawable/banner">
+            android:icon="@drawable/streammax_icon"
+            android:banner="@drawable/streammax_banner">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
