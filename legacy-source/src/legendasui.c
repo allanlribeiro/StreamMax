@@ -209,6 +209,14 @@ static int ver;
 static char verGrupo[96];
 static char focoChave[96];
 static int foco, rolagem, syncAcao;
+// StreamMax: a coluna de idiomas tem foco proprio, sem alterar a identidade
+// das linhas de fontes existentes (que continuam validas se o addon atualizar).
+#define LU_IDIOMAS_VIS 7
+#define LU_IDIOMAS_LARG 236.0f
+#define LU_IDIOMAS_ESP 18.0f
+#define LU_IDIOMA_LINHA 62.0f
+static char idiomas[LEGUI_MAX_CAND][16];
+static int nIdiomas, focoIdioma, rolagemIdioma, emIdiomas;
 #ifdef NV_TOUCH_UI
 static ToqueRolagem toqueLegendas;
 static float toqueLegendasOffset;
@@ -392,11 +400,54 @@ static void avisar(const char *s) {
   avisoAte = SDL_GetTicks() + 2600u;
 }
 
+// A coluna agrupa as variantes da mesma lingua (PT/PT-BR), sem reclassificar
+// fontes de audio nem alterar nenhuma das opcoes exibidas na coluna vizinha.
+static void atualizarIdiomas(void) {
+  int i, j;
+  nIdiomas = 0;
+  for (i = 0; i < nCand && nIdiomas < LEGUI_MAX_CAND; i++) {
+    const char *c = cand[i].idioma;
+    if (!c[0]) continue;
+    for (j = 0; j < nIdiomas; j++)
+      if (ling_casa(c, idiomas[j]) && ling_casa(idiomas[j], c)) break;
+    if (j == nIdiomas)
+      snprintf(idiomas[nIdiomas++], sizeof idiomas[0], "%s", c);
+  }
+  if (focoIdioma > nIdiomas) focoIdioma = nIdiomas;
+  if (rolagemIdioma > focoIdioma) rolagemIdioma = focoIdioma;
+}
+static void focarIdiomaAtual(void) {
+  atualizarIdiomas();
+  focoIdioma = 0;
+  if (ver) for (int i = 0; i < nIdiomas; i++)
+    if (ling_casa(verIdioma, idiomas[i])) { focoIdioma = i + 1; break; }
+  rolagemIdioma = focoIdioma >= LU_IDIOMAS_VIS ? focoIdioma - LU_IDIOMAS_VIS + 1 : 0;
+}
+// O OK na primeira coluna so muda a lista visivel; reproduzir uma legenda
+// continua sendo uma acao explicita de OK na coluna de opcoes.
+static void selecionarIdioma(void) {
+  mais = 1;
+  alvo = 0;
+  ver = focoIdioma > 0 && focoIdioma <= nIdiomas;
+  if (ver) snprintf(verIdioma, sizeof verIdioma, "%s", idiomas[focoIdioma - 1]);
+  snprintf(verGrupo, sizeof verGrupo, "mais");
+  rolagemZerar();
+  focoChave[0] = 0;
+  foco = 0;
+  montarLinhas();
+  for (int i = 0; i < nLinhasV; i++)
+    if (linhas[i].tipo == LR_CAND || linhas[i].tipo == LR_NENHUMA) {
+      focar(i);
+      break;
+    }
+}
+
 void legendasui_abrir(void) {
   char prim[24];
   int i;
   aberto = 1; mais = ajustes_legendas_todas() || !temPreferencia(); ver = 0; menu = okPendente = okLongo = 0; alvo = 0; rolagemZerar(); aviso[0] = 0;
   focoChave[0] = 0; foco = 0;
+  emIdiomas = 0; focoIdioma = rolagemIdioma = 0;
   montarLinhas();
   // Open on the row of the active primary, else on the first row.
   idPrimario(prim);
@@ -415,6 +466,7 @@ void legendasui_reiniciar(void) {
   legenda2_reiniciar();
   aberto = menu = okPendente = okLongo = 0;
   mais = 0; ver = 0; alvo = 0; focoChave[0] = 0; foco = 0; rolagemZerar(); aviso[0] = 0;
+  nIdiomas = focoIdioma = rolagemIdioma = emIdiomas = 0;
 }
 
 // --- choosing ----------------------------------------------------------------------
@@ -564,8 +616,23 @@ int legendasui_evento(const SDL_Event *e) {
   int ok;
   if (!aberto || (e->type != SDL_KEYDOWN && e->type != SDL_KEYUP)) return LEGUI_NADA;
   montarLinhas();
+  atualizarIdiomas();
   k = e->key.keysym.sym;
   ok = k == SDLK_RETURN || k == SDLK_KP_ENTER;
+  // A coluna de idiomas nao deve capturar o key-up de OK usado para ativar
+  // fontes; foco e rolagem sao independentes da coluna de opcoes.
+  if (emIdiomas && !menu) {
+    if (e->type == SDL_KEYUP) return LEGUI_TRATADO;
+    if (k == SDLK_UP && focoIdioma > 0) focoIdioma--;
+    else if (k == SDLK_DOWN && focoIdioma < nIdiomas) focoIdioma++;
+    else if (k == SDLK_RIGHT || k == SDLK_AC_BACK || k == SDLK_ESCAPE || k == SDLK_BACKSPACE)
+      emIdiomas = 0;
+    else if (ok) { selecionarIdioma(); emIdiomas = 0; }
+    if (focoIdioma < rolagemIdioma) rolagemIdioma = focoIdioma;
+    if (focoIdioma >= rolagemIdioma + LU_IDIOMAS_VIS)
+      rolagemIdioma = focoIdioma - LU_IDIOMAS_VIS + 1;
+    return LEGUI_TRATADO;
+  }
   l = nLinhasV ? &linhas[foco] : NULL;
   if (ok && e->type == SDL_KEYUP) {
     int pendente = okPendente;
@@ -606,6 +673,13 @@ int legendasui_evento(const SDL_Event *e) {
   if (k == SDLK_DOWN) { if (foco < nLinhasV - 1) focar(foco + 1); return LEGUI_TRATADO; }
   if (k == SDLK_LEFT || k == SDLK_RIGHT) {
     int d = k == SDLK_RIGHT ? 1 : -1;
+    // No original, ESQUERDA sai das opcoes para a coluna de idiomas.
+    // Linhas com ajuste proprio (atraso/alvo/sync) continuam priorizando
+    // suas setas sem efeito colateral sobre o idioma escolhido.
+    if (d < 0 && l && (l->tipo == LR_CAND || l->tipo == LR_NENHUMA ||
+                      l->tipo == LR_MAIS || l->tipo == LR_PAR)) {
+      emIdiomas = 1; focarIdiomaAtual(); return LEGUI_TRATADO;
+    }
     if (l && l->tipo == LR_ALVO) { alvo = d > 0; return LEGUI_TRATADO; }
     if (l && l->tipo == LR_ATRASO) { mudarAtraso((e->key.repeat ? 500 : 100) * d); return LEGUI_TRATADO; }
     if (l && l->tipo == LR_SYNC) {
