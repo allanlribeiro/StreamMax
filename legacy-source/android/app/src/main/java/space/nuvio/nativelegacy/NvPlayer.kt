@@ -27,7 +27,9 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
+import androidx.media3.ui.SubtitleView
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -106,6 +108,8 @@ object NvPlayer {
     private var camada: FrameLayout? = null
     private var interfaceMobile = false
     private var superficie: SurfaceView? = null
+    // Bitmap subtitle view lives below the existing translucent SDL OSD.
+    private var legendaBitmapView: SubtitleView? = null
     // #202: a TCL segurou o AudioFlinger por 27-38 s ao soltar o audio do filme
     // anterior; release() no fio principal congelava o app. Cada abertura tem a
     // sua SurfaceView e o player velho e solto num fio proprio.
@@ -1479,6 +1483,7 @@ object NvPlayer {
     private fun liberar() {
         principal.removeCallbacks(vigiaPrimeiroQuadro)
         encerrarRebuffer()
+        removerLegendaBitmap()
         sessao++
         medidor.encerrar()
         val recursos = recursosAtuais
@@ -1524,6 +1529,39 @@ object NvPlayer {
         tap.encerrar()
         try { nativeAudioEstado(AudioSyncTap.FMT_NENHUM) } catch (_: UnsatisfiedLinkError) {}
         superficie?.visibility = View.GONE
+    }
+
+    // PGS/VobSub bitmaps do not have cue.text; a single Media3 canvas
+    // renders only bitmap cues without replacing native text subtitles.
+    private fun limparLegendaBitmap() {
+        legendaBitmapView?.setCues(emptyList())
+        legendaBitmapView?.visibility = View.GONE
+    }
+
+    private fun removerLegendaBitmap() {
+        val v = legendaBitmapView ?: return
+        limparLegendaBitmap()
+        (v.parent as? FrameLayout)?.removeView(v)
+        legendaBitmapView = null
+    }
+
+    private fun mostrarLegendaBitmap(cues: List<Cue>) {
+        if (cues.isEmpty()) { limparLegendaBitmap(); return }
+        val c = camada ?: return
+        val v = legendaBitmapView ?: SubtitleView(c.context).also { view ->
+            // Do not steal D-pad focus from the SDL app.
+            view.isFocusable = false
+            view.isFocusableInTouchMode = false
+            view.isClickable = false
+            view.setViewType(SubtitleView.VIEW_TYPE_CANVAS)
+            val videoLp = superficie?.layoutParams as? FrameLayout.LayoutParams
+            val lp = videoLp?.let { FrameLayout.LayoutParams(it) } ?: FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            c.addView(view, lp)
+            legendaBitmapView = view
+        }
+        v.setCues(cues)
+        v.visibility = View.VISIBLE
     }
 
     private fun novaSuperficie(act: Activity) {
@@ -1717,6 +1755,15 @@ object NvPlayer {
         lp.leftMargin = x0
         lp.topMargin = y0
         sv.layoutParams = lp
+        // Match subtitles to the video crop/letterbox without recreating
+        // the TCL decoder Surface or adding an overlay video surface.
+        legendaBitmapView?.let { view ->
+            val old = view.layoutParams as? FrameLayout.LayoutParams
+            if (old == null || old.width != largura || old.height != altura ||
+                old.leftMargin != x0 || old.topMargin != y0) {
+                view.layoutParams = FrameLayout.LayoutParams(lp)
+            }
+        }
         // A TCL PRENDE A GEOMETRIA DO PLANO DE VIDEO: aplica o primeiro tamanho
         // e posicao da superficie e ignora as mudancas seguintes (o dono: "entra
         // recortado e nao sai; entra no esticar e fica esticado"). Recriar a
@@ -1916,6 +1963,7 @@ object NvPlayer {
             if (tipo == 1 && novosParametros != p.trackSelectionParameters) {
                 versaoLegenda++
                 try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+                limparLegendaBitmap()
             }
             p.trackSelectionParameters = novosParametros
         } catch (e: Exception) { Log.w(TAG, "escolher $tipo/$idx: $e") }
@@ -2011,6 +2059,7 @@ object NvPlayer {
             if (!atual(minha) || reason != Player.DISCONTINUITY_REASON_SEEK) return
             versaoLegenda++
             try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+            limparLegendaBitmap()
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
@@ -2057,6 +2106,7 @@ object NvPlayer {
 
         override fun onCues(cueGroup: CueGroup) {
             if (!atual(minha)) return
+            val imagens = cueGroup.cues.filter { it.bitmap != null }
             val texto = cueGroup.cues.mapNotNull { it.text?.toString()?.trim() }
                 .filter { it.isNotEmpty() }.joinToString("\n")
             // O Media3 nao diz quando o cue acaba: estimativa pelo tamanho, e o
@@ -2064,8 +2114,10 @@ object NvPlayer {
             val dur = if (texto.isEmpty()) 0 else (800 + texto.length * 60).coerceIn(2000, 7000)
             val versao = versaoLegenda
             val entregar = Runnable {
-                if (atual(minha) && versao == versaoLegenda)
+                if (atual(minha) && versao == versaoLegenda) {
                     try { nativeLegenda(texto, dur) } catch (e: UnsatisfiedLinkError) { }
+                    mostrarLegendaBitmap(imagens)
+                }
             }
             if (atrasoMs > 0) principal.postDelayed(entregar, atrasoMs.toLong()) else entregar.run()
         }
@@ -2247,6 +2299,8 @@ object NvPlayer {
         if (a.isEmpty() && l.isEmpty()) return
         // Lista de legendas mudou: a escolha antiga nao vale (o C zera legAtual).
         if (tinhaLegenda || l.isNotEmpty()) {
+            versaoLegenda++
+            limparLegendaBitmap()
             player?.let {
                 it.trackSelectionParameters = it.trackSelectionParameters.buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).clearOverridesOfType(C.TRACK_TYPE_TEXT).build()
