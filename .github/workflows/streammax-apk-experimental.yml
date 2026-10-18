@@ -1,7 +1,7 @@
 name: StreamMax APK experimental
 
 # Rodar automaticamente quando a configuracao de build muda.
-# 18/10: fallback CW, fonte instantanea, player azul e logos originais dos titulos.
+# 18/10: login TCL azul cinematografico, logos preservadas, fallback CW e fonte rapida.
 on:
   push:
     branches: [dev]
