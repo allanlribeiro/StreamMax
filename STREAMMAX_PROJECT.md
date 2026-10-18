@@ -196,3 +196,11 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - **Correção nesta PR #15:** a folha de legendas e a aba de estilo pedem cartão independente ancorado embaixo à esquerda, preservando seleção, foco, faixas e o mesmo motor Media3; a folha de áudio permanece temporariamente como estava. Testes estáticos adicionados.
 - **Escopo ainda pendente de fidelidade visual:** as colunas específicas de idiomas, opções e estilo de `SubtitleSelectionOverlay.kt` (Compose) ainda não foram totalmente reproduzidas no painel nativo SDL/C. Não confundir mudança de posição com paridade completa.
 - **Pendente:** compilação e validação do novo painel na TCL — abertura via botão Legendas, setas/OK/Voltar, textos sem corte e uso da aba Estilo; repetir o teste 4K/DV/HDR após a mudança antes de declarar a interface homologada.
+
+## Evolucao do seletor de legendas — coluna de idiomas
+
+- **Solicitacao confirmada pelo usuario:** manter o motor de reproducao 4K / HDR / Dolby Vision aprovado na TCL, mas aproximar a interface de legendas do Nuvio original.
+- **Implementado nesta PR #15:** painel ancorado a esquerda e ampliado somente para legendas, com coluna de idiomas navegavel via D-pad e ponteiro, lista de opcoes independente, OK no idioma filtrando a lista sem iniciar/recarregar qualquer legenda; a aba de Estilo segue existente e acessivel a direita.
+- **Compatibilidade intencional:** audio da folha anterior preservado, filtros de fontes, posicao do video e parser de legenda fora do escopo.
+- **Pendencias visuais:** Estilo ainda usa aba propria, nao e uma terceira coluna simultanea identica a Compose; testar na TCL abertura, idiomas, navegacao ESQUERDA/DIREITA, OK/Voltar, muitas linguas e textos compridos.
+- **Solicitacao subsequente, ainda nao implementada:** melhorar o filtro de audio das fontes para reconhecer dublagem PT-BR tambem com etiquetas genericas de portugues. A rotina atual esta em `streams.c` (`temAudioPreferido`, `audioDeclaradoEm`, `faixaIdiomaDoNome`); preservar distincao entre PT-BR confirmado, PT-PT explicito e PT generico, sem afirmar origem brasileira por chute de legenda, URL ou titulo.
