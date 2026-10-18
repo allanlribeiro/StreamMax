@@ -65,7 +65,9 @@
 // player-mockup de 03/10): 820 de largura, a 40 das bordas, raio 36 — a
 // mesma folha dos Episodios no player.
 #include "telefoneui.h"
-#define FOLHA_W        telefoneui_largura(820.0f, NV_TELA_W, FOLHA_MARGEM)
+// Referencia StreamMax: poster/contexto livre a esquerda, cards e chips em
+// painel amplo a direita. Dentro do player preserva o tamanho legado.
+#define FOLHA_W        telefoneui_largura((player_aberto() ? 820.0f : 1070.0f), NV_TELA_W, FOLHA_MARGEM)
 #define FOLHA_MARGEM    40.0f
 #define FOLHA_RAIO_IL   36.0f
 #define FOLHA_PAD_E     48.0f  // da borda da folha ao cartao da linha
@@ -91,7 +93,7 @@ static int folhaRelogio; // Latched at opening, retained through closing.
 #define FOLHA_ABA_H     44.0f  // a pilula de cada aba, dentro da faixa
 #define FOLHA_TOPO     (FOLHA_ABAS_Y + FOLHA_ABAS_H + 24.0f + folhaOY)
 static void medirCabecalho(void);
-#define FOLHA_LINHA_H  112.0f  // linha sem marca e sem arquivo
+#define FOLHA_LINHA_H  (telefoneui_ativo() || player_aberto() ? 112.0f : 144.0f) // cards TV amplos
 #define FOLHA_MARCA_H   30.0f  // "SUA ESCOLHA ANTERIOR" / "REPRODUZINDO AGORA"
 #define FOLHA_ARQ_H     34.0f  // nome do arquivo, so na linha em foco
 #define FOLHA_FIT_H     32.0f  // StreamFit: evidencia da conexao, so na linha em foco
@@ -4922,6 +4924,11 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
     uint64_t tira, logos;
     if(y+h<FOLHA_TOPO-8 || y>NV_TELA_H) continue;
     GfxRect r={lx,y,rw,h};
+    // No seletor de fontes da TV, cada resultado tem um cartao proprio,
+    // como na referencia. Ao abrir a troca dentro do player, conservamos
+    // a folha anterior para nao redesenhar controles sobre o video.
+    if (!ilha && !folhaRelogio)
+      gfx_cor(r, FOLHA_RAIO / h, .047f, .063f, .100f, .94f * anim);
     if (i <= -2) {
       OndeVer o;
       if (ptr) ponteiro_alvo(r.x,r.y,r.w,r.h,ponteiroFolhaLinha,NULL,row,0);
