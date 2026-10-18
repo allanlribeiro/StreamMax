@@ -15,7 +15,7 @@ checks = {
         "armarTituloGuardado(void)",
         "cacheboost_backend_titulo(alvo)",
         "ajustes_retomada_morna()",
-        "if (c && c->titulo[0]) marca = NULL;",
+        "const char *marca = (!canalSessao && c) ? artehero_logo_sessao(c) : NULL;",
     ],
     "android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt": [
         "p.setMediaItem(item, s.inicioMs.toLong())",
