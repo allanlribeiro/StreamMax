@@ -1201,7 +1201,12 @@ static int tocarFonteGuardada(void) {
   alvoPlayer(alvo, sizeof alvo);
   if (!alvo[0] || !fontevolta_pegar(alvo, sessao_usuario(), perfis_ativo(), SDL_GetTicks(), &s))
     return 0;
-  // A regra de fontes pode mudar entre uma sessao e outra. Se a fonte\n  // lembrada ficou proibida, descarte-a e abra a selecao normal dos addons.\n  if (!stream_filtro_permite(&s)) {\n    fontevolta_esquecer("fonte fora dos filtros atuais");\n    return 0;\n  }
+  // A regra de fontes pode mudar entre uma sessao e outra. Se a fonte
+  // lembrada ficou proibida, descarte-a e abra a selecao normal dos addons.
+  if (!stream_filtro_permite(&s)) {
+    fontevolta_esquecer("fonte fora dos filtros atuais");
+    return 0;
+  }
   if (fontesmortas_idade(&s) >= 0) { fontevolta_esquecer("fonte falhou antes"); return 0; }
   marco("abrir: fonte guardada, sem busca");
   stream_definir_atual(-1);
