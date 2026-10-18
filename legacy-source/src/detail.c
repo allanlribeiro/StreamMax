@@ -27,6 +27,9 @@
 #include "posterprov.h"
 #include "episodios.h"
 #include "fontepref.h"
+#ifdef NV_ANDROID
+#include "streammax_first_source.h"
+#endif
 #include "idioma.h"
 #include "ctxmenu.h"
 #include "ctxlista.h"
@@ -3121,7 +3124,7 @@ static void detail_evento_(const SDL_Event *e) {
       if (comPicando) comentariosVoltar();
       else if (dur >= NV_HOLD_MS && ep)
         episodios_menu_visto(idx, ep->temporada, ep->episodio, ep->nome);
-      else
+      else {
         // ISSUE #57, SEGUNDA VOLTA. O toque curto no card do episodio abria a
         // folha de fontes SEMPRE — e este e o card em que uma pessoa aperta OK
         // para retomar uma serie. "Retomar" acabava em "escolha um link de
@@ -3156,13 +3159,24 @@ static void detail_evento_(const SDL_Event *e) {
         // escolhido a dedo tocava sem perguntar. Aqui a escolha e explicita,
         // entao o ajuste manda a folha; o "Retomar" do Continuar assistindo
         // e o botao primario seguem tocando como antes.
-        if (ajustes_fonte_manual() && ep) {
+        // StreamMax Android: a escolha MANUAL e obrigatoria so na primeira
+        // reproducao. Depois de escolhida, o clique no episodio segue pelo
+        // resolvedor de VOD: ele confirma o mesmo bingeGroup/provedor/trilha
+        // na lista deste episodio e pergunta se nao houver correspondencia.
+        // O menu de fontes explicito (hold) continua abrindo sempre.
+#ifdef NV_ANDROID
+        const CatItem *tituloAtual = cat_item(idx);
+        int perguntar = ep && streammax_should_ask_episode_source(
+            ajustes_fonte_manual(), tituloAtual && fontepref_tem(tituloAtual->imdb));
+#else
+        int perguntar = ajustes_fonte_manual() && ep;
+#endif
+        if (perguntar) {
           pedFontes = 1;
-          // O card e o alvo, mesmo com o foco ja fora da fileira quando a
-          // folha fechar — a escolha tem de tocar ESTE episodio (#513).
-          // Sem CatEp (foco alem da lista) nao ha episodio para travar.
+          // A folha liga o OK ao episodio que foi clicado, nao ao foco posterior.
           pedFontesT = ep->temporada; pedFontesE = ep->episodio;
         } else pedReproduzir = 1;
+      }
     }
     return;
   }
