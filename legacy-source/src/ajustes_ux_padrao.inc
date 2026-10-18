@@ -193,7 +193,14 @@
   0,                /* sincronia da miniatura: 0 s (a documentacao: nada automatico) */
   0,                /* ao sair do player: a home, minimizando na ilha (com o relogio) */
   0,                /* perguntar o que achou nos creditos: LIGADO (V_LIGA: 0 = Ligado) */
-  2,                /* espera pelos add-ons: 5 s (#221; indice 2 da lista do #202) */
+  // StreamMax Android: iniciar a escolha assim que chegar uma fonte aceitavel,
+  // como o modo "Instantaneo" ja previsto pelo seletor (#202/#221).
+  // Ajustes gravados pelo usuario continuam prevalecendo sobre este padrao.
+#ifdef NV_ANDROID
+  0,                /* espera pelos add-ons: Instantaneo somente no Android */
+#else
+  2,                /* outras plataformas: manter os 5 s do Legacy */
+#endif
   0,                /* ver o registro na tela: acao */
   0,                /* medidor de desempenho: DESLIGADO (V_MEDIDOR: 0 = Desligado) */
   0,                /* guia de uso: acao */

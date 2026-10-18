@@ -36,7 +36,13 @@ checks = {
     "src/ajustes.c": [
         "int ajustes_cw_estilo(void)",
         "int ajustes_cw_fonte(void)",
+        "int ajustes_fonte_prazo_ms(void)",
     ],
+    "src/ajustes_ux_padrao.inc": [
+        "#ifdef NV_ANDROID\n  0,                /* espera pelos add-ons: Instantaneo",
+        "#else\n  2,                /* outras plataformas: manter os 5 s",
+    ],
+
 }
 errors = []
 for name, needles in checks.items():
