@@ -1,0 +1,32 @@
+name: StreamMax Live TV sidebar checks
+
+on:
+  pull_request:
+    branches: [streammax/player-original-tcl-1018]
+    paths:
+      - 'legacy-source/src/guia.c'
+      - 'legacy-source/src/streammax_tv_sidebar.h'
+      - 'legacy-source/tests/test_streammax_tv_sidebar.c'
+      - 'legacy-source/tests/streammax-tv-sidebar.sh'
+      - '.github/workflows/streammax-live-tv-sidebar-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-sidebar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: D-pad / side columns / EPG without channel logos
+        run: bash legacy-source/tests/streammax-tv-sidebar.sh
+      - name: Native SDL build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+            libgles2-mesa-dev libegl1-mesa-dev zlib1g-dev
+      - name: Compile full native UI without APK
+        working-directory: legacy-source
+        run: bash tools/linux.sh --build
