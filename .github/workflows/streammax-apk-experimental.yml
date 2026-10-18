@@ -3,6 +3,15 @@ name: StreamMax APK experimental
 # O APK de teste da PR 15 deve conter o proprio player da PR, nunca
 # uma revisao antiga da base. Mantem login e bibliotecas nativas completas.
 on:
+  push:
+    branches: [streammax/live-tv-three-columns-tcl-1018]
+    paths:
+      - '.github/workflows/streammax-apk-experimental.yml'
+      - 'legacy-source/src/guia.c'
+      - 'legacy-source/src/streammax_livetv_columns.h'
+      - 'legacy-source/src/streams.c'
+      - 'legacy-source/src/streammax_source_ptbr.h'
+      - 'legacy-source/src/stream_parse.c'
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [streammax/legacy-migration]
@@ -36,7 +45,9 @@ jobs:
           python3 migration/check-player-original-engine.py
           bash legacy-source/tests/streammax-first-source.sh
           bash legacy-source/tests/streammax-next-prefetch.sh
-          echo "Revisao StreamMax do player: $(git rev-parse --short HEAD)"
+          bash legacy-source/tests/streammax-source-ptbr.sh
+          bash legacy-source/tests/streammax-livetv-columns.sh
+          echo "Revisao StreamMax do player e TV ao vivo: $(git rev-parse --short HEAD)"
           python3 migration/check-playback-contracts.py legacy-source
       - name: Configurar Nuvio Cloud oficial para login por e-mail
         shell: bash
