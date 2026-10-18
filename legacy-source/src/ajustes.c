@@ -4154,6 +4154,33 @@ static void memoriaMigrar(void) {
 }
 #endif
 
+#ifdef NV_ANDROID
+// StreamMax 18/10/2026: existing installs carry the Legacy default
+// "escolherFonteManual 1" in ajustes.txt. Changing valorPadrao alone
+// does not affect that persisted choice. Apply the requested first-source
+// picker ONCE per Android installation and then respect every future
+// change made by the user. Never affect Tizen, live TV or account sync.
+static void streammaxMigrarPrimeiraFonte(int ajustesExistiam) {
+  const char *const marca = "streammax-primeira-fonte-1018.txt";
+  char *feito = dados_ler(marca);
+  if (feito) { free(feito); return; }
+  if (valor[AJ_FONTE_MANUAL] != 0) {
+    int anterior = valor[AJ_FONTE_MANUAL];
+    valor[AJ_FONTE_MANUAL] = 0;   // V_LIGA: 0 = perguntar na primeira vez
+    if (ajustesExistiam && !gravar()) {
+      valor[AJ_FONTE_MANUAL] = anterior;
+      printf("[streammax] primeira fonte: falha ao salvar a migracao\n");
+      return;
+    }
+    printf("[streammax] primeira fonte: escolha manual inicial ativada uma vez\n");
+  }
+  // Record the migration even for fresh installs, to avoid overriding an
+  // explicit 'automatico' choice at the NEXT launch.
+  if (!dados_gravar(marca, "1\n"))
+    printf("[streammax] primeira fonte: falha ao gravar marca da migracao\n");
+}
+#endif
+
 void ajustes_dir(const char *dir) {
   FILE *f;
   char caminho[600], linha[96];
@@ -4197,6 +4224,9 @@ void ajustes_dir(const char *dir) {
     gfx_escala_txt_definir(ajustes_escala_texto());
     interfaceAplicar();
     legenda2_atualizar_offset_manual(ajustes_leg2_atraso());
+#ifdef NV_ANDROID
+    streammaxMigrarPrimeiraFonte(0);
+#endif
     ajSombraSync();
     return;
   }
@@ -4350,6 +4380,9 @@ void ajustes_dir(const char *dir) {
   }
   }
   fclose(f);
+#ifdef NV_ANDROID
+  streammaxMigrarPrimeiraFonte(1);
+#endif
   // "DINAMICA ESTILIZADA" SAIU (03/10/2026): a base tingida virou o Fundo
   // Frost, que vale para qualquer acento. Quem a tinha abre em Da arte + Frost
   // — a mesma cor viva, o mesmo fundo de um matiz so — e o arquivo e regravado.
