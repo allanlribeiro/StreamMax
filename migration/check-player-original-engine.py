@@ -17,6 +17,12 @@ checks = {
     "legacy user preset buffer untouched": "Triple(50_000, 150_000, minOf(preset.toLong() shl 20, heap / 3).toInt())" in source,
     "low-RAM byte cap untouched": "val tetoBuffer = if (poucaRam)" in source,
     "stock threshold only for unprepared automatic VOD": "val inicioOriginal = !preparando && preset == 0" in source,
+    "original stock back buffer retains 1.5s for short rewind": ".setBackBuffer(1_500, /* retainBackBufferFromKeyframe = */ true)" in original_controller,
+    "streammax keeps 1.5s back buffer on stock VOD": "val backBufferMs = if (inicioOriginal) 1_500 else 0" in source,
+    "back buffer uses keyframe retention only when enabled": "backBufferMs, backBufferMs > 0) {" in source,
+    "stock VOD forwards retention setting to load control": "CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs)" in source,
+    "back buffer telemetry present": '"teto=${bytes shr 20}MB preparo=$preparando originalStock=$inicioOriginal"' not in source and '"inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms backBuffer=${backBufferMs}ms "' in source,
+
     "startup threshold from stock Media3": "DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500" in source,
     "rebuffer threshold from stock Media3": "DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else 5_000" in source,
     "prepared stream retains its old threshold": "else parameters.bufferedDurationUs >= 2_500_000L" in source,
