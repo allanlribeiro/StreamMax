@@ -61,6 +61,7 @@ import com.nuvio.tv.core.streams.StreamBadgePlacement
 import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.ui.components.SourceChipItem
 import com.nuvio.tv.ui.components.SourceChipStatus
+import com.nuvio.tv.core.streams.StreamAudioLanguageDetector
 import com.nuvio.tv.ui.components.SourceStatusFilterChip
 import com.nuvio.tv.ui.components.StreamBadgeChips
 import com.nuvio.tv.ui.theme.NuvioTheme
@@ -204,6 +205,35 @@ internal fun StreamItem(
                             color = NuvioTheme.extendedColors.textSecondary
                         )
                     }
+                }
+
+                // Show technical details already supplied by the addon/debrid parser.
+                // Missing metadata stays unknown: do not claim a playable audio track
+                // exists solely because the release name contains "DUAL".
+                val parsedDetails = stream.clientResolve?.stream?.raw?.parsed
+                val sourceTechnicalDetails = remember(stream) {
+                    buildList {
+                        parsedDetails?.resolution?.takeIf { it.isNotBlank() }?.let(::add)
+                        parsedDetails?.codec?.takeIf { it.isNotBlank() }?.let(::add)
+                        parsedDetails?.hdr.orEmpty().filter { it.isNotBlank() }.forEach(::add)
+                        parsedDetails?.audio.orEmpty().filter { it.isNotBlank() }.forEach(::add)
+                        parsedDetails?.languages.orEmpty().filter { it.isNotBlank() }.forEach(::add)
+                        if (StreamAudioLanguageDetector.portugueseAudio(stream) ==
+                            StreamAudioLanguageDetector.PortugueseAudio.CONFIRMED &&
+                            parsedDetails?.languages.orEmpty().none {
+                                it.equals("pt", true) || it.equals("pt-br", true) ||
+                                    it.equals("por", true) || it.equals("pob", true)
+                            }
+                        ) add("Áudio PT-BR (indicado na fonte)")
+                    }.distinct().joinToString(" · ")
+                }
+                if (sourceTechnicalDetails.isNotBlank()) {
+                    Text(
+                        text = sourceTechnicalDetails,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.extendedColors.textSecondary,
+                        maxLines = 2
+                    )
                 }
 
                 if (hasBadges && badgePlacement == StreamBadgePlacement.BOTTOM) {
