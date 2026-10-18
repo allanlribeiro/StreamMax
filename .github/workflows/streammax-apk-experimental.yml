@@ -36,8 +36,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$ANDROID_HOME/licenses"
-          printf '%s\\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          echo "NDKs instalados:"
+          ls -la "$ANDROID_HOME/ndk" || true
+          test -d "$ANDROID_HOME/ndk/27.2.12479018" || { echo "::error::NDK 27.2.12479018 nao foi instalado"; exit 1; }
+          test -d "$ANDROID_HOME/cmake/3.22.1" || { echo "::error::CMake 3.22.1 ausente"; exit 1; }
       - name: Dependências de compilação
         run: |
           sudo apt-get update -qq
