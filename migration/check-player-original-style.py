@@ -19,7 +19,7 @@ if "PlayerControlsProgressBarHost(" not in compose:
 checks = {
     "fundo branco sob foco": "gfx_cor(r, 0.5f, 1.0f, 1.0f, 1.0f, alpha * f)" in player,
     "icones sem pilula expansivel": "streammax_player_controle_diametro(cw, nAcoes" in player,
-    "refocalizacao D-pad intacta": "transporteMover(direcao)" in player,
+    "refocalizacao D-pad intacta": "static void transporteMover(" in player,
     "controle de fonte mantido": "(PlrAcao){PLR_FONTES, 1}" in player,
     "controle de episodios mantido": "(PlrAcao){PLR_EPISODIOS, 1}" in player,
     "controle de audio mantido": "(PlrAcao){PLR_AUDIO, 1}" in player,
