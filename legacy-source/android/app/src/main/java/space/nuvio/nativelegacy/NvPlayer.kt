@@ -1531,8 +1531,8 @@ object NvPlayer {
         superficie?.visibility = View.GONE
     }
 
-    // PGS/VobSub bitmaps do not have cue.text; a single Media3 canvas
-    // renders only bitmap cues without replacing native text subtitles.
+    // Media3 renders bitmap PGS/VobSub and styled SSA/ASS cues in this
+    // existing video layer. Regular SRT/text remains on native SDL.
     private fun limparLegendaBitmap() {
         legendaBitmapView?.setCues(emptyList())
         legendaBitmapView?.visibility = View.GONE
@@ -2106,8 +2106,16 @@ object NvPlayer {
 
         override fun onCues(cueGroup: CueGroup) {
             if (!atual(minha)) return
-            val imagens = cueGroup.cues.filter { it.bitmap != null }
-            val texto = cueGroup.cues.mapNotNull { it.text?.toString()?.trim() }
+            // SSA/ASS position and style live in Cue fields/Spannables.
+            // Flattening to String loses both; let Media3 paint those cues.
+            // Native SDL continues to paint ordinary text subtitles.
+            val usaAss = player?.currentTracks?.groups?.any { g ->
+                g.type == C.TRACK_TYPE_TEXT && (0 until g.length).any { i ->
+                    g.isTrackSelected(i) && g.getTrackFormat(i).sampleMimeType == MimeTypes.TEXT_SSA
+                }
+            } == true
+            val imagens = if (usaAss) cueGroup.cues else cueGroup.cues.filter { it.bitmap != null }
+            val texto = if (usaAss) "" else cueGroup.cues.mapNotNull { it.text?.toString()?.trim() }
                 .filter { it.isNotEmpty() }.joinToString("\n")
             // O Media3 nao diz quando o cue acaba: estimativa pelo tamanho, e o
             // proximo grupo (inclusive o vazio) substitui antes disso.
