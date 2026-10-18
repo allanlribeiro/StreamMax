@@ -45,7 +45,7 @@ jobs:
       - name: Dependências de compilação
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
       - name: Validar contratos da migração
         run: |
           set -euo pipefail
