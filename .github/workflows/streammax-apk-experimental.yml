@@ -101,6 +101,42 @@ jobs:
         run: |
           set -euo pipefail
           bash tools/android.sh
+      - name: Conferir servidor incorporado no APK e instalacao isolada
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import glob
+
+          configs = {}
+          for line in Path("legacy-source/local.properties").read_text(encoding="utf-8").splitlines():
+              if "=" in line and not line.lstrip().startswith("#"):
+                  k, v = line.split("=", 1)
+                  configs[k.strip()] = v.strip()
+          values = [configs.get("NUVIO_SUPABASE_URL", ""), configs.get("NUVIO_SUPABASE_ANON_KEY", "")]
+          if not all(values):
+              raise SystemExit("ERRO: configuracao do servidor incompleta")
+          paths = glob.glob("legacy-source/build/android/*-android-debug.apk")
+          if len(paths) != 1:
+              raise SystemExit(f"ERRO: esperado um APK debug, encontrados {len(paths)}")
+          with ZipFile(paths[0]) as apk:
+              for abi in ("arm64-v8a", "armeabi-v7a"):
+                  entry = f"lib/{abi}/libmain.so"
+                  if entry not in apk.namelist():
+                      raise SystemExit(f"ERRO: biblioteca principal ausente em {abi}")
+                  data = apk.read(entry)
+                  for name, value in zip(("URL", "chave publica"), values):
+                      if value.encode("utf-8") not in data:
+                          raise SystemExit(f"ERRO: {name} do servidor nao incorporada em {abi}")
+          print("OK: URL e chave publica incorporadas nas duas arquiteturas; valores nao exibidos.")
+          PY
+          apk=(legacy-source/build/android/*-android-debug.apk)
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -x "$aapt"
+          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv.strictdebug'"
+          echo "OK: identificador Android isolado do Nuvio e Legacy."
       - name: Disponibilizar APK de teste
         if: success()
         uses: actions/upload-artifact@v4
