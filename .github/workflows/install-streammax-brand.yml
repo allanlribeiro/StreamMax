@@ -18,7 +18,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f streammax_brand_assets.zip || { echo "Envie streammax_brand_assets.zip para a raiz da branch streammax/legacy-migration antes de executar"; exit 1; }
+          # Pacote enviado pelo usuario para dev; obter sem alterar a branch de migração.
+          git fetch --depth=1 origin dev
+          git show FETCH_HEAD:streammax_brand_assets.zip > streammax_brand_assets.zip
+          test -s streammax_brand_assets.zip || { echo "Pacote ausente na branch dev"; exit 1; }
           mkdir -p "$RUNNER_TEMP/streammax-brand"
           python3 - "$RUNNER_TEMP/streammax-brand" <<'PY'
           import sys, zipfile
