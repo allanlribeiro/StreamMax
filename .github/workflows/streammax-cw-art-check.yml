@@ -1,0 +1,24 @@
+name: StreamMax CW Artwork Check
+
+on:
+  pull_request:
+    branches:
+      - streammax/legacy-migration
+    paths:
+      - 'legacy-source/src/artehero.c'
+      - 'legacy-source/src/artehero.h'
+      - 'legacy-source/tests/streammax-cw-art.*'
+      - '.github/workflows/streammax-cw-art-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fallback-c:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar e testar fallback nativo sem APK
+        run: bash legacy-source/tests/streammax-cw-art.sh
