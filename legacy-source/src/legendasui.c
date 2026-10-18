@@ -1115,6 +1115,64 @@ static void desenharMenu(GfxRect c, float a) {
   }
 }
 
+// Trilha visual baseada no SubtitleLanguageRail do Nuvio original. A faixa
+// selecionada e o foco do controle sao estados diferentes: navegar nao muda
+// a legenda em reproducao; OK abre as opcoes daquele idioma.
+static void ponteiroIdioma(int i, int b) {
+  (void)b;
+  if (!aberto || menu || i < 0 || i > nIdiomas) return;
+  focoIdioma = i;
+  emIdiomas = 1;
+}
+static void ponteiroIdiomaAbrir(int i, int b) {
+  (void)b;
+  if (!aberto || menu || i < 0 || i > nIdiomas) return;
+  focoIdioma = i;
+  selecionarIdioma();
+  emIdiomas = 0;
+}
+static void desenharIdiomas(float x, float y, float w, float a) {
+  const float cab = 38.0f;
+  TxtLinha titulo = txt_linha(TXT_ILHA_FORTE, i18n("Idiomas"), 202, 207, 218, 255);
+  txt_desenhar_alpha(titulo, x + 14.0f, y, a);
+  // Separador entre Idiomas e a lista de opcoes — as duas sao parte do
+  // mesmo painel, mas cada uma tem foco proprio no controle remoto.
+  gfx_cor((GfxRect){ x + w + LU_IDIOMAS_ESP * 0.5f, y, 1.0f,
+                     LU_IDIOMAS_VIS * LU_IDIOMA_LINHA + cab },
+          0.0f, 1, 1, 1, 0.10f * a);
+  for (int pos = 0; pos < LU_IDIOMAS_VIS; pos++) {
+    int i = rolagemIdioma + pos;
+    const char *rot;
+    int escolhido, focado;
+    float yy = y + cab + pos * LU_IDIOMA_LINHA;
+    GfxRect row;
+    TxtLinha linha;
+    if (i > nIdiomas) break;
+    rot = i == 0 ? i18n("Todos os idiomas") : i18n(ling_nome(idiomas[i - 1]));
+    escolhido = i == 0 ? !ver : ver && ling_casa(verIdioma, idiomas[i - 1]);
+    focado = emIdiomas && i == focoIdioma;
+    row = (GfxRect){ x, yy, w, LU_IDIOMA_LINHA - 6.0f };
+    if (focado) plrui_linha_foco(row, 18.0f, a);
+    else if (escolhido) gfx_cor(row, 18.0f / row.h, .11f, .23f, .35f, .78f * a);
+    linha = txt_linha_corta(TXT_ILHA_FORTE, rot, focado ? 255 : escolhido ? 233 : 202,
+                            focado ? 255 : escolhido ? 241 : 207,
+                            focado ? 255 : escolhido ? 250 : 218, 255, w - 38.0f);
+    txt_desenhar_alpha(linha, x + 16.0f,
+                       yy + (row.h - (float)linha.h) * 0.5f, a);
+    if (pont) ponteiro_alvo(row.x, row.y, row.w, row.h,
+                            ponteiroIdioma, ponteiroIdiomaAbrir, i, 0);
+  }
+  if (rolagemIdioma > 0) {
+    TxtLinha t = txt_linha(TXT_ILHA_APOIO, "↑", 192, 202, 220, 255);
+    txt_desenhar_alpha(t, x + w - 23.0f, y, a);
+  }
+  if (rolagemIdioma + LU_IDIOMAS_VIS <= nIdiomas) {
+    TxtLinha t = txt_linha(TXT_ILHA_APOIO, "↓", 192, 202, 220, 255);
+    txt_desenhar_alpha(t, x + w - 23.0f,
+                       y + cab + LU_IDIOMAS_VIS * LU_IDIOMA_LINHA - (float)t.h, a);
+  }
+}
+
 void legendasui_corpo(GfxRect c, float a) {
   float x0 = c.x + LU_PAD_X, w = c.w - LU_PAD_X * 2.0f, y = c.y + LU_PAD_Y;
   int vis = luVis(), fim, i;
@@ -1133,6 +1191,10 @@ void legendasui_corpo(GfxRect c, float a) {
       ponteiro_alvo(x0 + w - 10.0f - sw + w0, ty + (float)t.h - 54.0f, sw - w0, 54.0f, NULL, ponteiroAbaEstilo, 0, 0);
     } }
   y += LU_TIT_H + 14.0f;
+  atualizarIdiomas();
+  desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);
+  x0 += LU_IDIOMAS_LARG + LU_IDIOMAS_ESP;
+  w -= LU_IDIOMAS_LARG + LU_IDIOMAS_ESP;
 #ifdef NV_TOUCH_UI
   if (telefoneui_ativo()) {
     if (!toquerol_livre(&toqueLegendas)) {
