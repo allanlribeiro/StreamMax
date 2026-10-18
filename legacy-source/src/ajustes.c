@@ -1076,7 +1076,7 @@ typedef struct { unsigned fill, marca, hdr, luz; char fam; } AcentoFixo;   // fa
 static const AcentoFixo TEMA_ACENTO[] = {
   { 0xf4f2ee, 0xf4f2ee, 0xcccac5, 0x4e4d49, 'c' },   //  0 Branco       (WHITE)
   { 0xd53b45, 0xfeb5b1, 0xd0aba7, 0x7e2f31, 'p' },   //  1 Carmesim     (CRIMSON)
-  { 0x1276ce, 0xa5cffe, 0xa4b8cd, 0x154e87, 'p' },   //  2 Oceano       (OCEAN)
+  { 0x168fff, 0x19ccee, 0xa7cce9, 0x7756cd, 'p' },   //  2 Oceano / StreamMax azul cinematografico
   { 0x9b54c8, 0xe0b8fe, 0xc1accd, 0x5f3979, 'p' },   //  3 Violeta      (VIOLET)
   { 0x218649, 0x92e0a7, 0x9ac0a1, 0x015d2d, 'p' },   //  4 Esmeralda    (EMERALD)
   { 0xb85a09, 0xffb88e, 0xd1ad95, 0x783904, 'p' },   //  5 Âmbar        (AMBER)
@@ -4186,6 +4186,9 @@ void ajustes_dir(const char *dir) {
     // StreamMax: primeira instalação inicia em português brasileiro.
     // Preferência manual posterior continua salva e respeitada.
     valor[AJ_IDIOMA] = IDIOMA_PT + 1;
+    // Primeira instalacao: acento azul, sem efeitos dinamicos ou GIFs.
+    // Preferencias existentes continuam intocadas.
+    valor[AJ_TEMA] = 2;
 #ifdef NV_TEX_MB_FIXO
     memoriaMigrar();
     if (valor[AJ_TEX_MB] > 0) tex_definir_orcamento_mb(ajustes_tex_mb());
