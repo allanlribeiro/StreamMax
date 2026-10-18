@@ -480,6 +480,12 @@ internal fun SubtitleSelectionOverlay(
                 text = stringResource(R.string.subtitle_dialog_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
+                modifier = Modifier.padding(bottom = NuvioTheme.spacing.xs)
+            )
+            Text(
+                text = "Idiomas e legendas · selecione com o controle remoto",
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.extendedColors.textSecondary,
                 modifier = Modifier.padding(bottom = NuvioTheme.spacing.md)
             )
 
