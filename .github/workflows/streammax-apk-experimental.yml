@@ -109,6 +109,8 @@ jobs:
           python3 migration/check-legacy-auth.py legacy-source
           python3 migration/check-playback-contracts.py legacy-source
           python3 migration/check-android-isolation.py legacy-source
+          # Regressao de arte dos cards, especialmente Continuar assistindo.
+          bash legacy-source/tests/streammax-cw-art.sh
       - name: Compilar versão experimental sem assinatura de distribuição
         working-directory: legacy-source
         env:
