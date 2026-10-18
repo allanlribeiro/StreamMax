@@ -87,7 +87,17 @@ checks = {
         "if (tipo == 1 && novosParametros != p.trackSelectionParameters)" in source
         and 'nativeLegenda("", 0)' in source
     ),
-    "subtitle delay changes invalidate old pending cues": "if (atrasoMs != idx) versaoLegenda++" in source,
+    "subtitle delay changes clear stale cues without affecting unchanged settings": (
+        "private fun escolherMain(tipo: Int, idx: Int) {" in source
+        and (lambda block: (
+            "if (atrasoMs != idx) {" in block
+            and "versaoLegenda++" in block
+            and 'nativeLegenda("", 0)' in block
+            and "limparLegendaBitmap()" in block
+            and "atrasoMs = idx" in block
+        ))(source.split("private fun escolherMain(tipo: Int, idx: Int) {", 1)[1]
+                  .split("if (tipo == 3)", 1)[0])
+    ),
     "old subtitle cues are rejected after track or delay changes": "atual(minha) && versao == versaoLegenda" in source,
     "seek invalidates pending subtitle cues and clears overlay": (
         "override fun onPositionDiscontinuity(" in source
