@@ -1,0 +1,57 @@
+name: StreamMax APK experimental
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk-experimental:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Baixar código de desenvolvimento
+        uses: actions/checkout@v4
+        with:
+          ref: streammax/legacy-migration
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Instalar SDK e ferramentas nativas
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+      - name: Dependências de compilação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3
+      - name: Validar contratos da migração
+        run: |
+          set -euo pipefail
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+      - name: Compilar versão experimental sem assinatura de distribuição
+        working-directory: legacy-source
+        env:
+          NUVIO_SEM_CURL: '1'
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android.sh
+      - name: Disponibilizar APK de teste
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-APK-EXPERIMENTAL
+          path: legacy-source/build/android/*-android-debug.apk
+          if-no-files-found: error
+          retention-days: 7
