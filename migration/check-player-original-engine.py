@@ -30,7 +30,7 @@ checks = {
     "original ExoPlayer video engine retained": "ExoPlayer.Builder(act, r.renderizadores)" in source,
     "diagnostic startup measurements logged": "originalStock=$inicioOriginal" in source,
     "rebuffer diagnostics only after first frame": "state == Player.STATE_BUFFERING && quadroVisto && p.playWhenReady" in source,
-    "manual pause ends rebuffer accounting": "if (!playWhenReady) encerrarRebuffer()" in source,
+    "manual pause ends rebuffer accounting": "if (!playWhenReady) {\n                encerrarRebuffer()" in source,
     "rebuffer timings reset on new playback": "rebufferInicioEm = 0L\n        rebufferTotalMs = 0L\n        rebufferCount = 0" in source,
     "first frame timing retained": "onRenderedFirstFrame renderer=video loadMs=" in source,
     "original first frame ready watchdog available": "ForcePlayWhenReady" in original_watchdog,
