@@ -2438,7 +2438,22 @@ static void *fioFontes(void *u) {
             ? rede_baixar(url, prazoS) : NULL;
     if (consultaCancelada(c)) { free(corpo); break; }
     achados = NULL; n = 0;
-    if (corpo) n = stream_extrair(corpo, origem->nome, &achados);
+    if (corpo) {
+      n = stream_extrair(corpo, origem->nome, &achados);
+      // Compare number of JSON stream entries with what parser accepted.
+      // Never log stream URLs, hashes or configured addon addresses.
+      const char *entrada = js_array(corpo, NULL, "streams");
+      int declaradas = 0;
+      for (const char *p = entrada; p;) {
+        const char *fim = js_fim(p);
+        if (!fim || fim <= p) break;
+        declaradas++;
+        p = js_prox(fim);
+      }
+      if (declaradas != n)
+        printf("[addons] %s: JSON=%d fontes, parser=%d (diferenca=%d)\\n",
+               origem->nome, declaradas, n, declaradas - n);
+    }
     // CANAL AO VIVO TEM DOIS NOMES DE TIPO NO PROTOCOLO, e addons diferentes
     // usam nomes diferentes.
     //
