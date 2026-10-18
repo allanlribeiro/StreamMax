@@ -72,7 +72,12 @@ void abertura_iniciar(const char *dirArte) {
   marcaW = AB_MARCA_W;
   s = NULL;
   logoapp_iniciar(dirArte);
-  if (logoapp_atual() == LOGO_NOVO) {
+  // Marca oficial StreamMax: splash estatico em 16:9, carregado uma unica vez.
+  // Se ainda nao instalada, manter o comportamento original.
+  snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.png", dirArte ? dirArte : ".");
+  s = IMG_Load(cam);
+  if (s) arteCheia = 1;
+  if (!s && logoapp_atual() == LOGO_NOVO) {
     // O logo Novo: sem arte cheia, o fundo liso e a marca (PNG com alfa) nitidos
     // em qualquer resolucao. Sem o arquivo, cai no Classico.
     s = IMG_Load(logoapp_caminho(LOGO_NOVO, LOGO_F_MARCA));
