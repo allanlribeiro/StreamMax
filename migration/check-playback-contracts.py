@@ -5,6 +5,11 @@ import sys
 
 root = Path(sys.argv[1]) if len(sys.argv) == 2 else Path("legacy-source")
 checks = {
+    "src/app.c": [
+        'fontevolta_esquecer("fonte fora dos filtros atuais")',
+        "if (!preparoEspera && tocarFonteGuardada())",
+        "stream_folha_abrir();",
+    ],
     "src/player.c": [
         "void player_abrir(",
         "armarTituloGuardado(void)",
