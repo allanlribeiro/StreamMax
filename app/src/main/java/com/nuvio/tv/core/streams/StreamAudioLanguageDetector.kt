@@ -16,7 +16,7 @@ internal object StreamAudioLanguageDetector {
         val declaredLanguages = stream.clientResolve?.stream?.raw?.parsed?.languages.orEmpty()
         if (declaredLanguages.any(::isPortugueseLanguage)) return PortugueseAudio.CONFIRMED
 
-        val candidate = listOfNotNull(
+        val fields = listOfNotNull(
             stream.behaviorHints?.filename,
             stream.clientResolve?.filename,
             stream.clientResolve?.torrentName,
@@ -25,13 +25,20 @@ internal object StreamAudioLanguageDetector {
             stream.title,
             stream.name,
             stream.description
-        ).joinToString(" ").uppercase(Locale.ROOT)
-
-        // Only explicit audio-language tokens count. Do not match standalone
-        // "PT-BR" next to SUB/SUBTITLES, or generic "MULTI"/"DUAL AUDIO".
-        val audioPattern = Regex("""(?:DUBLADO|DUBLAGEM|AUDIO[ ._-]*PT[ ._-]*BR|PT[ ._-]*BR[ ._-]*AUDIO|AUDIO[ ._-]*PORTUGUES|PORTUGUES[ ._-]*AUDIO|BRAZILIAN[ ._-]*AUDIO)""")
-        return if (audioPattern.containsMatchIn(candidate)) PortugueseAudio.CONFIRMED
+        )
+        return if (fields.any(::hasExplicitPortugueseAudio)) PortugueseAudio.CONFIRMED
         else PortugueseAudio.UNKNOWN
+    }
+
+    private fun hasExplicitPortugueseAudio(value: String): Boolean {
+        val text = value.uppercase(Locale.ROOT)
+        // Check token boundaries: "UNDUBLADO" must not be taken as "DUBLADO".
+        val explicitAudio = Regex(
+            """(?:^|[^A-Z0-9])(?:DUBLADO|DUBLAGEM|ÁUDIO[ ._-]*PT[ ._-]*BR|AUDIO[ ._-]*PT[ ._-]*BR|PT[ ._-]*BR[ ._-]*ÁUDIO|PT[ ._-]*BR[ ._-]*AUDIO|ÁUDIO[ ._-]*PORTUGU[EÊ]S|AUDIO[ ._-]*PORTUGU[EÊ]S|PORTUGU[EÊ]S[ ._-]*ÁUDIO|PORTUGU[EÊ]S[ ._-]*AUDIO|BRAZILIAN[ ._-]*AUDIO)(?:$|[^A-Z0-9])"""
+        )
+        // A label explicitly describing subtitles cannot establish audio language.
+        val subtitleOnly = Regex("""(?:^|[^A-Z0-9])(?:LEGENDAS?|SUBS?|SUBTITLES?|SUBBED)[ ._-]*(?:PT[ ._-]*BR|PORTUGU[EÊ]S)(?:$|[^A-Z0-9])""")
+        return explicitAudio.containsMatchIn(text) && !subtitleOnly.containsMatchIn(text)
     }
 
     private fun isPortugueseLanguage(value: String): Boolean {
