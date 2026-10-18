@@ -11,6 +11,12 @@
 - **Nao implementar, compilar ou publicar a versao Samsung nesta fase.** O pedido e para o futuro.
 - Prioridades atuais: corrigir as artes do Continuar Assistindo; aproximar o fluxo e a tela de reproducao do Nuvio original; reduzir a demora do inicio de filmes e episodios sem perder fluidez e desempenho.
 
+### Backlog futuro — visual de TV ao vivo (pedido de 18/10/2026)
+
+- Redesenhar, em uma versão futura, a interface de TV ao vivo para a TCL P7K: guia EPG cinematográfico, logos e categorias de canais, lista navegável pelo controle e mini-player durante a escolha de canal.
+- Preservar o motor IPTV já existente (Xtream, Stalker e fontes dos addons) e o fluxo de controle remoto; separar apresentação visual de reprodução para não prejudicar o tempo de troca de canal.
+- **Somente backlog:** não modificar a tela de TV ao vivo, motor IPTV, guia ou PiP nesta etapa. Primeiro concluir e validar abertura/troca de fontes, continuidade e player VOD na TCL.
+
 ### Requisitos aprovados, na ordem de trabalho
 
 1. Base Android do Legacy, preservando sua arquitetura nativa e fluidez.
