@@ -110,14 +110,21 @@ static void *conferir(void *u) {
 
 void fontevolta_conferir(const char *url, const char *cabecalhos) {
   pthread_t t;
+  unsigned geracao;
   Pedido *p = calloc(1, sizeof *p);
   pthread_mutex_lock(&trava);
   confGeracao++;
+  geracao = confGeracao;
   confEstado = FV_CONFERINDO;
-  if (p) p->geracao = confGeracao;
+  if (p) p->geracao = geracao;
   pthread_mutex_unlock(&trava);
   // Sem memoria ou sem fio: nao ha conferencia, e o player decide sozinho.
-  if (!p) { pthread_mutex_lock(&trava); confEstado = FV_NADA; pthread_mutex_unlock(&trava); return; }
+  if (!p) {
+    pthread_mutex_lock(&trava);
+    if (geracao == confGeracao) confEstado = FV_NADA;
+    pthread_mutex_unlock(&trava);
+    return;
+  }
   // Nao conferir uma URL cortada: isso poderia derrubar uma fonte valida.
   // Na duvida, deixar o player decidir, sem emitir requisicao truncada.
   if (!url || !*url || strlen(url) >= sizeof p->url ||
@@ -134,7 +141,9 @@ void fontevolta_conferir(const char *url, const char *cabecalhos) {
   if (pthread_create(&t, NULL, conferir, p) == 0) pthread_detach(t);
   else {
     free(p);
-    pthread_mutex_lock(&trava); confEstado = FV_NADA; pthread_mutex_unlock(&trava);
+    pthread_mutex_lock(&trava);
+    if (geracao == confGeracao) confEstado = FV_NADA;
+    pthread_mutex_unlock(&trava);
   }
 }
 
