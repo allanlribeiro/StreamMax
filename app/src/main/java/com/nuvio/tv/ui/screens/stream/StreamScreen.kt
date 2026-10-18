@@ -82,6 +82,8 @@ import com.nuvio.tv.ui.util.toAbsoluteAlignment
 import com.nuvio.tv.ui.util.localizeEpisodeTitle
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
+import androidx.tv.material3.Button
+import com.nuvio.tv.core.streams.StreamAudioLanguageDetector
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
@@ -446,6 +448,7 @@ fun StreamScreen(
                     isLoading = uiState.isLoading,
                     error = uiState.error,
                     streams = uiState.filteredStreams,
+                    allStreams = uiState.allStreams,
                     availableAddons = uiState.availableAddons,
                     sourceChips = uiState.sourceChips,
                     selectedAddonFilter = uiState.selectedAddonFilter,
@@ -742,6 +745,7 @@ private fun RightStreamSection(
     isLoading: Boolean,
     error: String?,
     streams: List<Stream>,
+    allStreams: List<Stream>,
     availableAddons: List<String>,
     sourceChips: List<SourceChipItem>,
     selectedAddonFilter: String?,
@@ -764,6 +768,16 @@ private fun RightStreamSection(
     modifier: Modifier = Modifier
 ) {
     val isRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    var onlyPortugueseAudio by rememberSaveable { mutableStateOf(false) }
+    val visibleStreams = remember(streams, allStreams, selectedAddonFilter, onlyPortugueseAudio) {
+        if (!onlyPortugueseAudio) streams
+        else allStreams.asSequence()
+            .filter { selectedAddonFilter == null || it.addonName == selectedAddonFilter }
+            .filter {
+                StreamAudioLanguageDetector.portugueseAudio(it) ==
+                    StreamAudioLanguageDetector.PortugueseAudio.CONFIRMED
+            }.toList()
+    }
     var enter by remember { mutableStateOf(false) }
     var firstStreamFocusRequestId by remember { mutableStateOf(0) }
     var listHasFocus by remember { mutableStateOf(false) }
@@ -778,7 +792,7 @@ private fun RightStreamSection(
             sourceChips.forEach { if (it.name !in this) add(it.name) }
         }
     }
-    val firstStreamKey = streams.firstOrNull()?.stableKey(0)
+    val firstStreamKey = visibleStreams.firstOrNull()?.stableKey(0)
     val refreshFocusRequester = remember { FocusRequester() }
     val allFocusRequester = remember { FocusRequester() }
     val addonFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
@@ -879,6 +893,14 @@ private fun RightStreamSection(
             }
         }
 
+        Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
+        Button(onClick = {
+            onlyPortugueseAudio = !onlyPortugueseAudio
+            userMovedFromFirstResult = false
+            firstResultFocusAssigned = false
+        }) {
+            Text(if (onlyPortugueseAudio) "Áudio: Português identificado" else "Áudio: Todos")
+        }
         Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
 
         androidx.compose.animation.AnimatedVisibility(
@@ -925,12 +947,12 @@ private fun RightStreamSection(
                             onRetry = onRetry
                         )
                     }
-                    sharedStream == null && streams.isEmpty() -> {
+                    sharedStream == null && visibleStreams.isEmpty() -> {
                         EmptyState()
                     }
                     else -> {
                         StreamsList(
-                            streams = streams,
+                            streams = visibleStreams,
                             sharedStream = sharedStream,
                             partySource = partySource,
                             onSharedStreamSelected = onSharedStreamSelected,
@@ -953,7 +975,7 @@ private fun RightStreamSection(
                             },
                             onFocusedStreamKeyChanged = { focusedStreamKeyInList = it },
                             onFocusChanged = { listHasFocus = it },
-                            onExpandStreams = onExpandStreams
+                            onExpandStreams = { if (!onlyPortugueseAudio) onExpandStreams() }
                         )
                     }
                 }
