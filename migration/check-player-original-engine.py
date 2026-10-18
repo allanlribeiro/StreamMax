@@ -56,9 +56,11 @@ checks = {
     "seek invalidates pending subtitle cues and clears overlay": (
         "override fun onPositionDiscontinuity(" in source
         and "reason != Player.DISCONTINUITY_REASON_SEEK" in source
-        and "if (!atual(minha) || reason != Player.DISCONTINUITY_REASON_SEEK) return\\n            versaoLegenda++\\n            try { nativeLegenda(\\\"\\\", 0) }" in source
+        and source.split("override fun onPositionDiscontinuity(", 1)[1]
+            .split("override fun onTimelineChanged(", 1)[0].count("versaoLegenda++") == 1
+        and 'nativeLegenda("", 0)' in source.split("override fun onPositionDiscontinuity(", 1)[1]
+            .split("override fun onTimelineChanged(", 1)[0]
     ),
-
     "Android onPause gates a late source open": (
         "atividadeOculta = true" in pausa_sistema
         and "if (!reabrindo && !atividadeOculta) pausaPedida = false" in source
