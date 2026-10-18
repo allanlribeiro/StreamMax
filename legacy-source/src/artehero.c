@@ -111,20 +111,43 @@ const char *artehero_url_metahub_fundo(const CatItem *item) {
   return falhou(buf) ? NULL : fixar(buf, buf);
 }
 
+// O campo de arte pode estar preenchido e ainda assim apontar para um 404.
+// Nesse caso nao prender o card naquela URL: conservar so imagens do MESMO
+// CatItem e usar as fontes alternativas ja conhecidas antes de fazer rede.
+// tex_falhou e injetado pelo cache; enquanto a requisicao estiver pendente,
+// esta URL continua preferida, evitando alternancia e downloads extras.
+static int cardArteOk(const char *u) {
+  return u && u[0] && !falhou(u);
+}
+
 const char *artehero_url_card(const CatItem *item) {
+  char id[32], buf[256];
+  int temId;
   if (!item) return NULL;
-  if (item->backdrop[0]) return item->backdrop;
-  // SEM FUNDO, A MESMA REGRA DO DESTAQUE (artehero_url): o metahub monta um
-  // por id do IMDb antes de cair no cartaz. O card deitado so tinha o cartaz,
-  // e o cartaz em pe dentro de um card deitado sai como uma faixa estreita no
-  // meio do escuro — "AI for you" na C9 (29/09), enquanto o destaque do mesmo
-  // titulo mostrava a foto larga certa.
-  { char id[32], buf[256];
-    if (idLimpoOk(item, id, sizeof id)) {
-      snprintf(buf, sizeof buf, "https://images.metahub.space/background/medium/%s/img", id);
-      if (!falhou(buf)) return fixar(buf, buf);
-    } }
-  if (item->poster[0]) return item->poster;
+  if (cardArteOk(item->backdrop)) return item->backdrop;
+  if (cardArteOk(item->backdropCatalogo)) return item->backdropCatalogo;
+  if (cardArteOk(item->backdropTmdb)) return item->backdropTmdb;
+  if (cardArteOk(item->backdropTrakt)) return item->backdropTrakt;
+
+  // Sem fundo valido: o Metahub pelo IMDb da obra, SEM :temporada:episodio.
+  // O resolvedor existente ja tenta TMDB depois de falha do Metahub.
+  temId = idLimpoOk(item, id, sizeof id);
+  if (temId) {
+    snprintf(buf, sizeof buf,
+             "https://images.metahub.space/background/medium/%s/img", id);
+    if (!falhou(buf)) return fixar(buf, buf);
+  }
+  // Um poster conhecido evita uma segunda consulta quando o fundo falhou.
+  if (cardArteOk(item->poster)) return item->poster;
+
+  // Alguns filmes recentes nao tem backdrop mas ja tem POSTER. Buscar a arte
+  // vertical do proprio IMDb so depois de esgotar as alternativas; o cache
+  // pode resolver a falha no TMDB sem nova logica nem memoria permanente.
+  if (temId) {
+    snprintf(buf, sizeof buf,
+             "https://images.metahub.space/poster/medium/%s/img", id);
+    if (!falhou(buf)) return fixar(buf, buf);
+  }
   return NULL;
 }
 
