@@ -1695,6 +1695,20 @@ int guia_pediu_parar_preview(void) { int v = pedPararPreview; pedPararPreview = 
 int guia_pediu_restaurar(void)     { int v = pedRestaurar; pedRestaurar = 0; return v; }
 int guia_pediu_guia_cheio(void)    { int v = pedGuiaCheio; pedGuiaCheio = 0; return v; }
 void guia_preview_rect(float *x, float *y, float *w, float *h) {
+  if (tvTresColunas && !gRetrato()) {
+    // Se o usuario voltou do canal ja em reproducao, a mini-sessao do
+    // player ocupa a janela 16:9 da terceira coluna. Nao abrir um segundo
+    // player/stream somente por navegar na lista.
+    const float infX = G_AREA_X + SM_TV_CAT_W + 2.0f * SM_TV_COL_GAP +
+                       SM_TV_CANAL_W;
+    const float infW = G_AREA_DIR - infX;
+    float pw = infW - 40.0f, ph = pw * 9.0f / 16.0f;
+    if (ph > 330.0f) { ph = 330.0f; pw = ph * 16.0f / 9.0f; }
+    *x = infX + (infW - pw) * 0.5f;
+    *y = SM_TV_BODY_Y + 84.0f;
+    *w = pw; *h = ph;
+    return;
+  }
   gTopoMedir();
   *x = G_PREVIEW_X; *y = G_PREVIEW_Y; *w = G_PREVIEW_W; *h = G_PREVIEW_H;
 }
