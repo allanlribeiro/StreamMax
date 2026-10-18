@@ -1936,7 +1936,14 @@ object NvPlayer {
 
     private fun escolherMain(tipo: Int, idx: Int) {
         if (tipo == 2) {
-            if (atrasoMs != idx) versaoLegenda++
+            if (atrasoMs != idx) {
+                // Invalidating pending cues is not enough: the previous cue
+                // might already be visible. Clear both native text and the
+                // bitmap/ASS overlay when the user changes subtitle timing.
+                versaoLegenda++
+                try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+                limparLegendaBitmap()
+            }
             atrasoMs = idx
             return
         }
