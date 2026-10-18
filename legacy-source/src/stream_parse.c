@@ -1033,7 +1033,7 @@ static int lerSemeadores(const char *t, int *qtd) {
 
 int stream_extrair(const char *json, const char *provedor, Stream **saida) {
   const char *p, *fim;
-  int n = 0, cap = 0;
+  int n = 0, cap = 0, semLinkReproduzivel = 0;
   Stream *v = NULL;
   *saida = NULL;
   if (!json) return 0;
@@ -1158,9 +1158,16 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
         v = tmp; cap = nova;
       }
       v[n++] = s;
+    } else {
+      // O addon devolveu um objeto de stream, mas ele nao tem URL HTTP
+      // completa nem infoHash. Sem registrar endpoint, hash ou tokens.
+      semLinkReproduzivel++;
     }
     p = js_prox(fim);
   }
+  if (semLinkReproduzivel)
+    printf("[fontes/parse] %s: %d entrada(s) sem URL HTTP ou infoHash utilizavel\n",
+           provedor ? provedor : "(addon)", semLinkReproduzivel);
   *saida = v;
   return n;
 }
