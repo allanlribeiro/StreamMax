@@ -79,6 +79,7 @@
 #include "guialembrete.h"
 #include "streams.h"    /* Stream: url do preview vinda do fio */
 #include "livetv_regras.h" /* variantes FHD/HD/SD do mesmo canal */
+#include "streammax_livetv_columns.h"  /* StreamMax: guia em 3 colunas na TCL */
 #include "teclado.h"       /* a busca do guia */
 #include "buscanorm.h"     /* guia_buscar_canais (Spotlight) */
 #include <stdio.h>
@@ -385,6 +386,14 @@ static void favAlternar(GCanal *c) {
 // 1 = lista, 0 = cartoes. Persistido por perfil: quem escolheu lista
 // espera reabrir em lista, senao a escolha vira um gesto a repetir por sessao.
 static int modoLista, modoLido;
+// Nova tela nao modifica nem apaga os modos originais Cartoes / Lista.
+// Android TV comeca em tres colunas; Amarelo / L alterna com o guia classico.
+#if defined(__ANDROID__)
+static int tvTresColunas = 1;
+#else
+static int tvTresColunas;
+#endif
+static int tvColunaFoco = SM_TV_COL_CATEGORIAS;
 
 static void modoLer(void) {
   char *t = lerPerfil("modo");
@@ -1658,6 +1667,7 @@ void guia_abrir(void) {
   if (!previewLido) previewLer();
   aberta = 1; querSair = 0; entrada = 0.0f;
   focoTopo = 0; painel = 0;
+  tvColunaFoco = SM_TV_COL_CATEGORIAS;
   previewPreso = 0; previewId[0] = 0;
   previewUltLin = previewUltCol = -1; previewFocoMudou = SDL_GetTicks();
   focoValido();
@@ -1685,6 +1695,20 @@ int guia_pediu_parar_preview(void) { int v = pedPararPreview; pedPararPreview = 
 int guia_pediu_restaurar(void)     { int v = pedRestaurar; pedRestaurar = 0; return v; }
 int guia_pediu_guia_cheio(void)    { int v = pedGuiaCheio; pedGuiaCheio = 0; return v; }
 void guia_preview_rect(float *x, float *y, float *w, float *h) {
+  if (tvTresColunas && !gRetrato()) {
+    // Se o usuario voltou do canal ja em reproducao, a mini-sessao do
+    // player ocupa a janela 16:9 da terceira coluna. Nao abrir um segundo
+    // player/stream somente por navegar na lista.
+    const float infX = G_AREA_X + SM_TV_CAT_W + 2.0f * SM_TV_COL_GAP +
+                       SM_TV_CANAL_W;
+    const float infW = G_AREA_DIR - infX;
+    float pw = infW - 40.0f, ph = pw * 9.0f / 16.0f;
+    if (ph > 330.0f) { ph = 330.0f; pw = ph * 16.0f / 9.0f; }
+    *x = infX + (infW - pw) * 0.5f;
+    *y = SM_TV_BODY_Y + 84.0f;
+    *w = pw; *h = ph;
+    return;
+  }
   gTopoMedir();
   *x = G_PREVIEW_X; *y = G_PREVIEW_Y; *w = G_PREVIEW_W; *h = G_PREVIEW_H;
 }
@@ -2233,6 +2257,40 @@ void guia_evento(const SDL_Event *e) {
     return;
   }
 
+  // A tela StreamMax usa as duas colunas de selecao (categoria e canal);
+  // a terceira mostra somente dados reais da EPG. Foco nunca dispara video
+  // sozinho. OK no canal usa a MESMA acao do guia classico.
+  if (tvTresColunas && !gRetrato()) {
+    if (e->key.keysym.scancode == G_SCANCODE_YELLOW || k == SDLK_l) {
+      tvTresColunas = 0; modoLista = 1; janelaDesl = 0; focoTopo = 0;
+      return;
+    }
+    if (k == SDLK_LEFT) { tvColunaFoco = SM_TV_COL_CATEGORIAS; return; }
+    if (k == SDLK_RIGHT) { tvColunaFoco = SM_TV_COL_CANAIS; return; }
+    if (k == SDLK_UP || k == SDLK_DOWN) {
+      int d = k == SDLK_DOWN ? 1 : -1;
+      if (tvColunaFoco == SM_TV_COL_CATEGORIAS) {
+        focoLin = streammax_tv_limitar(focoLin + d, nLinhas());
+        focoCol = 0;
+      } else {
+        focoCol = streammax_tv_limitar(focoCol + d, linhaN(focoLin));
+      }
+      focoValido(); return;
+    }
+    if (k == SDLK_RETURN || k == SDLK_KP_ENTER) {
+      if (tvColunaFoco == SM_TV_COL_CATEGORIAS) tvColunaFoco = SM_TV_COL_CANAIS;
+      else if (!okDesde) { okDesde = agora; okLongo = 0; }
+      return;
+    }
+    return;
+  }
+  // Quando esta no guia classico, Amarelo / L reabre a tela StreamMax.
+  if (!gRetrato() && (e->key.keysym.scancode == G_SCANCODE_YELLOW || k == SDLK_l)) {
+    tvTresColunas = 1; tvColunaFoco = SM_TV_COL_CANAIS;
+    focoTopo = 0; catAberto = 0; janelaDesl = 0;
+    return;
+  }
+
   // O painel de addons captura tudo que nao e Voltar (tratado acima).
   if (painel) { painelEvento(k, agora); return; }
 
@@ -2597,7 +2655,7 @@ void guia_atualizar(float dt, Uint32 agora) {
   // O foco mudou de canal: o relogio do descanso recomeca.
   { static int ul = -1, uc = -1;
     if (focoLin != ul || focoCol != uc) { ul = focoLin; uc = focoCol; previewFocoMudou = agora; } }
-  if (aberta && !overlay && previewLigado && !previewPreso && !player_aberto() &&
+  if (aberta && !overlay && !tvTresColunas && previewLigado && !previewPreso && !player_aberto() &&
       nCanais > 0 && (estado == G_PRONTO || estado == G_BAIXANDO) &&
       (focoLin != previewUltLin || focoCol != previewUltCol) &&
       agora - previewFocoMudou >= G_PREVIEW_ESPERA_MS) {
@@ -4741,6 +4799,136 @@ static void toqueGuiaRetomar(void) {
 }
 #endif
 
+// StreamMax TV ao vivo (TCL): categorias | canais | programa no ar.
+// Usa os dados do proprio guia (Xtream/addons + EPG); sem logos, sem chamadas
+// de rede adicionais e sem tocar num canal ao simplesmente mudar o foco.
+static void streammaxTvDesenhar(float a, time_t agoraT) {
+  const float x = G_AREA_X, gap = SM_TV_COL_GAP, y = SM_TV_BODY_Y;
+  const float catX = x, catW = SM_TV_CAT_W;
+  const float canX = catX + catW + gap, canW = SM_TV_CANAL_W;
+  const float infX = canX + canW + gap, infW = G_AREA_DIR - infX;
+  const int vis = SM_TV_VISIBLE_ROWS;
+  const int nCat = nLinhas(), nCan = linhaN(focoLin);
+  const int catIniVis = streammax_tv_primeira(focoLin, vis, nCat);
+  const int canIniVis = streammax_tv_primeira(focoCol, vis, nCan);
+  GCanal *canal = linhaItem(focoLin, focoCol);
+  GfxRect fundo = {0, 0, NV_TELA_W, NV_TELA_H};
+  TxtLinha titulo, sub;
+  gfx_cor(fundo, 0.0f, 0.023f, 0.032f, 0.060f, a);
+  titulo = txt_linha(TXT_ILHA_TITULO, "STREAMMAX  |  TV AO VIVO", 240, 245, 255, 255);
+  txt_desenhar_alpha(titulo, x, SM_TV_TITULO_Y, a);
+  { char aux[120];
+    snprintf(aux, sizeof aux, "%d canais  ·  %d categorias", nCanais, nCat);
+    sub = txt_linha(TXT_DET_META2, aux, 138, 156, 190, 255);
+    txt_desenhar_alpha(sub, x, SM_TV_TITULO_Y + 48.0f, a);
+  }
+  // As tres superficies sao geometricamente estaveis em 1920x1080.
+  gfx_cor((GfxRect){catX, y, catW, SM_TV_ROW_H * vis + 47.0f},
+          0.035f, .046f, .061f, .096f, a);
+  gfx_cor((GfxRect){canX, y, canW, SM_TV_ROW_H * vis + 47.0f},
+          0.035f, .046f, .061f, .096f, a);
+  gfx_cor((GfxRect){infX, y, infW, SM_TV_ROW_H * vis + 47.0f},
+          0.035f, .046f, .061f, .096f, a);
+
+  sub = txt_linha(TXT_PG_ROTULO, i18n("Categorias"), 169, 189, 223, 255);
+  txt_desenhar_alpha(sub, catX + 20.0f, y + 16.0f, a);
+  sub = txt_linha(TXT_PG_ROTULO, i18n("Canais"), 169, 189, 223, 255);
+  txt_desenhar_alpha(sub, canX + 20.0f, y + 16.0f, a);
+  sub = txt_linha(TXT_PG_ROTULO, i18n("Agora na TV"), 169, 189, 223, 255);
+  txt_desenhar_alpha(sub, infX + 20.0f, y + 16.0f, a);
+
+  for (int j = 0; j < vis && catIniVis + j < nCat; j++) {
+    int l = catIniVis + j;
+    float ry = y + 47.0f + SM_TV_ROW_H * j;
+    int sel = l == focoLin, foc = sel && tvColunaFoco == SM_TV_COL_CATEGORIAS;
+    char linha[180];
+    TxtLinha t;
+    GfxRect item = {catX + 9.0f, ry + 4.0f, catW - 18.0f, SM_TV_ROW_H - 9.0f};
+    if (foc) gfx_cor(item, .17f, .10f, .34f, .60f, a);
+    else if (sel) gfx_cor(item, .17f, .070f, .16f, .28f, a);
+    snprintf(linha, sizeof linha, "%s", linhaNome(l));
+    t = txt_linha_corta(TXT_PG_ROTULO, linha, sel ? 247 : 198,
+                        sel ? 251 : 205, sel ? 255 : 216, 255, item.w - 24.0f);
+    txt_desenhar_alpha(t, item.x + 12.0f, item.y + (item.h - (float)t.h) * 0.5f, a);
+  }
+  for (int j = 0; j < vis && canIniVis + j < nCan; j++) {
+    int cidx = canIniVis + j;
+    GCanal *c = linhaItem(focoLin, cidx);
+    float ry = y + 47.0f + SM_TV_ROW_H * j;
+    int sel = cidx == focoCol, foc = sel && tvColunaFoco == SM_TV_COL_CANAIS;
+    TxtLinha t, meta;
+    EpgProg ag;
+    GfxRect item = {canX + 9.0f, ry + 4.0f, canW - 18.0f, SM_TV_ROW_H - 9.0f};
+    if (!c) continue;
+    if (foc) gfx_cor(item, .17f, .10f, .34f, .60f, a);
+    else if (sel) gfx_cor(item, .17f, .070f, .16f, .28f, a);
+    t = txt_linha_corta(TXT_PG_ROTULO, c->nome, sel ? 247 : 204,
+                        sel ? 251 : 216, sel ? 255 : 227, 255, item.w - 38.0f);
+    txt_desenhar_alpha(t, item.x + 14.0f, item.y + 7.0f, a);
+    meta = txt_linha_corta(TXT_DET_META2,
+              gAgora(c, agoraT, &ag) && ag.titulo ? ag.titulo : i18n("Ao vivo"),
+              129, 147, 174, 255, item.w - 38.0f);
+    txt_desenhar_alpha(meta, item.x + 14.0f, item.y + 36.0f, a);
+  }
+
+  { float px = infX + 20.0f;
+    float pw = infW - 40.0f;
+    float ph = pw * 9.0f / 16.0f;
+    EpgProg ag, prox;
+    int tem = canal && gAgora(canal, agoraT, &ag);
+    int proximo = canal && gProximo(canal, agoraT, 0, &prox);
+    char meta[140];
+    float infoY;
+    // Janela escura 16:9, sem logos. Nao inicia preview automaticamente.
+    if (ph > 330.0f) { ph = 330.0f; pw = ph * 16.0f / 9.0f; }
+    px = infX + (infW - pw) * 0.5f;
+    gfx_cor((GfxRect){px, y + 84.0f, pw, ph}, .035f, .018f, .031f, .058f, a);
+    sub = txt_linha(TXT_DET_META2, i18n("Selecione um canal para assistir"),
+                    120, 147, 181, 255);
+    txt_desenhar_alpha(sub,
+              px + (pw - (float)sub.w) * 0.5f,
+              y + 84.0f + (ph - (float)sub.h) * 0.5f, a);
+    infoY = y + 84.0f + ph + 24.0f;
+    if (canal) {
+      titulo = txt_linha_corta(TXT_G26B, canal->nome, 240, 245, 255, 255, infW - 50.0f);
+      txt_desenhar_alpha(titulo, infX + 24.0f, infoY, a);
+      infoY += 54.0f;
+      sub = txt_linha_corta(TXT_PG_ROTULO,
+                           tem && ag.titulo ? ag.titulo : i18n("Sem programação disponível"),
+                           215, 225, 239, 255, infW - 54.0f);
+      txt_desenhar_alpha(sub, infX + 24.0f, infoY, a);
+      infoY += 52.0f;
+      if (tem && ag.fim > ag.ini) {
+        char inicio[16], fim[16];
+        fmtHora(ag.ini, inicio, sizeof inicio);
+        fmtHora(ag.fim, fim, sizeof fim);
+        snprintf(meta, sizeof meta, "%s - %s", inicio, fim);
+        sub = txt_linha(TXT_DET_META2, meta, 142, 159, 186, 255);
+        txt_desenhar_alpha(sub, infX + 24.0f, infoY, a);
+        infoY += 37.0f;
+        gfx_cor((GfxRect){infX + 24.0f, infoY, infW - 48.0f, 5.0f},
+                0.5f, .15f, .20f, .30f, a);
+        gfx_cor((GfxRect){infX + 24.0f, infoY,
+                          (infW - 48.0f) * streammax_tv_progresso(
+                            (long long)agoraT, (long long)ag.ini, (long long)ag.fim), 5.0f},
+                0.5f, .21f, .62f, .94f, a);
+        infoY += 32.0f;
+      }
+      sub = txt_linha(TXT_DET_META2, i18n("A seguir"), 150, 174, 209, 255);
+      txt_desenhar_alpha(sub, infX + 24.0f, infoY, a);
+      infoY += 33.0f;
+      sub = txt_linha_corta(TXT_PG_ROTULO,
+                           proximo && prox.titulo ? prox.titulo : i18n("Sem dados"),
+                           194, 210, 232, 255, infW - 54.0f);
+      txt_desenhar_alpha(sub, infX + 24.0f, infoY, a);
+    }
+  }
+  sub = txt_linha(TXT_DET_META2,
+      i18n("Setas: categorias e canais  ·  OK: assistir  ·  Amarelo: guia clássico"),
+      127, 146, 176, 255);
+  txt_desenhar_alpha(sub, x, NV_TELA_H - 48.0f, a);
+}
+
 void guia_desenhar(Uint32 agora) {
 #ifdef NV_TOUCH_UI
   if (!telefoneui_ativo()) toqueLimpar();
@@ -4751,6 +4939,10 @@ void guia_desenhar(Uint32 agora) {
   int l, i, temLinhas;
   if (a < 0.01f || !guia_visivel()) return;
   if (overlay) { desenharBanda(a, agora); return; }
+  if (tvTresColunas && !gRetrato()) {
+    streammaxTvDesenhar(a, agoraT);
+    return;
+  }
   gTopoMedir();
   temLinhas = (estado == G_PRONTO || estado == G_BAIXANDO) && nLinhas() > 0;
 #ifdef NV_TOUCH_UI
