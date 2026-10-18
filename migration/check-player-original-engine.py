@@ -67,8 +67,9 @@ checks = {
         "g.type == C.TRACK_TYPE_TEXT && (0 until g.length).any { i ->" in source
         and "g.isTrackSelected(i) && g.getTrackFormat(i).sampleMimeType == MimeTypes.TEXT_SSA" in source
     ),
-    "bitmap cues do not replace native text subtitles": (
-        "val imagens = cueGroup.cues.filter { it.bitmap != null }" in source
+    "bitmap cues do not replace ordinary native text subtitles": (
+        'val imagens = if (usaAss) cueGroup.cues else cueGroup.cues.filter { it.bitmap != null }' in source
+        and 'val texto = if (usaAss) "" else cueGroup.cues.mapNotNull' in source
         and "nativeLegenda(texto, dur)" in source
         and "mostrarLegendaBitmap(imagens)" in source
     ),
