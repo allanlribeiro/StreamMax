@@ -23,4 +23,21 @@ assert schemes.count("streammax") == 1, schemes
 assert "nuvio-legacy" not in schemes and "stremio" not in schemes, schemes
 assert not any(h in ("imdb.com", "www.imdb.com", "m.imdb.com") for h in hosts), hosts
 assert 'applicationId = "com.streammax.tv"' in app.read_text(), "Pacote incorreto"
-print("OK: StreamMax possui protocolo próprio e não intercepta URLs de outros apps")
+# Identidade Android visível também deve estar no alias efetivamente habilitado.
+app_node = tree.find("./application")
+assert app_node is not None
+assert app_node.get(ns+"icon") == "@drawable/streammax_icon"
+assert app_node.get(ns+"banner") == "@drawable/streammax_banner"
+assert app_node.get(ns+"theme") == "@style/Tema.StreamMax"
+aliases = tree.findall("./application/activity-alias")
+active = [a for a in aliases if a.get(ns+"enabled") == "true"]
+assert len(active) == 1, "Launcher deve ter exatamente um alias habilitado"
+assert active[0].get(ns+"icon") == "@drawable/streammax_icon"
+assert active[0].get(ns+"banner") == "@drawable/streammax_banner"
+for resource in ("streammax_icon.xml", "streammax_banner.xml"):
+    file = root / "android/app/src/main/res/drawable" / resource
+    ET.parse(file)
+colors = root / "android/app/src/main/res/values/cores.xml"
+color_names = {c.get("name") for c in ET.parse(colors).getroot()}
+assert {"streammax_fundo", "streammax_azul", "streammax_ciano", "streammax_violeta"} <= color_names
+print("OK: links, launcher e identidade Android StreamMax preservados")
