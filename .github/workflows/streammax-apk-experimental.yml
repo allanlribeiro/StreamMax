@@ -25,11 +25,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Este build precisa incluir o merge do PR #11 (18/10/2026).
-          git merge-base --is-ancestor f3d60bed2c9be5c587a74e51b9741c9a62ae8024 HEAD || {
-            echo "::error::A branch nao inclui o ajuste de retomada na troca de fontes."
-            exit 1
-          }
+          # Checkout tem historico raso (fetch-depth 1). Validar codigo real,
+          # evitando git merge-base, que falha por nao possuir os commits antigos.
+          grep -Fq 'player_definir_retomada_fonte(posTroca)' legacy-source/src/app.c
+          grep -Fq 't == epTrocaT && e == epTrocaE' legacy-source/src/app.c
           echo "Build StreamMax da revisao $(git rev-parse --short HEAD)"
           python3 migration/check-playback-contracts.py legacy-source
       - name: Configurar Nuvio Cloud oficial para login por e-mail
