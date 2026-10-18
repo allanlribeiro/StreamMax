@@ -47,6 +47,31 @@ checks = {
     "original first frame ready watchdog available": "ForcePlayWhenReady" in original_watchdog,
     "StreamMax watchdog checks READY without automatic play": "p.playbackState == Player.STATE_READY && !p.playWhenReady" in source,
     "watchdog checks selected video track": "(0 until g.length).any { g.isTrackSelected(it) }" in source,
+    "bitmap subtitle renderer dependency present": (
+        'implementation("androidx.media3:media3-ui:1.8.0")' in
+        (root / "legacy-source/android/app/build.gradle.kts").read_text()
+    ),
+    "bitmap subtitle renderer uses existing video layer": (
+        "import androidx.media3.ui.SubtitleView" in source
+        and "c.addView(view, lp)" in source
+        and "view.isFocusable = false" in source
+        and "legendaBitmapView?.let { view ->" in source
+    ),
+    "bitmap cues do not replace native text subtitles": (
+        "val imagens = cueGroup.cues.filter { it.bitmap != null }" in source
+        and "nativeLegenda(texto, dur)" in source
+        and "mostrarLegendaBitmap(imagens)" in source
+    ),
+    "bitmap cues share delayed subtitle generation guard": (
+        "if (atual(minha) && versao == versaoLegenda) {" in source
+        and "mostrarLegendaBitmap(imagens)" in source
+        and "principal.postDelayed(entregar, atrasoMs.toLong())" in source
+    ),
+    "bitmap cues reset on source teardown, seek and track change": (
+        "removerLegendaBitmap()" in source
+        and source.count("limparLegendaBitmap()") >= 4
+        and "reason != Player.DISCONTINUITY_REASON_SEEK" in source
+    ),
     "subtitle track changes invalidate stale cues only when selection changes": (
         "if (tipo == 1 && novosParametros != p.trackSelectionParameters)" in source
         and 'nativeLegenda("", 0)' in source
