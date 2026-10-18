@@ -48,8 +48,8 @@
 
     <application
         android:label="@string/app_name"
-        android:icon="@mipmap/ic_launcher"
-        android:banner="@drawable/banner"
+        android:icon="@drawable/streammax_icon"
+        android:banner="@drawable/streammax_banner"
         android:allowBackup="false"
         android:largeHeap="true"
         android:usesCleartextTraffic="true"
