@@ -39,7 +39,8 @@ typedef struct {
   int aberta;               // 1 = pilula aberta de 64 (aviso), 0 = 56
   int modal;                // 1 = miolo do modal (.86)
   int ancoraTopo;           // 1 = (centro) o corpo acompanha o TOPO da forma enquanto ela cresce ou encolhe, em vez de ficar centrado no tamanho final
-  int centro;               // 1 = cartao SOZINHO no meio da tela (sem relogio nem medidor); so o corpo
+  int centro;               // 1 = cartao independente do relogio; so o corpo
+  int painelEsquerdo;       // 1 = painel independente alinhado embaixo/a esquerda (se centro=1)
   int baixa;                // 1 = prioridade baixa: cede a qualquer outro pedido do quadro (a guia parental)
   int respira;              // 1 = o ponto que respira antes da frase (atividade: o canal sintonizando)
   int voltaRelogio;         // 1 = ao acabar, o corpo vira a pilula da HORA, segura um instante e so entao sai (guia parental). Relogio desligado: encolhe e some no lugar
