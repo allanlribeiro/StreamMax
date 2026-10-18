@@ -15,6 +15,7 @@ checks = {
         "armarTituloGuardado(void)",
         "cacheboost_backend_titulo(alvo)",
         "ajustes_retomada_morna()",
+        "if (c && c->titulo[0]) marca = NULL;",
     ],
     "android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt": [
         "p.setMediaItem(item, s.inicioMs.toLong())",
