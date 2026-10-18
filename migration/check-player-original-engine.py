@@ -7,6 +7,7 @@ root = Path(__file__).resolve().parent.parent
 source = (root / "legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt").read_text()
 original = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/NuvioExoPlayerPerformanceHelper.kt").read_text()
 original_controller = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerRuntimeControllerInitialization.kt").read_text()
+original_watchdog = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerFirstFrameWatchdogPolicy.kt").read_text()
 postplay = (root / "legacy-source/src/posplay.c").read_text()
 
 checks = {
@@ -32,6 +33,14 @@ checks = {
     "manual pause ends rebuffer accounting": "if (!playWhenReady) encerrarRebuffer()" in source,
     "rebuffer timings reset on new playback": "rebufferInicioEm = 0L\n        rebufferTotalMs = 0L\n        rebufferCount = 0" in source,
     "first frame timing retained": "onRenderedFirstFrame renderer=video loadMs=" in source,
+    "original first frame ready watchdog available": "ForcePlayWhenReady" in original_watchdog,
+    "StreamMax watchdog checks READY without automatic play": "p.playbackState == Player.STATE_READY && !p.playWhenReady" in source,
+    "watchdog checks selected video track": "(0 until g.length).any { g.isTrackSelected(it) }" in source,
+    "watchdog never overrides manual pause": "p != null && !quadroVisto && !pausaPedida" in source,
+    "watchdog is removed after first frame and on release": source.count("principal.removeCallbacks(vigiaPrimeiroQuadro)") >= 3,
+    "prepared sessions obey user pause": source.count("p.playWhenReady = !pausaPedida") >= 3,
+    "no false paused events without explicit user pause": "if (!playWhenReady && pausaPedida && !p.isPlaying" in source
+        and "else if (!p.playWhenReady && pausaPedida && p.playbackState" in source,
     "manual source blocks unintended next-video preloading": "streammax_next_video_preload(preloadVideo, manual)" in postplay,
     "manual source permits metadata-only next prefetch": "streammax_next_metadata_prefetch(" in postplay,
     "metadata prefetch requires remembered manual source": "fontepref_tem(ci->imdb)" in postplay,
