@@ -10,6 +10,10 @@ original_controller = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/
 original_watchdog = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerFirstFrameWatchdogPolicy.kt").read_text()
 postplay = (root / "legacy-source/src/posplay.c").read_text()
 
+# Pausar o app pelo Android nunca pode ser confundido com transicao READY:
+# o watchdog nao deve ligar playWhenReady com a Activity em background.
+pausa_sistema = source.split("fun pausarPeloSistema() {", 1)[1].split("\n    }", 1)[0]
+
 checks = {
     "original Nuvio performance buffer min 15 s": "DEFAULT_NUVIO_MIN_BUFFER_MS = 15_000" in original,
     "original Nuvio performance buffer max 45 s": "DEFAULT_NUVIO_MAX_BUFFER_MS = 45_000" in original,
@@ -36,6 +40,11 @@ checks = {
     "original first frame ready watchdog available": "ForcePlayWhenReady" in original_watchdog,
     "StreamMax watchdog checks READY without automatic play": "p.playbackState == Player.STATE_READY && !p.playWhenReady" in source,
     "watchdog checks selected video track": "(0 until g.length).any { g.isTrackSelected(it) }" in source,
+    "system pause disables READY watchdog before pausing": (
+        "pausaPedida = true" in pausa_sistema
+        and "principal.removeCallbacks(vigiaPrimeiroQuadro)" in pausa_sistema
+        and "player?.pause()" in pausa_sistema
+    ),
     "watchdog never overrides manual pause": "p != null && !quadroVisto && !pausaPedida" in source,
     "watchdog is removed after first frame and on release": source.count("principal.removeCallbacks(vigiaPrimeiroQuadro)") >= 3,
     "prepared sessions obey user pause": source.count("p.playWhenReady = !pausaPedida") >= 3,
