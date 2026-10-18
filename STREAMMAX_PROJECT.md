@@ -110,3 +110,12 @@ Criar e manter um aplicativo Android TV independente, chamado **StreamMax**, der
 Cada alteração deve ter escopo definido, build/teste quando possível e anotação do que foi ou não verificado. Não alterar mecanismos de reprodução/autenticação sem necessidade. Se uma etapa depender de teste na TV, marcar como **pendente**, nunca como concluída.
 
 Este documento descreve decisões do fork; não é documentação oficial do projeto upstream.
+
+## Feedback TCL P7K — 18/10/2026 (teste real do usuário)
+
+- **Confirmado na TV:** todas as artes de “Continuar assistindo” apareceram; preservar o fallback de imagem.
+- **Problema reproduzido:** início de filmes/episódios ainda lento e seleção automática da primeira fonte indesejada.
+- **Regra desejada:** perguntar a fonte na primeira reprodução, persistir a escolha do título/perfil e continuar automaticamente nos próximos episódios quando houver fonte equivalente. Se não houver correspondência, permitir nova escolha; não trocar sem avisar uma escolha manual recém-feita.
+- **Visual:** reproduzir o *estilo de interface* do player do Nuvio original, com marca e acentos StreamMax. Não substituir cegamente o motor nativo do Legacy por classes Kotlin: preservar desempenho e compatibilidade com TCL.
+- **Marca:** não mostrar “Nuvio” nos textos da interface. Preservar endpoints, IDs, pacotes e chaves de sincronização necessárias à conta existente.
+- **Alterações preparadas em `streammax/tcl-player-source-branding-1018`:** padrão de escolha manual ativado em instalações novas (preferências gravadas mantidas); substituição do nome no fluxo central de desenho de textos; teste C isolado. **Pendente:** refazer desenho do OSD/player, auditar imagens, caminhos que não passam pelo desenho de texto, compilar APK e confirmar em TCL.
