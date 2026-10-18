@@ -55,7 +55,7 @@
         android:usesCleartextTraffic="true"
         android:hasCode="true"
         android:extractNativeLibs="true"
-        android:theme="@style/Tema.Nuvio">
+        android:theme="@style/Tema.StreamMax">
 
         <!-- configChanges cobre TODA mudanca que a Activity aguenta sem nascer de
              novo. O nucleo C nao sobrevive a uma recriacao: medido no emulador
