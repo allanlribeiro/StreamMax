@@ -16,6 +16,8 @@ def main(root: Path) -> int:
             "static void loginAcento(float *r, float *g, float *b)",
             '"Bem-vindo ao StreamMax"',
             "teclado_desenhar(agora)",
+            "if (layout_modo_mobile() || NV_TELA_W <= NV_TELA_H) return;",
+            "if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {",
         ],
         "src/sessao.h": [
             "SES_EMAIL", "sessao_login_email", "sessao_login_comecar",
