@@ -8,6 +8,7 @@
 #include "livetv_regras.h"
 #include "idioma.h"
 #include "linguas.h"
+#include "streammax_source_ptbr.h"
 #include "badges.h"
 #include "selospacote.h"
 #include "logotitulo.h"
@@ -3615,10 +3616,15 @@ static const char *idiomaDa(const Stream *s) {
 }
 static int temAudioPreferido(const Stream *s) {
   const char *pref = idiomaFiltroAudio();
-  // An explicit "All" (or an unresolved "Original") is not a guessed
-  // language. Otherwise require declared audio metadata, never subtitles,
-  // filenames or generic "dub/dual" labels whose language is unknown.
-  return !pref[0] || audioDeclaradoEm(s, pref);
+  // All / unresolved Original: sem filtrar. Declaracao do addon sempre
+  // prevalece, inclusive uma lista explicitamente ES ou EN.
+  if (!pref[0] || audioDeclaradoEm(s, pref)) return 1;
+  if (s->audioIdiomas[0]) return 0;
+  // Alguns addons identificam a dublagem no nome/rotulo, mas nao enviam
+  // audioTracks/languages. Nao perder essas fontes no filtro PT/pt-BR.
+  // A dica so vale para a familia portuguesa e nunca vem de subtitles.
+  return ling_casa("pt", pref) &&
+         streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao);
 }
 static const char *ajudaFiltroAudio(void) {
   static char ajuda[512];
