@@ -36,9 +36,7 @@ internal object StreamAudioLanguageDetector {
         val explicitAudio = Regex(
             """(?:^|[^A-Z0-9])(?:DUBLADO|DUBLAGEM|ÁUDIO[ ._-]*PT[ ._-]*BR|AUDIO[ ._-]*PT[ ._-]*BR|PT[ ._-]*BR[ ._-]*ÁUDIO|PT[ ._-]*BR[ ._-]*AUDIO|ÁUDIO[ ._-]*PORTUGU[EÊ]S|AUDIO[ ._-]*PORTUGU[EÊ]S|PORTUGU[EÊ]S[ ._-]*ÁUDIO|PORTUGU[EÊ]S[ ._-]*AUDIO|BRAZILIAN[ ._-]*AUDIO)(?:$|[^A-Z0-9])"""
         )
-        // A label explicitly describing subtitles cannot establish audio language.
-        val subtitleOnly = Regex("""(?:^|[^A-Z0-9])(?:LEGENDAS?|SUBS?|SUBTITLES?|SUBBED)[ ._-]*(?:PT[ ._-]*BR|PORTUGU[EÊ]S)(?:$|[^A-Z0-9])""")
-        return explicitAudio.containsMatchIn(text) && !subtitleOnly.containsMatchIn(text)
+        return explicitAudio.containsMatchIn(text)
     }
 
     private fun isPortugueseLanguage(value: String): Boolean {
