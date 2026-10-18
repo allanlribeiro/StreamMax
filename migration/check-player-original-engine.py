@@ -107,6 +107,14 @@ checks = {
         and "catch (retryError: Exception)" in source
         and "ev(EV_ERRO, error.errorCode, C.TRACK_TYPE_VIDEO)" in source
     ),
+    "HLS/DASH updates track selection references even with the same displayed labels": (
+        "if (nova == assinatura) {\n            // HLS/DASH" in source
+        and "audios = a\n            legendas = l\n            return\n        }" in source
+    ),
+    "HLS/DASH refresh avoids native subtitle menu reset": (
+        source.index("if (nova == assinatura) {") < source.index("val tinhaLegenda = legendas.isNotEmpty()")
+        and source.index("val tinhaLegenda = legendas.isNotEmpty()") < source.index("nativeFaixasFim(sel, -1)")
+    ),
     "Android onPause gates a late source open": (
         "atividadeOculta = true" in pausa_sistema
         and "if (!reabrindo && !atividadeOculta) pausaPedida = false" in source
