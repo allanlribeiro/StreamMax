@@ -181,10 +181,11 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 
 **Próxima tarefa de código:** auditar somente diferenças ainda não cobertas pelo código/testes em PR #15 e corrigir regressões demonstráveis. Evitar alterar arquivos fora do player/contratos, exceto documentação técnica de controle de escopo.
 
-### Diferenca confirmada: legendas bitmap/ASS (auditoria sem retrabalho)
+### Estado da lacuna de legendas (sem retrabalho, 18/10/2026)
 
-- O player original em `app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerScreen.kt` usa `PlayerView.subtitleView` e `AssSubtitleView`.
-- O StreamMax Legacy em `NvPlayer.kt::onCues` repassa apenas `cue.text` a `nativeLegenda`; cues somente de bitmap nao sao renderizadas por esse caminho. A composicao e estilo ASS do original tampouco foram integralmente migrados para esse caminho.
-- Isso e uma diferenca funcional real, nao evidencia de falha nas fontes, continuidade ou legendas de texto ja implementadas.
-- Proxima acao: avaliar bitmap/ASS no caminho Android existente, mantendo SurfaceView, foco D-pad, SDL e memoria da TCL. Nao substituir o motor nem o OSD apenas para este ajuste; validar desempenho antes de integrar overlay alternativo.
-- Ate esse ponto ser resolvido ou explicitamente delimitado, nao declarar equivalencia de 100%. CI atual verifica contratos estaticos, nao a experiencia completa.
+- **Implementado na PR #15, aguardando build/teste TCL:** legendas gráficas que Media3 entrega em Cue.bitmap (por exemplo PGS/VobSub compatíveis com o decoder) agora passam a um SubtitleView Canvas exclusivo para bitmaps, criado sob demanda na camada já existente do vídeo. Não há outra Surface de vídeo nem alteração da camada SDL do OSD.
+- **Preservado:** caminho de legendas de texto em nativeLegenda, seleção/desativação de faixas, atraso positivo para cues, foco do controle remoto, buffer/Media3, escolha manual da fonte, perfil e continuidade de episódios.
+- **Proteções novas:** descartar cues antigos ao trocar faixa ou buscar outro ponto, remover canvas ao liberar a sessão, acompanhar o retângulo de vídeo mesmo com letterbox/recorte. A dependência media3-ui tem a mesma versão 1.8.0 do motor.
+- **Ainda pendente:** confirmar que a camada aparece na TCL durante reprodução real e que formatos gráficos específicos são decodificados; avaliar fidelidade completa de estilo/animações ASS em relação ao AssSubtitleView do Nuvio original. Não confundir implementação e aprovação em dispositivo.
+- A checagem estática migration/check-player-original-engine.py cobre o novo caminho e a compilação Android determina se o código Kotlin/Media3 integra sem erros. A exigência de não enviar APK intermediário permanece.
+
