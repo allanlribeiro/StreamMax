@@ -2451,7 +2451,7 @@ static void *fioFontes(void *u) {
         p = js_prox(fim);
       }
       if (declaradas != n)
-        printf("[addons] %s: JSON=%d fontes, parser=%d (diferenca=%d)\\n",
+        printf("[addons] %s: JSON=%d fontes, parser=%d (diferenca=%d)\n",
                origem->nome, declaradas, n, declaradas - n);
     }
     // CANAL AO VIVO TEM DOIS NOMES DE TIPO NO PROTOCOLO, e addons diferentes
