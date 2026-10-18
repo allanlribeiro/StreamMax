@@ -213,7 +213,9 @@ static void loginAcento(float *r, float *g, float *b) {
 // Cartao central somente na TV Android (canvas 1920x1080 da TCL P7K).
 // No celular e nas demais plataformas o layout tradicional permanece.
 static void painelLoginStreamMax(void) {
-#if defined(NV_ANDROID) && !defined(NV_TOUCH_UI)
+#ifdef NV_ANDROID
+  // NV_TOUCH_UI e definido tambem no APK da TV: verificar o modo real.
+  if (layout_modo_mobile() || NV_TELA_W <= NV_TELA_H) return;
   GfxRect painel = { (NV_TELA_W - 1050.0f) * 0.5f, 82.0f, 1050.0f, 768.0f };
   // Fundo azul-marinho sem blur, translucido o suficiente para o splash.
   gfx_cor(painel, 0.033f, 0.025f, 0.041f, 0.076f, 0.94f);
@@ -363,21 +365,24 @@ void login_desenhar(Uint32 agora) {
   { GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
     if (!login_fundo_desenhar(1.0f))
       gfx_cor(tela, 0.0f, NV_COR_FUNDO_R, NV_COR_FUNDO_G, NV_COR_FUNDO_B, 1.0f);
-#if defined(NV_ANDROID) && !defined(NV_TOUCH_UI)
-    // As listras do splash viram textura sutil, nao dominam o formulario.
-    gfx_cor(tela, 0.0f, 0.012f, 0.022f, 0.045f, 0.80f);
-    painelLoginStreamMax();
+#ifdef NV_ANDROID
+    if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {
+      // As listras do splash viram textura sutil, nao dominam o formulario.
+      gfx_cor(tela, 0.0f, 0.012f, 0.022f, 0.045f, 0.80f);
+      painelLoginStreamMax();
+    }
 #endif
   }
   ponteiro_camada();
   ponteiro_alvo(0, 0, NV_TELA_W, NV_TELA_H, NULL, NULL, 0, 0);
-#if defined(NV_ANDROID) && !defined(NV_TOUCH_UI)
-  // Marca tipografica propria, sem reintroduzir o simbolo do Nuvio Legacy.
-  { TxtLinha marca = txt_linha(TXT_G30B, "STREAMMAX", 218, 234, 255, 255);
-    txt_desenhar_alpha(marca, NV_MARGEM_X, NV_MARGEM_Y + 20.0f, 1.0f); }
-#else
-  logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);
+#ifdef NV_ANDROID
+  if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {
+    // Marca tipografica propria, sem reintroduzir o simbolo do Nuvio Legacy.
+    TxtLinha marca = txt_linha(TXT_G30B, "STREAMMAX", 218, 234, 255, 255);
+    txt_desenhar_alpha(marca, NV_MARGEM_X, NV_MARGEM_Y + 20.0f, 1.0f);
+  } else
 #endif
+    logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);
   y = 118.0f;
   y += tituloLogin(y);
 
