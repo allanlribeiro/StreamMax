@@ -1,7 +1,7 @@
 name: StreamMax APK experimental
 
 # Rodar automaticamente quando a configuracao de build muda.
-# 18/10: login TCL azul cinematografico, logos preservadas, fallback CW e fonte rapida.
+# 18/10: login TCL, logos, fallback CW, fonte rapida e retomada na troca de fonte.
 on:
   push:
     branches: [dev]
@@ -21,6 +21,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: streammax/legacy-migration
+      - name: Confirmar origem com correcao de retomada entre fontes
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Este build precisa incluir o merge do PR #11 (18/10/2026).
+          git merge-base --is-ancestor f3d60bed2c9be5c587a74e51b9741c9a62ae8024 HEAD || {
+            echo "::error::A branch nao inclui o ajuste de retomada na troca de fontes."
+            exit 1
+          }
+          echo "Build StreamMax da revisao $(git rev-parse --short HEAD)"
+          python3 migration/check-playback-contracts.py legacy-source
       - name: Configurar Nuvio Cloud oficial para login por e-mail
         shell: bash
         env:
