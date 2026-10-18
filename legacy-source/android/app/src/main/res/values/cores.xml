@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Fundo neutro da abertura = splash.png da LG = AB_FUNDO de src/abertura.c (#0E0F12). -->
-    <color name="nuvio_abertura">#0E0F12</color>
+    <color name="nuvio_abertura">#080D18</color>
+    <color name="streammax_fundo">#080D18</color>
+    <color name="streammax_azul">#168FFF</color>
+    <color name="streammax_ciano">#19CCEE</color>
+    <color name="streammax_violeta">#7756CD</color>
 </resources>
