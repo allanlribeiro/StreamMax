@@ -210,12 +210,25 @@ internal fun StreamItem(
 
                 val sourceTechnicalDetails = remember(stream) { StreamSourceTechnicalSummary.describe(stream) }
                 if (sourceTechnicalDetails.isNotBlank()) {
-                    Text(
-                        text = sourceTechnicalDetails,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NuvioTheme.extendedColors.textSecondary,
-                        maxLines = 2
-                    )
+                    val sourceParts = sourceTechnicalDetails.split(" · Arquivo: ", limit = 2)
+                    if (sourceParts.first().isNotBlank()) {
+                        Text(
+                            text = sourceParts.first(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.extendedColors.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (sourceParts.size == 2) {
+                        Text(
+                            text = "Arquivo: " + sourceParts[1],
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.extendedColors.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 if (hasBadges && badgePlacement == StreamBadgePlacement.BOTTOM) {
