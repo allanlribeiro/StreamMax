@@ -1,5 +1,19 @@
 # StreamMax — guia de continuidade do projeto
 
+## Situação em 18/10/2026 — StreamMax Legacy (atual)
+
+- **Código em desenvolvimento:** branch `streammax/legacy-migration`, baseada no Nuvio Native Legacy (C/SDL/GLES para Android). A branch `dev` segue como referência e hospeda o workflow do APK experimental.
+- **APK disponível:** GitHub Actions [execução 39089781586](https://github.com/allanlribeiro/StreamMax/actions/runs/39089781586), concluída com sucesso em 18/10, artefato `StreamMax-APK-EXPERIMENTAL` (~53 MB), com validade prevista até 25/10. Trata-se de build experimental, **não** de validação de funcionamento em dispositivo.
+- **Conta existente:** interface do Legacy agora usa somente e-mail e senha; a configuração temporária de build aponta para o backend público `https://api.nuvio.tv` e sua chave pública publishable já divulgada pelo projeto original. O usuário não precisa criar um projeto Supabase próprio para esse teste. **Ainda não foi confirmado** login real na conta, renovação do token, perfis e sincronização dos addons/configurações.
+- **Rede:** o log da execução 39089781586 confirma ausência de `libcurl.so` nas duas arquiteturas; o código dispõe de fallback para requisições simples via `HttpURLConnection` no Android, mas imagens, reprodução e fluxos avançados precisam de teste real. Não afirmar que playback está corrigido apenas porque o job compilou.
+- **Proteção nova de CI:** commit [49e1e19](https://github.com/allanlribeiro/StreamMax/commit/49e1e195017967d32546a19a19f008289929f8e6) faz a verificação pós-build da URL e chave pública incorporadas às duas `libmain.so`, e do package name `com.streammax.tv.strictdebug`, antes de publicar o artefato. A aprovação dessa nova execução ainda deve ser confirmada.
+- **Próxima validação na TCL P7K:** instalar ao lado do Nuvio original e Legacy, abrir o StreamMax, autenticar com o mesmo e-mail/senha da conta Nuvio, conferir carregamento dos perfis e catálogos, capas, abertura de filme e episódio, áudio/legendas e controle remoto. Priorizar eventuais falhas de autenticação/reprodução antes de trailer automático e refinamentos visuais.
+- **Preferências que permanecem:** identidade azul cinematográfica, Português (Brasil), Continuar Assistindo prioritário, imagens estáticas sem GIF, fluidez na TCL P7K e uso da TX6 como dispositivo secundário de teste.
+
+**Atenção:** o registro histórico abaixo menciona QR Code porque documenta requisitos anteriores. A decisão atual para o APK experimental é **login exclusivo por e-mail e senha**, preservando como meta acessar a mesma conta e dados do Nuvio.
+
+---
+
 ## Diretriz de migração para Nuvio Native Legacy (17/10/2026)
 
 **Prioridade máxima:** desenvolver o StreamMax em cima da implementação Android de [iqui27/nuvio-native-legacy](https://github.com/iqui27/nuvio-native-legacy/tree/master/android), e não continuar usando o Nuvio original como base do novo APK. O código atual na branch `dev` fica preservado como referência/backup até haver um build funcional da nova base.
