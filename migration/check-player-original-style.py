@@ -35,6 +35,12 @@ checks = {
     "motor de video preservado": "void player_abrir(" in player and "player_duracao_midia(&durTroca)" in (root / "src/app.c").read_text(encoding="utf-8"),
 }
 section = player[player.index("static void desenharOsdCorpo(Uint32 agora", player.index("void player_desenhar")):]
+app = (root / "src/app.c").read_text(encoding="utf-8")
+defaults = (root / "src/ajustes_ux_padrao.inc").read_text(encoding="utf-8")
+checks["primeira fonte manual por padrao"] = "escolher a fonte ao reproduzir: DESLIGADO" not in defaults and "StreamMax: perguntar a primeira fonte" in defaults
+checks["retomada exige preferencia manual"] = "if (!base[0] || !fontepref_tem(base)) return 0;" in app
+checks["link retomado casa com a escolha"] = "if (manual && fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)" in app
+checks["reserva de fonte com perfil"] = "fontevolta_pegar(alvo, sessao_usuario(), perfis_ativo()" in app
 checks["sem pilula dinamica na fileira"] = "wCheio" not in section and "plrui_pilula_foco(r" not in section
 controls = player.split("static int transporteAcoes(PlrAcao a[PLR_NBTNS]) {", 1)[-1].split("return n;", 1)[0]
 order = ["PLR_PLAY", "PLR_PROXIMO", "PLR_CC", "PLR_AUDIO", "PLR_FONTES", "PLR_EPISODIOS", "PLR_ASPECTO", "PLR_REINICIAR"]
