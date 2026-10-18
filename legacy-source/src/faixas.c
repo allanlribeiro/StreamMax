@@ -2100,20 +2100,21 @@ static void faixas_desenharCorpo_(Uint32 agora) {
   (void)agora;
   pilPedir();   // a pilula da legenda automatica (so com a folha fechada)
   if (anim < .01f) return;
-  { int dir = plrilha_direita(), est = faixas_estilo_topo();
+  { int est = faixas_estilo_topo();
     // Legendas (incluindo Estilo) usam painel PROPRIO no canto inferior
     // esquerdo, como o overlay do Nuvio original. Audio ainda conserva sua
     // ilha atual. O motor Media3, as faixas e as teclas nao mudam aqui.
-    if (modo) gfx_veu_css((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, 2, 1.38f, 1.0f, 0.42f * anim);
-    else gfx_veu_css((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, dir ? 3 : 2, 1.38f, 1.0f, 0.42f * anim);
+    // Audio e legendas compartilham o mesmo comportamento de sobreposicao:
+    // painel independente da hora, com gradiente discreto do lado esquerdo.
+    gfx_veu_css((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, 2, 1.38f, 1.0f, 0.42f * anim);
     if (!aberta) return;   // fechando: o painel anterior sai pela mesma animacao
     { PlrIlhaPedido p;
       memset(&p, 0, sizeof p);
-      p.w = est ? NV_TELA_W - 192.0f : modo ? NV_TELA_W - 270.0f : IL_W;
+      p.w = est ? NV_TELA_W - 192.0f : modo ? NV_TELA_W - 270.0f : 1030.0f;
       p.h = est ? alturaEstilo() : modo ? legendasui_altura() : alturaLista(0);
       p.corpo = corpoIlha;
-      p.centro = modo;
-      p.painelEsquerdo = modo;
+      p.centro = 1;
+      p.painelEsquerdo = 1;
       plrilha_pedir(&p); } }
 }
 
