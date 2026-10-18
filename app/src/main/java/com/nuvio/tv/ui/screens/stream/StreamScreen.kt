@@ -1465,12 +1465,25 @@ private fun StreamCard(
 
                 val technicalSummary = remember(stream) { StreamSourceTechnicalSummary.describe(stream) }
                 if (technicalSummary.isNotBlank()) {
-                    Text(
-                        text = technicalSummary,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NuvioTheme.extendedColors.textSecondary,
-                        maxLines = 2
-                    )
+                    val sourceParts = technicalSummary.split(" · Arquivo: ", limit = 2)
+                    if (sourceParts.first().isNotBlank()) {
+                        Text(
+                            text = sourceParts.first(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.extendedColors.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (sourceParts.size == 2) {
+                        Text(
+                            text = "Arquivo: " + sourceParts[1],
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.extendedColors.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 if (hasBadges && badgePlacement == StreamBadgePlacement.BOTTOM) {
