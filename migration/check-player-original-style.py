@@ -10,6 +10,7 @@ header = (root / "src/plrui.h").read_text(encoding="utf-8")
 faixas = (root / "src/faixas.c").read_text(encoding="utf-8")
 ilha = (root / "src/plrilha.c").read_text(encoding="utf-8")
 ilha_header = (root / "src/plrilha.h").read_text(encoding="utf-8")
+legendas = (root / "src/legendasui.c").read_text(encoding="utf-8")
 original = Path("app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerScreen.kt")
 if not original.exists():
     raise SystemExit("Referencia original nao encontrada no repositorio")
@@ -73,6 +74,31 @@ checks["sobreposicao de legenda preserva recorte e hitbox"] = (
     "cenUlt.painelEsquerdo && painelLegRect.w > 0.0f" in ilha
     and "if (r) *r = painelLegRect;" in ilha
     and "painelLegRect = c->painelEsquerdo ? R" in ilha
+)
+
+checks["painel de legendas com colunas independentes"] = (
+    "p.w = est ? NV_TELA_W - 192.0f : modo ? 1180.0f : IL_W;" in faixas
+    and "desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);" in legendas
+    and "w -= LU_IDIOMAS_LARG + LU_IDIOMAS_ESP;" in legendas
+)
+checks["coluna de idiomas reage ao controle remoto"] = (
+    "if (emIdiomas && !menu)" in legendas
+    and "k == SDLK_DOWN && focoIdioma < nIdiomas" in legendas
+    and "k == SDLK_RIGHT || k == SDLK_AC_BACK" in legendas
+    and "emIdiomas = 1; focarIdiomaAtual();" in legendas
+)
+checks["idioma filtra opcoes sem selecionar faixa ou audio"] = (
+    "static void selecionarIdioma(void)" in legendas
+    and 'snprintf(verIdioma, sizeof verIdioma, "%s", idiomas[focoIdioma - 1]);' in legendas
+    and "montarLinhas();" in legendas.split("static void selecionarIdioma(void)", 1)[1].split("void legendasui_abrir(void)", 1)[0]
+    and "escolher(" not in legendas.split("static void selecionarIdioma(void)", 1)[1].split("void legendasui_abrir(void)", 1)[0]
+)
+checks["altura do painel acompanha ambas as colunas"] = (
+    "alturaOpcoes > alturaIdiomas ? alturaOpcoes : alturaIdiomas" in legendas
+    and "if (y < rodapeMin) y = rodapeMin;" in legendas
+)
+checks["painel de audio continua com tamanho anterior"] = (
+    "modo ? 1180.0f : IL_W;" in faixas
 )
 
 failed = [name for name, ok in checks.items() if not ok]
