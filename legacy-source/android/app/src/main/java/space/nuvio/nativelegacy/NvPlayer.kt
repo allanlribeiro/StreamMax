@@ -1042,6 +1042,11 @@ object NvPlayer {
         val aindaAtual = pedidoAtivo == pedidos.get()
         val pedido = pedidos.incrementAndGet()
         if (aindaAtual) pedidoAtivo = pedido
+        // A Activity perdeu o foco: impedir que o watchdog de primeiro quadro
+        // religue a reproducao em segundo plano. O proximo Play explicito
+        // continua liberando pausaPedida via pausar(0).
+        pausaPedida = true
+        principal.removeCallbacks(vigiaPrimeiroQuadro)
         try { player?.pause() } catch (e: Exception) { Log.w(TAG, "pausarPeloSistema: $e") }
     }
 
