@@ -85,6 +85,24 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Compilar bibliotecas nativas de rede e imagens
+        working-directory: legacy-source
+        shell: bash
+        env:
+          NUVIO_ANDROID_JOBS: '2'
+        run: |
+          set -euo pipefail
+          # Sem libcurl o APK nao tem o caminho de rede completo. O modo sem curl
+          # foi util para validar a primeira compilacao, mas nao para testar playback.
+          bash tools/android/deps.sh arm64-v8a armeabi-v7a
+          for abi in arm64-v8a armeabi-v7a; do
+            for lib in curl jpeg webp; do
+              test -s "$HOME/.cache/nuvio-android/prefix/$abi/lib/lib$lib.so" || {
+                echo "::error::Falta lib$lib.so em $abi"
+                exit 1
+              }
+            done
+          done
       - name: Validar contratos da migração
         run: |
           set -euo pipefail
@@ -94,7 +112,6 @@ jobs:
       - name: Compilar versão experimental sem assinatura de distribuição
         working-directory: legacy-source
         env:
-          NUVIO_SEM_CURL: '1'
           NUVIO_P2P_MOTOR: 'none'
           NUVIO_RUST_MKVCORE: '0'
           NUVIO_BUILD_JOBS: '2'
@@ -127,6 +144,10 @@ jobs:
                   if entry not in apk.namelist():
                       raise SystemExit(f"ERRO: biblioteca principal ausente em {abi}")
                   data = apk.read(entry)
+                  for lib in ("curl", "jpeg", "webp"):
+                      bundled = f"lib/{abi}/lib{lib}.so"
+                      if bundled not in apk.namelist():
+                          raise SystemExit(f"ERRO: {bundled} ausente no APK")
                   for name, value in zip(("URL", "chave publica"), values):
                       if value.encode("utf-8") not in data:
                           raise SystemExit(f"ERRO: {name} do servidor nao incorporada em {abi}")
