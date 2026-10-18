@@ -34,9 +34,18 @@ active = [a for a in aliases if a.get(ns+"enabled") == "true"]
 assert len(active) == 1, "Launcher deve ter exatamente um alias habilitado"
 assert active[0].get(ns+"icon") == "@drawable/streammax_icon"
 assert active[0].get(ns+"banner") == "@drawable/streammax_banner"
-for resource in ("streammax_icon.xml", "streammax_banner.xml"):
-    file = root / "android/app/src/main/res/drawable" / resource
-    ET.parse(file)
+# Os vetores provisórios foram removidos quando os PNGs oficiais chegaram.
+# Conferir assinatura, dimensões e ausência de recursos duplicados no Android.
+import struct
+pngs = {"streammax_icon.png": (512, 512), "streammax_banner.png": (640, 360)}
+for resource, dimensions in pngs.items():
+    file = root / "android/app/src/main/res/drawable-nodpi" / resource
+    header = file.read_bytes()[:24]
+    assert header[:8] == b"\x89PNG\\r\\n\x1a\\n", f"PNG invalido: {file}"
+    assert struct.unpack(">II", header[16:24]) == dimensions, f"Dimensoes invalidas: {file}"
+    assert not (root / "android/app/src/main/res/drawable" / resource.replace(".png", ".xml")).exists(), "Drawable duplicado"
+splash = root / "deploy/app/art/marcas/streammax_splash.png"
+assert splash.read_bytes()[:8] == b"\x89PNG\\r\\n\x1a\\n", "Splash oficial ausente"
 colors = root / "android/app/src/main/res/values/cores.xml"
 color_names = {c.get("name") for c in ET.parse(colors).getroot()}
 assert {"streammax_fundo", "streammax_azul", "streammax_ciano", "streammax_violeta"} <= color_names
