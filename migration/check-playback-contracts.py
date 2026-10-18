@@ -15,6 +15,7 @@ checks = {
         "t == epTrocaT && e == epTrocaE",
         "player_definir_retomada_fonte(posTroca)",
         "streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)",
+        "lembrada = base[0] ? fontepref_escolher_manual(base) : -1;",
         "ultRevisao != fontepref_revisao()",
         "ultManual != manual",
         "ultLembrada = manual ? fontepref_escolher_manual(base) : fontepref_escolher(base);",
@@ -60,7 +61,8 @@ checks = {
     ],
     "src/streammax_first_source.h": [
         "static inline int streammax_should_ask_first_source(",
-        "return manualEnabled && availableStreams > 0 && rememberedIndex < 0;",
+        "(void)manualEnabled;",
+        "return availableStreams > 0 && rememberedIndex < 0;",
     ],
     "src/fontepref.h": [
         "int fontepref_escolher_manual(const char *id);",
