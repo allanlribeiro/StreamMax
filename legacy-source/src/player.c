@@ -6278,14 +6278,9 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
   // ("T1E3 · The Head", o codigo em negrito e o nome apagado) ou, num filme,
   // a meta do catalogo com pontos entre os campos.
   { float yBase = yBarra - 36.0f;
-    // Na TV Android, a hierarquia do StreamMax usa o titulo em texto como no
-    // Nuvio original: mais legivel, sem buscar textura de logo em cada filme.
-    // Caso nao haja titulo, o logo continua como reserva. Outras plataformas
-    // mantem a arte nativa do Legacy.
+    // A marca do titulo continua sendo a identidade principal no player.
+    // Quando a arte nao existir, o nome do titulo e usado automaticamente.
     const char *marca = (!canalSessao && c) ? artehero_logo_sessao(c) : NULL;
-#ifdef NV_ANDROID
-    if (c && c->titulo[0]) marca = NULL;
-#endif
     GLuint logo = marca ? tex_obter_larg_qualquer(marca, 480) : 0;
     if (!canalSessao && linhaEp[0]) {
       const char *sep = strstr(linhaEp, " \xc2\xb7 ");
