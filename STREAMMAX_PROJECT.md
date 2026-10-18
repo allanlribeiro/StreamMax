@@ -180,3 +180,11 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - Pedido expresso do proprietário: **não enviar APK experimental para novos testes**. Oferecer apenas versão candidata final depois de revisão funcional e verificações automáticas; a homologação de 100% na TCL ainda necessitará avaliação real do proprietário.
 
 **Próxima tarefa de código:** auditar somente diferenças ainda não cobertas pelo código/testes em PR #15 e corrigir regressões demonstráveis. Evitar alterar arquivos fora do player/contratos, exceto documentação técnica de controle de escopo.
+
+### Diferenca confirmada: legendas bitmap/ASS (auditoria sem retrabalho)
+
+- O player original em `app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerScreen.kt` usa `PlayerView.subtitleView` e `AssSubtitleView`.
+- O StreamMax Legacy em `NvPlayer.kt::onCues` repassa apenas `cue.text` a `nativeLegenda`; cues somente de bitmap nao sao renderizadas por esse caminho. A composicao e estilo ASS do original tampouco foram integralmente migrados para esse caminho.
+- Isso e uma diferenca funcional real, nao evidencia de falha nas fontes, continuidade ou legendas de texto ja implementadas.
+- Proxima acao: avaliar bitmap/ASS no caminho Android existente, mantendo SurfaceView, foco D-pad, SDL e memoria da TCL. Nao substituir o motor nem o OSD apenas para este ajuste; validar desempenho antes de integrar overlay alternativo.
+- Ate esse ponto ser resolvido ou explicitamente delimitado, nao declarar equivalencia de 100%. CI atual verifica contratos estaticos, nao a experiencia completa.
