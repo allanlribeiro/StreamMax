@@ -83,7 +83,7 @@ jobs:
           path: legacy-source/build/android/*-android-debug.apk
           if-no-files-found: error
           retention-days: 7
-\\n'* ||
+\n'* ||
                 "$key" == *        uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -138,7 +138,7 @@ jobs:
           path: legacy-source/build/android/*-android-debug.apk
           if-no-files-found: error
           retention-days: 7
-\\n'* || "$key" == *        uses: actions/setup-java@v4
+\n'* || "$key" == *        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
@@ -192,7 +192,7 @@ jobs:
           path: legacy-source/build/android/*-android-debug.apk
           if-no-files-found: error
           retention-days: 7
-\\r'* || "$url" == *        uses: actions/setup-java@v4
+\r'* || "$url" == *        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
@@ -246,14 +246,14 @@ jobs:
           path: legacy-source/build/android/*-android-debug.apk
           if-no-files-found: error
           retention-days: 7
-\\r'* ]]; then
+\r'* ]]; then
             echo "::error::Dados de servidor invalidos: informe uma URL HTTPS e uma chave publica valida."
             exit 1
           fi
           umask 077
           {
-            printf 'NUVIO_SUPABASE_URL=%s\\n' "$url"
-            printf 'NUVIO_SUPABASE_ANON_KEY=%s\\n' "$key"
+            printf 'NUVIO_SUPABASE_URL=%s\n' "$url"
+            printf 'NUVIO_SUPABASE_ANON_KEY=%s\n' "$key"
           } > legacy-source/local.properties
           echo "Configuracao publica do backend recebida, sem expor valores nos logs."
       - name: Java 17
