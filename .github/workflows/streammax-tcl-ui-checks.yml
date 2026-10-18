@@ -7,6 +7,8 @@ on:
       - streammax/tcl-player-source-branding-1018
     paths:
       - 'legacy-source/src/app.c'
+      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
+      - 'migration/check-player-original-engine.py'
       - 'legacy-source/src/ajustes.c'
       - 'legacy-source/src/streammax_first_source.h'
       - 'legacy-source/tests/test_streammax_first_source.c'
@@ -42,6 +44,8 @@ jobs:
         run: python3 migration/check-player-original-style.py legacy-source
       - name: Testar escolha inicial e memoria de fontes (sem rede)
         run: bash legacy-source/tests/streammax-first-source.sh
+      - name: Conferir base de reprodução Media3 original (sem APK)
+        run: python3 migration/check-player-original-engine.py
       - name: Validar contratos de reproducao do Legacy
         run: python3 migration/check-playback-contracts.py legacy-source
       - name: Preparar compilacao nativa Linux sem gerar APK
