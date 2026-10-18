@@ -24,7 +24,9 @@ static inline int streammax_pt_dica_explicitamente_brasileira(const char *s) {
   return streammax_pt_token(s, "pt-br") || streammax_pt_token(s, "pt_br") ||
          streammax_pt_token(s, "ptbr") || streammax_pt_token(s, "pob") ||
          streammax_pt_token(s, "brazilian portuguese") ||
+         streammax_pt_token(s, "brazilian.portuguese") ||
          streammax_pt_token(s, "portuguese brazilian") ||
+         streammax_pt_token(s, "portuguese.brazilian") ||
          streammax_pt_token(s, "portuguese (brazil)") ||
          streammax_pt_token(s, "portuguese (brasil)") ||
          streammax_pt_token(s, "português brasileiro") ||
