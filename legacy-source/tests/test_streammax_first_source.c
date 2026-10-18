@@ -19,5 +19,14 @@ int main(void) {
   // User-selected fully automatic mode continues to follow legacy rules.
   assert(!streammax_should_ask_first_source(0, 4, -1));
   assert(!streammax_should_ask_first_source(0, 4, 0));
+
+  // StreamMax: episode card prompts only before the FIRST manual choice.
+  // On subsequent episodes, the playback router checks the source against
+  // the actual episode list; a missing match reopens the chooser there.
+  assert(streammax_should_ask_episode_source(1, 0));
+  assert(!streammax_should_ask_episode_source(1, 1));
+  // User may explicitly enable fully automatic mode at any time.
+  assert(!streammax_should_ask_episode_source(0, 0));
+  assert(!streammax_should_ask_episode_source(0, 1));
   return 0;
 }
