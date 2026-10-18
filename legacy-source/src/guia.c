@@ -137,7 +137,7 @@ static GfxRect streammaxTvPreview(void) {
   float painelX = G_AREA_X + G_AREA_W * 0.23f + G_AREA_W * 0.32f + 40.0f;
   float painelW = G_AREA_DIR - painelX;
   float w = painelW - 48.0f;
-  return (GfxRect){ painelX + 24.0f, 244.0f, w, w * 9.0f / 16.0f };
+  return (GfxRect){ painelX + 24.0f, 300.0f, w, w * 9.0f / 16.0f };
 }
 static int gRetrato(void) {
 #ifdef NV_TOUCH_UI
