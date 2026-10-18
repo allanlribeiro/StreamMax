@@ -9,6 +9,11 @@ checks = {
         'fontevolta_esquecer("fonte fora dos filtros atuais")',
         "if (!preparoEspera && tocarFonteGuardada())",
         "stream_folha_abrir();",
+        "double posTroca = -1.0, durTroca = 0.0;",
+        "player_duracao_midia(&durTroca)",
+        "pos < durTroca - 5.0",
+        "t == epTrocaT && e == epTrocaE",
+        "player_definir_retomada_fonte(posTroca)",
     ],
     "src/player.c": [
         "void player_abrir(",

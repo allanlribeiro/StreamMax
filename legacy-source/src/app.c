@@ -5724,8 +5724,26 @@ void app_atualizar(float dt, Uint32 agora) {
       aguardandoFonte=0;
       limparFonteVOD();
       int titulo=player_aberto()?player_indice():detail_indice(), t=0,e=0;
-      if (player_aberto()) { player_episodio_atual(&t,&e); player_encerrar(); }
-      else detail_ep_foco(&t,&e);
+#ifdef NV_ANDROID
+      // Trocar a fonte do MESMO episodio nao deve voltar ao inicio quando o
+      // progresso ainda nao chegou ao catalogo/conta. Capturar ANTES do close:
+      // video_parar apaga a posicao; um clipe de erro nao e ponto de retomada.
+      double posTroca = -1.0, durTroca = 0.0;
+      int epTrocaT = -1, epTrocaE = -1;
+#endif
+      if (player_aberto()) {
+        player_episodio_atual(&t,&e);
+#ifdef NV_ANDROID
+        epTrocaT = t; epTrocaE = e;
+        if (!player_id_canal()[0] && !video_falhou() && !video_terminou() &&
+            player_duracao_midia(&durTroca)) {
+          double pos = player_posicao_seg();
+          if (isfinite(pos) && pos >= 1.0 && pos < durTroca - 5.0)
+            posTroca = pos;
+        }
+#endif
+        player_encerrar();
+      } else detail_ep_foco(&t,&e);
       // O EPISODIO TRAVADO NO PEDIDO DA FOLHA ganha do foco (#513): com a
       // folha aberta o foco da pagina ja nao diz qual card pediu fontes —
       // sem isto a escolha tocava o episodio em andamento. folhaTocar, nao
@@ -5735,6 +5753,12 @@ void app_atualizar(float dt, Uint32 agora) {
       diagnostico_cancelar_vazao();
       player_abrir(titulo,NULL);
       player_definir_episodio(t,e);
+#ifdef NV_ANDROID
+      // Nao carregar a posicao do episodio velho caso a folha tenha sido
+      // aberta para outro episodio; nao interfere no "Assistir do comeco".
+      if (posTroca >= 0.0 && t == epTrocaT && e == epTrocaE)
+        player_definir_retomada_fonte(posTroca);
+#endif
       stream_definir_atual(fonte);
       // Qualquer escolha nova invalida a resposta de um torrent anterior; o
       // motor P2P corta o pedido velho ja (sem isso a escolha nova esperaria
