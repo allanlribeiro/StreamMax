@@ -2136,16 +2136,23 @@ object NvPlayer {
             val p = player
             val timeout = generateSequence(error.cause) { it.cause }
                 .filterIsInstance<androidx.media3.exoplayer.ExoTimeoutException>().firstOrNull()
-            if (p != null && RecriaHdr.timeoutRecuperavel(error.errorCode,
+            if (p != null && !recuperouSuperficie && RecriaHdr.timeoutRecuperavel(error.errorCode,
                     recriando, timeout?.timeoutOperation ?: -1)) {
-                // Our detach timeout must never become a source-open error.
-                if (!recuperouSuperficie) {
-                    recuperouSuperficie = true
-                    principal.post {
-                        if (!atual(minha) || player !== p) return@post
-                        superficie?.let { p.setVideoSurfaceView(it) }
+                // A detach timeout during TCL surface recreation gets ONE
+                // recovery attempt. A second timeout is a real playback error:
+                // never swallow it and leave the player buffering forever.
+                recuperouSuperficie = true
+                principal.post {
+                    if (!atual(minha) || player !== p) return@post
+                    try {
+                        val sv = superficie ?: throw IllegalStateException("video surface unavailable")
+                        p.setVideoSurfaceView(sv)
                         p.seekTo(superficiePos)
                         p.prepare()
+                    } catch (retryError: Exception) {
+                        // Do not crash the main looper or leak stream URLs.
+                        Log.w(TAG, "[player] surface recovery failed (" + retryError.javaClass.simpleName + ")")
+                        ev(EV_ERRO, error.errorCode, C.TRACK_TYPE_VIDEO)
                     }
                 }
                 return
