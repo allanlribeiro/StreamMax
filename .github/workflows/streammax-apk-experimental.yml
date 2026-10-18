@@ -1,10 +1,11 @@
 name: StreamMax APK experimental
 
-# O APK de teste da PR 15 deve conter o proprio player da PR, nunca
-# uma revisao antiga da base. Mantem login e bibliotecas nativas completas.
+# APK da base Legacy, contendo o player Media3 e as atualizacoes TCL.
+# Nao confundir com o APK Kotlin/fullDebug da branch feature/reproducao-idiomas-nuvio.
+# Mantem login por e-mail e bibliotecas nativas completas.
 on:
   push:
-    branches: [streammax/live-tv-three-columns-tcl-1018]
+    branches: [streammax/live-tv-three-columns-tcl-1018, streammax/tcl-feedback-four-fixes-1018]
     paths:
       - '.github/workflows/streammax-apk-experimental.yml'
       - 'legacy-source/src/guia.c'
@@ -33,6 +34,20 @@ jobs:
         uses: actions/checkout@v4
         # Em pull_request, checkout usa o merge-ref da PR com as mudancas
         # reais do player. No despacho manual, usa a branch escolhida.
+      - name: Confirmar origem Legacy e marca StreamMax antes de compilar
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f legacy-source/src/login.c
+          test -f legacy-source/android/app/src/main/AndroidManifest.xml
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+          if [[ "$GITHUB_REF_NAME" == "streammax/tcl-feedback-four-fixes-1018" ]]; then
+            grep -Fq 'semLinkReproduzivel++' legacy-source/src/stream_parse.c
+            grep -Fq 'desenharEstiloResumo' legacy-source/src/legendasui.c
+            grep -Fq 'gfx_furo_raio(pv, raio);' legacy-source/src/guia.c
+          fi
+          echo "Origem verificada: codigo Legacy, commit $(git rev-parse --short HEAD)"
       - name: Conferir o player Media3 e escolha manual desta revisao
         shell: bash
         run: |
@@ -188,12 +203,24 @@ jobs:
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$aapt"
           "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv.strictdebug'"
-          echo "OK: identificador Android isolado do Nuvio e Legacy."
+          "$aapt" dump badging "${apk[0]}" | grep -Fq "application-label:'StreamMax'"
+          echo "OK: app StreamMax verificado por package name e rotulo visivel."
+          {
+            printf 'Projeto: StreamMax Legacy - TCL\n'
+            printf 'Branch: %s\n' "$GITHUB_REF_NAME"
+            printf 'Commit: %s\n' "$GITHUB_SHA"
+            printf 'GitHub Actions run: %s\n' "$GITHUB_RUN_ID"
+            printf 'Android package: com.streammax.tv.strictdebug\n'
+            printf 'Base: legacy-source (Android C/SDL e Media3)\n'
+            printf 'Nao e a APK Kotlin/fullDebug. Requer teste real de login e player na TCL.\n'
+          } > legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
       - name: Disponibilizar APK de teste do player original
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-APK-EXPERIMENTAL
-          path: legacy-source/build/android/*-android-debug.apk
+          name: StreamMax-Legacy-TCL-PR18-${{ github.run_number }}
+          path: |
+            legacy-source/build/android/*-android-debug.apk
+            legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
           if-no-files-found: error
           retention-days: 7
