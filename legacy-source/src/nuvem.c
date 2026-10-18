@@ -101,10 +101,17 @@ char *nuvem_post(const char *caminho, const char *corpoJson,
   snprintf(completo, sizeof completo, "%s%s%s", url,
            caminho[0] == '/' ? "" : "/", caminho);
   snprintf(cabApi, sizeof cabApi, "apikey: %s", anon);
-  snprintf(cabAut, sizeof cabAut, "Authorization: Bearer %s",
-           (bearer && *bearer) ? bearer : anon);
+  // A chave sb_publishable_ identifica o cliente via apikey, nao e JWT.
+  // Enviar como Bearer provoca Invalid JWT em backends Supabase atuais.
+  // Depois do login, bearer e o token JWT da pessoa (RLS respeitado).
+  const char *token = (bearer && *bearer) ? bearer : anon;
+  if (strncmp(token, "sb_publishable_", 15) == 0 ||
+      strncmp(token, "sb_secret_", 10) == 0)
+    token = NULL;
+  if (token)
+    snprintf(cabAut, sizeof cabAut, "Authorization: Bearer %s", token);
   cab[0] = cabApi;
-  cab[1] = cabAut;
+  cab[1] = token ? cabAut : NULL;
   cab[2] = NULL;
   // Content-Type: application/json ja e posto por rede_postar.
   return rede_postar_st(completo, 25, cab, corpoJson ? corpoJson : "{}", status);
@@ -150,10 +157,17 @@ char *nuvem_tabela(const char *tabela, const char *consulta,
   snprintf(completo, sizeof completo, "%s/rest/v1/%s%s%s", url, tabela,
            (consulta && *consulta) ? "?" : "", (consulta && *consulta) ? consulta : "");
   snprintf(cabApi, sizeof cabApi, "apikey: %s", anon);
-  snprintf(cabAut, sizeof cabAut, "Authorization: Bearer %s",
-           (bearer && *bearer) ? bearer : anon);
+  // A chave sb_publishable_ identifica o cliente via apikey, nao e JWT.
+  // Enviar como Bearer provoca Invalid JWT em backends Supabase atuais.
+  // Depois do login, bearer e o token JWT da pessoa (RLS respeitado).
+  const char *token = (bearer && *bearer) ? bearer : anon;
+  if (strncmp(token, "sb_publishable_", 15) == 0 ||
+      strncmp(token, "sb_secret_", 10) == 0)
+    token = NULL;
+  if (token)
+    snprintf(cabAut, sizeof cabAut, "Authorization: Bearer %s", token);
   cab[0] = cabApi;
-  cab[1] = cabAut;
+  cab[1] = token ? cabAut : NULL;
   cab[2] = NULL;
   return rede_baixar_st(completo, 25, cab, status);
 }
