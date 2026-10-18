@@ -34,6 +34,7 @@
 #include "cacheboost.h"
 #include "retomamorna.h"
 #include "fonteescolha.h"
+#include "streammax_first_source.h"
 #include "fontesonda.h"
 #include "fonteantecipa.h"
 #include "fonteregra.h"
@@ -218,8 +219,10 @@ static int autoParcialPronto(void) {
   char base[24];
   const FontePref *fp;
   int prazo, lembrada = -1, prefPendente = 0;
-  static int ultN = -1, ultLembrada = -1;
-  static unsigned ultGeracao;
+  static int ultN = -1, ultLembrada = -1, ultManual = -1;
+  static unsigned ultGeracao, ultRevisao;
+  static char ultBase[24] = "";
+  const int manual = ajustes_fonte_manual();
   if (!addons_busca_parcial() || player_id_canal()[0]) return 0;
   if (stream_n() < 1 || stream_n() <= autoEsperaN) return 0;
   if (stream_n_candidatas() < 1) return 0;
@@ -227,15 +230,24 @@ static int autoParcialPronto(void) {
   fp = base[0] ? fontepref_do_titulo(base) : NULL;
   if (fp) {
     // fontepref_escolher escreve no log: uma vez por tamanho de lista.
-    if (stream_n() != ultN || stream_lista_geracao() != ultGeracao) {
+    // A busca parcial NAO pode seguir uma lembranca do automatico quando
+    // a pessoa pediu escolha manual. So a preferencia realmente escolhida
+    // por ela vale para tocar o proximo episodio sem perguntar de novo.
+    // Recalcular tambem quando perfil/titulo/configuracao/preferencia mudar:
+    // o numero de fontes pode continuar igual apesar de outra escolha.
+    if (stream_n() != ultN || stream_lista_geracao() != ultGeracao ||
+        ultRevisao != fontepref_revisao() || ultManual != manual ||
+        strcmp(ultBase, base)) {
       ultN = stream_n(); ultGeracao = stream_lista_geracao();
-      ultLembrada = fontepref_escolher(base);
+      ultManual = manual; ultRevisao = fontepref_revisao();
+      snprintf(ultBase, sizeof ultBase, "%s", base);
+      ultLembrada = manual ? fontepref_escolher_manual(base) : fontepref_escolher(base);
     }
     lembrada = ultLembrada;
     prefPendente = lembrada < 0 && addons_pendente_nome(fp->provedor);
   }
   // Escolher a mao: a folha abre com o que ja chegou e continua enchendo.
-  if (ajustes_fonte_manual() && lembrada < 0) {
+  if (manual && lembrada < 0) {
     if (!prefPendente) autoMotivo = "escolha manual: a folha abre com o que chegou";
     return !prefPendente;
   }
@@ -5280,7 +5292,7 @@ void app_atualizar(float dt, Uint32 agora) {
       // pergunta quando nao ha escolha lembrada que sirva para esta lista;
       // trocar de fonte continua a um hold de distancia (menu do episodio,
       // hold no botao primario).
-      if (ajustes_fonte_manual() && stream_n() > 0 && lembrada < 0) {
+      if (streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)) {
         aguardandoFonte = 0;
         folhaParaTocar = 1;
         nomeParaFolha(); stream_folha_abrir();

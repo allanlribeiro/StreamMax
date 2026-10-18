@@ -129,3 +129,20 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - Arquitetura: o player oficial em `app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerScreen.kt` (branch `dev`) é Kotlin/Compose, enquanto o Legacy roda SDL/GLES em C. A implementação **adapta o visual** e não substitui motor; não declarar que ambos são tecnicamente idênticos.
 - **Validações:** testes estáticos de paridade visual e geometria; compilação Linux nativa em CI proposta sem gerar APK. Revisão visual na TCL e desempenho ainda necessários para homologar.
 - **Nenhum APK novo** deve ser disparado enquanto a adaptação visual não estiver revisada e aprovada para teste.
+
+## Fluxo da primeira fonte — compatibilidade com instalacoes antigas (18/10/2026)
+
+- O projeto mudou o **padrao** de escolha manual em novas instalacoes, mas isto **nao atualiza** o `escolherFonteManual 1` que ja ficou salvo nos testes com Legacy.
+- A migracao Android de `legacy-source/src/ajustes.c` ativa uma vez a opcao **Escolher a fonte ao reproduzir** tambem nos aparelhos existentes, registrando `streammax-primeira-fonte-1018.txt` no armazenamento local. Se o usuario alterar a opcao depois, a migracao **nao** desfaz a escolha no proximo inicio.
+- O fluxo existente de `app.c` abre a folha de fontes se nao houver preferencia manual valida. A escolha fica em `fontepref` por titulo/perfil e pode ser reutilizada nos episodios seguintes quando o addon disponibiliza correspondencia; sem correspondencia, volta a perguntar. Nenhum link expira silenciosamente sendo tratado como uma identidade eterna.
+- TV ao vivo continua independente do seletor manual VOD. Nao modificar o motor de canais.
+- **Verificacao prevista:** contratos estaticos de carregamento/gravacao, preferencia manual, retomada e ponto ao trocar de fonte; testar na TCL com conta real (filme novo, episodio seguinte, fonte que sumiu, retorno pelo Continuar assistindo, configuracao desligada manualmente).
+- **Estado:** codigo proposto em branch separada, sem APK novo; a homologacao funcional e visual do player original na TCL continua pendente. Android 12 e a plataforma alvo, sem atualizar a TV para Android 14 nesta fase.
+
+## Regressões da reprodução — base integrada e testes (18/10/2026)
+
+- A PR #13 (OSD próximo ao player original) foi mesclada em `streammax/legacy-migration`. A PR #14 passa a partir dessa **base integrada**, com diff limitado à migração da primeira fonte, ao seletor parcial, ao contrato de regressão e aos testes sem APK.
+- Corrigido `autoParcialPronto()`: quando a opção manual está ativa, usar apenas `fontepref_escolher_manual`, e não a memória do automático. O cache agora invalida também quando muda o título, perfil/configuração ou revisão das preferências, evitando seleção parcial obsoleta.
+- Regra de primeira escolha VOD isolada em `streammax_first_source.h` e exercitada em teste C para casos de primeira reprodução, mesma fonte no próximo episódio, desaparecimento da fonte, lista vazia e opção automática escolhida pelo usuário.
+- CI de UI/player passa a rodar também na PR de correção, com compilação nativa Linux e regressões; **não gera APK**.
+- Ainda não aprovado em dispositivo: o teste com vídeo real na TCL P7K, áudio/legendas, continuidade de episódios, foco do controle remoto, HDR e tempos de carregamento depende de APK de validação posterior. Não chamar o player de homologado antes desses testes.

@@ -4,8 +4,13 @@ on:
   pull_request:
     branches:
       - streammax/legacy-migration
+      - streammax/tcl-player-source-branding-1018
     paths:
       - 'legacy-source/src/app.c'
+      - 'legacy-source/src/ajustes.c'
+      - 'legacy-source/src/streammax_first_source.h'
+      - 'legacy-source/tests/test_streammax_first_source.c'
+      - 'legacy-source/tests/streammax-first-source.sh'
       - 'legacy-source/src/player.c'
       - 'legacy-source/src/plrui.c'
       - 'legacy-source/src/plrui.h'
@@ -35,6 +40,8 @@ jobs:
         run: bash legacy-source/tests/streammax-player-layout.sh
       - name: Validar paridade visual do player sem APK
         run: python3 migration/check-player-original-style.py legacy-source
+      - name: Testar escolha inicial e memoria de fontes (sem rede)
+        run: bash legacy-source/tests/streammax-first-source.sh
       - name: Validar contratos de reproducao do Legacy
         run: python3 migration/check-playback-contracts.py legacy-source
       - name: Preparar compilacao nativa Linux sem gerar APK
