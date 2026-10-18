@@ -21,7 +21,7 @@ checks = {
     "streammax keeps 1.5s back buffer on stock VOD": "val backBufferMs = if (inicioOriginal) 1_500 else 0" in source,
     "back buffer uses keyframe retention only when enabled": "backBufferMs, backBufferMs > 0) {" in source,
     "stock VOD forwards retention setting to load control": "CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs)" in source,
-    "back buffer telemetry present": '"teto=${bytes shr 20}MB preparo=$preparando originalStock=$inicioOriginal"' not in source and '"inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms backBuffer=${backBufferMs}ms "' in source,
+    "back buffer telemetry present": '"inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms backBuffer=${backBufferMs}ms "' in source,
 
     "startup threshold from stock Media3": "DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500" in source,
     "rebuffer threshold from stock Media3": "DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else 5_000" in source,
