@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Tela cheia, sem barra: o app desenha tudo em GLES. -->
-    <style name="Tema.Nuvio" parent="android:Theme.Material.NoActionBar">
+    <style name="Tema.StreamMax" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowFullscreen">true</item>
+        <item name="android:colorAccent">@color/streammax_azul</item>
+        <item name="android:navigationBarColor">@color/streammax_fundo</item>
+        <item name="android:statusBarColor">@color/streammax_fundo</item>
         <!-- A abertura (#213) ate o primeiro quadro do GLES: drawable/abertura.xml. -->
         <item name="android:windowBackground">@drawable/abertura</item>
         <item name="android:windowDrawsSystemBarBackgrounds">false</item>
