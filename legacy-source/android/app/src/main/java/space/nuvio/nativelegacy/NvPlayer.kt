@@ -369,9 +369,11 @@ object NvPlayer {
     private const val PREPARO_MAX_US = 5_000_000L
     private const val PREPARO_ESPERA_MS = 30_000L
 
-    private class CargaPlayer(minMs: Int, maxMs: Int, bytes: Int, preparando: Boolean) :
-        DefaultLoadControl(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE),
-            minMs, maxMs, 2_500, 5_000, bytes, false, 0, false) {
+    private class CargaPlayer(
+        minMs: Int, maxMs: Int, bytes: Int, preparando: Boolean,
+        inicioMs: Int, recuoBufferMs: Int
+    ) : DefaultLoadControl(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE),
+            minMs, maxMs, inicioMs, recuoBufferMs, bytes, false, 0, false) {
         @Volatile var adotada = !preparando
         @Volatile var cancelada = false
         // At most 1/16 of the heap (1/32 on low-RAM, where the active player
@@ -1163,8 +1165,25 @@ object NvPlayer {
         // preset = MiB from Settings (0 Auto). ExoPlayer holds it in the Java heap: never past heap/3.
         val (minMs, maxMs, bytes) = if (preset > 0)
             Triple(50_000, 150_000, minOf(preset.toLong() shl 20, heap / 3).toInt())
-        else Triple(50_000, 50_000, tetoBuffer)
-        val r = RecursosPlayer(CargaPlayer(minMs, maxMs, bytes, preparando), maxMs, if (preparando) idiomaAudio else "")
+        // Original Nuvio: a configuracao padrao de performance usa janela
+        // de 15 a 45 segundos, em vez de manter o Legacy fixo em 50 segundos.
+        // Nao ampliar o teto em bytes: a TCL P7K pode ser low-RAM.
+        else Triple(15_000, 45_000, tetoBuffer)
+
+        // O original tambem tem o modo stock Media3. Para VOD sem preset
+        // personalizado, seu inicio usa os limiares oficiais do LoadControl:
+        // nao reter o primeiro quadro por 2,5 s e um rebuffer por 5 s.
+        // O player invisivel de preparo e presets manuais mantem os limiares
+        // Legacy, pois o preparo precisa de uma margem antes de ser adotado.
+        val inicioOriginal = !preparando && preset == 0
+        val inicioMs = if (inicioOriginal)
+            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500
+        val recuoBufferMs = if (inicioOriginal)
+            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else 5_000
+        val r = RecursosPlayer(
+            CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs),
+            maxMs, if (preparando) idiomaAudio else ""
+        )
         try {
             val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
                 .setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
@@ -1228,7 +1247,9 @@ object NvPlayer {
                 .setLoadErrorHandlingPolicy(PoliticaErroParalelo())
                 .setDataSourceFactory(DefaultDataSource.Factory(act, r.origem))
             if (construir) construirPlayer(act, r)
-            Log.i(TAG, "[player] buffer preset=$preset min=${minMs / 1000}s max=${maxMs / 1000}s teto=${bytes shr 20}MB preparo=$preparando")
+            Log.i(TAG, "[player] buffer preset=$preset min=${minMs / 1000}s max=${maxMs / 1000}s " +
+                "inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms teto=${bytes shr 20}MB " +
+                "preparo=$preparando originalStock=$inicioOriginal")
             return r
         } catch (e: Exception) {
             soltarRecursosPreparo(r)
