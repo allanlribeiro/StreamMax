@@ -779,6 +779,9 @@ float legendasui_altura(void) {
   idiomasVis = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
   alturaOpcoes = n * LU_LN_H + (n > 0 ? (n - 1) * LU_LN_VAO : 0.0f);
   alturaIdiomas = 38.0f + idiomasVis * LU_IDIOMA_LINHA;
+  // A coluna de estilo ocupa 507px abaixo do cabecalho mesmo se houver
+  // so uma faixa: ela nao pode ser cortada pelo painel ou pelo rodape.
+  if (alturaIdiomas < 507.0f) alturaIdiomas = 507.0f;
   return LU_PAD_Y + LU_TIT_H + 14.0f +
          (alturaOpcoes > alturaIdiomas ? alturaOpcoes : alturaIdiomas) +
          14.0f + LU_PE_H + LU_PAD_Y;
