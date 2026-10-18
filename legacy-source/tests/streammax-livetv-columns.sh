@@ -17,16 +17,22 @@ assert 'tvColunaFoco = SM_TV_COL_CANAIS;' in src
 assert 'focoLin = streammax_tv_limitar(focoLin + d, nLinhas());' in src
 assert 'focoCol = streammax_tv_limitar(focoCol + d, linhaN(focoLin));' in src
 assert 'else if (!okDesde) { okDesde = agora; okLongo = 0; }' in src
-assert '!tvTresColunas && previewLigado && !previewPreso' in src
+assert '(previewLigado || tvTresColunas)' in src
 assert 'if (tvTresColunas && !gRetrato()) {' in src
 section = src.split('static void streammaxTvDesenhar(', 1)[1].split('void guia_desenhar(', 1)[0]
 assert 'gAgora(canal, agoraT, &ag)' in section
 assert 'gProximo(canal, agoraT, 0, &prox)' in section
 assert 'streammax_tv_progresso(' in section
 assert 'guia_logo_desenhar(' not in section and 'logoNaCaixa(' not in section
-assert 'pedPreview' not in section and 'pedirCanal(' not in section
+assert 'pedirCanal(' not in section
+assert 'gfx_furo_raio(pv, raio);' in section
+assert 'video_pronto() && !player_carregando()' in section
+assert 'guia_selo_ao_vivo(' in section
+assert '(previewLigado || tvTresColunas)' in src
+assert 'tvColunaFoco == SM_TV_COL_CANAIS' in src
+assert 'previewFocoMudou = agora;' in src
 assert 'tvTresColunas = 0; modoLista = 1' in src
 assert 'tvTresColunas = 1; tvColunaFoco = SM_TV_COL_CANAIS' in src
 assert '*y = SM_TV_BODY_Y + 84.0f;' in src
-print("OK: tela de TV 3 colunas, EPG real, guia classico, sem logos/preload")
+print("OK: tela de TV 3 colunas, EPG real e previa de video com furo apos primeiro quadro")
 PY

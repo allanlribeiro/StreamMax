@@ -53,9 +53,9 @@ checks["ordem dos controles do original primeiro"] = all(p >= 0 for p in spots) 
 checks["referencia original tem seletor independente de legendas"] = (
     "SubtitleSelectionOverlay(" in (Path("app/src/main/java/com/nuvio/tv/ui/screens/player/SubtitleSelectionOverlay.kt")).read_text(encoding="utf-8")
 )
-checks["legendas e estilo fora da ilha do relogio"] = (
-    "p.centro = modo;" in faixas
-    and "p.painelEsquerdo = modo;" in faixas
+checks["audio e legendas independentes da ilha do relogio"] = (
+    "p.centro = 1;" in faixas
+    and "p.painelEsquerdo = 1;" in faixas
     and "int painelEsquerdo;" in ilha_header
 )
 checks["cartao de legendas alinhado a esquerda e na base"] = (
@@ -64,10 +64,11 @@ checks["cartao de legendas alinhado a esquerda e na base"] = (
     and "NV_TELA_H - h - margemBaixo" in ilha
     and "NV_TELA_H - c->h - margemBaixo" in ilha
 )
-checks["audio continua no fluxo anterior, video fica intocado"] = (
-    "p.centro = modo;" in faixas
-    and "p.painelEsquerdo = modo;" in faixas
-    and "else gfx_veu_css(" in faixas
+checks["audio preserva volume e velocidade; video intocado"] = (
+    "p.centro = 1;" in faixas
+    and "p.painelEsquerdo = 1;" in faixas
+    and "linhaVolume(" in faixas
+    and "linhaVelocidade(" in faixas
     and "void player_abrir(" in player
 )
 checks["sobreposicao de legenda preserva recorte e hitbox"] = (
@@ -76,10 +77,11 @@ checks["sobreposicao de legenda preserva recorte e hitbox"] = (
     and "painelLegRect = c->painelEsquerdo ? R" in ilha
 )
 
-checks["painel de legendas com colunas independentes"] = (
-    "p.w = est ? NV_TELA_W - 192.0f : modo ? 1180.0f : IL_W;" in faixas
+checks["painel de legendas com tres areas independentes"] = (
+    "modo ? NV_TELA_W - 270.0f : 1030.0f" in faixas
     and "desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);" in legendas
-    and "w -= LU_IDIOMAS_LARG + LU_IDIOMAS_ESP;" in legendas
+    and "desenharEstiloResumo(c.x + c.w" in legendas
+    and "w -= LU_IDIOMAS_LARG + LU_IDIOMAS_ESP + LU_EST_RESUMO_W + LU_EST_GAP;" in legendas
 )
 checks["coluna de idiomas reage ao controle remoto"] = (
     "if (emIdiomas && !menu)" in legendas
@@ -97,8 +99,14 @@ checks["altura do painel acompanha ambas as colunas"] = (
     "alturaOpcoes > alturaIdiomas ? alturaOpcoes : alturaIdiomas" in legendas
     and "if (y < rodapeMin) y = rodapeMin;" in legendas
 )
-checks["painel de audio continua com tamanho anterior"] = (
-    "modo ? 1180.0f : IL_W;" in faixas
+checks["estilo resume valores reais e oferece edicao funcional"] = (
+    "const VideoLegendaEstilo *e = player_leg_estilo();" in legendas
+    and "faixas_aba_estilo(1);" in legendas
+    and "ponteiroAbaEstilo" in legendas
+    and "if (alturaIdiomas < 507.0f)" in legendas
+)
+checks["audio aparece no painel independente mais largo"] = (
+    "modo ? NV_TELA_W - 270.0f : 1030.0f" in faixas
 )
 
 failed = [name for name, ok in checks.items() if not ok]

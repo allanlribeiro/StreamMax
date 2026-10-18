@@ -2266,7 +2266,14 @@ void guia_evento(const SDL_Event *e) {
       return;
     }
     if (k == SDLK_LEFT) { tvColunaFoco = SM_TV_COL_CATEGORIAS; return; }
-    if (k == SDLK_RIGHT) { tvColunaFoco = SM_TV_COL_CANAIS; return; }
+    if (k == SDLK_RIGHT) {
+      if (tvColunaFoco != SM_TV_COL_CANAIS) {
+        previewUltLin = previewUltCol = -1;
+        previewFocoMudou = agora;
+      }
+      tvColunaFoco = SM_TV_COL_CANAIS;
+      return;
+    }
     if (k == SDLK_UP || k == SDLK_DOWN) {
       int d = k == SDLK_DOWN ? 1 : -1;
       if (tvColunaFoco == SM_TV_COL_CATEGORIAS) {
@@ -2278,8 +2285,11 @@ void guia_evento(const SDL_Event *e) {
       focoValido(); return;
     }
     if (k == SDLK_RETURN || k == SDLK_KP_ENTER) {
-      if (tvColunaFoco == SM_TV_COL_CATEGORIAS) tvColunaFoco = SM_TV_COL_CANAIS;
-      else if (!okDesde) { okDesde = agora; okLongo = 0; }
+      if (tvColunaFoco == SM_TV_COL_CATEGORIAS) {
+        tvColunaFoco = SM_TV_COL_CANAIS;
+        previewUltLin = previewUltCol = -1;
+        previewFocoMudou = agora;
+      } else if (!okDesde) { okDesde = agora; okLongo = 0; }
       return;
     }
     return;
@@ -2655,7 +2665,12 @@ void guia_atualizar(float dt, Uint32 agora) {
   // O foco mudou de canal: o relogio do descanso recomeca.
   { static int ul = -1, uc = -1;
     if (focoLin != ul || focoCol != uc) { ul = focoLin; uc = focoCol; previewFocoMudou = agora; } }
-  if (aberta && !overlay && !tvTresColunas && previewLigado && !previewPreso && !player_aberto() &&
+  // StreamMax TV: ao focar um CANAL, o preview usa a sessao mini EXISTENTE.
+  // Nunca iniciar preview so ao passear entre categorias; esperar 600ms no
+  // canal evita abrir uma nova fonte a cada toque do controle.
+  if (aberta && !overlay && (previewLigado || tvTresColunas) &&
+      (!tvTresColunas || tvColunaFoco == SM_TV_COL_CANAIS) &&
+      !previewPreso && !player_aberto() &&
       nCanais > 0 && (estado == G_PRONTO || estado == G_BAIXANDO) &&
       (focoLin != previewUltLin || focoCol != previewUltCol) &&
       agora - previewFocoMudou >= G_PREVIEW_ESPERA_MS) {
@@ -4882,12 +4897,30 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
     // Janela escura 16:9, sem logos. Nao inicia preview automaticamente.
     if (ph > 330.0f) { ph = 330.0f; pw = ph * 16.0f / 9.0f; }
     px = infX + (infW - pw) * 0.5f;
-    gfx_cor((GfxRect){px, y + 84.0f, pw, ph}, .035f, .018f, .031f, .058f, a);
-    sub = txt_linha(TXT_DET_META2, i18n("Selecione um canal para assistir"),
-                    120, 147, 181, 255);
-    txt_desenhar_alpha(sub,
-              px + (pw - (float)sub.w) * 0.5f,
-              y + 84.0f + (ph - (float)sub.h) * 0.5f, a);
+    // O video Android vive ATRAS da camada GL. Sem o furo, a superficie
+    // opaca ocultava a reproducao mesmo com o canal pronto. Mesmo mecanismo
+    // do heroi do guia classico: o furo so abre apos o primeiro quadro.
+    { GfxRect pv = {px, y + 84.0f, pw, ph};
+      float raio = 16.0f / ph;
+      int sessao = aberta && !overlay && player_mini_no_guia_ativo();
+      int anda = player_janela_animando(NULL, NULL, NULL, NULL);
+      if (sessao && !anda && video_pronto() && !player_carregando()) {
+        gfx_furo_raio(pv, raio);
+        gfx_rect(pv, 0, GFX_ANEL, 0, 1.5f / pv.h, 0, raio,
+                 1, 1, 1, 0.18f * a);
+        guia_selo_ao_vivo(pv.x + 15.0f, pv.y + pv.h - 45.0f, a);
+      } else if (!anda) {
+        gfx_cor(pv, .035f, .018f, .031f, .058f, a);
+        sub = txt_linha_corta(TXT_DET_META2,
+                 ((sessao && player_carregando()) || pedPreview)
+                   ? i18n("Carregando canal…")
+                   : i18n("Selecione um canal para prévia"),
+                 120, 147, 181, 255, pw - 24.0f);
+        txt_desenhar_alpha(sub,
+                  pv.x + (pw - (float)sub.w) * 0.5f,
+                  pv.y + (ph - (float)sub.h) * 0.5f, a);
+      }
+    }
     infoY = y + 84.0f + ph + 24.0f;
     if (canal) {
       titulo = txt_linha_corta(TXT_G26B, canal->nome, 240, 245, 255, 255, infW - 50.0f);

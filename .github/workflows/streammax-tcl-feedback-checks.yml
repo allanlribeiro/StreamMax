@@ -1,0 +1,49 @@
+name: StreamMax TCL - four feedback checks
+
+on:
+  push:
+    branches: [streammax/tcl-feedback-four-fixes-1018]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  four-points:
+    name: Sources / Live Preview / Audio and Subtitle UI / Source Cards
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fonte PT-BR continua disponivel
+        run: bash legacy-source/tests/streammax-source-ptbr.sh
+      - name: Previa e guia TV em tres colunas
+        run: bash legacy-source/tests/streammax-livetv-columns.sh
+      - name: Fonte manual e proximo episodio
+        run: |
+          bash legacy-source/tests/streammax-first-source.sh
+          bash legacy-source/tests/streammax-next-prefetch.sh
+      - name: Validacao visual e navegação do player
+        run: python3 migration/check-player-original-style.py legacy-source
+      - name: Verificar diagnostico do Torrentio sem expor dados sensiveis
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path("legacy-source/src/streams.c").read_text()
+          parse = Path("legacy-source/src/stream_parse.c").read_text()
+          assert "fonteContagemRecebidas(l, qtd);" in src
+          assert 'requerem_p2p=%d, sem_url_ou_debrid=%d' in src
+          assert 'semLinkReproduzivel' in parse
+          assert '"[fontes/parse]' in parse
+          assert "s->url" not in src.split("static void fonteContagemRecebidas", 1)[1].split("static Uint32 recebidaEm", 1)[0]
+          print("OK: contadores por addon sem dados privados no log")
+          PY
+      - name: Dependencias para compilacao nativa
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+            libgles2-mesa-dev libegl1-mesa-dev zlib1g-dev
+      - name: Compilar player/guia completos
+        working-directory: legacy-source
+        run: bash tools/linux.sh --build

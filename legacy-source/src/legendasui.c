@@ -779,6 +779,9 @@ float legendasui_altura(void) {
   idiomasVis = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
   alturaOpcoes = n * LU_LN_H + (n > 0 ? (n - 1) * LU_LN_VAO : 0.0f);
   alturaIdiomas = 38.0f + idiomasVis * LU_IDIOMA_LINHA;
+  // A coluna de estilo ocupa 507px abaixo do cabecalho mesmo se houver
+  // so uma faixa: ela nao pode ser cortada pelo painel ou pelo rodape.
+  if (alturaIdiomas < 507.0f) alturaIdiomas = 507.0f;
   return LU_PAD_Y + LU_TIT_H + 14.0f +
          (alturaOpcoes > alturaIdiomas ? alturaOpcoes : alturaIdiomas) +
          14.0f + LU_PE_H + LU_PAD_Y;
@@ -1179,6 +1182,43 @@ static void desenharIdiomas(float x, float y, float w, float a) {
   }
 }
 
+// Terceira area permanente inspirada no painel do Nuvio original. Exibe
+// ajustes REAIS da sessao; DIREITA e OK no titulo abrem a aba interativa
+// existente, sem duplicar mecanismos de estilo ou alterar o Media3.
+#define LU_EST_RESUMO_W 390.0f
+#define LU_EST_GAP 22.0f
+static void desenharEstiloResumo(float x, float y, float w, float a) {
+  const VideoLegendaEstilo *e = player_leg_estilo();
+  char taman[24], atras[24], opac[24];
+  const char *tit[4] = { "Atraso", "Tamanho da fonte",
+                          "Negrito", "Opacidade do texto" };
+  const char *val[4];
+  TxtLinha t;
+  snprintf(taman, sizeof taman, "%d%%", e->tamanho);
+  snprintf(atras, sizeof atras, "%+.1f s", e->atrasoMs / 1000.0f);
+  snprintf(opac, sizeof opac, "%d%%", 100 - (e->opacidade > 3 ? 3 : e->opacidade) * 25);
+  val[0] = atras;
+  val[1] = taman;
+  val[2] = i18n(e->negrito ? "Ligado" : "Desligado");
+  val[3] = opac;
+  t = txt_linha(TXT_ILHA_FORTE, i18n("Estilo da legenda"), 202, 207, 218, 255);
+  txt_desenhar_alpha(t, x + 12.0f, y, a);
+  for (int j = 0; j < 4; j++) {
+    float yy = y + 50.0f + (float)j * 97.0f;
+    t = txt_linha_corta(TXT_ILHA_FORTE, i18n(tit[j]), 207, 217, 235, 255, w - 30.0f);
+    txt_desenhar_alpha(t, x + 12.0f, yy, a);
+    gfx_cor((GfxRect){x+12.0f, yy+34.0f, w-24.0f, 43.0f},
+            0.22f, .081f, .115f, .169f, .87f*a);
+    t = txt_linha_corta(TXT_ILHA_FORTE, val[j], 242, 247, 255, 255, w - 48.0f);
+    txt_desenhar_alpha(t, x + 24.0f, yy + 40.0f, a);
+  }
+  { GfxRect btn = {x+12.0f, y+454.0f, w-24.0f, 53.0f};
+    gfx_cor(btn, .20f, .092f, .264f, .468f, a);
+    t = txt_linha(TXT_ILHA_FORTE, i18n("Editar estilo  →"), 237, 246, 255, 255);
+    txt_desenhar_alpha(t, btn.x+20.0f, btn.y+(btn.h-(float)t.h)*.5f, a);
+    if (pont) ponteiro_alvo(btn.x,btn.y,btn.w,btn.h,NULL,ponteiroAbaEstilo,0,0);
+  }
+}
 void legendasui_corpo(GfxRect c, float a) {
   float x0 = c.x + LU_PAD_X, w = c.w - LU_PAD_X * 2.0f, y = c.y + LU_PAD_Y;
   int vis = luVis(), fim, i;
@@ -1199,8 +1239,10 @@ void legendasui_corpo(GfxRect c, float a) {
   y += LU_TIT_H + 14.0f;
   atualizarIdiomas();
   desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);
+  desenharEstiloResumo(c.x + c.w - LU_PAD_X - LU_EST_RESUMO_W,
+                       y, LU_EST_RESUMO_W, a);
   x0 += LU_IDIOMAS_LARG + LU_IDIOMAS_ESP;
-  w -= LU_IDIOMAS_LARG + LU_IDIOMAS_ESP;
+  w -= LU_IDIOMAS_LARG + LU_IDIOMAS_ESP + LU_EST_RESUMO_W + LU_EST_GAP;
 #ifdef NV_TOUCH_UI
   if (telefoneui_ativo()) {
     if (!toquerol_livre(&toqueLegendas)) {
@@ -1242,6 +1284,9 @@ void legendasui_corpo(GfxRect c, float a) {
   { int linhasIdioma = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
     float rodapeMin = c.y + LU_PAD_Y + LU_TIT_H + 14.0f +
                       38.0f + linhasIdioma * LU_IDIOMA_LINHA + 14.0f;
+    float estiloMin = c.y + LU_PAD_Y + LU_TIT_H + 14.0f +
+                      507.0f + 14.0f;
+    if (rodapeMin < estiloMin) rodapeMin = estiloMin;
     if (y < rodapeMin) y = rodapeMin; }
   gfx_cor((GfxRect){ x0, y, w, 1.0f }, 0.0f, 1, 1, 1, 0.07f * a);
   { float yc = y + 16.0f + 15.0f;
