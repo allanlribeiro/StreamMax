@@ -200,13 +200,42 @@ void login_atualizar(float dt, Uint32 agora) {
                             dt, NV_MOLA_FOCO);
 }
 
+// Paleta fixa do StreamMax no Android TV, consistente com o player.
+// Sem assets ou shaders adicionais: apenas cores nas primitivas existentes.
+static void loginAcento(float *r, float *g, float *b) {
+#ifdef NV_ANDROID
+  *r = 0.14f; *g = 0.59f; *b = 0.96f;
+#else
+  ajustes_acento(r, g, b);
+#endif
+}
+
+// Cartao central somente na TV Android (canvas 1920x1080 da TCL P7K).
+// No celular e nas demais plataformas o layout tradicional permanece.
+static void painelLoginStreamMax(void) {
+#if defined(NV_ANDROID) && !defined(NV_TOUCH_UI)
+  GfxRect painel = { (NV_TELA_W - 1050.0f) * 0.5f, 82.0f, 1050.0f, 768.0f };
+  // Fundo azul-marinho sem blur, translucido o suficiente para o splash.
+  gfx_cor(painel, 0.033f, 0.025f, 0.041f, 0.076f, 0.94f);
+  // Assinatura azul discreta, sem animacao permanente.
+  gfx_cor((GfxRect){ painel.x + 100.0f, painel.y + 14.0f,
+                      120.0f, 4.0f }, 0.5f, 0.14f, 0.59f, 0.96f, 0.90f);
+#endif
+}
+
 // Pilula de botao: cheia e clara no foco, vidro discreto fora dele.
 static void pilula(float cx, float y, float w, const char *rot, float k, float alpha,
                    PonteiroFn focar, int i) {
   GfxRect pill = { cx - w * 0.5f, y, w, LG_PILL_H };
   TxtLinha t;
-  int tom = k >= 0.5f ? 24 : 236;
+  int tom = k >= 0.5f ? 18 : 244;
+#ifdef NV_ANDROID
+  // Botao primario azul, sem a pilula branca do Legacy.
+  gfx_cor(pill, NV_RAIO_PILL, anim_mistura(0.07f, 0.14f, k),
+          anim_mistura(0.23f, 0.59f, k), anim_mistura(0.46f, 0.96f, k), alpha);
+#else
   gfx_cor(pill, NV_RAIO_PILL, 1.0f, 1.0f, 1.0f, anim_mistura(0.12f, 0.92f, k) * alpha);
+#endif
   t = txt_linha_corta(TXT_BODY, rot, tom, tom, tom + 2 > 255 ? 255 : tom + 2, 255, w - 48.0f);
   txt_desenhar_alpha(t, cx - t.w * 0.5f, y + (LG_PILL_H - t.h) * 0.5f, alpha);
   if (focar) ponteiro_alvo(pill.x, pill.y, pill.w, pill.h, focar, NULL, i, 0);
@@ -225,7 +254,11 @@ static float tituloLogin(float y) {
                           (NV_TELA_W - LG_BLOCO_W) * 0.5f, y, LG_BLOCO_W,
                           86.0f, 1.0f, 2) + 42.0f;
 #endif
+#ifdef NV_ANDROID
+  linhaCentrada(TXT_TITULO1, "Bem-vindo ao StreamMax", 242, 247, 255, y, 1.0f);
+#else
   linhaCentrada(TXT_TITULO1, "Entrar na sua conta", 255, 255, 255, y, 1.0f);
+#endif
   return 118.0f;
 }
 
@@ -234,10 +267,20 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
   float x = (NV_TELA_W - LG_CAMPO_W) * 0.5f, k = animFoco[i];
   GfxRect cx = { x, y + 42.0f, LG_CAMPO_W, LG_CAMPO_H };
   float ar, ag, ab;
+#ifdef NV_ANDROID
+  TxtLinha r = txt_linha(TXT_CAPTION, rotulo, 192, 208, 234, 255);
+#else
   TxtLinha r = txt_linha(TXT_CAPTION, rotulo, 176, 178, 186, 255);
+#endif
   txt_desenhar_alpha(r, x + 4.0f, y, 1.0f);
-  ajustes_acento(&ar, &ag, &ab);
+  loginAcento(&ar, &ag, &ab);
+#ifdef NV_ANDROID
+  gfx_cor(cx, NV_RAIO_CARD, anim_mistura(0.065f, 0.095f, k),
+          anim_mistura(0.091f, 0.145f, k),
+          anim_mistura(0.150f, 0.225f, k), 0.99f);
+#else
   gfx_cor(cx, NV_RAIO_CARD, 1.0f, 1.0f, 1.0f, anim_mistura(0.07f, 0.13f, k));
+#endif
   if (k > 0.01f)
     gfx_vidro_aro((GfxRect){ cx.x - 6, cx.y - 6, cx.w + 12, cx.h + 12 }, NV_RAIO_CARD, 2.5f,
                   ar, ag, ab, 0.95f * k);
@@ -257,6 +300,13 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
     txt_desenhar_alpha(t, cx.x + 24.0f - (t.w > larg ? t.w - larg : 0.0f),
                        cx.y + (cx.h - t.h) * 0.5f, 1.0f);
     gfx_sem_recorte();
+  } else {
+    // Campo vazio continua identificavel mesmo visto a distancia da TV.
+    TxtLinha t = txt_linha(TXT_BODY,
+        i == LE_EMAIL ? "Digite seu e-mail" : "Digite sua senha",
+        132, 155, 191, 255);
+    txt_desenhar_alpha(t, cx.x + 24.0f,
+                      cx.y + (cx.h - t.h) * 0.5f, 1.0f);
   }
 }
 
@@ -264,7 +314,11 @@ static void desenharEmail(float y, Uint32 agora) {
   SesEstado st = sessao_estado();
   const char *falha = sessao_erro_email();
   (void)agora;
+#ifdef NV_ANDROID
+  linhaCentrada(TXT_BODY, "Use seu e-mail e senha para continuar.", 179, 196, 222, y, 1.0f);
+#else
   linhaCentrada(TXT_BODY, "Use o e-mail e a senha da sua conta StreamMax.", 176, 178, 186, y, 1.0f);
+#endif
   y += 84.0f;
   campo(y, LE_EMAIL, "E-mail", email, 0);
   y += 42.0f + LG_CAMPO_H + 30.0f;
@@ -273,9 +327,14 @@ static void desenharEmail(float y, Uint32 agora) {
   { float x = (NV_TELA_W + LG_CAMPO_W) * 0.5f - LG_MOSTRAR_W - 12.0f;
     float yb = y + 42.0f + (LG_CAMPO_H - 60.0f) * 0.5f, k = animFoco[LE_MOSTRAR];
     GfxRect b = { x, yb, LG_MOSTRAR_W, 60.0f };
-    int tom = k >= 0.5f ? 24 : 220;
+    int tom = k >= 0.5f ? 18 : 230;
     TxtLinha t = txt_linha(TXT_CAPTION, senhaVisivel ? "Ocultar" : "Mostrar", tom, tom, tom, 255);
+#ifdef NV_ANDROID
+    gfx_cor(b, NV_RAIO_PILL, anim_mistura(0.09f, 0.16f, k),
+            anim_mistura(0.17f, 0.59f, k), anim_mistura(0.27f, 0.96f, k), 1.0f);
+#else
     gfx_cor(b, NV_RAIO_PILL, 1.0f, 1.0f, 1.0f, anim_mistura(0.10f, 0.92f, k));
+#endif
     txt_desenhar_alpha(t, b.x + (b.w - t.w) * 0.5f, b.y + (b.h - t.h) * 0.5f, 1.0f);
     ponteiro_alvo(b.x, b.y, b.w, b.h, ptFocoEmail, NULL, LE_MOSTRAR, 0); }
   y += 42.0f + LG_CAMPO_H + 48.0f;
@@ -295,10 +354,22 @@ void login_desenhar(Uint32 agora) {
   (void)agora;
   { GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
     if (!login_fundo_desenhar(1.0f))
-      gfx_cor(tela, 0.0f, NV_COR_FUNDO_R, NV_COR_FUNDO_G, NV_COR_FUNDO_B, 1.0f); }
+      gfx_cor(tela, 0.0f, NV_COR_FUNDO_R, NV_COR_FUNDO_G, NV_COR_FUNDO_B, 1.0f);
+#if defined(NV_ANDROID) && !defined(NV_TOUCH_UI)
+    // As listras do splash viram textura sutil, nao dominam o formulario.
+    gfx_cor(tela, 0.0f, 0.012f, 0.022f, 0.045f, 0.80f);
+    painelLoginStreamMax();
+#endif
+  }
   ponteiro_camada();
   ponteiro_alvo(0, 0, NV_TELA_W, NV_TELA_H, NULL, NULL, 0, 0);
+#if defined(NV_ANDROID) && !defined(NV_TOUCH_UI)
+  // Marca tipografica propria, sem reintroduzir o simbolo do Nuvio Legacy.
+  { TxtLinha marca = txt_linha(TXT_G30B, "STREAMMAX", 218, 234, 255, 255);
+    txt_desenhar_alpha(marca, NV_MARGEM_X, NV_MARGEM_Y + 20.0f, 1.0f); }
+#else
   logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);
+#endif
   y = 118.0f;
   y += tituloLogin(y);
 
