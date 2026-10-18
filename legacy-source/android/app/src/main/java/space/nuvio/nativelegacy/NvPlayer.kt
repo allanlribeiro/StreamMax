@@ -371,9 +371,10 @@ object NvPlayer {
 
     private class CargaPlayer(
         minMs: Int, maxMs: Int, bytes: Int, preparando: Boolean,
-        inicioMs: Int, recuoBufferMs: Int
+        inicioMs: Int, recuoBufferMs: Int, backBufferMs: Int
     ) : DefaultLoadControl(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE),
-            minMs, maxMs, inicioMs, recuoBufferMs, bytes, false, 0, false) {
+            minMs, maxMs, inicioMs, recuoBufferMs, bytes, false,
+            backBufferMs, backBufferMs > 0) {
         @Volatile var adotada = !preparando
         @Volatile var cancelada = false
         // At most 1/16 of the heap (1/32 on low-RAM, where the active player
@@ -1180,8 +1181,12 @@ object NvPlayer {
             DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500
         val recuoBufferMs = if (inicioOriginal)
             DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else 5_000
+        // O Nuvio original conserva 1,5 s no stock Media3 para que um
+        // pequeno retrocesso nao force nova leitura. Nao muda o teto em bytes
+        // na TCL, nem o preparo invisivel ou buffers personalizados.
+        val backBufferMs = if (inicioOriginal) 1_500 else 0
         val r = RecursosPlayer(
-            CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs),
+            CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs),
             maxMs, if (preparando) idiomaAudio else ""
         )
         try {
@@ -1248,8 +1253,8 @@ object NvPlayer {
                 .setDataSourceFactory(DefaultDataSource.Factory(act, r.origem))
             if (construir) construirPlayer(act, r)
             Log.i(TAG, "[player] buffer preset=$preset min=${minMs / 1000}s max=${maxMs / 1000}s " +
-                "inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms teto=${bytes shr 20}MB " +
-                "preparo=$preparando originalStock=$inicioOriginal")
+                "inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms backBuffer=${backBufferMs}ms " +
+                "teto=${bytes shr 20}MB preparo=$preparando originalStock=$inicioOriginal")
             return r
         } catch (e: Exception) {
             soltarRecursosPreparo(r)
