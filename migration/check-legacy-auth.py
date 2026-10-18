@@ -12,6 +12,10 @@ def main(root: Path) -> int:
         "src/login.c": [
             "LE_EMAIL", "LE_SENHA", "sessao_login_email",
             "void login_iniciar(void)",
+            "static void painelLoginStreamMax(void)",
+            "static void loginAcento(float *r, float *g, float *b)",
+            '"Bem-vindo ao StreamMax"',
+            "teclado_desenhar(agora)",
         ],
         "src/sessao.h": [
             "SES_EMAIL", "sessao_login_email", "sessao_login_comecar",
