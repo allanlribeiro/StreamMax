@@ -162,3 +162,21 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - Risco e criterio de aceitacao: back-buffer pode disputar memoria com streams 4K de bitrate alto; medir HDR, memoria, inicio, pequenos retrocessos e travamentos na TCL Android 12. Se rebuffer piorar, ajustar a retencao antes de distribuir. Sem Android APK novo nesta etapa.
 - Clique curto na fileira de episodios (Android): se ja existe escolha manual persistida para a serie no perfil, seguir o fluxo normal de reproducao em vez de reabrir a folha de fontes em todo episodio. O roteador so toca automaticamente quando a lista atual confirma a identidade dessa fonte; se nao casar, a folha de fontes reaparece. Primeira escolha continua obrigatoria e menu de fontes por pressao longa continua explicito. Outras plataformas preservam regra anterior.
 - Testes de unidade do seletor e verificacao do elo `detail.c` → `app.c` incluidos no job da PR #15. Confirmar na TCL P7K clique em episodios (primeiro, segundo e fonte ausente) antes de fechar a PR.
+
+
+## Controle de escopo sem retrabalho — player (18/10/2026)
+
+**Regra de trabalho:** preservar a versão experimental testada e aprovada na TCL. Não reiniciar a migração, não refazer etapas integradas e não misturar TV ao vivo/Android 14/Tizen com a PR #15. Antes de propor alteração, procurar contrato, implementação e regressão já existentes. Só alterar diferenças funcionais específicas comprovadas na comparação com o Nuvio original.
+
+**Já implementado; não refazer por padrão:**
+- PRs #13 e #14 integradas: OSD inspirado no original com marca StreamMax, escolha inicial manual, migração das preferências antigas e memória de fonte por título/perfil. Permanecem pendentes as provas completas em dispositivo.
+- PR #15: Media3 ExoPlayer já é o motor de Android; ajuste stock 15–45 s sem preset manual, limiares de início/rebuffer, proteção do primeiro quadro/pausa, telemetria, retomada, adoção de sessão preparada e pré-consulta apenas de metadados quando houver escolha manual.
+- Fluxos atuais de áudio, legenda, HDR, Dolby Vision, foco do D-pad e fontes: preservar até identificar falha concreta, sem substituir o player por Compose ou reiniciar código.
+- Correção na PR #15: seek descarta cues de legendas atrasadas e limpa a sobreposição; contrato estático adicionado. Execução de verificações de código #39153689712 concluída com sucesso. Compilação Android #39153689886 foi observada em andamento; não deduzir aprovação dela.
+
+**Só faltam validação de equivalência funcional e eventuais correções pontuais comprovadas:**
+- Conferir em base real o tempo do primeiro quadro, troca e retomada de fonte, continuidade e seleção de episódios, pausa/Back, buffer e recuperação após erro, faixas de áudio/legenda, 4K e HDR/Dolby Vision na TCL P7K com Android 12.
+- CI/testes estáticos comprovam presença de contratos, não execução completa com vídeos reais. Não chamar a reprodução de 100% equivalente ou homologada sem prova prática.
+- Pedido expresso do proprietário: **não enviar APK experimental para novos testes**. Oferecer apenas versão candidata final depois de revisão funcional e verificações automáticas; a homologação de 100% na TCL ainda necessitará avaliação real do proprietário.
+
+**Próxima tarefa de código:** auditar somente diferenças ainda não cobertas pelo código/testes em PR #15 e corrigir regressões demonstráveis. Evitar alterar arquivos fora do player/contratos, exceto documentação técnica de controle de escopo.
