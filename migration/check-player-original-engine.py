@@ -7,6 +7,7 @@ root = Path(__file__).resolve().parent.parent
 source = (root / "legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt").read_text()
 original = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/NuvioExoPlayerPerformanceHelper.kt").read_text()
 original_controller = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerRuntimeControllerInitialization.kt").read_text()
+postplay = (root / "legacy-source/src/posplay.c").read_text()
 
 checks = {
     "original Nuvio performance buffer min 15 s": "DEFAULT_NUVIO_MIN_BUFFER_MS = 15_000" in original,
@@ -21,6 +22,10 @@ checks = {
     "prepared stream retains its old threshold": "else parameters.bufferedDurationUs >= 2_500_000L" in source,
     "original ExoPlayer video engine retained": "ExoPlayer.Builder(act, r.renderizadores)" in source,
     "diagnostic startup measurements logged": "originalStock=$inicioOriginal" in source,
+    "manual source blocks unintended next-video preloading": "streammax_next_video_preload(preloadVideo, manual)" in postplay,
+    "manual source permits metadata-only next prefetch": "streammax_next_metadata_prefetch(" in postplay,
+    "metadata prefetch requires remembered manual source": "fontepref_tem(ci->imdb)" in postplay,
+
 }
 errors = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
