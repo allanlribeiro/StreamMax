@@ -95,6 +95,8 @@ object NvPlayer {
     private const val FAIXAS_MAX = 32 // NV_FAIXA_MAX do C
     private const val TIQUE_MS = 250L
     private const val RETRY_DECODER_MS = 5000L
+    // Igual ao watchdog do Nuvio original: corrigir READY parado antes do primeiro quadro.
+    private const val FIRST_FRAME_WATCHDOG_MS = 1_200L
 
     private val principal = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
@@ -1082,8 +1084,33 @@ object NvPlayer {
         principal.post { if (pedido == pedidos.get()) liberar() }
     }
     private var pausaPedida = false
+    // O Media3 pode ficar em READY sem o primeiro quadro se playWhenReady for
+    // desativado por uma transicao. So reativar quando existir faixa de video
+    // selecionada e NAO houver pausa solicitada pelo usuario; nunca buscar
+    // outra fonte nem reabrir a sessao. Mesma politica do Nuvio original.
+    private val vigiaPrimeiroQuadro = Runnable {
+        val p = player
+        if (p != null && !quadroVisto && !pausaPedida &&
+            p.playbackState == Player.STATE_READY && !p.playWhenReady &&
+            p.currentTracks.groups.any { g ->
+                g.type == C.TRACK_TYPE_VIDEO &&
+                    (0 until g.length).any { g.isTrackSelected(it) }
+            }) {
+            Log.w(TAG, "[player] READY sem primeiro quadro e sem pausa manual; retomando playWhenReady")
+            p.playWhenReady = true
+        }
+    }
+    private fun agendarVigiaPrimeiroQuadro() {
+        principal.removeCallbacks(vigiaPrimeiroQuadro)
+        if (!quadroVisto && !pausaPedida)
+            principal.postDelayed(vigiaPrimeiroQuadro, FIRST_FRAME_WATCHDOG_MS)
+    }
     @JvmStatic fun pausar(p: Int) {
-        principal.post { pausaPedida = p != 0; player?.playWhenReady = !pausaPedida }
+        principal.post {
+            pausaPedida = p != 0
+            if (pausaPedida) principal.removeCallbacks(vigiaPrimeiroQuadro)
+            player?.playWhenReady = !pausaPedida
+        }
     }
     // Episode handoff arms this token before the old visible session closes.
     // Stop only that session; the exact selected preload keeps its queues.
@@ -1405,7 +1432,7 @@ object NvPlayer {
                 fracaoPendente = preparada.fracaoPendente
                 p.setMediaSource(r.fontePrecarregada!!, preparada.posicaoFonteMs)
                 if (fracaoPendente <= 0) confirmarRetomada(geracao, inicioMs > 0 || preparada.inicioAceito)
-                p.playWhenReady = true
+                p.playWhenReady = !pausaPedida
                 p.prepare()
                 Log.i(TAG, "[preparo] proximo adotado token=${preparada.token} pos=${preparada.posicaoFonteMs}")
             } else {
@@ -1417,7 +1444,7 @@ object NvPlayer {
                 ouv.onTracksChanged(p.currentTracks)
                 ouv.onVideoSizeChanged(p.videoSize)
                 ouv.onPlaybackStateChanged(p.playbackState)
-                p.playWhenReady = true
+                p.playWhenReady = !pausaPedida
                 Log.i(TAG, "[preparo] adotado token=${preparada.token} estado=${p.playbackState}")
             }
             principal.postDelayed(tique(minha), TIQUE_MS)
@@ -1432,6 +1459,7 @@ object NvPlayer {
     // Sobe a sessao e solta tudo; qualquer callback pendente do player velho
     // morre na conferencia do numero.
     private fun liberar() {
+        principal.removeCallbacks(vigiaPrimeiroQuadro)
         encerrarRebuffer()
         sessao++
         medidor.encerrar()
@@ -1889,6 +1917,7 @@ object NvPlayer {
             when (state) {
                 Player.STATE_BUFFERING -> ev(EV_BUFFER, 0)
                 Player.STATE_READY -> {
+                    if (!quadroVisto) agendarVigiaPrimeiroQuadro()
                     ev(EV_BUFFER, 100)
                     relatarAudio(minha, "pronto volume=${p.volume} playWhenReady=${p.playWhenReady} suppression=${p.playbackSuppressionReason}")
                     if (!pronto) {
@@ -1917,7 +1946,11 @@ object NvPlayer {
             val p = player ?: return
             relatarAudio(minha, "playWhenReady=$playWhenReady reason=$reason")
             // Pausa voluntaria nao e travamento de rede.
-            if (!playWhenReady) encerrarRebuffer()
+            if (!playWhenReady) {
+                encerrarRebuffer()
+                if (pausaPedida) principal.removeCallbacks(vigiaPrimeiroQuadro)
+                else if (p.playbackState == Player.STATE_READY && !quadroVisto) agendarVigiaPrimeiroQuadro()
+            }
             if (!playWhenReady && !p.isPlaying && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
             medirEstado(p)
         }
@@ -1948,6 +1981,7 @@ object NvPlayer {
 
         override fun onRenderedFirstFrame() {
             if (!atual(minha)) return
+            principal.removeCallbacks(vigiaPrimeiroQuadro)
             Log.i(TAG, "[player] onRenderedFirstFrame renderer=video loadMs=${SystemClock.elapsedRealtime() - abriuEm} sessao=$sessao hdr=$ultHdr holder=${System.identityHashCode(superficie?.holder)} soltando=${soltando != null}")
             esconderQuadro()
             ev(EV_PRIMEIRO_QUADRO)
@@ -1969,6 +2003,7 @@ object NvPlayer {
         override fun onTracksChanged(tracks: Tracks) {
             if (!atual(minha)) return
             publicarFaixas(tracks)
+            if (!quadroVisto && player?.playbackState == Player.STATE_READY) agendarVigiaPrimeiroQuadro()
             for (g in tracks.groups) if (g.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until g.length) if (g.isTrackSelected(i)) {
                     val f = g.getTrackFormat(i)
