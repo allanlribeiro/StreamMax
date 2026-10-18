@@ -97,6 +97,16 @@ checks = {
         and 'nativeLegenda("", 0)' in source.split("override fun onPositionDiscontinuity(", 1)[1]
             .split("override fun onTimelineChanged(", 1)[0]
     ),
+    "surface timeout recovery is attempted only once per session": (
+        "p != null && !recuperouSuperficie && RecriaHdr.timeoutRecuperavel(" in source
+        and "recuperouSuperficie = true" in source
+        and "recuperouSuperficie = false" in source
+    ),
+    "surface recovery exceptions report playback error instead of killing UI": (
+        'val sv = superficie ?: throw IllegalStateException("video surface unavailable")' in source
+        and "catch (retryError: Exception)" in source
+        and "ev(EV_ERRO, error.errorCode, C.TRACK_TYPE_VIDEO)" in source
+    ),
     "Android onPause gates a late source open": (
         "atividadeOculta = true" in pausa_sistema
         and "if (!reabrindo && !atividadeOculta) pausaPedida = false" in source
