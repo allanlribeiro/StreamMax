@@ -21,6 +21,8 @@ checks = {
         "p.seekTo(d * f / 10000L)",
     ],
     "src/fontevolta.c": [
+        "geracao = confGeracao;",
+        "if (geracao == confGeracao) confEstado = FV_NADA;",
         "int fontevolta_toca_guardada(",
         "if (idadeLink >= FONTEVOLTA_VALIDADE_MS) return;",
         "strlen(alvo) >= sizeof eAlvo || strlen(conta) >= sizeof eConta",
