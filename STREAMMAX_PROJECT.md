@@ -129,3 +129,12 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - Arquitetura: o player oficial em `app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerScreen.kt` (branch `dev`) é Kotlin/Compose, enquanto o Legacy roda SDL/GLES em C. A implementação **adapta o visual** e não substitui motor; não declarar que ambos são tecnicamente idênticos.
 - **Validações:** testes estáticos de paridade visual e geometria; compilação Linux nativa em CI proposta sem gerar APK. Revisão visual na TCL e desempenho ainda necessários para homologar.
 - **Nenhum APK novo** deve ser disparado enquanto a adaptação visual não estiver revisada e aprovada para teste.
+
+## Fluxo da primeira fonte — compatibilidade com instalacoes antigas (18/10/2026)
+
+- O projeto mudou o **padrao** de escolha manual em novas instalacoes, mas isto **nao atualiza** o `escolherFonteManual 1` que ja ficou salvo nos testes com Legacy.
+- A migracao Android de `legacy-source/src/ajustes.c` ativa uma vez a opcao **Escolher a fonte ao reproduzir** tambem nos aparelhos existentes, registrando `streammax-primeira-fonte-1018.txt` no armazenamento local. Se o usuario alterar a opcao depois, a migracao **nao** desfaz a escolha no proximo inicio.
+- O fluxo existente de `app.c` abre a folha de fontes se nao houver preferencia manual valida. A escolha fica em `fontepref` por titulo/perfil e pode ser reutilizada nos episodios seguintes quando o addon disponibiliza correspondencia; sem correspondencia, volta a perguntar. Nenhum link expira silenciosamente sendo tratado como uma identidade eterna.
+- TV ao vivo continua independente do seletor manual VOD. Nao modificar o motor de canais.
+- **Verificacao prevista:** contratos estaticos de carregamento/gravacao, preferencia manual, retomada e ponto ao trocar de fonte; testar na TCL com conta real (filme novo, episodio seguinte, fonte que sumiu, retorno pelo Continuar assistindo, configuracao desligada manualmente).
+- **Estado:** codigo proposto em branch separada, sem APK novo; a homologacao funcional e visual do player original na TCL continua pendente. Android 12 e a plataforma alvo, sem atualizar a TV para Android 14 nesta fase.
