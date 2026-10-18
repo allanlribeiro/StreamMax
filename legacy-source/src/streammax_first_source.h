@@ -12,4 +12,14 @@ static inline int streammax_should_ask_first_source(int manualEnabled,
   return manualEnabled && availableStreams > 0 && rememberedIndex < 0;
 }
 
+ // A series episode short-click is a playback request, not an explicit
+ // "change source" action. After one manual choice, route it through the
+ // normal VOD resolver: it validates the remembered source against the new
+ // episode's addon list and reopens the picker if the match disappeared.
+ // Long-press "Fontes deste episodio" still opens the source picker.
+static inline int streammax_should_ask_episode_source(int manualEnabled,
+                                                      int hasManualPreference) {
+  return manualEnabled && !hasManualPreference;
+}
+
 #endif
