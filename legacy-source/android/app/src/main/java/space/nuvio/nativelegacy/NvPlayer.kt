@@ -2306,7 +2306,14 @@ object NvPlayer {
         for ((g, i) in a) sig.append('a').append(g.getTrackFormat(i).id).append(g.getTrackFormat(i).language).append(';')
         for ((g, i) in l) sig.append('l').append(g.getTrackFormat(i).id).append(g.getTrackFormat(i).language).append(';')
         val nova = sig.toString()
-        if (nova == assinatura) return
+        if (nova == assinatura) {
+            // HLS/DASH may publish new Tracks.Group instances with the same
+            // visible language/id. Refresh the Media3 selection references
+            // without resetting the user's open audio/subtitle menus in C.
+            audios = a
+            legendas = l
+            return
+        }
         val tinhaLegenda = legendas.isNotEmpty()
         assinatura = nova
         audios = a
