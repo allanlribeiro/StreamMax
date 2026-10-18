@@ -1047,6 +1047,7 @@ object NvPlayer {
         // A Activity perdeu o foco: impedir que o watchdog de primeiro quadro
         // religue a reproducao em segundo plano. O proximo Play explicito
         // continua liberando pausaPedida via pausar(0).
+        atividadeOculta = true
         pausaPedida = true
         principal.removeCallbacks(vigiaPrimeiroQuadro)
         try { player?.pause() } catch (e: Exception) { Log.w(TAG, "pausarPeloSistema: $e") }
@@ -1091,13 +1092,20 @@ object NvPlayer {
         principal.post { if (pedido == pedidos.get()) liberar() }
     }
     private var pausaPedida = false
+    // onPause pode chegar durante abertura de uma nova fonte: nenhuma abertura
+    // tardia deve iniciar video com a Activity em segundo plano.
+    private var atividadeOculta = false
+    @JvmStatic fun retomarPeloSistema() {
+        atividadeOculta = false
+        // So o controle do player retoma; o onResume nao inicia sozinho.
+    }
     // O Media3 pode ficar em READY sem o primeiro quadro se playWhenReady for
     // desativado por uma transicao. So reativar quando existir faixa de video
     // selecionada e NAO houver pausa solicitada pelo usuario; nunca buscar
     // outra fonte nem reabrir a sessao. Mesma politica do Nuvio original.
     private val vigiaPrimeiroQuadro = Runnable {
         val p = player
-        if (p != null && !quadroVisto && !pausaPedida &&
+        if (p != null && !quadroVisto && !pausaPedida && !atividadeOculta &&
             p.playbackState == Player.STATE_READY && !p.playWhenReady &&
             p.currentTracks.groups.any { g ->
                 g.type == C.TRACK_TYPE_VIDEO &&
@@ -1109,14 +1117,14 @@ object NvPlayer {
     }
     private fun agendarVigiaPrimeiroQuadro() {
         principal.removeCallbacks(vigiaPrimeiroQuadro)
-        if (!quadroVisto && !pausaPedida)
+        if (!quadroVisto && !pausaPedida && !atividadeOculta)
             principal.postDelayed(vigiaPrimeiroQuadro, FIRST_FRAME_WATCHDOG_MS)
     }
     @JvmStatic fun pausar(p: Int) {
         principal.post {
             pausaPedida = p != 0
             if (pausaPedida) principal.removeCallbacks(vigiaPrimeiroQuadro)
-            player?.playWhenReady = !pausaPedida
+            player?.playWhenReady = !pausaPedida && !atividadeOculta
         }
     }
     // Episode handoff arms this token before the old visible session closes.
@@ -1338,7 +1346,7 @@ object NvPlayer {
             liberar()
             // O C envia ganho/pausa depois de abrir; a espera nao pode apaga-los.
             ganhoPct = 100
-            if (!reabrindo) pausaPedida = false
+            if (!reabrindo && !atividadeOculta) pausaPedida = false
         }
         // MStar/Amlogic: o overlay e o decoder antigos precisam sair antes do novo.
         // Poll no Handler deixa Back/parar funcionar enquanto o release corre em fundo.
@@ -1428,7 +1436,7 @@ object NvPlayer {
                 } else p.setMediaItem(mediaItem)
                 if (inicioMs <= 0 && fracaoAtual > 0) fracaoPendente = fracaoAtual
                 else confirmarRetomada(geracao, inicioAceito)
-                p.playWhenReady = !pausaPedida
+                p.playWhenReady = !pausaPedida && !atividadeOculta
                 // false -> false nao gera callback quando a pausa chegou sem player.
                 if (pausaPedida) ev(EV_PAUSADO)
                 p.prepare()
@@ -1439,7 +1447,7 @@ object NvPlayer {
                 fracaoPendente = preparada.fracaoPendente
                 p.setMediaSource(r.fontePrecarregada!!, preparada.posicaoFonteMs)
                 if (fracaoPendente <= 0) confirmarRetomada(geracao, inicioMs > 0 || preparada.inicioAceito)
-                p.playWhenReady = !pausaPedida
+                p.playWhenReady = !pausaPedida && !atividadeOculta
                 p.prepare()
                 Log.i(TAG, "[preparo] proximo adotado token=${preparada.token} pos=${preparada.posicaoFonteMs}")
             } else {
@@ -1451,7 +1459,7 @@ object NvPlayer {
                 ouv.onTracksChanged(p.currentTracks)
                 ouv.onVideoSizeChanged(p.videoSize)
                 ouv.onPlaybackStateChanged(p.playbackState)
-                p.playWhenReady = !pausaPedida
+                p.playWhenReady = !pausaPedida && !atividadeOculta
                 Log.i(TAG, "[preparo] adotado token=${preparada.token} estado=${p.playbackState}")
             }
             principal.postDelayed(tique(minha), TIQUE_MS)
