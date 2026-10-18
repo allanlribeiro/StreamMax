@@ -40,7 +40,6 @@ typedef struct {
   int modal;                // 1 = miolo do modal (.86)
   int ancoraTopo;           // 1 = (centro) o corpo acompanha o TOPO da forma enquanto ela cresce ou encolhe, em vez de ficar centrado no tamanho final
   int centro;               // 1 = cartao independente do relogio; so o corpo
-  int painelEsquerdo;       // 1 = painel independente alinhado embaixo/a esquerda (se centro=1)
   int baixa;                // 1 = prioridade baixa: cede a qualquer outro pedido do quadro (a guia parental)
   int respira;              // 1 = o ponto que respira antes da frase (atividade: o canal sintonizando)
   int voltaRelogio;         // 1 = ao acabar, o corpo vira a pilula da HORA, segura um instante e so entao sai (guia parental). Relogio desligado: encolhe e some no lugar
@@ -50,6 +49,7 @@ typedef struct {
   void (*ponteiroOk)(int a, int b);
   float insetEsq;           // recuo esquerdo do cabecalho do corpo (o titulo); 0 = 28
   int tituloLeve;           // 1 = titulo delicado (PLR_TIT_*): Medium um degrau abaixo, cinza polido
+  int painelEsquerdo;       // 1 = painel independente alinhado embaixo/a esquerda (se centro=1)
 } PlrIlhaPedido;
 
 // Titulo delicado (#205, "Central de controle"): #A8ADB5 no vidro escuro (~8:1).
