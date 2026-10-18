@@ -138,3 +138,11 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - TV ao vivo continua independente do seletor manual VOD. Nao modificar o motor de canais.
 - **Verificacao prevista:** contratos estaticos de carregamento/gravacao, preferencia manual, retomada e ponto ao trocar de fonte; testar na TCL com conta real (filme novo, episodio seguinte, fonte que sumiu, retorno pelo Continuar assistindo, configuracao desligada manualmente).
 - **Estado:** codigo proposto em branch separada, sem APK novo; a homologacao funcional e visual do player original na TCL continua pendente. Android 12 e a plataforma alvo, sem atualizar a TV para Android 14 nesta fase.
+
+## Regressões da reprodução — base integrada e testes (18/10/2026)
+
+- A PR #13 (OSD próximo ao player original) foi mesclada em `streammax/legacy-migration`. A PR #14 passa a partir dessa **base integrada**, com diff limitado à migração da primeira fonte, ao seletor parcial, ao contrato de regressão e aos testes sem APK.
+- Corrigido `autoParcialPronto()`: quando a opção manual está ativa, usar apenas `fontepref_escolher_manual`, e não a memória do automático. O cache agora invalida também quando muda o título, perfil/configuração ou revisão das preferências, evitando seleção parcial obsoleta.
+- Regra de primeira escolha VOD isolada em `streammax_first_source.h` e exercitada em teste C para casos de primeira reprodução, mesma fonte no próximo episódio, desaparecimento da fonte, lista vazia e opção automática escolhida pelo usuário.
+- CI de UI/player passa a rodar também na PR de correção, com compilação nativa Linux e regressões; **não gera APK**.
+- Ainda não aprovado em dispositivo: o teste com vídeo real na TCL P7K, áudio/legendas, continuidade de episódios, foco do controle remoto, HDR e tempos de carregamento depende de APK de validação posterior. Não chamar o player de homologado antes desses testes.
