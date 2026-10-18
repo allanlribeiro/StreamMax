@@ -2000,6 +2000,19 @@ object NvPlayer {
             else if (!p.playWhenReady && pausaPedida && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
         }
 
+        // Media3 can deliver delayed subtitle cues from before a seek.
+        // Drop pending old-position cues and clear the overlay immediately;
+        // freshly emitted cues after the discontinuity belong to the new time.
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            if (!atual(minha) || reason != Player.DISCONTINUITY_REASON_SEEK) return
+            versaoLegenda++
+            try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+        }
+
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             if (!atual(minha)) return
             val p = player ?: return
