@@ -1,7 +1,7 @@
 name: StreamMax APK experimental
 
 # Rodar automaticamente quando a configuracao de build muda.
-# 18/10: publicar variante com fallback CW, fonte instantanea, player azul e titulo textual.
+# 18/10: fallback CW, fonte instantanea, player azul e logos originais dos titulos.
 on:
   push:
     branches: [dev]
