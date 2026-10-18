@@ -75,14 +75,22 @@ static inline int streammax_pt_descricao_audio(const char *descricao) {
   return 0;
 }
 
+// Tag de idioma seguida so por SUBS nao comprova o audio brasileiro.
+static inline int streammax_pt_marca_release(const char *s) {
+  if (streammax_pt_dica_dublagem(s)) return 1;
+  if (streammax_pt_token(s, "subs") || streammax_pt_token(s, "subtitle") ||
+      streammax_pt_token(s, "subtitles") || streammax_pt_token(s, "legendado") ||
+      streammax_pt_token(s, "legendas"))
+    return 0;
+  return streammax_pt_dica_explicitamente_brasileira(s);
+}
+
 // Somente quando NAO ha nenhuma lista formal de audio declarada pelo addon.
 // Nunca transforma uma legenda em audio nem sobrescreve audio ES/EN/PT-PT.
 static inline int streammax_pt_audio_sem_declaracao(
     const char *arquivo, const char *rotulo, const char *descricao) {
-  return streammax_pt_dica_explicitamente_brasileira(arquivo) ||
-         streammax_pt_dica_dublagem(arquivo) ||
-         streammax_pt_dica_explicitamente_brasileira(rotulo) ||
-         streammax_pt_dica_dublagem(rotulo) ||
+  return streammax_pt_marca_release(arquivo) ||
+         streammax_pt_marca_release(rotulo) ||
          streammax_pt_descricao_audio(descricao);
 }
 #endif
