@@ -44,6 +44,8 @@ for name, needles in checks.items():
         continue
     text = path.read_text(encoding="utf-8")
     errors += [f"{name}: falta {needle}" for needle in needles if needle not in text]
+    if name == "src/app.c" and '\\n  // lembrada ficou proibida' in text:
+        errors.append("src/app.c: comentário com quebra de linha literal inválida")
 if errors:
     print("\n".join(errors), file=sys.stderr)
     sys.exit(1)
