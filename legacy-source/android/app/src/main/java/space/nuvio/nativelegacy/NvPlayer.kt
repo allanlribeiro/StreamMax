@@ -128,6 +128,10 @@ object NvPlayer {
     private var urlAtual = ""
     private var cabAtual = ""
     private var abriuEm = 0L
+    // Mesmo criterio do player original: so medir travamentos apos o 1o quadro.
+    private var rebufferInicioEm = 0L
+    private var rebufferTotalMs = 0L
+    private var rebufferCount = 0
     private var retentou = false
     private var pronto = false
     private var duracaoEnviada = -1
@@ -1329,6 +1333,9 @@ object NvPlayer {
         fracaoAtual = if (inicioMs > 0) 0 else fracao
         fracaoPendente = 0
         abriuEm = SystemClock.elapsedRealtime()
+        rebufferInicioEm = 0L
+        rebufferTotalMs = 0L
+        rebufferCount = 0
         if (!reabrindo) retentou = false
         try {
             ParaleloDataSource.Estat.zerar()
@@ -1425,6 +1432,7 @@ object NvPlayer {
     // Sobe a sessao e solta tudo; qualquer callback pendente do player velho
     // morre na conferencia do numero.
     private fun liberar() {
+        encerrarRebuffer()
         sessao++
         medidor.encerrar()
         val recursos = recursosAtuais
@@ -1858,11 +1866,26 @@ object NvPlayer {
 
     // --- eventos do player ----------------------------------------------------
 
+    private fun encerrarRebuffer() {
+        if (rebufferInicioEm == 0L) return
+        val ultimaPausaMs = (SystemClock.elapsedRealtime() - rebufferInicioEm).coerceAtLeast(0L)
+        rebufferInicioEm = 0L
+        rebufferTotalMs += ultimaPausaMs
+        Log.i(TAG, "[player] rebuffer fim ultimaMs=$ultimaPausaMs ocorrencias=$rebufferCount totalMs=$rebufferTotalMs")
+    }
+
     private fun ouvinte(minha: Int) = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             if (!atual(minha)) return
             val p = player ?: return
             Log.i(TAG, "[player] onPlaybackStateChanged state=$state renderer=audio(${p.audioFormat?.sampleMimeType}),video(${p.videoFormat?.sampleMimeType}) loadMs=${SystemClock.elapsedRealtime() - abriuEm}")
+            if (state == Player.STATE_BUFFERING && quadroVisto && p.playWhenReady && rebufferInicioEm == 0L) {
+                rebufferCount++
+                rebufferInicioEm = SystemClock.elapsedRealtime()
+                Log.i(TAG, "[player] rebuffer inicio ocorrencia=$rebufferCount")
+            } else if (state != Player.STATE_BUFFERING) {
+                encerrarRebuffer()
+            }
             when (state) {
                 Player.STATE_BUFFERING -> ev(EV_BUFFER, 0)
                 Player.STATE_READY -> {
@@ -1893,6 +1916,8 @@ object NvPlayer {
             if (!atual(minha)) return
             val p = player ?: return
             relatarAudio(minha, "playWhenReady=$playWhenReady reason=$reason")
+            // Pausa voluntaria nao e travamento de rede.
+            if (!playWhenReady) encerrarRebuffer()
             if (!playWhenReady && !p.isPlaying && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
             medirEstado(p)
         }
