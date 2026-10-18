@@ -1462,6 +1462,28 @@ private fun StreamCard(
                     }
                 }
 
+                val parsedSource = stream.clientResolve?.stream?.raw?.parsed
+                val technicalSummary = remember(stream) {
+                    buildList {
+                        parsedSource?.resolution?.takeIf(String::isNotBlank)?.let(::add)
+                        parsedSource?.codec?.takeIf(String::isNotBlank)?.let(::add)
+                        parsedSource?.hdr.orEmpty().filter(String::isNotBlank).forEach(::add)
+                        parsedSource?.audio.orEmpty().filter(String::isNotBlank).forEach(::add)
+                        parsedSource?.languages.orEmpty().filter(String::isNotBlank).forEach(::add)
+                        if (StreamAudioLanguageDetector.portugueseAudio(stream) ==
+                            StreamAudioLanguageDetector.PortugueseAudio.CONFIRMED
+                        ) add("Áudio português indicado")
+                    }.distinct().joinToString(" · ")
+                }
+                if (technicalSummary.isNotBlank()) {
+                    Text(
+                        text = technicalSummary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.extendedColors.textSecondary,
+                        maxLines = 2
+                    )
+                }
+
                 if (hasBadges && badgePlacement == StreamBadgePlacement.BOTTOM) {
                     if (stream.badges.isNotEmpty() || (showFileSizeBadges && stream.behaviorHints?.videoSize != null)) {
                         StreamBadgeChips(
