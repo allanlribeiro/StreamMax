@@ -582,7 +582,7 @@ static void fonteContagemRecebidas(const Stream *l, int qtd) {
     aceitas += motivo == 0;
   }
   printf("[fontes/visibilidade] %s: recebidas=%d, exibiveis=%d, "
-         "requerem_p2p=%d, sem_url_ou_debrid=%d\\n",
+         "requerem_p2p=%d, sem_url_ou_debrid=%d\n",
          provedor, qtd, aceitas, naoP2P, naoDebrid);
 }
 
