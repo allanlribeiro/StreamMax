@@ -1284,6 +1284,9 @@ void legendasui_corpo(GfxRect c, float a) {
   { int linhasIdioma = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
     float rodapeMin = c.y + LU_PAD_Y + LU_TIT_H + 14.0f +
                       38.0f + linhasIdioma * LU_IDIOMA_LINHA + 14.0f;
+    float estiloMin = c.y + LU_PAD_Y + LU_TIT_H + 14.0f +
+                      507.0f + 14.0f;
+    if (rodapeMin < estiloMin) rodapeMin = estiloMin;
     if (y < rodapeMin) y = rodapeMin; }
   gfx_cor((GfxRect){ x0, y, w, 1.0f }, 0.0f, 1, 1, 1, 0.07f * a);
   { float yc = y + 16.0f + 15.0f;
