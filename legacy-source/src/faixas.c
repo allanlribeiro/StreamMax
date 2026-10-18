@@ -2109,7 +2109,7 @@ static void faixas_desenharCorpo_(Uint32 agora) {
     if (!aberta) return;   // fechando: o painel anterior sai pela mesma animacao
     { PlrIlhaPedido p;
       memset(&p, 0, sizeof p);
-      p.w = est ? NV_TELA_W - 192.0f : IL_W;
+      p.w = est ? NV_TELA_W - 192.0f : modo ? 1180.0f : IL_W;
       p.h = est ? alturaEstilo() : modo ? legendasui_altura() : alturaLista(0);
       p.corpo = corpoIlha;
       p.centro = modo;
