@@ -59,6 +59,14 @@ checks = {
         "streammaxMigrarPrimeiraFonte(0);",
         "streammaxMigrarPrimeiraFonte(1);",
     ],
+    "src/addons.c": [
+        'const char *entrada = js_array(corpo, NULL, "streams");',
+        'JSON=%d fontes, parser=%d',
+    ],
+    "src/streams.c": [
+        'sem link/debrid',
+        'exigem P2P',
+    ],
     "src/streammax_first_source.h": [
         "static inline int streammax_should_ask_first_source(",
         "(void)manualEnabled;",
