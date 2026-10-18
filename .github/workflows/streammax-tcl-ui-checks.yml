@@ -5,6 +5,7 @@ on:
     branches:
       - streammax/legacy-migration
     paths:
+      - 'legacy-source/src/app.c'
       - 'legacy-source/src/player.c'
       - 'legacy-source/src/plrui.c'
       - 'legacy-source/src/plrui.h'
