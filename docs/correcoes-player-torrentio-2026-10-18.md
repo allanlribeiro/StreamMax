@@ -30,3 +30,12 @@
 - [ ] APK compilado e validado na TCL.
 
 **Status:** investigação e implementação ainda pendentes; não confundir critérios documentados com correção concluída.
+
+## Casos reais reportados pelo usuário (TCL)
+
+- **Homem-Aranha: Um Novo Dia** — comparar no mesmo filme/ID, Nuvio original versus StreamMax, com filtro de áudio desligado.
+- **Vingadores: Ultimato** — repetir a comparação para separar problema específico de título de um problema geral do Torrentio TB.
+
+Em cada caso registrar somente: identificador IMDb/TMDB utilizado na requisição, contagem enviada pelo addon, quantidade aceita pelo parser, quantidade descartada por P2P/debrid, quantidade visível, e presença/ausência das fontes dubladas. Não registrar URL de addon configurada, tokens ou hashes.
+
+**Não assumir correspondência de ID apenas pelo título localizado/traduzido.** Comparar mesma configuração de Torrentio TB e mesmo perfil antes de atribuir diferença ao parser.
