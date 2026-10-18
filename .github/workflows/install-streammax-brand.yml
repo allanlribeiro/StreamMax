@@ -1,0 +1,51 @@
+name: Instalar identidade oficial StreamMax (sem APK)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install-brand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: streammax/legacy-migration
+          persist-credentials: true
+      - name: Conferir pacote enviado ao repositório
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f streammax_brand_assets.zip || { echo "Envie streammax_brand_assets.zip para a raiz da branch streammax/legacy-migration antes de executar"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/streammax-brand"
+          python3 - "$RUNNER_TEMP/streammax-brand" <<'PY'
+          import sys, zipfile
+          from pathlib import Path
+          output = Path(sys.argv[1])
+          names = {"streammax_icon.png", "streammax_banner.png", "streammax_splash.png"}
+          with zipfile.ZipFile("streammax_brand_assets.zip") as z:
+              if set(z.namelist()) != names:
+                  raise SystemExit("O ZIP deve conter exatamente os tres PNGs oficiais.")
+              for name in sorted(names):
+                  (output / name).write_bytes(z.read(name))
+          PY
+      - name: Instalar artes oficiais no Legacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 migration/install-brand-assets.py "$RUNNER_TEMP/streammax-brand"
+          test -f legacy-source/deploy/app/art/marcas/streammax_splash.png
+          test -f legacy-source/android/app/src/main/res/drawable-nodpi/streammax_icon.png
+          test -f legacy-source/android/app/src/main/res/drawable-nodpi/streammax_banner.png
+      - name: Salvar identidade visual (sem APK)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add legacy-source/android/app/src/main/res/drawable-nodpi/ legacy-source/android/app/src/main/res/drawable/ legacy-source/deploy/app/art/marcas/streammax_splash.png
+          if git diff --cached --quiet; then echo "Identidade ja instalada"; exit 0; fi
+          git commit -m "feat(brand): instalar logo oficial, icone e banner StreamMax"
+          git push origin HEAD:streammax/legacy-migration
