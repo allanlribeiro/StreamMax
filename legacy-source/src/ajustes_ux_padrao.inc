@@ -15,7 +15,7 @@
   // toda atualizacao desfaria escolha de usuario.
   LING_OPC_ORIGINAL, /* idioma de audio: Original do titulo */
   0,                /* painel ao pausar: ligado (o default do web) */
-  1,                /* escolher a fonte ao reproduzir: DESLIGADO (V_LIGA: 1 = Desligado) */
+  0,                /* StreamMax: perguntar a primeira fonte em instalacoes novas (V_LIGA: 0 = Ligado). A preferencia salva sempre vence. */
   0,                /* fonte automatica: melhor fonte (a regra de sempre) */
   2,                /* outra fonte se falhar: ate 2 (eram 7 fixas ate a 1.4.3) */
   0,                /* texto das fontes: do Nuvio */
