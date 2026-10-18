@@ -9,6 +9,7 @@ original = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/NuvioExoPla
 original_controller = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerRuntimeControllerInitialization.kt").read_text()
 original_watchdog = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerFirstFrameWatchdogPolicy.kt").read_text()
 postplay = (root / "legacy-source/src/posplay.c").read_text()
+activity = (root / "legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NuvioActivity.kt").read_text()
 
 # Pausar o app pelo Android nunca pode ser confundido com transicao READY:
 # o watchdog nao deve ligar playWhenReady com a Activity em background.
@@ -46,6 +47,24 @@ checks = {
     ),
     "subtitle delay changes invalidate old pending cues": "if (atrasoMs != idx) versaoLegenda++" in source,
     "old subtitle cues are rejected after track or delay changes": "atual(minha) && versao == versaoLegenda" in source,
+    "Android onPause gates a late source open": (
+        "atividadeOculta = true" in pausa_sistema
+        and "if (!reabrindo && !atividadeOculta) pausaPedida = false" in source
+    ),
+    "late source open cannot start in the background": (
+        source.count("p.playWhenReady = !pausaPedida && !atividadeOculta") == 3
+    ),
+    "manual play cannot override Android background pause": (
+        "player?.playWhenReady = !pausaPedida && !atividadeOculta" in source
+    ),
+    "first-frame READY watchdog respects Android lifecycle": (
+        "p != null && !quadroVisto && !pausaPedida && !atividadeOculta" in source
+        and "if (!quadroVisto && !pausaPedida && !atividadeOculta)" in source
+    ),
+    "onResume re-enables player without forcing playback": (
+        "NvPlayer.retomarPeloSistema()" in activity
+        and "atividadeOculta = false" in source
+    ),
     "system pause disables READY watchdog before pausing": (
         "pausaPedida = true" in pausa_sistema
         and "principal.removeCallbacks(vigiaPrimeiroQuadro)" in pausa_sistema
