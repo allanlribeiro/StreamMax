@@ -53,6 +53,12 @@ checks = {
     ),
     "subtitle delay changes invalidate old pending cues": "if (atrasoMs != idx) versaoLegenda++" in source,
     "old subtitle cues are rejected after track or delay changes": "atual(minha) && versao == versaoLegenda" in source,
+    "seek invalidates pending subtitle cues and clears overlay": (
+        "override fun onPositionDiscontinuity(" in source
+        and "reason != Player.DISCONTINUITY_REASON_SEEK" in source
+        and "if (!atual(minha) || reason != Player.DISCONTINUITY_REASON_SEEK) return\\n            versaoLegenda++\\n            try { nativeLegenda(\\\"\\\", 0) }" in source
+    ),
+
     "Android onPause gates a late source open": (
         "atividadeOculta = true" in pausa_sistema
         and "if (!reabrindo && !atividadeOculta) pausaPedida = false" in source
