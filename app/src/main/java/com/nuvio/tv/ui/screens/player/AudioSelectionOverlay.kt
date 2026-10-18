@@ -172,7 +172,13 @@ internal fun AudioSelectionOverlay(
                 text = stringResource(R.string.audio_dialog_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
-                modifier = Modifier.padding(bottom = NuvioTheme.spacing.sm)
+                modifier = Modifier.padding(bottom = NuvioTheme.spacing.xs)
+            )
+            Text(
+                text = "Trilhas de áudio · selecione com o controle remoto",
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.extendedColors.textSecondary,
+                modifier = Modifier.padding(bottom = NuvioTheme.spacing.md)
             )
 
             Row(
