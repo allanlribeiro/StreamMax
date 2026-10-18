@@ -5,6 +5,13 @@ on:
     branches:
       - streammax/legacy-migration
     paths:
+      - 'legacy-source/src/player.c'
+      - 'legacy-source/src/plrui.c'
+      - 'legacy-source/src/plrui.h'
+      - 'legacy-source/src/streammax_player_layout.h'
+      - 'legacy-source/tests/test_streammax_player_layout.c'
+      - 'legacy-source/tests/streammax-player-layout.sh'
+      - 'migration/check-player-original-style.py'
       - 'legacy-source/src/text.c'
       - 'legacy-source/src/streammax_ui_brand.h'
       - 'legacy-source/src/ajustes_ux_padrao.inc'
@@ -23,5 +30,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validar marca apenas na interface
         run: bash legacy-source/tests/streammax-ui-brand.sh
+      - name: Testar geometria dos controles fixos
+        run: bash legacy-source/tests/streammax-player-layout.sh
+      - name: Validar paridade visual do player sem APK
+        run: python3 migration/check-player-original-style.py legacy-source
       - name: Validar contratos de reproducao do Legacy
         run: python3 migration/check-playback-contracts.py legacy-source
