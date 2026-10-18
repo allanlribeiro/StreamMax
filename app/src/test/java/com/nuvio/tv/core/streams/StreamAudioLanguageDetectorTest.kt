@@ -80,6 +80,11 @@ class StreamAudioLanguageDetectorTest {
             StreamAudioLanguageDetector.portugueseAudio(stream("Filme.LEGENDA.PT-BR.1080p")))
     }
 
+    @Test fun dubbedAudioAndPortugueseSubtitlesRemainConfirmed() {
+        assertEquals(StreamAudioLanguageDetector.PortugueseAudio.CONFIRMED,
+            StreamAudioLanguageDetector.portugueseAudio(stream("Filme.DUBLADO.LEGENDA.PT-BR.2160p")))
+    }
+
     @Test fun subtitleLanguageIsNotAudioLanguage() {
         assertEquals(StreamAudioLanguageDetector.PortugueseAudio.UNKNOWN,
             StreamAudioLanguageDetector.portugueseAudio(stream("Movie.SUB.PT-BR.4K")))
