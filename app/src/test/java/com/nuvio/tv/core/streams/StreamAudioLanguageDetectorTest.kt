@@ -65,6 +65,21 @@ class StreamAudioLanguageDetectorTest {
             StreamAudioLanguageDetector.portugueseAudio(stream("Movie.DUAL.AUDIO.4K")))
     }
 
+    @Test fun portugueseAccentAudioIsRecognized() {
+        assertEquals(StreamAudioLanguageDetector.PortugueseAudio.CONFIRMED,
+            StreamAudioLanguageDetector.portugueseAudio(stream("Filme.ÁUDIO.PORTUGUÊS.1080p")))
+    }
+
+    @Test fun unrelatedWordContainingDubladoIsNotRecognized() {
+        assertEquals(StreamAudioLanguageDetector.PortugueseAudio.UNKNOWN,
+            StreamAudioLanguageDetector.portugueseAudio(stream("UNDUBLADO.1080p")))
+    }
+
+    @Test fun fileWithOnlyPortugueseSubtitlesDoesNotPassFilter() {
+        assertEquals(StreamAudioLanguageDetector.PortugueseAudio.UNKNOWN,
+            StreamAudioLanguageDetector.portugueseAudio(stream("Filme.LEGENDA.PT-BR.1080p")))
+    }
+
     @Test fun subtitleLanguageIsNotAudioLanguage() {
         assertEquals(StreamAudioLanguageDetector.PortugueseAudio.UNKNOWN,
             StreamAudioLanguageDetector.portugueseAudio(stream("Movie.SUB.PT-BR.4K")))
