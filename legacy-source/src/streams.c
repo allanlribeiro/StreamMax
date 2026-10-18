@@ -3438,6 +3438,8 @@ static const char *faixaIdiomaDoNome(const char *raw) {
     { "Brazilian Portuguese", "pob" }, { "Portuguese (Brazil)", "pob" },
     { "Portuguese (Brasil)", "pob" }, { "Portuguese (BR)", "pob" },
     { "Português (Brasil)", "pob" }, { "Português (BR)", "pob" },
+    { "Português brasileiro", "pob" }, { "Portugues brasileiro", "pob" },
+    { "Português do Brasil", "pob" }, { "Portuguese Brazilian", "pob" },
     { "Portuguese (Portugal)", "pt-PT" }, { "Portuguese (PT)", "pt-PT" },
     { "Português (Portugal)", "pt-PT" },
     { "ptbr", "pob" },
