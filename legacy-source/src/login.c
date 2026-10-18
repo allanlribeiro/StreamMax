@@ -228,12 +228,13 @@ static void pilula(float cx, float y, float w, const char *rot, float k, float a
                    PonteiroFn focar, int i) {
   GfxRect pill = { cx - w * 0.5f, y, w, LG_PILL_H };
   TxtLinha t;
-  int tom = k >= 0.5f ? 18 : 244;
 #ifdef NV_ANDROID
+  int tom = k >= 0.5f ? 18 : 244;
   // Botao primario azul, sem a pilula branca do Legacy.
   gfx_cor(pill, NV_RAIO_PILL, anim_mistura(0.07f, 0.14f, k),
           anim_mistura(0.23f, 0.59f, k), anim_mistura(0.46f, 0.96f, k), alpha);
 #else
+  int tom = k >= 0.5f ? 24 : 236;
   gfx_cor(pill, NV_RAIO_PILL, 1.0f, 1.0f, 1.0f, anim_mistura(0.12f, 0.92f, k) * alpha);
 #endif
   t = txt_linha_corta(TXT_BODY, rot, tom, tom, tom + 2 > 255 ? 255 : tom + 2, 255, w - 48.0f);
@@ -300,7 +301,9 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
     txt_desenhar_alpha(t, cx.x + 24.0f - (t.w > larg ? t.w - larg : 0.0f),
                        cx.y + (cx.h - t.h) * 0.5f, 1.0f);
     gfx_sem_recorte();
-  } else {
+  }
+#ifdef NV_ANDROID
+  else {
     // Campo vazio continua identificavel mesmo visto a distancia da TV.
     TxtLinha t = txt_linha(TXT_BODY,
         i == LE_EMAIL ? "Digite seu e-mail" : "Digite sua senha",
@@ -308,6 +311,7 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
     txt_desenhar_alpha(t, cx.x + 24.0f,
                       cx.y + (cx.h - t.h) * 0.5f, 1.0f);
   }
+#endif
 }
 
 static void desenharEmail(float y, Uint32 agora) {
@@ -327,7 +331,11 @@ static void desenharEmail(float y, Uint32 agora) {
   { float x = (NV_TELA_W + LG_CAMPO_W) * 0.5f - LG_MOSTRAR_W - 12.0f;
     float yb = y + 42.0f + (LG_CAMPO_H - 60.0f) * 0.5f, k = animFoco[LE_MOSTRAR];
     GfxRect b = { x, yb, LG_MOSTRAR_W, 60.0f };
+#ifdef NV_ANDROID
     int tom = k >= 0.5f ? 18 : 230;
+#else
+    int tom = k >= 0.5f ? 24 : 220;
+#endif
     TxtLinha t = txt_linha(TXT_CAPTION, senhaVisivel ? "Ocultar" : "Mostrar", tom, tom, tom, 255);
 #ifdef NV_ANDROID
     gfx_cor(b, NV_RAIO_PILL, anim_mistura(0.09f, 0.16f, k),
