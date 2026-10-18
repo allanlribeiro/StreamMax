@@ -1190,17 +1190,25 @@ static const char *urlCanal(const Stream *s, char *buf, size_t n) {
 
 static int tocarFonteGuardada(void) {
   Stream s;
-  char alvo[64];
-  // "Escolher a fonte ao reproduzir": a URL da ultima sessao nao toca
-  // sozinha. A folha e quem escolhe (detail_pediu_fontes, e o #62 quando a
-  // lista chega). O Retomar do Continuar assistindo pede reproducao e cai
-  // aqui tambem — com o ajuste ligado ele espera a folha, como o Play.
-  if (!fontevolta_toca_guardada(ajustes_fonte_manual(), fontefalha_ativa(),
+  char alvo[64], base[24];
+  int manual = ajustes_fonte_manual();
+  // StreamMax: primeira vez, a pessoa escolhe a fonte. Retomar pode ser
+  // rapido DEPOIS da escolha se o link guardado ainda e valido para este
+  // titulo/episodio e casa com a preferencia manual do mesmo perfil.
+  // Nao furar a escolha quando nao existe preferencia, ela expirou ou mudou:
+  // nesse caso a folha normal deve abrir.
+  if (!fontevolta_toca_guardada(0, fontefalha_ativa(),
                                 player_id_canal()[0], player_aberto()))
     return 0;
   alvoPlayer(alvo, sizeof alvo);
   if (!alvo[0] || !fontevolta_pegar(alvo, sessao_usuario(), perfis_ativo(), SDL_GetTicks(), &s))
     return 0;
+  if (manual) {
+    idBaseDoTitulo(base, sizeof base);
+    if (!base[0] || !fontepref_tem(base) ||
+        fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)
+      return 0;
+  }
   // A regra de fontes pode mudar entre uma sessao e outra. Se a fonte
   // lembrada ficou proibida, descarte-a e abra a selecao normal dos addons.
   if (!stream_filtro_permite(&s)) {
