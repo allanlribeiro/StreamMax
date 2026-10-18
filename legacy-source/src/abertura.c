@@ -11,11 +11,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// O fundo do splash.png (#0E0F12, lido do arquivo) e o lugar da marca nele:
+// StreamMax: usar a mesma base azul-marinho do fundo Android (#080D18).\n// O fundo original da arte antiga pode diferir; o splash StreamMax sera proprio.
 // 780x247 a partir de (570,416), o centro em (960,540).
-#define AB_FUNDO_R (14.0f / 255.0f)
-#define AB_FUNDO_G (15.0f / 255.0f)
-#define AB_FUNDO_B (18.0f / 255.0f)
+#define AB_FUNDO_R (8.0f / 255.0f)
+#define AB_FUNDO_G (13.0f / 255.0f)
+#define AB_FUNDO_B (24.0f / 255.0f)
 #define AB_MARCA_W 780.0f
 // A marca do logo Novo (play + nome empilhados, 1200x895) em 1920x1080.
 #define AB_NOVO_W 720.0f
