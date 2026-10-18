@@ -7,6 +7,10 @@ on:
       - streammax/tcl-player-source-branding-1018
     paths:
       - 'legacy-source/src/app.c'
+      - 'legacy-source/src/posplay.c'
+      - 'legacy-source/src/streammax_next_prefetch.h'
+      - 'legacy-source/tests/test_streammax_next_prefetch.c'
+      - 'legacy-source/tests/streammax-next-prefetch.sh'
       - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
       - 'migration/check-player-original-engine.py'
       - 'legacy-source/src/ajustes.c'
@@ -44,6 +48,8 @@ jobs:
         run: python3 migration/check-player-original-style.py legacy-source
       - name: Testar escolha inicial e memoria de fontes (sem rede)
         run: bash legacy-source/tests/streammax-first-source.sh
+      - name: Testar prefetch de fonte sem escolha automatica inesperada
+        run: bash legacy-source/tests/streammax-next-prefetch.sh
       - name: Conferir base de reprodução Media3 original (sem APK)
         run: python3 migration/check-player-original-engine.py
       - name: Validar contratos de reproducao do Legacy
