@@ -145,6 +145,8 @@ object NvPlayer {
     private var jw = TELA_W
     private var jh = TELA_H
     private var atrasoMs = 0
+    // Mudanca de faixa/atraso invalida cues agendados da faixa antiga.
+    private var versaoLegenda = 0
     private var audios = ArrayList<Pair<Tracks.Group, Int>>()
     private var legendas = ArrayList<Pair<Tracks.Group, Int>>()
     private var assinatura = ""
@@ -1875,7 +1877,11 @@ object NvPlayer {
     // --- escolha de faixa ----------------------------------------------------
 
     private fun escolherMain(tipo: Int, idx: Int) {
-        if (tipo == 2) { atrasoMs = idx; return }
+        if (tipo == 2) {
+            if (atrasoMs != idx) versaoLegenda++
+            atrasoMs = idx
+            return
+        }
         if (tipo == 3) { tap.ligado = idx != 0; return }   // F06: escuta de PCM liga/desliga
         val p = player ?: return
         try {
@@ -1893,7 +1899,14 @@ object NvPlayer {
                         .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
                 }
             } else return
-            p.trackSelectionParameters = par.build()
+            val novosParametros = par.build()
+            // Evita mostrar uma cue antiga em atraso depois da troca de faixa.
+            // Repetir a selecao atual nao interrompe uma legenda valida.
+            if (tipo == 1 && novosParametros != p.trackSelectionParameters) {
+                versaoLegenda++
+                try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+            }
+            p.trackSelectionParameters = novosParametros
         } catch (e: Exception) { Log.w(TAG, "escolher $tipo/$idx: $e") }
     }
 
@@ -2025,8 +2038,10 @@ object NvPlayer {
             // O Media3 nao diz quando o cue acaba: estimativa pelo tamanho, e o
             // proximo grupo (inclusive o vazio) substitui antes disso.
             val dur = if (texto.isEmpty()) 0 else (800 + texto.length * 60).coerceIn(2000, 7000)
+            val versao = versaoLegenda
             val entregar = Runnable {
-                if (atual(minha)) try { nativeLegenda(texto, dur) } catch (e: UnsatisfiedLinkError) { }
+                if (atual(minha) && versao == versaoLegenda)
+                    try { nativeLegenda(texto, dur) } catch (e: UnsatisfiedLinkError) { }
             }
             if (atrasoMs > 0) principal.postDelayed(entregar, atrasoMs.toLong()) else entregar.run()
         }
