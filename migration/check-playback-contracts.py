@@ -39,8 +39,8 @@ checks = {
         "int ajustes_fonte_prazo_ms(void)",
     ],
     "src/ajustes_ux_padrao.inc": [
-        "#ifdef NV_ANDROID\\n  0,                /* espera pelos add-ons: Instantaneo",
-        "#else\\n  2,                /* outras plataformas: manter os 5 s",
+        "#ifdef NV_ANDROID\n  0,                /* espera pelos add-ons: Instantaneo",
+        "#else\n  2,                /* outras plataformas: manter os 5 s",
     ],
 
 }
