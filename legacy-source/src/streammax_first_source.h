@@ -9,7 +9,10 @@
 static inline int streammax_should_ask_first_source(int manualEnabled,
                                                      int availableStreams,
                                                      int rememberedIndex) {
-  return manualEnabled && availableStreams > 0 && rememberedIndex < 0;
+  // On StreamMax, first-time VOD playback always requires explicit source selection.
+  // The legacy preference must not silently start a new film or episode.
+  (void)manualEnabled;
+  return availableStreams > 0 && rememberedIndex < 0;
 }
 
 #endif
