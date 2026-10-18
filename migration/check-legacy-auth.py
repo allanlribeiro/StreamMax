@@ -10,7 +10,8 @@ import sys
 def main(root: Path) -> int:
     required = {
         "src/login.c": [
-            "LG_EMAIL", "LE_SENHA", "sessao_login_email",
+            "LE_EMAIL", "LE_SENHA", "sessao_login_email",
+            "void login_iniciar(void)",
         ],
         "src/sessao.h": [
             "SES_EMAIL", "sessao_login_email", "sessao_login_comecar",
@@ -38,6 +39,16 @@ def main(root: Path) -> int:
         ],
     })
     errors = []
+    # StreamMax usa somente email e senha nesta interface.
+    login = root / "src/login.c"
+    if login.is_file():
+        ui = login.read_text(encoding="utf-8")
+        forbidden = ("LG_QR", "LE_QR", "gerarTexQr", "sessao_login_comecar()",
+                     "Usar o código QR")
+        for term in forbidden:
+            if term in ui:
+                errors.append(f"src/login.c: fluxo QR inesperado: {term}")
+
     for relative, needles in required.items():
         file = root / relative
         if not file.is_file():
@@ -51,7 +62,7 @@ def main(root: Path) -> int:
         for error in errors:
             print("FALHOU:", error, file=sys.stderr)
         return 1
-    print("OK: verificações estáticas de login (QR e e-mail/senha) e IPTV.")
+    print("OK: verificações estáticas do login exclusivo por e-mail/senha e IPTV.")
     print("PENDENTE: testes de protocolos, backend, persistência e login real na TV.")
     return 0
 
