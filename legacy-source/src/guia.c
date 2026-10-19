@@ -394,6 +394,7 @@ static int tvTresColunas = 1;
 static int tvTresColunas;
 #endif
 static int tvColunaFoco = SM_TV_COL_CATEGORIAS;
+static void streammaxTvAnimar(float dt);  // visual: mola de foco da TCL
 
 static void modoLer(void) {
   char *t = lerPerfil("modo");
