@@ -19,8 +19,8 @@ static inline int streammax_flag_idioma_legivel(const char *s) {
 static inline const char *streammax_flag_icone(const char *s) {
   if (!s) return NULL;
 #define SM_EQ(x) (!strcasecmp(s, (x)))
-  // So variantes regionais EXPLICITAS. "pt", "en" e "es" isolados
-  // continuam em texto para nao confundir idioma com nacionalidade.
+  // EN generico usa 🇺🇸 por convencao visual escolhida pelo usuario.
+  // PT e ES genericos continuam como texto; regioes explicitas tem prioridade.
   if (SM_EQ("pt-BR") || SM_EQ("pt_BR") || SM_EQ("ptbr") ||
       SM_EQ("pob") || SM_EQ("br") || SM_EQ("pb") || SM_EQ("ptb") ||
       SM_EQ("Brazilian Portuguese") || SM_EQ("Portuguese Brazilian") ||
@@ -33,7 +33,8 @@ static inline const char *streammax_flag_icone(const char *s) {
       SM_EQ("Portuguese (Portugal)") || SM_EQ("Portuguese (PT)") ||
       SM_EQ("Português (Portugal)") || SM_EQ("Português (PT)"))
     return "sm_flag_pt";
-  if (SM_EQ("en-US") || SM_EQ("en_US") || SM_EQ("English (US)") ||
+  if (SM_EQ("en") || SM_EQ("eng") || SM_EQ("English") ||
+      SM_EQ("en-US") || SM_EQ("en_US") || SM_EQ("English (US)") ||
       SM_EQ("English (USA)") || SM_EQ("English (United States)"))
     return "sm_flag_us";
   if (SM_EQ("en-GB") || SM_EQ("en_GB") || SM_EQ("en-UK") ||
