@@ -5195,6 +5195,20 @@ void app_atualizar(float dt, Uint32 agora) {
       gravarFolhaTocar(epT, epE, temEp);
       idBaseDoTitulo(base, sizeof base);
       stream_preferir(base[0] ? fontepref_escolher_manual(base) : -1);
+      // Um seletor aberto nao pode competir com o prazo do auto-play.
+      // Se um Play novo ja estava esperando os addons, cancelar essa decisao
+      // e a resposta do worker antigo. So o OK da folha inicia esta sessao.
+      // Canais permanecem no roteador separado e nao entram nesta trava.
+      if (!player_id_canal()[0] && aguardandoFonte != 0) {
+        aguardandoFonte = 0;
+        fontePedidoGeracao = novaGeracaoFonte();
+        limparFontePendente();
+        fonteEscolhida = -2;
+        preparoEspera = 0;
+        limparFonteVOD();
+        folhaParaTocar = player_aberto();
+        printf("[streammax] fontes abertas: decisao automatica pendente cancelada\n");
+      }
       nomeParaFolha(); stream_folha_abrir();
     }
   }
@@ -5204,6 +5218,8 @@ void app_atualizar(float dt, Uint32 agora) {
   // A busca disparada por Reproduzir terminou: agora VERIFICA as fontes, em
   // ordem, ate achar uma que leve ao arquivo — e so entao liga o video.
   if (aguardandoFonte == 1 &&
+      streammax_auto_may_play(player_id_canal()[0] != 0,
+                              stream_folha_aberta(), folhaParaTocar) &&
       (addons_estado() != ADD_BUSCANDO ||
        ((player_id_canal()[0] || !fontefalha_ativa()) && autoParcialPronto()))) {
     unsigned geracao = novaGeracaoFonte();
@@ -5293,7 +5309,13 @@ void app_atualizar(float dt, Uint32 agora) {
       // trocar de fonte continua a um hold de distancia (menu do episodio,
       // hold no botao primario).
       if (streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)) {
+        // A escolha e obrigatoria ate a pessoa confirmar uma fonte.
+        // Invalida tambem resultados tardios de verificadores antigos.
         aguardandoFonte = 0;
+        fontePedidoGeracao = novaGeracaoFonte();
+        limparFontePendente();
+        fonteEscolhida = -2;
+        preparoEspera = 0;
         folhaParaTocar = 1;
         nomeParaFolha(); stream_folha_abrir();
       } else {
@@ -5328,7 +5350,9 @@ void app_atualizar(float dt, Uint32 agora) {
     if (pedirFonteJob(FJOB_FALHA, fontePedidoGeracao, NULL, 0) < 0) fonteEscolhida = -1;
   }
   vigiarAntecipada();
-  if (aguardandoFonte == 2 && fonteEscolhida != -2) {
+  if (aguardandoFonte == 2 && fonteEscolhida != -2 &&
+      streammax_auto_may_play(player_id_canal()[0] != 0,
+                              stream_folha_aberta(), folhaParaTocar)) {
     const Stream *s = fonteEscolhida >= 0 ? stream_item(fonteEscolhida) : NULL;
     // O player ja esta tocando a escolhida (aberta antes do veredito)?
     int jaTocando = fa_ja_tocando(antAberta, fonteEscolhida) && s != NULL;
