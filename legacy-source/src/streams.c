@@ -3603,10 +3603,28 @@ static int linhasFaixas(const Stream *s) {
       p = f ? f + 1 : fim;
     }
   }
+  // "Dual Audio" sem lista de linguas: mostrar a ausencia de identificacao
+  // na grid, em vez de deixar um espaco vazio que parece defeito da interface.
+  if (!s->audioIdiomas[0] &&
+      streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+                                s->nomeFonteCompleto : s->rotulo,
+                                s->tituloFonte, s->descricao)) n++;
   return n;
 }
 static float desenharFaixas(const Stream *s, float x, float y, float w, int sel, float a) {
   float altura = 0;
+  // Sem identificacao no stream recebido: nenhum pais pode ser inventado.
+  // O aviso ocupa a MESMA linha prevista por linhasFaixas, sem mudar o filtro.
+  if (!s->audioIdiomas[0] &&
+      streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+                                s->nomeFonteCompleto : s->rotulo,
+                                s->tituloFonte, s->descricao)) {
+    TxtLinha aviso = txt_linha_corta(TXT_PG_FIM,
+        i18n("Áudio: idiomas não informados"), sel ? 182 : 147,
+        sel ? 193 : 157, sel ? 210 : 171, 255, w);
+    txt_desenhar_alpha(aviso, x, y, a);
+    altura += FOLHA_FAIXA_H;
+  }
   // Bandeiras sao SOMENTE apresentacao: o filtro temAudioPreferido continua
   // lendo as strings originais em s->audioIdiomas, sem converter paises.
   for (int legendas = 0; legendas < 2; legendas++) {
@@ -4276,6 +4294,9 @@ static void detalheAbrir(const Stream *s) {
   for(char *p=tmp,*q=tmp;;p++){ if(*p!='\r') *q++=*p; if(!*p) break; }
   nv_limpar_texto(tmp,detDesc,sizeof detDesc,0);
   stream_faixas_texto(s,0,detAudio,sizeof detAudio);
+  if (!detAudio[0] && streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+      s->nomeFonteCompleto : s->rotulo, s->tituloFonte, s->descricao))
+    snprintf(detAudio, sizeof detAudio, "%s", i18n("Idiomas não informados"));
   stream_faixas_texto(s,1,detLegendas,sizeof detLegendas);
   detAberto=1; detRol=detRolAlvo=0; detAlt=0;
 }
