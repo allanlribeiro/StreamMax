@@ -20,7 +20,8 @@ static inline int streammax_should_ask_first_source(int manualEnabled,
  // Long-press "Fontes deste episodio" still opens the source picker.
 static inline int streammax_should_ask_episode_source(int manualEnabled,
                                                       int hasManualPreference) {
-  return manualEnabled && !hasManualPreference;
+  (void)manualEnabled;
+  return !hasManualPreference;
 }
 
 #endif
