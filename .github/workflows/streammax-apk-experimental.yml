@@ -18,6 +18,8 @@ on:
       - 'migration/check-playback-contracts.py'
       - 'legacy-source/tests/test_streammax_first_source.c'
       - 'legacy-source/src/app.c'
+      - 'legacy-source/src/home.c'
+      - 'legacy-source/tests/streammax-hero-trailer.sh'
       - 'legacy-source/src/streammax_first_source.h'
       - 'legacy-source/tests/streammax-first-source.sh'
       - 'legacy-source/tests/streammax-livetv-columns.sh'
@@ -74,6 +76,7 @@ jobs:
           grep -Fq 'streammax_should_ask_episode_source(' legacy-source/src/detail.c
           python3 migration/check-player-original-engine.py
           bash legacy-source/tests/streammax-first-source.sh
+          bash legacy-source/tests/streammax-hero-trailer.sh
           bash legacy-source/tests/streammax-next-prefetch.sh
           bash legacy-source/tests/streammax-source-ptbr.sh
           bash legacy-source/tests/streammax-livetv-columns.sh
