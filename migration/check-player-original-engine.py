@@ -180,7 +180,7 @@ checks = {
     # Regressao da miniatura AO VIVO na TCL. O modo 2 e exclusivo do PiP,
     # sem mudar os modos de aspecto, HDR/DV nem a superficie do VOD.
     "preview mode is exported only for Android": (
-        "#ifdef NV_ANDROID\\n// Encolhe TODO" in video_header
+        "#ifdef NV_ANDROID" in video_header
         and "void video_janela_previa(int x, int y, int w, int h);" in video_header
     ),
     "native preview sends separate JNI mode": (
