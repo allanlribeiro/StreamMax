@@ -3613,9 +3613,11 @@ static const char *idiomaDa(const Stream *s) {
   if (podePt && (temNoTexto(s, "dublado") || temNoTexto(s, "dub"))) return "Dublado";
   if (podePt && temNoTexto(s, "dual")) return "Dual áudio";
   // Uma secao de legendas em portugues nao anuncia audio em portugues.
+  // Uma referencia isolada a portugues nao prova duas faixas.
+  // A grade conserva o estilo original, mas evita o selo "Dual" enganoso.
   if (podePt && (s->audioIdiomas[0] || !s->legendaIdiomas[0]) &&
       (temNoTexto(s, "portuguese") || temNoTexto(s, "português") ||
-       temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Dual áudio";
+       temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Português";
   if (temNoTexto(s, "legendado") || temNoTexto(s, "leg")) return "Legendado";
   return NULL;
 }
