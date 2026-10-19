@@ -3633,10 +3633,9 @@ static const char *idiomaDa(const Stream *s) {
   int podePt = !s->audioIdiomas[0] || audioDeclaradoEm(s, "pt");
   if (podePt && (temNoTexto(s, "dublado") || temNoTexto(s, "dub"))) return "Dublado";
   if (podePt && temNoTexto(s, "dual")) return "Dual áudio";
-  // Uma secao de legendas em portugues nao anuncia audio em portugues.
-  if (podePt && (s->audioIdiomas[0] || !s->legendaIdiomas[0]) &&
-      (temNoTexto(s, "portuguese") || temNoTexto(s, "português") ||
-       temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Dual áudio";
+  // PT-BR isolado nao confirma DUAS trilhas de audio. O chip "Dual áudio"
+  // deve depender de marcador explicito "dual" (acima), nunca da mera
+  // presenca de idioma no nome — que pode indicar somente legenda.
   if (temNoTexto(s, "legendado") || temNoTexto(s, "leg")) return "Legendado";
   return NULL;
 }
