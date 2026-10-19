@@ -10,6 +10,7 @@ static inline int streammax_audio_dual_texto(const char *s) {
     "dual audio", "dual-audio", "dual.audio", "dual_audio", "dualaudio",
     "audio dual", "audio-dual", "audio.dual", "audio_dual",
     "áudio dual", "áudio-dual", "áudio.dual", "áudio_dual",
+    "Áudio dual", "Áudio-dual", "Áudio.dual", "Áudio_dual",
   };
   if (!s) return 0;
   for (unsigned i = 0; i < sizeof tags / sizeof *tags; i++)
