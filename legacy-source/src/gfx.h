@@ -378,6 +378,8 @@ void gfx_recorte(float x, float y, float w, float h);
 // Carga preguiçosa, uma textura de 128x128; gfx_encerrar devolve a textura.
 void gfx_icones_dir(const char *dirArte);
 void gfx_icone(GfxRect r, const char *nome, float cr, float cg, float cb, float ca);
+// Mantem o RGB de icones coloridos (bandeiras regionais). Nunca para chips do filtro.
+void gfx_icone_colorido(GfxRect r, const char *nome, float alfa);
 void gfx_sem_recorte(void);
 
 int  gfx_snap_iniciar(int w, int h);
