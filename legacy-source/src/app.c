@@ -243,7 +243,7 @@ static int autoParcialPronto(void) {
       ultN = stream_n(); ultGeracao = stream_lista_geracao();
       ultManual = manual; ultRevisao = fontepref_revisao();
       snprintf(ultBase, sizeof ultBase, "%s", base);
-      ultLembrada = manual ? fontepref_escolher_manual(base) : fontepref_escolher(base);
+      ultLembrada = fontepref_escolher_manual(base);
     }
     lembrada = ultLembrada;
     prefPendente = lembrada < 0 && addons_pendente_nome(fp->provedor);
