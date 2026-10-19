@@ -49,6 +49,7 @@ int  app_na_home(void);
 int  app_home_recebe_teclas(void);
 // A tela atual e o login (a abertura dissolve o logo sobre o fundo dele).
 int  app_no_login(void);
+int  app_em_escolha_perfil(void);
 
 // Porta de teste: abre o titulo (imdb) como se viesse de uma recomendacao.
 void app_abrir_titulo(const char *imdb);
