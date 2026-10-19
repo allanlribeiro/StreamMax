@@ -59,7 +59,8 @@ static inline unsigned streammax_audio_dual_idiomas_linha(const char *txt) {
       !streammax_pt_token(linha, "dual")) return 0;
   unsigned bits = 0;
   if (streammax_pt_dica_explicitamente_brasileira(linha)) bits |= SM_DUAL_BR;
-  else if (streammax_pt_token(linha, "pt-pt") ||
+  else if (strstr(linha, "🇵🇹") ||
+           streammax_pt_token(linha, "pt-pt") ||
            streammax_pt_token(linha, "pt_pt") ||
            streammax_pt_token(linha, "portuguese (portugal)") ||
            streammax_pt_token(linha, "portuguese (pt)") ||
