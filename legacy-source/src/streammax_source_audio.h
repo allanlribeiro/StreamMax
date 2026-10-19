@@ -3,6 +3,7 @@
 #ifndef STREAMMAX_SOURCE_AUDIO_H
 #define STREAMMAX_SOURCE_AUDIO_H
 #include "streammax_source_ptbr.h"
+#include <stdio.h>
 
 static inline int streammax_audio_dual_texto(const char *s) {
   // Releases Torrentio/TorBox: separadores como ponto e hifen sao comuns.
