@@ -3,9 +3,21 @@ name: StreamMax APK experimental
 # O APK de teste da PR 15 deve conter o proprio player da PR, nunca
 # uma revisao antiga da base. Mantem login e bibliotecas nativas completas.
 # APK somente apos concluir demandas e aprovar a revisao do player.
-# Execucao manual intencional, sem disparo por push ou pull_request.
+# Esta PR agora tem autorizacao para gerar APK de teste com a correcao
+# da janela de TV ao vivo. A compilacao usa o codigo da propria PR.
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - streammax/legacy-migration
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/streammax-apk-experimental.yml'
+      - 'legacy-source/src/video.h'
+      - 'legacy-source/src/video_android.c'
+      - 'legacy-source/src/player.c'
+      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
+      - 'migration/check-player-original-engine.py'
 
 permissions:
   contents: read
