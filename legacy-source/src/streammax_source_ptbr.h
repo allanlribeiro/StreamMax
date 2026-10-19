@@ -138,4 +138,41 @@ static inline int streammax_dual_descricao_audio(const char *descricao) {
   return 0;
 }
 
+
+static inline int streammax_en_marca_release(const char *s) {
+  if (!s) return 0;
+  if (streammax_pt_token(s, "subs") || streammax_pt_token(s, "subtitle") ||
+      streammax_pt_token(s, "subtitles") || streammax_pt_token(s, "legendado") ||
+      streammax_pt_token(s, "legendas")) return 0;
+  return streammax_pt_token(s, "eng") || streammax_pt_token(s, "english");
+}
+static inline int streammax_en_descricao_audio(const char *descricao) {
+  const char *p = descricao;
+  if (!p) return 0;
+  while (*p) {
+    char linha[1024]; size_t n = 0;
+    while (*p && *p != '\n') {
+      if (n + 1 < sizeof linha) linha[n++] = *p;
+      p++;
+    }
+    if (*p) p++;
+    linha[n] = 0;
+    const char *v = linha;
+    while (*v == ' ' || *v == '\t') v++;
+    if (!strncasecmp(v, "audio:", 6) ||
+        !strncasecmp(v, "audio languages:", 16) ||
+        !strncasecmp(v, "language:", 9) ||
+        !strncasecmp(v, "idioma:", 7)) {
+      if (streammax_pt_token(v, "english") || streammax_pt_token(v, "eng"))
+        return 1;
+    }
+  }
+  return 0;
+}
+static inline int streammax_en_audio_sem_declaracao(
+    const char *arquivo, const char *rotulo, const char *descricao) {
+  return streammax_en_marca_release(arquivo) ||
+         streammax_en_marca_release(rotulo) ||
+         streammax_en_descricao_audio(descricao);
+}
 #endif
