@@ -1,4 +1,5 @@
 #include "streams.h"
+#include "streammax_source_audio.h"
 #include "badges.h"
 #include "js.h"
 #include <ctype.h>
@@ -1086,6 +1087,21 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
       s.emCache = cache > 0 || (cache == 0 && marcaEmCache(p, fim));
       s.cacheNegado = cache < 0;
       metadadosFaixas(p, fim, &s);
+      // As faixas formais sao prioridade. Se estiverem vazias, procurar
+      // APENAS identificadores explicitos no proprio release Dual Audio.
+      // A tag "Dual Audio" isolada nao significa automaticamente BR + EN.
+      // Informacao de SUBS nunca alimenta audioIdiomas.
+      if (!s.audioIdiomas[0]) {
+        unsigned bits = streammax_audio_dual_idiomas_fonte(
+            s.arquivo, s.nomeFonteCompleto, s.tituloFonte, s.descricao);
+        if (bits & SM_DUAL_BR)
+          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-BR");
+        if (bits & SM_DUAL_EN) {
+          size_t k = strlen(s.audioIdiomas);
+          snprintf(s.audioIdiomas + k, sizeof s.audioIdiomas - k,
+                   "%sEnglish", k ? "," : "");
+        }
+      }
       // O Torrentio pode colocar o release em title ou description, deixando
       // name apenas com o provedor. Cada campo e analisado isoladamente:
       // jamais combinar "PT-BR" de um campo com "DUBLADO" de outro.
