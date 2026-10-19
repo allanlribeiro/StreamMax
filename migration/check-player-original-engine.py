@@ -165,7 +165,7 @@ checks = {
     "source filter keeps DUAL-labelled streams": '"\\\\bDUAL\\\\b"' in source_filter,
     "source filter keeps non-destructive preference vs scope": "int fonteregra_grupo(" in source_filter and "int fonteregra_no_escopo(" in source_filter,
     "audio filter remains in source picker": "BT_DUB" in streams and "soDub && !temAudioPreferido(&lista[i])" in streams,
-    "audio filter uses actual audio preference": "ling_audio_fonte(idioma_iso(ajustes_idioma()))" in streams,
+    "audio filter is independently selectable": 'soDub == 1 ? "pt" : soDub == 2 ? "en" : ""' in streams and "soDub = (soDub + 1) % 4;" in streams,
     "explicit addon audio metadata wins over guesses": "if (s->audioIdiomas[0]) return 0;" in streams,
     "Portuguese fallback never reads subtitle metadata": "streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao)" in streams,
     "audio chips do not override full player source filter": "if (!canalFolha && !stream_filtro_permite(&lista[i])) return 0;" in streams,
