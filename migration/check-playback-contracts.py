@@ -60,7 +60,8 @@ checks = {
     ],
     "src/streammax_first_source.h": [
         "static inline int streammax_should_ask_first_source(",
-        "return manualEnabled && availableStreams > 0 && rememberedIndex < 0;",
+        "return availableStreams > 0 && rememberedIndex < 0;",
+        "return !hasManualPreference;",
     ],
     "src/fontepref.h": [
         "int fontepref_escolher_manual(const char *id);",
