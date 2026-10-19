@@ -39,6 +39,12 @@ int main(void) {
   nao("filme.pt", "", "Audio: p");
   sim("pt-br", "", "");
   nao(NULL, NULL, NULL);
+  assert(streammax_dual_marca_release("Filme.2160p.DUAL.mkv"));
+  assert(streammax_dual_marca_release("Filme.Dual.Audio.WEB-DL"));
+  assert(!streammax_dual_marca_release("Filme.DUAL.SUBS.mkv"));
+  assert(!streammax_dual_marca_release("Filme.DUAL.LEGENDAS.mkv"));
+  assert(!streammax_dual_marca_release("Filme.DUBLADO.mkv"));
+  assert(!streammax_dual_marca_release(NULL));
   printf("OK: cenarios de dublagem PT-BR e limites de string no seletor\n");
   return 0;
 }
