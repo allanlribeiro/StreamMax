@@ -1075,6 +1075,13 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
         fhd = fhdNoNome(nomeFonte);
       textoRaizLinhas(p, fim, "description", s.descricao, sizeof s.descricao);
       textoRaizLinhas(p, fim, "title", titulo, sizeof titulo);
+      // Nuvio original apresenta name/title/description da MESMA resposta
+      // separadamente. O StreamMax mantinha apenas o name curto + description
+      // e o title se perdia apos ser usado na classificacao.
+      if (nomeFonte[0] && strlen(nomeFonte) < sizeof s.nomeFonteCompleto)
+        snprintf(s.nomeFonteCompleto, sizeof s.nomeFonteCompleto, "%s", nomeFonte);
+      if (titulo[0] && strlen(titulo) < sizeof s.tituloFonte)
+        snprintf(s.tituloFonte, sizeof s.tituloFonte, "%s", titulo);
       int cache = cacheDeclarado(p, fim);
       s.emCache = cache > 0 || (cache == 0 && marcaEmCache(p, fim));
       s.cacheNegado = cache < 0;
