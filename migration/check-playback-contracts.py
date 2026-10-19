@@ -18,7 +18,7 @@ checks = {
         "lembrada = base[0] ? fontepref_escolher_manual(base) : -1;",
         "ultRevisao != fontepref_revisao()",
         "ultManual != manual",
-        "ultLembrada = manual ? fontepref_escolher_manual(base) : fontepref_escolher(base);",
+        "ultLembrada = fontepref_escolher_manual(base);",
         "fontepref_escolher_manual(base)",
         "if (base[0]) fontepref_guardar(base, s);",
     ],
