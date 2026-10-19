@@ -59,6 +59,10 @@ int main(void) {
   // Caso observado no Nuvio original: ingles e portugues de Portugal.
   assert(streammax_audio_dual_idiomas_fonte(
       "", "", "Dual Audio / 🇬🇧 / 🇵🇹", "") == (SM_DUAL_EN | SM_DUAL_PTPT));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio\\n🇬🇧 / 🇵🇹", "") == (SM_DUAL_EN | SM_DUAL_PTPT));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio\\nSubs: 🇧🇷 / 🇬🇧", "") == 0);
   puts("OK: Dual Audio e idiomas com evidencias reais, sem transformar legenda em audio");
   return 0;
 }
