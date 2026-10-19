@@ -5200,6 +5200,13 @@ static void desenhaHero(Uint32 agora, float saida) {
     aArte *= (1.0f - aTrailer);
   }
 #endif
+#ifdef NV_ANDROID
+  // Dissolver o backdrop quando o trailer assume o destaque.
+  // Preserva a camada de texto e as fileiras fora da arte.
+  if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA &&
+      !homeRetratoTelefone())
+    aArte *= (1.0f - aTrailer);
+#endif
   if (deslizando) {
     // O que sai do retangulo da arte nao pinta: o shader corta a arte de tela,
     // e o recorte aqui corta o poster e o marcador, que andam o rect inteiro.
