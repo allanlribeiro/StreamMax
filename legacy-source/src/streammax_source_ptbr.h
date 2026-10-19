@@ -100,7 +100,14 @@ static inline int streammax_pt_audio_sem_declaracao(
  // Indicio de duas faixas no nome do release (na ausencia de audio declarado).
  // "DUAL SUBS" e "DUAL LEGENDAS" nao comprovam Dual Audio.
 static inline int streammax_dual_marca_release(const char *s) {
-  if (!s || !streammax_pt_token(s, "dual")) return 0;
+  if (!s) return 0;
+  // "DUAL AUDIO + SUBS" continua sendo evidencia de audio duplo.
+  if (streammax_pt_token(s, "dual audio") ||
+      streammax_pt_token(s, "dual.audio") ||
+      streammax_pt_token(s, "dual_audio") ||
+      streammax_pt_token(s, "dual áudio")) return 1;
+  if (!streammax_pt_token(s, "dual")) return 0;
+  // DUAL isolado perto de marca de legenda e ambiguo: nao presumir audio.
   if (streammax_pt_token(s, "subs") || streammax_pt_token(s, "subtitle") ||
       streammax_pt_token(s, "subtitles") || streammax_pt_token(s, "legendas") ||
       streammax_pt_token(s, "legendado")) return 0;
