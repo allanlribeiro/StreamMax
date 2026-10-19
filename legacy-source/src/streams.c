@@ -9,6 +9,7 @@
 #include "idioma.h"
 #include "linguas.h"
 #include "streammax_source_ptbr.h"
+#include "streammax_flags.h"
 #include "badges.h"
 #include "selospacote.h"
 #include "logotitulo.h"
@@ -3447,6 +3448,14 @@ static int faixaIdiomaInformado(const char *raw, size_t n) {
     "unknown", "und", "undefined", "null", "none", "n/a", "na", "?", NULL
   };
   if (!n) return 0;
+  // Ignorar somente pontuacao como "/", "/ /" ou "-": nao sao
+  // metadados de idioma e nao devem criar separadores visuais vazios.
+  int temIdioma = 0;
+  for (size_t j = 0; j < n; j++) {
+    unsigned char c = (unsigned char)raw[j];
+    if (isalnum(c) || c >= 0x80) { temIdioma = 1; break; }
+  }
+  if (!temIdioma) return 0;
   for (int i = 0; ausentes[i]; i++)
     if (strlen(ausentes[i]) == n && !strncasecmp(raw, ausentes[i], n)) return 0;
   return 1;
@@ -3597,13 +3606,49 @@ static int linhasFaixas(const Stream *s) {
 }
 static float desenharFaixas(const Stream *s, float x, float y, float w, int sel, float a) {
   float altura = 0;
+  // Bandeiras sao SOMENTE apresentacao: o filtro temAudioPreferido continua
+  // lendo as strings originais em s->audioIdiomas, sem converter paises.
   for (int legendas = 0; legendas < 2; legendas++) {
-    char idiomas[4096], linha[4224];
-    int c = sel ? 180 : 140;
+    char idiomas[4096], vistos[4096] = "";
+    const char *p = legendas ? s->legendaIdiomas : s->audioIdiomas;
+    const char *fim = p + strnlen(p, sizeof s->audioIdiomas);
+    int c = sel ? 180 : 140, desenhados = 0;
+    float px = x, limite = x + w;
     if (!stream_faixas_texto(s, legendas, idiomas, sizeof idiomas)) continue;
-    snprintf(linha, sizeof linha, "%s: %s", i18n(legendas ? "Legendas" : "Áudio"), idiomas);
-    txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM, linha, c, c, c - 2, 255, w), x, y + altura, a);
-    altura += FOLHA_FAIXA_H;
+    TxtLinha titulo = txt_linha(TXT_PG_FIM, i18n(legendas ? "Legendas:" : "Áudio:"), c, c, c - 2, 255);
+    if (px + titulo.w + 30 > limite) continue;
+    txt_desenhar_alpha(titulo, px, y + altura, a);
+    px += titulo.w + 12;
+    while (p < fim) {
+      const char *sep = memchr(p, ',', (size_t)(fim - p));
+      const char *ate = sep ? sep : fim;
+      char raw[sizeof s->audioIdiomas], nome[sizeof s->audioIdiomas + 64];
+      const char *bandeira;
+      TxtLinha nomeTx;
+      float largura, folga;
+      while (p < ate && isspace((unsigned char)*p)) p++;
+      while (ate > p && isspace((unsigned char)ate[-1])) ate--;
+      snprintf(raw, sizeof raw, "%.*s", (int)(ate - p), p);
+      p = sep ? sep + 1 : fim;
+      if (!faixaIdiomaNome(raw, nome, sizeof nome) ||
+          !streammax_flag_idioma_legivel(raw) ||
+          faixaNomeRepetido(vistos, nome)) continue;
+      bandeira = streammax_flag_icone(raw);
+      nomeTx = txt_linha(TXT_PG_FIM, nome, c, c, c - 2, 255);
+      largura = bandeira ? 34.0f : (float)nomeTx.w;
+      folga = desenhados ? 12.0f : 0.0f;
+      if (px + folga + largura > limite) break;
+      px += folga;
+      if (bandeira)
+        gfx_icone_colorido((GfxRect){px, y + altura - 5, 34, 34}, bandeira, a);
+      else txt_desenhar_alpha(nomeTx, px, y + altura, a);
+      px += largura;
+      size_t usado = strlen(vistos), adicionar = strlen(nome);
+      if (usado + adicionar + 3 < sizeof vistos)
+        snprintf(vistos + usado, sizeof vistos - usado, "%s%s", usado ? ", " : "", nome);
+      desenhados++;
+    }
+    if (desenhados) altura += FOLHA_FAIXA_H;
   }
   return altura;
 }
