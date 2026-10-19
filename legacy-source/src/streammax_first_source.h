@@ -12,7 +12,7 @@ static inline int streammax_should_ask_first_source(int manualEnabled,
   // StreamMax requires first-time VOD source choice even when Legacy settings
   // previously selected automatic mode. A valid user choice can be reused.
   (void)manualEnabled;
-  return availableStreams > 0 && rememberedIndex < 0;
+  return availableStreams > 0 && (rememberedIndex < 0 || rememberedIndex >= availableStreams);
 }
 
  // A series episode short-click is a playback request, not an explicit
