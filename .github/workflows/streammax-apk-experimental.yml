@@ -16,6 +16,7 @@ on:
       - 'legacy-source/art/marcas/streammax_splash.jpg'
       - 'legacy-source/src/abertura.c'
       - 'migration/check-playback-contracts.py'
+      - 'legacy-source/tests/test_streammax_first_source.c'
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [streammax/legacy-migration]
