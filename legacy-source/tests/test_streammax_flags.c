@@ -11,9 +11,11 @@ int main(void) {
   assert(!strcmp(streammax_flag_icone("es-ES"), "sm_flag_es"));
   assert(!strcmp(streammax_flag_icone("es-MX"), "sm_flag_mx"));
   assert(streammax_flag_icone("pt") == NULL);
-  assert(streammax_flag_icone("en") == NULL);
+  assert(!strcmp(streammax_flag_icone("en"), "sm_flag_us"));
+  assert(!strcmp(streammax_flag_icone("EN"), "sm_flag_us"));
+  assert(!strcmp(streammax_flag_icone("eng"), "sm_flag_us"));
   assert(streammax_flag_icone("es") == NULL);
-  assert(streammax_flag_icone("English") == NULL);
+  assert(!strcmp(streammax_flag_icone("English"), "sm_flag_us"));
   assert(streammax_flag_icone("Portuguese") == NULL);
   assert(streammax_flag_icone("Dual Audio") == NULL);
   assert(streammax_flag_idioma_legivel("pt-br"));
