@@ -3654,7 +3654,9 @@ static const char *idiomaDa(const Stream *s) {
       (temNoTexto(s, "portuguese") || temNoTexto(s, "português") ||
        temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Português";
   if (temNoTexto(s, "legendado") || temNoTexto(s, "leg")) return "Legendado";
-  return NULL;
+  // Sem audio informado pelo addon ou pelo release: sinalizar ausencia de dados,
+  // sem transformar legendas em audio e sem esconder a fonte na lista.
+  return s->audioIdiomas[0] ? NULL : "Áudio não identificado";
 }
 // Dual Audio exige pelo menos dois idiomas distintos informados pelo addon.
 // Uma lista de legendas nunca entra nessa contagem.
