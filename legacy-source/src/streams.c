@@ -3619,6 +3619,18 @@ static const char *idiomaDa(const Stream *s) {
   if (temNoTexto(s, "legendado") || temNoTexto(s, "leg")) return "Legendado";
   return NULL;
 }
+// Dual Audio exige pelo menos dois idiomas distintos informados pelo addon.
+// Uma lista de legendas nunca entra nessa contagem.
+static int audioDeclaradoDual(const Stream *s) {
+  static const char *idiomas[] = {
+    "pt", "en", "es", "fr", "de", "it", "ja", "ko", "ru", "zh", "hi"
+  };
+  int encontrados = 0;
+  for (size_t i = 0; i < sizeof idiomas / sizeof idiomas[0]; i++) {
+    if (audioDeclaradoEm(s, idiomas[i]) && ++encontrados >= 2) return 1;
+  }
+  return 0;
+}
 static int temAudioPreferido(const Stream *s) {
   const char *pref = idiomaFiltroAudio();
   if (soDub == 0) return 1;
@@ -3626,7 +3638,7 @@ static int temAudioPreferido(const Stream *s) {
     // Metadados com duas linguas distintas ou indicacao expressa de Dual.
     // Evitar tratar legenda, resolucao ou a palavra DUB como dual.
     if (s->audioIdiomas[0]) {
-      return audioDeclaradoEm(s, "pt") && audioDeclaradoEm(s, "en");
+      return audioDeclaradoDual(s);
     }
     return streammax_pt_token(s->arquivo, "dual audio") ||
            streammax_pt_token(s->arquivo, "dual.audio") ||
