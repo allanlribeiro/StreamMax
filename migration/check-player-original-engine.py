@@ -10,6 +10,7 @@ original_controller = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/
 original_watchdog = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerFirstFrameWatchdogPolicy.kt").read_text()
 postplay = (root / "legacy-source/src/posplay.c").read_text()
 source_filter = (root / "legacy-source/src/fonteregra.c").read_text()
+streams = (root / "legacy-source/src/streams.c").read_text()
 
 activity = (root / "legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NuvioActivity.kt").read_text()
 
@@ -162,6 +163,11 @@ checks = {
     "source filter keeps English recognition": '"\\\\bENG?\\\\b|English|' in source_filter,
     "source filter keeps DUAL-labelled streams": '"\\\\bDUAL\\\\b"' in source_filter,
     "source filter keeps non-destructive preference vs scope": "int fonteregra_grupo(" in source_filter and "int fonteregra_no_escopo(" in source_filter,
+    "audio filter remains in source picker": "BT_DUB" in streams and "soDub && !temAudioPreferido(&lista[i])" in streams,
+    "audio filter uses actual audio preference": "ling_audio_fonte(idioma_iso(ajustes_idioma()))" in streams,
+    "explicit addon audio metadata wins over guesses": "if (s->audioIdiomas[0]) return 0;" in streams,
+    "Portuguese fallback never reads subtitle metadata": "streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao)" in streams,
+    "audio chips do not override full player source filter": "if (!canalFolha && !stream_filtro_permite(&lista[i])) return 0;" in streams,
     "manual source blocks unintended next-video preloading": "streammax_next_video_preload(preloadVideo, manual)" in postplay,
     "manual source permits metadata-only next prefetch": "streammax_next_metadata_prefetch(" in postplay,
     "metadata prefetch requires remembered manual source": "fontepref_tem(ci->imdb)" in postplay,
