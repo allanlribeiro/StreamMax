@@ -16,8 +16,10 @@ int main(void) {
   // No list yet: wait for add-ons, never show an empty selection dialog.
   assert(!streammax_should_ask_first_source(1, 0, -1));
 
-  // User-selected fully automatic mode continues to follow legacy rules.
-  assert(!streammax_should_ask_first_source(0, 4, -1));
+  // A new title cannot bypass the StreamMax first-source prompt because a
+  // legacy automatic setting was persisted before migration.
+  assert(streammax_should_ask_first_source(0, 4, -1));
+  // An already remembered and matching source may continue automatically.
   assert(!streammax_should_ask_first_source(0, 4, 0));
 
   // StreamMax: episode card prompts only before the FIRST manual choice.
