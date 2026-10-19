@@ -19,6 +19,8 @@ on:
       - 'legacy-source/tests/test_streammax_first_source.c'
       - 'legacy-source/src/app.c'
       - 'legacy-source/src/home.c'
+      - 'legacy-source/src/perfilsel.c'
+      - 'legacy-source/tests/streammax-ui-brand.sh'
       - 'legacy-source/tests/streammax-hero-trailer.sh'
       - 'legacy-source/src/streammax_first_source.h'
       - 'legacy-source/tests/streammax-first-source.sh'
@@ -80,6 +82,7 @@ jobs:
           bash legacy-source/tests/streammax-next-prefetch.sh
           bash legacy-source/tests/streammax-source-ptbr.sh
           bash legacy-source/tests/streammax-livetv-columns.sh
+          bash legacy-source/tests/streammax-ui-brand.sh
           echo "Revisao StreamMax do player e TV ao vivo: $(git rev-parse --short HEAD)"
           python3 migration/check-playback-contracts.py legacy-source
       - name: Configurar Nuvio Cloud oficial para login por e-mail
