@@ -6,6 +6,10 @@ trap 'rm -f "$out"' EXIT
 ${CC:-cc} -std=c11 -Wall -Wextra -Werror -pedantic \
   tests/test_streammax_source_ptbr.c -o "$out"
 "$out"
+# O selo Dual Audio deve vir do addon, sem inferir faixas PT-BR e EN.
+${CC:-cc} -std=c11 -Wall -Wextra -Werror -pedantic \
+  tests/test_streammax_source_audio.c -o "$out"
+"$out"
 # Bandeiras devem ser so uma apresentacao visual das faixas declaradas.
 ${CC:-cc} -std=c11 -Wall -Wextra -Werror -pedantic \
   tests/test_streammax_flags.c -o "$out"
@@ -20,6 +24,17 @@ assert 'if (s->audioIdiomas[0]) return 0;' in section
 assert 'return ling_casa("pt", pref) &&' in section
 assert 'streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao)' in section
 assert '#include "streammax_source_ptbr.h"' in code
+assert '#include "streammax_source_audio.h"' in code
+assert 'streammax_audio_dual_fonte(' in code
+assert 's->tituloFonte, s->descricao' in code
+assert 'streammaxFonteDadosOriginais(' in code
+assert 'FOLHA_ARQ_H * nOriginais' in code
+assert 'txt_linha_corta(TXT_PG_FIM,d,155,168,187,255,tr-tx)' in code
+assert 'char nomeFonteCompleto[1024];' in Path("src/streams.h").read_text()
+assert 'char tituloFonte[1024];' in Path("src/streams.h").read_text()
+assert 'snprintf(s.nomeFonteCompleto, sizeof s.nomeFonteCompleto' in parse
+assert 'snprintf(s.tituloFonte, sizeof s.tituloFonte' in parse
+
 # Nao reutilizar a conversao de bandeiras na triagem da fonte.
 assert '#include "streammax_flags.h"' in code
 assert 'gfx_icone_colorido(' in code
