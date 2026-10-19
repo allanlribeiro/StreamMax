@@ -43,6 +43,8 @@ assert 'temNoTexto(s, "dual")' not in visual
 visual = code.split("static const char *idiomaDa(const Stream *s) {", 1)[1].split("// Dual Audio exige", 1)[0]
 assert 'return "Português";' in visual, "texto isolado PT nao comprova audio duplo"
 assert 'temNoTexto(s, "pt-br")' in visual, "manter identificação textual PT"
+assert 'return s->audioIdiomas[0] ? NULL : "Áudio não identificado";' in visual, "fontes sem audio identificado devem mostrar estado desconhecido"
+assert 'if (s->audioIdiomas[0]) return 0;' in section, "audio declarado continua prioritario"
 
 assert 'if (s->audioIdiomas[0]) return 0;' in section
 assert 'if (ling_casa("pt", pref))' in section
