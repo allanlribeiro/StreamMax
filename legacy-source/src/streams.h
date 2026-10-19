@@ -59,6 +59,9 @@ typedef struct Stream {
   FonteFiltroDados filtro;
   int filtroLido;       // 1 = classificado pelo parser; 0 = origem sintetica
   char descricao[2048];
+  // "title" do stream, separado de name/description como no Nuvio original.
+  // Apenas exibicao/identificacao de metadados; nao participa do player.
+  char tituloFonte[768];
   char arquivo[512];
   // O QUE O ADDON DECLARA COMO "a mesma fonte" entre episodios:
   // behaviorHints.bingeGroup, a convencao do Stremio. Quem manda o campo
