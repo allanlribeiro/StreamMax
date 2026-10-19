@@ -5231,6 +5231,19 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
         txt_desenhar_alpha(ls,lx2,cy+(FOLHA_SELO_H-ls.h)*.5f,anim); lx2+=ls.w+9;
         txt_desenhar_alpha(lf,lx2,cy+(FOLHA_SELO_H-lf.h)*.5f,anim); lx2+=lf.w+26;
         tx0=lx2; txtW0=txtW-(lx2-tx); if(txtW0<80) txtW0=80; }
+      if(idiomaMarca && !strcmp(idiomaMarca, "Dual áudio")) {
+        TxtLinha du=txt_linha(TXT_HERO_META,idiomaMarca,sel?241:192,sel?241:192,sel?255:203,255);
+        if((float)du.w+26.0f<txtW0) {
+          txt_desenhar_alpha(du,tx0,cy+(FOLHA_SELO_H-du.h)*.5f,anim);
+          tx0+=(float)du.w+22.0f;
+          txtW0-=(float)du.w+22.0f;
+          dualReservado=1;
+        }
+      }
+      // Reserve primeiro o selo explicito "Dual audio". Antes os logos
+      // podiam ocupar a fileira inteira e esconder justamente essa etiqueta.
+      const char *idiomaMarca = idiomaDa(s);
+      int dualReservado = 0;
       int ehMp4=!strcmp(containerDa(s),"MP4");
       TxtLinha mp;
       if(ehMp4){ mp=txt_linha(TXT_HERO_META,"MP4",ai,(int)(ag*255),(int)(ab*255),255); mpW=mp.w+18; }
@@ -5259,8 +5272,8 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
         txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,c,c,c,255,txtW0),tx0,cy+(FOLHA_SELO_H-26)*.5f,anim); }
       if(ehMp4){ txt_desenhar_alpha(mp,tx0+(lw>0?lw+18:0),cy+(FOLHA_SELO_H-mp.h)*.5f,anim); lw+=(lw>0?18:0)+mp.w; }
       // O IDIOMA, em texto no fim da fileira (nao ha logo para ele).
-      { const char *id=idiomaDa(s);
-        if(id){ int c=sel?230:190;
+      { const char *id=idiomaMarca;
+        if(id && !dualReservado){ int c=sel?230:190;
           TxtLinha li=txt_linha(TXT_HERO_META,id,c,c,c,255);
           if(lw+18+li.w<=txtW0){ txt_desenhar_alpha(li,tx0+(lw>0?lw+18:0),cy+(FOLHA_SELO_H-li.h)*.5f,anim); lw+=(lw>0?18:0)+li.w; } } }
       if(s->naoVideo){ int c=sel?185:140;
