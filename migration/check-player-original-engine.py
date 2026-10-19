@@ -12,6 +12,9 @@ postplay = (root / "legacy-source/src/posplay.c").read_text()
 source_filter = (root / "legacy-source/src/fonteregra.c").read_text()
 streams = (root / "legacy-source/src/streams.c").read_text()
 preferences = (root / "legacy-source/src/fontepref.c").read_text()
+native_player = (root / "legacy-source/src/player.c").read_text()
+native_video = (root / "legacy-source/src/video_android.c").read_text()
+video_header = (root / "legacy-source/src/video.h").read_text()
 
 activity = (root / "legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NuvioActivity.kt").read_text()
 
@@ -173,6 +176,39 @@ checks = {
         "static int trilhaCompativel(const FontePref *p, const Stream *s)" in preferences
         and preferences.count("if (!trilhaCompativel(p, s)) continue;") == 2
         and "return contemMarcas(trilha, p->trilha);" in preferences
+    ),
+    # Regressao da miniatura AO VIVO na TCL. O modo 2 e exclusivo do PiP,
+    # sem mudar os modos de aspecto, HDR/DV nem a superficie do VOD.
+    "preview mode is exported only for Android": (
+        "#ifdef NV_ANDROID\\n// Encolhe TODO" in video_header
+        and "void video_janela_previa(int x, int y, int w, int h);" in video_header
+    ),
+    "native preview sends separate JNI mode": (
+        "void video_janela_previa(int x, int y, int w, int h)" in native_video
+        and "janelaSeMudou(x, y, w, h, 2)" in native_video
+    ),
+    "PiP paths use full-frame transform, not plain resize": (
+        "static void janelaMandarMini(PlrRect r)" in native_player
+        and "video_janela_previa(" in native_player
+        and "if (mini) { janelaMandarMini(miniDestino()); return; }" in native_player
+        and "if (mini) janelaMandarMini(miniDestino());" in native_player
+        and "janelaMandarMini(r);" in native_player
+    ),
+    "Kotlin preview distinguishes dedicated mode": (
+        "definirJanela(x, y, w, h, encaixa != 0, encaixa == 2)" in source
+        and "private var pedPrevia = false" in source
+    ),
+    "preview transforms entire video frame and keeps Surface": (
+        "sv.layoutParams = FrameLayout.LayoutParams(cw, ch, gravidade)" in source
+        and "sv.scaleX = largura.toFloat() / cw" in source
+        and "sv.scaleY = altura.toFloat() / ch" in source
+        and "sv.translationX = x0.toFloat()" in source
+        and "sv.translationY = y0.toFloat()" in source
+    ),
+    "fullscreen returns to original layout path": (
+        "sv.scaleX = 1f; sv.scaleY = 1f" in source
+        and "sv.translationX = 0f; sv.translationY = 0f" in source
+        and "if (ultHdr.isEmpty() || ultHdr == \"none\") recriarSuperficie(RECRIA_ESPERA_MS)" in source
     ),
     "manual source blocks unintended next-video preloading": "streammax_next_video_preload(preloadVideo, manual)" in postplay,
     "manual source permits metadata-only next prefetch": "streammax_next_metadata_prefetch(" in postplay,
