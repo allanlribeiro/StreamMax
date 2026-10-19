@@ -27,8 +27,8 @@ int main(void) {
   // the actual episode list; a missing match reopens the chooser there.
   assert(streammax_should_ask_episode_source(1, 0));
   assert(!streammax_should_ask_episode_source(1, 1));
-  // User may explicitly enable fully automatic mode at any time.
-  assert(!streammax_should_ask_episode_source(0, 0));
+  // Legacy automatic mode must not skip a first-time choice in the episode card.
+  assert(streammax_should_ask_episode_source(0, 0));
   assert(!streammax_should_ask_episode_source(0, 1));
   return 0;
 }
