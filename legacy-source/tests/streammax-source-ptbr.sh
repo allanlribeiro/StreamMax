@@ -29,6 +29,8 @@ assert 'streammax_audio_dual_fonte(' in code
 assert 'streammax_audio_dual_idiomas_fonte(' in parse
 assert 'if (!s.audioIdiomas[0]) {' in parse
 assert 'if (bits & SM_DUAL_BR)' in parse
+assert 'else if (bits & SM_DUAL_PTPT)' in parse
+assert 'else if (bits & SM_DUAL_PT)' in parse
 assert 'if (bits & SM_DUAL_EN)' in parse
 assert 'i18n("Áudio: idiomas não informados")' in code
 assert 'if (!s->audioIdiomas[0] &&' in code
@@ -70,6 +72,8 @@ assert 'if (podePt && temNoTexto(s, "dual"))' not in code
 assert '#include "streammax_flags.h"' in code
 assert 'gfx_icone_colorido(' in code
 assert 'streammax_flag_icone(raw)' in code
+assert 'streammax_audio_bandeiras(s->audioIdiomas, bandeiras, 3)' in code
+assert 'gfx_icone_colorido((GfxRect){bx, cy + (FOLHA_SELO_H - 28.0f)' in code
 assert 'streammax_flag_icone(' not in section
 assert 'streammax_flag_idioma_legivel(raw)' in code
 assert "d[fimTexto - 1] == '/'" in code
