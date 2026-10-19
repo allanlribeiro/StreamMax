@@ -53,6 +53,12 @@ done
 echo "[2/5] arte e fontes -> $EST/assets"
 rm -rf "$EST/assets"; mkdir -p "$EST/assets"
 NUVIO_ARTE_ESTAGIO="build/android/assets/art" bash tools/tizen-art.sh >/dev/null
+# Garante que a abertura aprovada foi realmente copiada para o pacote Android.
+# Verificar apenas a presenca na arvore fonte nao impede uma APK sem a arte.
+test -s "$EST/assets/art/marcas/streammax_splash.jpg" || {
+  echo "android.sh: abertura cinematografica StreamMax nao entrou no estagio Android" >&2
+  exit 1
+}
 mkdir -p "$EST/assets/fonts"
 cp deploy/app/fonts/* "$EST/assets/fonts/"
 mkdir -p "$EST/assets/licencas"
