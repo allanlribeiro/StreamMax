@@ -39,6 +39,10 @@ assert 'snprintf(d,sizeof d,"%.*s",(int)originais[mi].n,originais[mi].inicio)' i
 # A etiqueta Dual Audio nao pode sumir quando a linha tem muitos selos.
 assert 'int dualReservado = 0;' in code
 assert 'if(idiomaMarca && !strcmp(idiomaMarca, "Dual áudio"))' in code
+# A CI anterior falhou porque o seletor usava estas variaveis ANTES da declaracao.
+area = code.split('if(idiomaMarca && !strcmp(idiomaMarca, "Dual áudio"))', 1)[0]
+assert area.rfind('const char *idiomaMarca = idiomaDa(s);') > area.rfind('// O IDIOMA')
+assert area.rfind('int dualReservado = 0;') > area.rfind('// O IDIOMA')
 assert 'tx0+=(float)du.w+22.0f;' in code
 assert 'txtW0-=(float)du.w+22.0f;' in code
 assert 'if(id && !dualReservado)' in code
