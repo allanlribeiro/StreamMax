@@ -69,6 +69,22 @@ checks = {
         'if (audioPista && !s.audioIdiomas[0])',
         'if (legendaPista && !s.legendaIdiomas[0])',
     ],
+    "src/guia.c": [
+        "logoNaCaixa(c, logoCx",
+        "player_mini_no_guia_ativo()",
+        "static void streammaxTvDesenhar(",
+        "previewPedir(c)",
+    ],
+    "src/legendasui.c": [
+        "static char idiomas[LEGUI_MAX_CAND][16];",
+    ],
+    "src/abertura.c": [
+        "streammax_splash.jpg",
+        "abSaida(p, &veu, &alfaMarca)",
+    ],
+    "src/main.c": [
+        "abertura_fundo_fica(app_no_login() || app_em_escolha_perfil());",
+    ],
     "src/streams.c": [
         "stream_faixas_texto(s, legendas, idiomas, sizeof idiomas)",
         'if (podePt && temNoTexto(s, "dual")) return "Dual áudio";',
