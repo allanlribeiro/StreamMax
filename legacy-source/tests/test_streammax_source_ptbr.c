@@ -57,6 +57,9 @@ int main(void) {
   assert(streammax_en_audio_sem_declaracao("", "", "Audio: English\\nSubs: PT-BR"));
   assert(!streammax_en_audio_sem_declaracao("", "", "Subtitles: English"));
   assert(!streammax_en_audio_sem_declaracao("Movie.ENG.SUBS.mkv", "", ""));
+  assert(streammax_en_audio_sem_declaracao("Movie.ENG.AUDIO.SUBS.mkv", "", ""));
+  assert(streammax_en_audio_sem_declaracao("Movie.ENGLISH_AUDIO.Legendas.mkv", "", ""));
+  assert(!streammax_en_audio_sem_declaracao("Movie.ENGLISH.SUBS.mkv", "", ""));
   assert(!streammax_en_audio_sem_declaracao("", "", "Audio: Portuguese\\nSubs: English"));
 
   printf("OK: cenarios de dublagem PT-BR e limites de string no seletor\n");
