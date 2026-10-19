@@ -92,6 +92,23 @@ checks = {
 
 }
 errors = []
+# A APK nao deve sair com splash generico se a arte aprovada nao entrou.
+splash = root / "art/marcas/streammax_splash.jpg"
+if not splash.is_file():
+    errors.append("Arte de abertura ausente: art/marcas/streammax_splash.jpg")
+elif splash.stat().st_size < 1024:
+    errors.append("Arte de abertura invalida ou vazia")
+else:
+    with splash.open("rb") as arquivo:
+        if arquivo.read(3) != b"\\xff\\xd8\\xff":
+            errors.append("A abertura final deve ser JPEG valido")
+abertura = root / "src/abertura.c"
+if abertura.is_file():
+    conteudo_abertura = abertura.read_text(encoding="utf-8")
+    if '"/marcas/streammax_splash.jpg"' not in conteudo_abertura:
+        # A string no codigo inclui o prefixo de formato %s.
+        if '"%s/marcas/streammax_splash.jpg"' not in conteudo_abertura:
+            errors.append("Codigo de abertura nao referencia splash oficial")
 for name, needles in checks.items():
     path = root / name
     if not path.is_file():
