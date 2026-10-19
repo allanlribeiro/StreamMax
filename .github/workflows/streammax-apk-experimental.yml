@@ -3,6 +3,9 @@ name: StreamMax APK experimental
 # O APK de teste da PR 15 deve conter o proprio player da PR, nunca
 # uma revisao antiga da base. Mantem login e bibliotecas nativas completas.
 on:
+  # Compile a propria branch mesmo quando a PR esta divergente da base.
+  push:
+    branches: [streammax/player-original-tcl-1018]
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [streammax/legacy-migration]
