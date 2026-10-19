@@ -6,6 +6,7 @@
 #include "ajustes.h"
 #include "logoapp.h"
 #include "tex_cache.h"
+#include "text.h"
 #include <SDL2/SDL_image.h>
 #include <math.h>
 #include <stdio.h>
@@ -54,6 +55,7 @@ static float marcaAsp;
 // menos de 1,5 s, entao a ampliacao nao chega a ser vista). Com ela, a marca e
 // o fundo liso ficam de fora: a arte ja tem os dois.
 static int arteCheia;
+static int marcaTexto;
 static int fundoFica;
 
 void abertura_fundo_fica(int sim) { fundoFica = sim; }
@@ -68,6 +70,8 @@ void abertura_iniciar(const char *dirArte) {
   SDL_Surface *s, *c;
   estado = 0;
   arteCheia = 0;
+  marcaTexto = 0;
+  marca = 0;
   estiloAb = ajustes_abertura();
   marcaW = AB_MARCA_W;
   s = NULL;
@@ -88,7 +92,8 @@ void abertura_iniciar(const char *dirArte) {
   if (!s) {
     marca = 0;
     marcaAsp = 1.0f;
-    printf("[abertura] arte StreamMax ausente; fundo cinematografico\n");
+    marcaTexto = 1;
+    printf("[abertura] arte StreamMax ausente; titulo leve no fundo cinematografico\n");
     return;
   }
   c = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);   // RGBA em bytes
@@ -160,6 +165,16 @@ int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
   }
   gfx_cor((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, 0.0f,
           AB_FUNDO_R, AB_FUNDO_G, AB_FUNDO_B, veu);
+  // Fallback de identidade do StreamMax, sem textura, PNG antigo ou video.
+  // Nao bloqueia a primeira tela: usa fonte ja carregada pelo aplicativo.
+  if (marcaTexto && alfaMarca > 0.004f) {
+    TxtLinha titulo = txt_linha(TXT_ILHA_TITULO, "STREAMMAX", 232, 242, 255, 255);
+    float cx = NV_TELA_W * 0.5f;
+    gfx_cor((GfxRect){cx - 305.0f, AB_CENTRO_Y + 54.0f, 610.0f, 2.0f},
+            0.0f, 0.12f, 0.57f, 0.92f, alfaMarca * 0.70f);
+    txt_desenhar_alpha(titulo, cx - (float)titulo.w * 0.5f,
+                       AB_CENTRO_Y - (float)titulo.h * 0.5f, alfaMarca);
+  }
   if (marca && alfaMarca > 0.004f) {
     float w = marcaW * escala, h = w / marcaAsp;
     gfx_tex_aspect_atual = 0.0f;
