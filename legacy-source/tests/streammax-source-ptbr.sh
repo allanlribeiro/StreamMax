@@ -21,7 +21,9 @@ assert 'soDub = (soDub + 1) % 4;' in code
 assert 'soDub == 1 ? "pt" : soDub == 2 ? "en" : ""' in code
 assert 'Áudio: %s' in code
 assert 'if (s->audioIdiomas[0]) return 0;' in section
-assert 'return ling_casa("pt", pref) &&' in section
+assert 'if (ling_casa("pt", pref))' in section
+assert 'if (ling_casa("en", pref))' in section
+assert 'streammax_en_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao)' in section
 assert 'streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao)' in section
 assert '#include "streammax_source_ptbr.h"' in code
 for name in ('Português brasileiro', 'Portugues brasileiro', 'Português do Brasil', 'Portuguese Brazilian'):
