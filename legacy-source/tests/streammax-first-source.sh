@@ -12,6 +12,7 @@ from pathlib import Path
 app = Path("src/app.c").read_text()
 detail = Path("src/detail.c").read_text()
 assert "streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)" in app
+assert "lembrada = base[0] ? fontepref_escolher_manual(base) : -1;" in app, "fonte automatica antiga nao pode pular a primeira escolha"
 assert "streammax_should_ask_episode_source(" in detail
 assert "tituloAtual && fontepref_tem(tituloAtual->imdb)" in detail
 assert "pedFontesT = ep->temporada; pedFontesE = ep->episodio;" in detail
