@@ -1,5 +1,5 @@
 // StreamMax TV ao vivo: geometria e navegacao da tela de tres colunas.
-// Independente de SDL, rede e do player. Nao inicia stream em foco.
+// Independente de SDL, rede e do player. Decide foco/espera; o app inicia streams.
 #ifndef STREAMMAX_LIVETV_COLUMNS_H
 #define STREAMMAX_LIVETV_COLUMNS_H
 
@@ -13,6 +13,17 @@
 #define SM_TV_BODY_Y 148.0f
 #define SM_TV_BOTTOM_MARGIN 82.0f
 #define SM_TV_VISIBLE_ROWS 11
+// A mudanca de canal espera o foco repousar, sem disparar N fontes ao segurar a seta.
+#define SM_TV_PREVIEW_FOCO_MS 500u
+
+// Na tela StreamMax o canal focado deve atualizar o preview ate depois de
+// voltar da tela cheia. No guia classico, preservar a politica de "canal preso".
+static inline int streammax_tv_preview_segue_foco(int tresColunas,
+                                                  int colunaFoco,
+                                                  int previewPreso) {
+  return tresColunas ? colunaFoco == SM_TV_COL_CANAIS : !previewPreso;
+}
+
 
 static inline int streammax_tv_limitar(int v, int total) {
   if (total <= 0) return 0;

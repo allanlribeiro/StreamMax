@@ -9,7 +9,8 @@
 static inline int streammax_should_ask_first_source(int manualEnabled,
                                                      int availableStreams,
                                                      int rememberedIndex) {
-  return manualEnabled && availableStreams > 0 && rememberedIndex < 0;
+  (void)manualEnabled;
+  return availableStreams > 0 && rememberedIndex < 0;
 }
 
  // A series episode short-click is a playback request, not an explicit
@@ -19,7 +20,17 @@ static inline int streammax_should_ask_first_source(int manualEnabled,
  // Long-press "Fontes deste episodio" still opens the source picker.
 static inline int streammax_should_ask_episode_source(int manualEnabled,
                                                       int hasManualPreference) {
-  return manualEnabled && !hasManualPreference;
+  (void)manualEnabled;
+  return !hasManualPreference;
+}
+
+// A busca pode terminar com o seletor ainda aberto. Nenhum timeout, refresh
+// de addon ou resposta tardia autoriza reproduzir sem OK na fonte.
+// A TV ao vivo usa outro fluxo e continua escolhendo pela playlist.
+static inline int streammax_auto_may_play(int isLiveTV,
+                                         int pickerVisible,
+                                         int awaitingManualChoice) {
+  return isLiveTV || (!pickerVisible && !awaitingManualChoice);
 }
 
 #endif

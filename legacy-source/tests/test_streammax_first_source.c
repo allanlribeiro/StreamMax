@@ -16,8 +16,9 @@ int main(void) {
   // No list yet: wait for add-ons, never show an empty selection dialog.
   assert(!streammax_should_ask_first_source(1, 0, -1));
 
-  // User-selected fully automatic mode continues to follow legacy rules.
-  assert(!streammax_should_ask_first_source(0, 4, -1));
+  // StreamMax always asks before the FIRST source, regardless of a
+  // legacy automatic setting. A previous manual choice may resume.
+  assert(streammax_should_ask_first_source(0, 4, -1));
   assert(!streammax_should_ask_first_source(0, 4, 0));
 
   // StreamMax: episode card prompts only before the FIRST manual choice.
@@ -25,8 +26,22 @@ int main(void) {
   // the actual episode list; a missing match reopens the chooser there.
   assert(streammax_should_ask_episode_source(1, 0));
   assert(!streammax_should_ask_episode_source(1, 1));
-  // User may explicitly enable fully automatic mode at any time.
-  assert(!streammax_should_ask_episode_source(0, 0));
+  // The legacy toggle must not bypass the mandatory initial choice.
+  assert(streammax_should_ask_episode_source(0, 0));
   assert(!streammax_should_ask_episode_source(0, 1));
+  // Um seletor de fonte aberto bloqueia o auto-play por QUALQUER tempo.
+  // O prazo dos addons pode ter expirado: isso nao equivale ao OK do usuario.
+  const int esperaSeg[] = { 0, 1, 5, 15, 30, 60, 300 };
+  for (unsigned i = 0; i < sizeof esperaSeg / sizeof esperaSeg[0]; i++) {
+    (void)esperaSeg[i];
+    assert(!streammax_auto_may_play(0, 1, 1));
+    assert(!streammax_auto_may_play(0, 0, 1));
+    assert(!streammax_auto_may_play(0, 1, 0));
+  }
+  // So depois do OK, sem folha aberta, a reproducao VOD pode prosseguir.
+  assert(streammax_auto_may_play(0, 0, 0));
+  // O zapping da TV ao vivo continua sendo automatico.
+  assert(streammax_auto_may_play(1, 1, 1));
+  assert(streammax_auto_may_play(1, 0, 0));
   return 0;
 }

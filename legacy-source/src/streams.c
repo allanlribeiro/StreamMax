@@ -9,6 +9,8 @@
 #include "idioma.h"
 #include "linguas.h"
 #include "streammax_source_ptbr.h"
+#include "streammax_source_audio.h"
+#include "streammax_flags.h"
 #include "badges.h"
 #include "selospacote.h"
 #include "logotitulo.h"
@@ -3447,6 +3449,14 @@ static int faixaIdiomaInformado(const char *raw, size_t n) {
     "unknown", "und", "undefined", "null", "none", "n/a", "na", "?", NULL
   };
   if (!n) return 0;
+  // Ignorar somente pontuacao como "/", "/ /" ou "-": nao sao
+  // metadados de idioma e nao devem criar separadores visuais vazios.
+  int temIdioma = 0;
+  for (size_t j = 0; j < n; j++) {
+    unsigned char c = (unsigned char)raw[j];
+    if (isalnum(c) || c >= 0x80) { temIdioma = 1; break; }
+  }
+  if (!temIdioma) return 0;
   for (int i = 0; ausentes[i]; i++)
     if (strlen(ausentes[i]) == n && !strncasecmp(raw, ausentes[i], n)) return 0;
   return 1;
@@ -3593,17 +3603,71 @@ static int linhasFaixas(const Stream *s) {
       p = f ? f + 1 : fim;
     }
   }
+  // "Dual Audio" sem lista de linguas: mostrar a ausencia de identificacao
+  // na grid, em vez de deixar um espaco vazio que parece defeito da interface.
+  if (!s->audioIdiomas[0] &&
+      streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+                                s->nomeFonteCompleto : s->rotulo,
+                                s->tituloFonte, s->descricao)) n++;
   return n;
 }
 static float desenharFaixas(const Stream *s, float x, float y, float w, int sel, float a) {
   float altura = 0;
-  for (int legendas = 0; legendas < 2; legendas++) {
-    char idiomas[4096], linha[4224];
-    int c = sel ? 180 : 140;
-    if (!stream_faixas_texto(s, legendas, idiomas, sizeof idiomas)) continue;
-    snprintf(linha, sizeof linha, "%s: %s", i18n(legendas ? "Legendas" : "Áudio"), idiomas);
-    txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM, linha, c, c, c - 2, 255, w), x, y + altura, a);
+  // Sem identificacao no stream recebido: nenhum pais pode ser inventado.
+  // O aviso ocupa a MESMA linha prevista por linhasFaixas, sem mudar o filtro.
+  if (!s->audioIdiomas[0] &&
+      streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+                                s->nomeFonteCompleto : s->rotulo,
+                                s->tituloFonte, s->descricao)) {
+    TxtLinha aviso = txt_linha_corta(TXT_PG_FIM,
+        i18n("Áudio: idiomas não informados"), sel ? 182 : 147,
+        sel ? 193 : 157, sel ? 210 : 171, 255, w);
+    txt_desenhar_alpha(aviso, x, y, a);
     altura += FOLHA_FAIXA_H;
+  }
+  // Bandeiras sao SOMENTE apresentacao: o filtro temAudioPreferido continua
+  // lendo as strings originais em s->audioIdiomas, sem converter paises.
+  for (int legendas = 0; legendas < 2; legendas++) {
+    char idiomas[4096], vistos[4096] = "";
+    const char *p = legendas ? s->legendaIdiomas : s->audioIdiomas;
+    const char *fim = p + strnlen(p, sizeof s->audioIdiomas);
+    int c = sel ? 180 : 140, desenhados = 0;
+    float px = x, limite = x + w;
+    if (!stream_faixas_texto(s, legendas, idiomas, sizeof idiomas)) continue;
+    TxtLinha titulo = txt_linha(TXT_PG_FIM, i18n(legendas ? "Legendas:" : "Áudio:"), c, c, c - 2, 255);
+    if (px + titulo.w + 30 > limite) continue;
+    txt_desenhar_alpha(titulo, px, y + altura, a);
+    px += titulo.w + 12;
+    while (p < fim) {
+      const char *sep = memchr(p, ',', (size_t)(fim - p));
+      const char *ate = sep ? sep : fim;
+      char raw[sizeof s->audioIdiomas], nome[sizeof s->audioIdiomas + 64];
+      const char *bandeira;
+      TxtLinha nomeTx;
+      float largura, folga;
+      while (p < ate && isspace((unsigned char)*p)) p++;
+      while (ate > p && isspace((unsigned char)ate[-1])) ate--;
+      snprintf(raw, sizeof raw, "%.*s", (int)(ate - p), p);
+      p = sep ? sep + 1 : fim;
+      if (!faixaIdiomaNome(raw, nome, sizeof nome) ||
+          !streammax_flag_idioma_legivel(raw) ||
+          faixaNomeRepetido(vistos, nome)) continue;
+      bandeira = streammax_flag_icone(raw);
+      nomeTx = txt_linha(TXT_PG_FIM, nome, c, c, c - 2, 255);
+      largura = bandeira ? 34.0f : (float)nomeTx.w;
+      folga = desenhados ? 12.0f : 0.0f;
+      if (px + folga + largura > limite) break;
+      px += folga;
+      if (bandeira)
+        gfx_icone_colorido((GfxRect){px, y + altura - 5, 34, 34}, bandeira, a);
+      else txt_desenhar_alpha(nomeTx, px, y + altura, a);
+      px += largura;
+      size_t usado = strlen(vistos), adicionar = strlen(nome);
+      if (usado + adicionar + 3 < sizeof vistos)
+        snprintf(vistos + usado, sizeof vistos - usado, "%s%s", usado ? ", " : "", nome);
+      desenhados++;
+    }
+    if (desenhados) altura += FOLHA_FAIXA_H;
   }
   return altura;
 }
@@ -3631,12 +3695,17 @@ static int audioDeclaradoEm(const Stream *s, const char *pref) {
 // quando informa, nenhum deles contradiz a lista declarada.
 static const char *idiomaDa(const Stream *s) {
   int podePt = !s->audioIdiomas[0] || audioDeclaradoEm(s, "pt");
+  // Dual Audio e um rotulo explicito de release, NAO uma declaracao de
+  // faixas PT-BR/EN. O Torrentio frequentemente envia-o em title/filename.
+  // Mostrar o rotulo mesmo sem audioTracks, sem inventar bandeiras e sem
+  // modificar o filtro de dublagem.
+  if (streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+                                 s->nomeFonteCompleto : s->rotulo,
+                                 s->tituloFonte, s->descricao)) return "Dual áudio";
   if (podePt && (temNoTexto(s, "dublado") || temNoTexto(s, "dub"))) return "Dublado";
-  if (podePt && temNoTexto(s, "dual")) return "Dual áudio";
-  // Uma secao de legendas em portugues nao anuncia audio em portugues.
-  if (podePt && (s->audioIdiomas[0] || !s->legendaIdiomas[0]) &&
-      (temNoTexto(s, "portuguese") || temNoTexto(s, "português") ||
-       temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Dual áudio";
+  // PT-BR isolado nao confirma DUAS trilhas de audio. O chip "Dual áudio"
+  // deve depender de marcador explicito "dual" (acima), nunca da mera
+  // presenca de idioma no nome — que pode indicar somente legenda.
   if (temNoTexto(s, "legendado") || temNoTexto(s, "leg")) return "Legendado";
   return NULL;
 }
@@ -3841,6 +3910,57 @@ static const char *arquivoDa(const Stream *s) {
   return ult;
 }
 
+// Dados ORIGINAIS do addon no cartao expandido. O StreamMax tinha apenas
+// rotulo curto/description: o title e o name completo desapareciam apos parse.
+// Duplicatas nao ocupam uma linha; os dados seguem intactos para os filtros.
+static int streammaxFonteDadosOriginais(const Stream *s, const char *linhas[3]) {
+  int n = 0;
+  if (s->nomeFonteCompleto[0] &&
+      strcmp(s->nomeFonteCompleto, s->rotulo))
+    linhas[n++] = s->nomeFonteCompleto;
+  if (s->tituloFonte[0] &&
+      strcmp(s->tituloFonte, s->rotulo) &&
+      strcmp(s->tituloFonte, s->nomeFonteCompleto) &&
+      strcmp(s->tituloFonte, s->descricao))
+    linhas[n++] = s->tituloFonte;
+  if (s->descricao[0] && strcmp(s->descricao, s->rotulo) &&
+      strcmp(s->descricao, s->tituloFonte) &&
+      strcmp(s->descricao, s->nomeFonteCompleto))
+    linhas[n++] = s->descricao;
+  return n;
+}
+
+// Nuvio original apresenta as linhas do title/description recebidas.
+// No modo StreamMax a descricao estava achatada numa unica linha cortada:
+// o "Dual Audio" na segunda/terceira linha simplesmente nao aparecia.
+// Guardar somente spans: nenhuma alocacao, nenhuma alteracao nos filtros.
+// Limitar a 12 linhas expandidas preserva desempenho/navegacao da TCL.
+#define SM_FONTE_ORIG_LINHAS 12
+typedef struct { const char *inicio; size_t n; } SmFonteLinhaOriginal;
+static int streammaxFonteLinhasOriginais(const Stream *s,
+                SmFonteLinhaOriginal saida[SM_FONTE_ORIG_LINHAS]) {
+  const char *originais[3];
+  int qtd = streammaxFonteDadosOriginais(s, originais), total = 0;
+  for (int i = 0; i < qtd && total < SM_FONTE_ORIG_LINHAS; i++) {
+    const char *p = originais[i];
+    while (*p && total < SM_FONTE_ORIG_LINHAS) {
+      const char *fim = p;
+      while (*fim && *fim != '\n' && *fim != '\r') fim++;
+      const char *a = p, *b = fim;
+      while (a < b && isspace((unsigned char)*a)) a++;
+      while (b > a && isspace((unsigned char)b[-1])) b--;
+      if (b > a) {
+        saida[total].inicio = a;
+        saida[total++].n = (size_t)(b - a);
+      }
+      if (!*fim) break;
+      p = fim + 1;
+      if (fim[0] == '\r' && *p == '\n') p++;
+    }
+  }
+  return total;
+}
+
 // A linha de marca e so para o que esta tocando e para a escolha anterior.
 // A fonte que o automatico tocaria ganha o selo "Melhor para esta TV" ao
 // lado do titulo (melhorDaFolha), e nao mais uma linha "Escolha automatica".
@@ -3863,7 +3983,10 @@ static float alturaLinha(int i, int automatica) {
     if (h < 96) h = 96;
   } else {
     // The connection line opens with the focused row even without a file name.
-    float extra = (arquivoDa(&lista[i])[0] ? FOLHA_ARQ_H : 0) + FOLHA_FIT_H * fitLinhas(i);
+    SmFonteLinhaOriginal originais[SM_FONTE_ORIG_LINHAS];
+    int nOriginais = streammaxFonteLinhasOriginais(&lista[i], originais);
+    float extra = (arquivoDa(&lista[i])[0] ? FOLHA_ARQ_H : 0) +
+                  FOLHA_ARQ_H * nOriginais + FOLHA_FIT_H * fitLinhas(i);
     if (grupo == 1 && nOrdem == foco) h += extra * abreFoco;
     else if (nOrdem == linhaAnt)      h += extra * abreAnt;
   }
@@ -4171,6 +4294,9 @@ static void detalheAbrir(const Stream *s) {
   for(char *p=tmp,*q=tmp;;p++){ if(*p!='\r') *q++=*p; if(!*p) break; }
   nv_limpar_texto(tmp,detDesc,sizeof detDesc,0);
   stream_faixas_texto(s,0,detAudio,sizeof detAudio);
+  if (!detAudio[0] && streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+      s->nomeFonteCompleto : s->rotulo, s->tituloFonte, s->descricao))
+    snprintf(detAudio, sizeof detAudio, "%s", i18n("Idiomas não informados"));
   stream_faixas_texto(s,1,detLegendas,sizeof detLegendas);
   detAberto=1; detRol=detRolAlvo=0; detAlt=0;
 }
@@ -5126,6 +5252,19 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
         txt_desenhar_alpha(ls,lx2,cy+(FOLHA_SELO_H-ls.h)*.5f,anim); lx2+=ls.w+9;
         txt_desenhar_alpha(lf,lx2,cy+(FOLHA_SELO_H-lf.h)*.5f,anim); lx2+=lf.w+26;
         tx0=lx2; txtW0=txtW-(lx2-tx); if(txtW0<80) txtW0=80; }
+      // Reserve primeiro o selo explicito "Dual audio". Antes os logos
+      // podiam ocupar a fileira inteira e esconder justamente essa etiqueta.
+      const char *idiomaMarca = idiomaDa(s);
+      int dualReservado = 0;
+      if(idiomaMarca && !strcmp(idiomaMarca, "Dual áudio")) {
+        TxtLinha du=txt_linha(TXT_HERO_META,idiomaMarca,sel?241:192,sel?241:192,sel?255:203,255);
+        if((float)du.w+26.0f<txtW0) {
+          txt_desenhar_alpha(du,tx0,cy+(FOLHA_SELO_H-du.h)*.5f,anim);
+          tx0+=(float)du.w+22.0f;
+          txtW0-=(float)du.w+22.0f;
+          dualReservado=1;
+        }
+      }
       int ehMp4=!strcmp(containerDa(s),"MP4");
       TxtLinha mp;
       if(ehMp4){ mp=txt_linha(TXT_HERO_META,"MP4",ai,(int)(ag*255),(int)(ab*255),255); mpW=mp.w+18; }
@@ -5154,8 +5293,8 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
         txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,c,c,c,255,txtW0),tx0,cy+(FOLHA_SELO_H-26)*.5f,anim); }
       if(ehMp4){ txt_desenhar_alpha(mp,tx0+(lw>0?lw+18:0),cy+(FOLHA_SELO_H-mp.h)*.5f,anim); lw+=(lw>0?18:0)+mp.w; }
       // O IDIOMA, em texto no fim da fileira (nao ha logo para ele).
-      { const char *id=idiomaDa(s);
-        if(id){ int c=sel?230:190;
+      { const char *id=idiomaMarca;
+        if(id && !dualReservado){ int c=sel?230:190;
           TxtLinha li=txt_linha(TXT_HERO_META,id,c,c,c,255);
           if(lw+18+li.w<=txtW0){ txt_desenhar_alpha(li,tx0+(lw>0?lw+18:0),cy+(FOLHA_SELO_H-li.h)*.5f,anim); lw+=(lw>0?18:0)+li.w; } } }
       if(s->naoVideo){ int c=sel?185:140;
@@ -5167,14 +5306,30 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
     // O ARQUIVO, so na linha em foco: e o que distingue duas fontes iguais
     // (grupo de release, versao), e em toda linha era ruido.
     { float a=(sel?abreFoco:row==linhaAnt?abreAnt:0);
+      SmFonteLinhaOriginal originais[SM_FONTE_ORIG_LINHAS];
+      int nOriginais=streammaxFonteLinhasOriginais(s,originais);
+      float dadosAltura=FOLHA_ARQ_H*(float)nOriginais*a;
       const char *arq=arquivoDa(s);
+      if(a>.02f) for(int mi=0;mi<nOriginais;mi++){
+        char d[2048];
+        snprintf(d,sizeof d,"%.*s",(int)originais[mi].n,originais[mi].inicio);
+        for(char *p=d;*p;p++) if((unsigned char)*p<32)*p=' ';
+        txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,155,168,187,255,tr-tx),
+                           tx,cy+FOLHA_ARQ_H*(float)mi*a,anim*a);
+      }
       if(a>.02f && arq[0]){ char d[512];
         snprintf(d,sizeof d,"%s",arq);
         for(char *p=d;*p;p++)if((unsigned char)*p<32)*p=' ';
-        txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,125,125,123,255,tr-tx),tx,cy,anim*a); }
+        // So a exibicao: remover barras vazias de descricoes como
+        // "Dual Audio / /"; o texto original permanece intacto para o addon.
+        size_t fimTexto = strlen(d);
+        while (fimTexto && (isspace((unsigned char)d[fimTexto - 1]) ||
+                            d[fimTexto - 1] == '/')) d[--fimTexto] = 0;
+        if (d[0])
+          txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,125,125,123,255,tr-tx),tx,cy+dadosAltura,anim*a); }
       if(a>.02f){ char f1[160], f2[128]; StreamfitClasse fc=fitTexto2(i,f1,sizeof f1,f2,sizeof f2);
         if(f1[0]){
-        float fy=cy+(arq[0]?FOLHA_ARQ_H:0);
+        float fy=cy+dadosAltura+(arq[0]?FOLHA_ARQ_H*a:0);
         int c=fc==SF_DESCONHECIDA?118:150;
         txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,f1,c,c,c-2,255,tr-tx),tx,fy,anim*a);
         if(f2[0]){

@@ -2119,7 +2119,7 @@ int main(int argc, char **argv) {
     if (abertura_ativa()) {
       int pend = 0;
       tex_estatisticas(NULL, &pend, NULL, NULL, NULL);
-      abertura_fundo_fica(app_no_login());
+      abertura_fundo_fica(app_no_login() || app_em_escolha_perfil());
       abertura_desenhar(agora, dt, pend);
     }
     esmaecer_desenhar(agora);   // o veu da protecao de OLED, UMA passada no fim do quadro

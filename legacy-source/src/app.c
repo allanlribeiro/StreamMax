@@ -1203,7 +1203,6 @@ static const char *urlCanal(const Stream *s, char *buf, size_t n) {
 static int tocarFonteGuardada(void) {
   Stream s;
   char alvo[64], base[24];
-  int manual = ajustes_fonte_manual();
   // StreamMax: primeira vez, a pessoa escolhe a fonte. Retomar pode ser
   // rapido DEPOIS da escolha se o link guardado ainda e valido para este
   // titulo/episodio e casa com a preferencia manual do mesmo perfil.
@@ -1212,14 +1211,14 @@ static int tocarFonteGuardada(void) {
   if (!fontevolta_toca_guardada(0, fontefalha_ativa(),
                                 player_id_canal()[0], player_aberto()))
     return 0;
-  if (manual) {
-    idBaseDoTitulo(base, sizeof base);
-    if (!base[0] || !fontepref_tem(base)) return 0;
-  }
+  // A primeira fonte e sempre manual no StreamMax, independentemente
+  // do ajuste herdado do Legacy.
+  idBaseDoTitulo(base, sizeof base);
+  if (!base[0] || !fontepref_tem(base)) return 0;
   alvoPlayer(alvo, sizeof alvo);
   if (!alvo[0] || !fontevolta_pegar(alvo, sessao_usuario(), perfis_ativo(), SDL_GetTicks(), &s))
     return 0;
-  if (manual && fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)
+  if (fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)
     return 0;
   // A regra de fontes pode mudar entre uma sessao e outra. Se a fonte
   // lembrada ficou proibida, descarte-a e abra a selecao normal dos addons.
@@ -3327,6 +3326,7 @@ static void spotAtender(void) {
 }
 
 int app_no_login(void) { return tela == TELA_LOGIN; }
+int app_em_escolha_perfil(void) { return tela == TELA_ESCOLHA_PERFIL; }
 
 int app_na_home(void) {
   return tela == TELA_HOME && homePronta && !player_aberto() && !detail_aberto() &&
@@ -5093,17 +5093,18 @@ void app_atualizar(float dt, Uint32 agora) {
       if (ci && cwTocarT >= 0 && cwTocarE > 0)
         cat_id_stream(detail_indice(), cwTocarT, cwTocarE, alvoPreparo, sizeof alvoPreparo);
       idBaseDoTitulo(basePreparo, sizeof basePreparo);
-      int lembradaPreparo = basePreparo[0] ? fontepref_escolher(basePreparo) : -1;
+      int lembradaPreparo = basePreparo[0] ? fontepref_escolher_manual(basePreparo) : -1;
 #ifdef NV_ANDROID
       if (doInicio && preparo.token) {
         player_precarregar_cancelar(preparo.token); preparo.token = 0;
       }
 #endif
-      int usouPreparo = !ajustes_fonte_manual() &&
+      int usouPreparo = lembradaPreparo >= 0 && !ajustes_fonte_manual() &&
                        preparoUsar(alvoPreparo, lembradaPreparo, &idxPreparado);
       // Armado antes da abertura: o proximo quadro nao cancela o worker
       // quando a pagina do titulo cede lugar ao player.
-      if (!usouPreparo && preparoEmCurso(alvoPreparo, lembradaPreparo)) {
+      if (lembradaPreparo >= 0 && !usouPreparo &&
+          preparoEmCurso(alvoPreparo, lembradaPreparo)) {
         preparoEspera = 1; preparoLembradaPlay = lembradaPreparo;
       }
       diagnostico_cancelar_vazao();
@@ -5194,6 +5195,20 @@ void app_atualizar(float dt, Uint32 agora) {
       gravarFolhaTocar(epT, epE, temEp);
       idBaseDoTitulo(base, sizeof base);
       stream_preferir(base[0] ? fontepref_escolher_manual(base) : -1);
+      // Um seletor aberto nao pode competir com o prazo do auto-play.
+      // Se um Play novo ja estava esperando os addons, cancelar essa decisao
+      // e a resposta do worker antigo. So o OK da folha inicia esta sessao.
+      // Canais permanecem no roteador separado e nao entram nesta trava.
+      if (!player_id_canal()[0] && aguardandoFonte != 0) {
+        aguardandoFonte = 0;
+        fontePedidoGeracao = novaGeracaoFonte();
+        limparFontePendente();
+        fonteEscolhida = -2;
+        preparoEspera = 0;
+        limparFonteVOD();
+        folhaParaTocar = player_aberto();
+        printf("[streammax] fontes abertas: decisao automatica pendente cancelada\n");
+      }
       nomeParaFolha(); stream_folha_abrir();
     }
   }
@@ -5203,6 +5218,8 @@ void app_atualizar(float dt, Uint32 agora) {
   // A busca disparada por Reproduzir terminou: agora VERIFICA as fontes, em
   // ordem, ate achar uma que leve ao arquivo — e so entao liga o video.
   if (aguardandoFonte == 1 &&
+      streammax_auto_may_play(player_id_canal()[0] != 0,
+                              stream_folha_aberta(), folhaParaTocar) &&
       (addons_estado() != ADD_BUSCANDO ||
        ((player_id_canal()[0] || !fontefalha_ativa()) && autoParcialPronto()))) {
     unsigned geracao = novaGeracaoFonte();
@@ -5270,8 +5287,7 @@ void app_atualizar(float dt, Uint32 agora) {
       // Com "escolher a fonte ao reproduzir" ligado so vale a escolha da PESSOA:
       // a memoria do automatico (bingeGroup) nao pode tocar sozinha aqui nem
       // aparecer como "Sua escolha anterior" na folha que vai abrir.
-      lembrada = base[0] ? (ajustes_fonte_manual() ? fontepref_escolher_manual(base)
-                                                   : fontepref_escolher(base)) : -1;
+      lembrada = base[0] ? fontepref_escolher_manual(base) : -1;
       stream_preferir(lembrada);
       // QUEM ESCOLHE E A PESSOA, quando ela pediu isso em Ajustes.
       //
@@ -5293,7 +5309,13 @@ void app_atualizar(float dt, Uint32 agora) {
       // trocar de fonte continua a um hold de distancia (menu do episodio,
       // hold no botao primario).
       if (streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)) {
+        // A escolha e obrigatoria ate a pessoa confirmar uma fonte.
+        // Invalida tambem resultados tardios de verificadores antigos.
         aguardandoFonte = 0;
+        fontePedidoGeracao = novaGeracaoFonte();
+        limparFontePendente();
+        fonteEscolhida = -2;
+        preparoEspera = 0;
         folhaParaTocar = 1;
         nomeParaFolha(); stream_folha_abrir();
       } else {
@@ -5328,7 +5350,9 @@ void app_atualizar(float dt, Uint32 agora) {
     if (pedirFonteJob(FJOB_FALHA, fontePedidoGeracao, NULL, 0) < 0) fonteEscolhida = -1;
   }
   vigiarAntecipada();
-  if (aguardandoFonte == 2 && fonteEscolhida != -2) {
+  if (aguardandoFonte == 2 && fonteEscolhida != -2 &&
+      streammax_auto_may_play(player_id_canal()[0] != 0,
+                              stream_folha_aberta(), folhaParaTocar)) {
     const Stream *s = fonteEscolhida >= 0 ? stream_item(fonteEscolhida) : NULL;
     // O player ja esta tocando a escolhida (aberta antes do veredito)?
     int jaTocando = fa_ja_tocando(antAberta, fonteEscolhida) && s != NULL;

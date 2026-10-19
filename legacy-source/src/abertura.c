@@ -6,6 +6,7 @@
 #include "ajustes.h"
 #include "logoapp.h"
 #include "tex_cache.h"
+#include "text.h"
 #include <SDL2/SDL_image.h>
 #include <math.h>
 #include <stdio.h>
@@ -54,6 +55,7 @@ static float marcaAsp;
 // menos de 1,5 s, entao a ampliacao nao chega a ser vista). Com ela, a marca e
 // o fundo liso ficam de fora: a arte ja tem os dois.
 static int arteCheia;
+static int marcaTexto;
 static int fundoFica;
 
 void abertura_fundo_fica(int sim) { fundoFica = sim; }
@@ -68,31 +70,34 @@ void abertura_iniciar(const char *dirArte) {
   SDL_Surface *s, *c;
   estado = 0;
   arteCheia = 0;
+  marcaTexto = 0;
+  marca = 0;
   estiloAb = ajustes_abertura();
   marcaW = AB_MARCA_W;
   s = NULL;
   logoapp_iniciar(dirArte);
   // Marca oficial StreamMax: splash estatico em 16:9, carregado uma unica vez.
   // Se ainda nao instalada, manter o comportamento original.
-  snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.png", dirArte ? dirArte : ".");
+  // Preferir JPEG leve para a abertura cinematografica aprovada.
+  // PNG permanece aceito para instalacoes anteriores.
+  snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.jpg", dirArte ? dirArte : ".");
   s = IMG_Load(cam);
-  if (s) arteCheia = 1;
-  if (!s && logoapp_atual() == LOGO_NOVO) {
-    // O logo Novo: sem arte cheia, o fundo liso e a marca (PNG com alfa) nitidos
-    // em qualquer resolucao. Sem o arquivo, cai no Classico.
-    s = IMG_Load(logoapp_caminho(LOGO_NOVO, LOGO_F_MARCA));
-    if (s) marcaW = AB_NOVO_W;
-  }
   if (!s) {
-  snprintf(cam, sizeof cam, "%s/marcas/abertura.jpg", dirArte ? dirArte : ".");
-  s = IMG_Load(cam);
-  if (s) arteCheia = 1;
-  else {
-    snprintf(cam, sizeof cam, "%s/marcas/nuvio_wordmark.png", dirArte ? dirArte : ".");
+    snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.png", dirArte ? dirArte : ".");
     s = IMG_Load(cam);
   }
+  if (s) arteCheia = 1;
+  // Somente a arte cinematografica oficial ocupa o splash. Qualquer
+  // logo alternativo ficaria visualmente diferente antes da tela de perfis.
+  // Nao usar o splash nem a palavra Nuvio do Legacy como fallback.
+  // Se a arte StreamMax nao existir, usar apenas o fundo azul-marinho.
+  if (!s) {
+    marca = 0;
+    marcaAsp = 1.0f;
+    marcaTexto = 1;
+    printf("[abertura] arte StreamMax ausente; titulo leve no fundo cinematografico\n");
+    return;
   }
-  if (!s) { printf("[abertura] sem a marca (%s)\n", cam); return; }
   c = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);   // RGBA em bytes
   SDL_FreeSurface(s);
   if (!c) return;
@@ -140,11 +145,18 @@ int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
     }
   }
   if (estado == 2) {
-    float p = (float)(agora - saidaEm) / es.saidaMs;
+    float p = (float)(agora - saidaEm) / ((arteCheia && fundoFica && !anim_politica_reduzida) ? 760.0f : es.saidaMs);
     if (p >= 1.0f) { acabar(); return 0; }
     // A marca cresce um pouco por mola (a mesma de segunda ordem do resto do
     // app) — abre para a home.
     abSaida(p, &veu, &alfaMarca);
+    // Na passagem da arte cheia para os perfis, usar smoothstep: o
+    // antigo q^3 apagava quase tudo nos primeiros quadros (corte seco).
+    // Somente a camada visual muda; nenhuma tela/perfil e reiniciado.
+    if (arteCheia && fundoFica) {
+      float q = 1.0f - p;
+      veu = q * q * (3.0f - 2.0f * q);
+    }
     if (es.zoom) alvo = 1.09f;
   }
   // Sem zoom (So esmaece, Direto, animacoes reduzidas): so o esvanecimento.
@@ -162,6 +174,16 @@ int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
   }
   gfx_cor((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, 0.0f,
           AB_FUNDO_R, AB_FUNDO_G, AB_FUNDO_B, veu);
+  // Fallback de identidade do StreamMax, sem textura, PNG antigo ou video.
+  // Nao bloqueia a primeira tela: usa fonte ja carregada pelo aplicativo.
+  if (marcaTexto && alfaMarca > 0.004f) {
+    TxtLinha titulo = txt_linha(TXT_ILHA_TITULO, "STREAMMAX", 232, 242, 255, 255);
+    float cx = NV_TELA_W * 0.5f;
+    gfx_cor((GfxRect){cx - 305.0f, AB_CENTRO_Y + 54.0f, 610.0f, 2.0f},
+            0.0f, 0.12f, 0.57f, 0.92f, alfaMarca * 0.70f);
+    txt_desenhar_alpha(titulo, cx - (float)titulo.w * 0.5f,
+                       AB_CENTRO_Y - (float)titulo.h * 0.5f, alfaMarca);
+  }
   if (marca && alfaMarca > 0.004f) {
     float w = marcaW * escala, h = w / marcaAsp;
     gfx_tex_aspect_atual = 0.0f;

@@ -1,4 +1,5 @@
 #include "streams.h"
+#include "streammax_source_audio.h"
 #include "badges.h"
 #include "js.h"
 #include <ctype.h>
@@ -1075,10 +1076,53 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
         fhd = fhdNoNome(nomeFonte);
       textoRaizLinhas(p, fim, "description", s.descricao, sizeof s.descricao);
       textoRaizLinhas(p, fim, "title", titulo, sizeof titulo);
+      // Nuvio original apresenta name/title/description da MESMA resposta
+      // separadamente. O StreamMax mantinha apenas o name curto + description
+      // e o title se perdia apos ser usado na classificacao.
+      if (nomeFonte[0] && strlen(nomeFonte) < sizeof s.nomeFonteCompleto)
+        snprintf(s.nomeFonteCompleto, sizeof s.nomeFonteCompleto, "%s", nomeFonte);
+      if (titulo[0] && strlen(titulo) < sizeof s.tituloFonte)
+        snprintf(s.tituloFonte, sizeof s.tituloFonte, "%s", titulo);
       int cache = cacheDeclarado(p, fim);
       s.emCache = cache > 0 || (cache == 0 && marcaEmCache(p, fim));
       s.cacheNegado = cache < 0;
       metadadosFaixas(p, fim, &s);
+      // As faixas formais sao prioridade. Se estiverem vazias, procurar
+      // APENAS identificadores explicitos no proprio release Dual Audio.
+      // A tag "Dual Audio" isolada nao significa automaticamente BR + EN.
+      // Informacao de SUBS nunca alimenta audioIdiomas.
+      if (!s.audioIdiomas[0]) {
+        unsigned bits = streammax_audio_dual_idiomas_fonte(
+            s.arquivo, s.nomeFonteCompleto, s.tituloFonte, s.descricao);
+        if (bits & SM_DUAL_BR)
+          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-BR");
+        if (bits & SM_DUAL_EN) {
+          size_t k = strlen(s.audioIdiomas);
+          snprintf(s.audioIdiomas + k, sizeof s.audioIdiomas - k,
+                   "%sEnglish", k ? "," : "");
+        }
+      }
+      // O Torrentio pode colocar o release em title ou description, deixando
+      // name apenas com o provedor. Cada campo e analisado isoladamente:
+      // jamais combinar "PT-BR" de um campo com "DUBLADO" de outro.
+      // Campos estruturados fornecidos pelo addon sempre tem prioridade.
+      const char *pistasFonte[] = {nomeFonte, titulo, s.descricao, s.arquivo};
+      for (unsigned pi = 0; pi < sizeof pistasFonte / sizeof *pistasFonte; pi++) {
+        const char *pista = pistasFonte[pi];
+        if (!pista || !pista[0]) continue;
+        int ptbrPista = token(pista, "pt-br") || token(pista, "ptbr") ||
+                        token(pista, "brazilian portuguese");
+        if (!ptbrPista) continue;
+        int audioPista = token(pista, "dublado") || token(pista, "dubbed") ||
+                         token(pista, "dual audio") || token(pista, "dualaudio");
+        int legendaPista = token(pista, "legendado") ||
+                           token(pista, "legendas pt-br") ||
+                           token(pista, "sub pt-br");
+        if (audioPista && !s.audioIdiomas[0])
+          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-BR");
+        if (legendaPista && !s.legendaIdiomas[0])
+          snprintf(s.legendaIdiomas, sizeof s.legendaIdiomas, "%s", "pt-BR");
+      }
       metadadosFiltro(p, fim, nomeFonte, s.descricao, titulo, &s);
       // behaviorHints.bingeGroup — ANCORADO NO OBJETO, e nao procurado solto.
       //
