@@ -15,7 +15,13 @@ assert 'if (soDub == 0) return 1;' in section
 assert 'if (soDub == 3)' in section
 assert 'return audioDeclaradoDual(s);' in section
 assert 'static int audioDeclaradoDual(const Stream *s)' in code
-assert '"pt", "en", "es", "fr", "de", "it", "ja", "ko", "ru", "zh", "hi"' in code
+dual = code.split("static int audioDeclaradoDual(const Stream *s) {", 1)[1].split("static int temAudioPreferido", 1)[0]
+assert 'strnlen(p, sizeof s->audioIdiomas)' in dual, "somente audio declarado"
+assert 'faixaIdiomaInformado(p, n)' in dual, "ignorar idiomas ausentes"
+assert 'faixaIdiomaDoNome(raw)' in dual and 'faixaIdiomaEtiqueta(raw, codigo, sizeof codigo)' in dual
+assert 'if (!ling_casa(primeiro, cod)) return 1;' in dual, "Dual exige dois idiomas distintos"
+assert 'static const char *idiomas[]' not in dual, "nao usar lista curta de idiomas"
+
 assert 'if (!pref[0] || audioDeclaradoEm(s, pref)) return 1;' in section
 assert 'soDub = (soDub + 1) % 4;' in code
 assert 'soDub == 1 ? "pt" : soDub == 2 ? "en" : ""' in code
