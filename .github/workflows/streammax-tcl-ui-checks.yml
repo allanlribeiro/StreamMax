@@ -7,7 +7,19 @@ on:
       - streammax/tcl-player-source-branding-1018
     paths:
       - 'legacy-source/src/app.c'
+      - 'legacy-source/src/detail.c'
+      - 'legacy-source/src/posplay.c'
+      - 'legacy-source/src/streammax_next_prefetch.h'
+      - 'legacy-source/tests/test_streammax_next_prefetch.c'
+      - 'legacy-source/tests/streammax-next-prefetch.sh'
+      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
+      - 'migration/check-player-original-engine.py'
       - 'legacy-source/src/ajustes.c'
+      - 'legacy-source/src/streams.c'
+      - 'legacy-source/src/stream_parse.c'
+      - 'legacy-source/src/streammax_source_ptbr.h'
+      - 'legacy-source/tests/test_streammax_source_ptbr.c'
+      - 'legacy-source/tests/streammax-source-ptbr.sh'
       - 'legacy-source/src/streammax_first_source.h'
       - 'legacy-source/tests/test_streammax_first_source.c'
       - 'legacy-source/tests/streammax-first-source.sh'
@@ -42,6 +54,12 @@ jobs:
         run: python3 migration/check-player-original-style.py legacy-source
       - name: Testar escolha inicial e memoria de fontes (sem rede)
         run: bash legacy-source/tests/streammax-first-source.sh
+      - name: Validar filtro de fonte dublada PT-BR (sem rede)
+        run: bash legacy-source/tests/streammax-source-ptbr.sh
+      - name: Testar prefetch de fonte sem escolha automatica inesperada
+        run: bash legacy-source/tests/streammax-next-prefetch.sh
+      - name: Conferir base de reprodução Media3 original (sem APK)
+        run: python3 migration/check-player-original-engine.py
       - name: Validar contratos de reproducao do Legacy
         run: python3 migration/check-playback-contracts.py legacy-source
       - name: Preparar compilacao nativa Linux sem gerar APK

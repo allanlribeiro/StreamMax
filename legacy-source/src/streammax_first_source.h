@@ -9,10 +9,23 @@
 static inline int streammax_should_ask_first_source(int manualEnabled,
                                                      int availableStreams,
                                                      int rememberedIndex) {
-  // On StreamMax, first-time VOD playback always requires explicit source selection.
-  // The legacy preference must not silently start a new film or episode.
+  // StreamMax requires first-time VOD source choice even when Legacy settings
+  // previously selected automatic mode. A valid user choice can be reused.
   (void)manualEnabled;
-  return availableStreams > 0 && rememberedIndex < 0;
+  return availableStreams > 0 && (rememberedIndex < 0 || rememberedIndex >= availableStreams);
+}
+
+ // A series episode short-click is a playback request, not an explicit
+ // "change source" action. After one manual choice, route it through the
+ // normal VOD resolver: it validates the remembered source against the new
+ // episode's addon list and reopens the picker if the match disappeared.
+ // Long-press "Fontes deste episodio" still opens the source picker.
+static inline int streammax_should_ask_episode_source(int manualEnabled,
+                                                      int hasManualPreference) {
+  // Keep the episode card consistent with StreamMax's first-source rule.
+  // A legacy automatic setting cannot silently bypass the first choice.
+  (void)manualEnabled;
+  return !hasManualPreference;
 }
 
 #endif

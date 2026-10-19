@@ -2440,8 +2440,7 @@ static void *fioFontes(void *u) {
     achados = NULL; n = 0;
     if (corpo) {
       n = stream_extrair(corpo, origem->nome, &achados);
-      // Compare number of JSON stream entries with what parser accepted.
-      // Never log stream URLs, hashes or configured addon addresses.
+      // Counts only: never log stream URLs, hashes or addon tokens.
       const char *entrada = js_array(corpo, NULL, "streams");
       int declaradas = 0;
       for (const char *p = entrada; p;) {

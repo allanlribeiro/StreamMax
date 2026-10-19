@@ -3,6 +3,8 @@
 #include "proximo.h"
 #include "fontecache.h"
 #include "proximopreparo.h"
+#include "fontepref.h"
+#include "streammax_next_prefetch.h"
 #include "jfid.h"
 #include "idioma.h"
 #include "catalogo.h"
@@ -285,8 +287,18 @@ static void prepararProximo(int ehSerie, double resta) {
     proximopreparo_cancelar(); return;
   }
   addons_capturar_escopo(&escopo);
-  int video = ajustes_fonte_precarregar() && !ajustes_fonte_manual();
-  if ((!ajustes_fonte_preparar() && !video) || ((preTentou || preVideoTentou) &&
+  // StreamMax: a primeira fonte e sempre escolhida pelo usuario. O preparo
+  // antecipado pode consultar metadados, mas nao resolver outro video em silencio.
+  const int manual = 1;
+  const int preloadVideo = ajustes_fonte_precarregar();
+  const int temManual = manual && preloadVideo && ci->imdb[0] && fontepref_tem(ci->imdb);
+  // Fonte escolhida uma vez: a lista do proximo episodio pode ser consultada
+  // antes do clique. Nunca criar player oculto nem resolver automaticamente
+  // outra fonte enquanto a escolha manual estiver ligada.
+  int video = streammax_next_video_preload(preloadVideo, manual);
+  int metadados = streammax_next_metadata_prefetch(
+      ajustes_fonte_preparar(), preloadVideo, manual, temManual);
+  if ((!metadados && !video) || ((preTentou || preVideoTentou) &&
       (escopo.geracao != preEscopo.geracao || escopo.addons != preEscopo.addons ||
        escopo.perfil != preEscopo.perfil || escopo.sessao != preEscopo.sessao ||
        strcmp(escopo.conta, preEscopo.conta)))) {

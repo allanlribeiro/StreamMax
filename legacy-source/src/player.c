@@ -1304,6 +1304,7 @@ static float aspectoQuadro(void) {
 
 typedef struct { float x, y, w, h; } PlrRect;
 static PlrRect miniDestino(void);
+static void janelaMandarMini(PlrRect r);
 // ANIMACAO DA JANELA DE VIDEO entre dois retangulos (tela cheia <-> preview
 // do guia). Em degraus espacados, como o recuo do painel de creditos: cada
 // degrau e uma mensagem ao pipeline, entao ha PLR_ENC_PASSOS delas em
@@ -1477,10 +1478,7 @@ static void aplicarAspecto(void) {
   // No PiP todo recalculo cai na miniatura — o videoInfo da fonte nova num
   // zap, por exemplo, chega DEPOIS do video_janela do canto e sem esta
   // guarda reexpandiria o plano para a tela cheia com a moldura la embaixo.
-  if (mini) { PlrRect o = miniDestino();
-              video_janela((int)(o.x + 0.5f), (int)(o.y + 0.5f),
-                           (int)(o.w + 0.5f), (int)(o.h + 0.5f));
-              return; }
+  if (mini) { janelaMandarMini(miniDestino()); return; }
 
   // Layout neutro ate o modo salvo ser liberado (ver aspArmar).
   if (aspPendente) return;
@@ -1955,9 +1953,7 @@ static void tocarFonteInterno(const char *url) {
   if (!comVideo) erroSemVideo();
   // No PiP a fonte nova retoca o mesmo canto — o destino de tela cheia do
   // aplicarAspecto so vale com a tela aberta.
-  if (mini) { PlrRect r = miniDestino();
-              video_janela((int)(r.x + 0.5f), (int)(r.y + 0.5f),
-                           (int)(r.w + 0.5f), (int)(r.h + 0.5f)); }
+  if (mini) janelaMandarMini(miniDestino());
   else aplicarAspecto();
 }
 #ifdef NV_ANDROID
@@ -2727,6 +2723,18 @@ static PlrRect miniDestino(void) {
   }
   return o;
 }
+// A TCL Android mantem o buffer do decoder na geometria anterior quando a
+// SurfaceView e encolhida por layout. No PiP transformamos o QUADRO INTEIRO,
+// mantendo a Surface original; outras plataformas seguem a API nativa antiga.
+static void janelaMandarMini(PlrRect r) {
+#if defined(NV_ANDROID)
+  video_janela_previa((int)(r.x + 0.5f), (int)(r.y + 0.5f),
+                      (int)(r.w + 0.5f), (int)(r.h + 0.5f));
+#else
+  video_janela((int)(r.x + 0.5f), (int)(r.y + 0.5f),
+               (int)(r.w + 0.5f), (int)(r.h + 0.5f));
+#endif
+}
 
 int  player_minimizavel(void) { return canalSessao && comVideo; }
 int  player_mini_ativo(void)  { return mini; }
@@ -2741,8 +2749,7 @@ void player_minimizar(void) {
 #endif
   pausao_fechar(); episodios_fechar(); posplay_fechar();
   r = miniDestino();
-  video_janela((int)(r.x + 0.5f), (int)(r.y + 0.5f),
-               (int)(r.w + 0.5f), (int)(r.h + 0.5f));
+  janelaMandarMini(r);
 }
 
 // Tela cheia "contain" pela proporcao do quadro: o fim da animacao de
@@ -2756,7 +2763,8 @@ static PlrRect telaCheia(void) {
   return o;
 }
 static void janelaMandar(PlrRect r) {
-  video_janela((int)(r.x + 0.5f), (int)(r.y + 0.5f), (int)(r.w + 0.5f), (int)(r.h + 0.5f));
+  // Na animacao preserva a Surface em tamanho inteiro ate chegar no destino.
+  janelaMandarMini(r);
 }
 static void janelaAnimar(PlrRect de, PlrRect para) {
   janDe = de; janPara = para; janAgora = de; janT = 0.0f; janEm = 0; janAtiva = 1;
@@ -2871,8 +2879,7 @@ void player_mini_desenhar(Uint32 agora) {
   r = miniDestino();
   if (janAtiva) { lx = r.x; ly = r.y; lw = r.w; lh = r.h; }
   if (r.x != lx || r.y != ly || r.w != lw || r.h != lh) {
-    video_janela((int)(r.x + 0.5f), (int)(r.y + 0.5f),
-                 (int)(r.w + 0.5f), (int)(r.h + 0.5f));
+    janelaMandarMini(r);
     lx = r.x; ly = r.y; lw = r.w; lh = r.h;
   }
   // No guia quem desenha e o guia (furo no preview, selo, bordas).

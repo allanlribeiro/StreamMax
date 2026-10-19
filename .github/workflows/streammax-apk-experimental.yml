@@ -1,7 +1,23 @@
 name: StreamMax APK experimental
 
+# O APK de teste da PR 15 deve conter o proprio player da PR, nunca
+# uma revisao antiga da base. Mantem login e bibliotecas nativas completas.
+# APK somente apos concluir demandas e aprovar a revisao do player.
+# Esta PR agora tem autorizacao para gerar APK de teste com a correcao
+# da janela de TV ao vivo. A compilacao usa o codigo da propria PR.
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - streammax/legacy-migration
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/streammax-apk-experimental.yml'
+      - 'legacy-source/src/video.h'
+      - 'legacy-source/src/video_android.c'
+      - 'legacy-source/src/player.c'
+      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
+      - 'migration/check-player-original-engine.py'
 
 permissions:
   contents: read
@@ -11,10 +27,58 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 110
     steps:
-      - name: Baixar código de desenvolvimento
+      - name: Baixar código da PR de reprodução
         uses: actions/checkout@v4
-        with:
-          ref: streammax/legacy-migration
+        # Em pull_request, checkout usa o merge-ref da PR com as mudancas
+        # reais do player. No despacho manual, usa a branch escolhida.
+      - name: Conferir o player Media3 e escolha manual desta revisao
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'player_definir_retomada_fonte(posTroca)' legacy-source/src/app.c
+          grep -Fq 't == epTrocaT && e == epTrocaE' legacy-source/src/app.c
+          grep -Fq 'val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt
+          grep -Fq 'val vigiaPrimeiroQuadro = Runnable' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt
+          grep -Fq 'streammax_should_ask_episode_source(' legacy-source/src/detail.c
+          python3 migration/check-player-original-engine.py
+          bash legacy-source/tests/streammax-first-source.sh
+          bash legacy-source/tests/streammax-next-prefetch.sh
+          echo "Revisao StreamMax do player: $(git rev-parse --short HEAD)"
+          python3 migration/check-playback-contracts.py legacy-source
+      - name: Configurar Nuvio Cloud oficial para login por e-mail
+        shell: bash
+        env:
+          # Dados PUBLICOS do NuvioMedia/self-host/.env.example.
+          NUVIO_CLOUD_URL: https://api.nuvio.tv
+          NUVIO_CLOUD_PUBLISHABLE_KEY: sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+        run: |
+          set -euo pipefail
+          [[ "$NUVIO_CLOUD_URL" == "https://api.nuvio.tv" ]]
+          [[ "$NUVIO_CLOUD_PUBLISHABLE_KEY" == sb_publishable_* ]]
+          umask 077
+          {
+            printf 'NUVIO_SUPABASE_URL=%s\n' "$NUVIO_CLOUD_URL"
+            printf 'NUVIO_SUPABASE_ANON_KEY=%s\n' "$NUVIO_CLOUD_PUBLISHABLE_KEY"
+            printf 'TV_LOGIN_WEB_BASE_URL=%s\n' "https://nuvio.tv/tv-login"
+          } > legacy-source/local.properties
+          echo "Configuracao publica do Nuvio Cloud registrada somente no arquivo temporario de build."
+      - name: Validar configuracao obrigatoria de autenticacao
+        working-directory: legacy-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/env.sh --require-core >/dev/null
+          test -s local.properties
+          echo "URL e chave publica presentes: build liberada para verificacao remota."
+      - name: Verificar servidor de autenticacao antes do build
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(sed -n 's/^NUVIO_SUPABASE_ANON_KEY=//p' legacy-source/local.properties)"
+          # Nunca realizar login sem credenciais do usuario.
+          curl --fail --silent --show-error --retry 2 --connect-timeout 10 --max-time 30 \
+            -H "apikey: $key" "https://api.nuvio.tv/auth/v1/health" > /dev/null
+          echo "Servidor respondeu ao health check. Login de usuario e sincronizacao ainda exigem teste real."
       - name: Java 17
         uses: actions/setup-java@v4
         with:
@@ -46,23 +110,82 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Compilar bibliotecas nativas de rede e imagens
+        working-directory: legacy-source
+        shell: bash
+        env:
+          NUVIO_ANDROID_JOBS: '2'
+        run: |
+          set -euo pipefail
+          # Sem libcurl o APK nao tem o caminho de rede completo. O modo sem curl
+          # foi util para validar a primeira compilacao, mas nao para testar playback.
+          bash tools/android/deps.sh arm64-v8a armeabi-v7a
+          for abi in arm64-v8a armeabi-v7a; do
+            for lib in curl jpeg webp; do
+              test -s "$HOME/.cache/nuvio-android/prefix/$abi/lib/lib$lib.so" || {
+                echo "::error::Falta lib$lib.so em $abi"
+                exit 1
+              }
+            done
+          done
       - name: Validar contratos da migração
         run: |
           set -euo pipefail
           python3 migration/check-legacy-auth.py legacy-source
           python3 migration/check-playback-contracts.py legacy-source
           python3 migration/check-android-isolation.py legacy-source
+          # Regressao de arte dos cards, especialmente Continuar assistindo.
+          bash legacy-source/tests/streammax-cw-art.sh
       - name: Compilar versão experimental sem assinatura de distribuição
         working-directory: legacy-source
         env:
-          NUVIO_SEM_CURL: '1'
           NUVIO_P2P_MOTOR: 'none'
           NUVIO_RUST_MKVCORE: '0'
           NUVIO_BUILD_JOBS: '2'
         run: |
           set -euo pipefail
           bash tools/android.sh
-      - name: Disponibilizar APK de teste
+      - name: Conferir servidor incorporado no APK e instalacao isolada
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import glob
+
+          configs = {}
+          for line in Path("legacy-source/local.properties").read_text(encoding="utf-8").splitlines():
+              if "=" in line and not line.lstrip().startswith("#"):
+                  k, v = line.split("=", 1)
+                  configs[k.strip()] = v.strip()
+          values = [configs.get("NUVIO_SUPABASE_URL", ""), configs.get("NUVIO_SUPABASE_ANON_KEY", "")]
+          if not all(values):
+              raise SystemExit("ERRO: configuracao do servidor incompleta")
+          paths = glob.glob("legacy-source/build/android/*-android-debug.apk")
+          if len(paths) != 1:
+              raise SystemExit(f"ERRO: esperado um APK debug, encontrados {len(paths)}")
+          with ZipFile(paths[0]) as apk:
+              for abi in ("arm64-v8a", "armeabi-v7a"):
+                  entry = f"lib/{abi}/libmain.so"
+                  if entry not in apk.namelist():
+                      raise SystemExit(f"ERRO: biblioteca principal ausente em {abi}")
+                  data = apk.read(entry)
+                  for lib in ("curl", "jpeg", "webp"):
+                      bundled = f"lib/{abi}/lib{lib}.so"
+                      if bundled not in apk.namelist():
+                          raise SystemExit(f"ERRO: {bundled} ausente no APK")
+                  for name, value in zip(("URL", "chave publica"), values):
+                      if value.encode("utf-8") not in data:
+                          raise SystemExit(f"ERRO: {name} do servidor nao incorporada em {abi}")
+          print("OK: URL e chave publica incorporadas nas duas arquiteturas; valores nao exibidos.")
+          PY
+          apk=(legacy-source/build/android/*-android-debug.apk)
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -x "$aapt"
+          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv.strictdebug'"
+          echo "OK: identificador Android isolado do Nuvio e Legacy."
+      - name: Disponibilizar APK de teste do player original
         if: success()
         uses: actions/upload-artifact@v4
         with:

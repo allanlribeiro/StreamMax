@@ -12,12 +12,27 @@ int main(void) {
 
   // When the source disappears, show the list and let the viewer choose again.
   assert(streammax_should_ask_first_source(1, 3, -1));
+  // A stale remembered index cannot select a different or missing source.
+  assert(streammax_should_ask_first_source(1, 3, 3));
+  assert(streammax_should_ask_first_source(0, 2, 9));
+  assert(!streammax_should_ask_first_source(1, 3, 2));
 
   // No list yet: wait for add-ons, never show an empty selection dialog.
   assert(!streammax_should_ask_first_source(1, 0, -1));
 
-  // User-selected fully automatic mode continues to follow legacy rules.
-  assert(!streammax_should_ask_first_source(0, 4, -1));
+  // A new title cannot bypass the StreamMax first-source prompt because a
+  // legacy automatic setting was persisted before migration.
+  assert(streammax_should_ask_first_source(0, 4, -1));
+  // An already remembered and matching source may continue automatically.
   assert(!streammax_should_ask_first_source(0, 4, 0));
+
+  // StreamMax: episode card prompts only before the FIRST manual choice.
+  // On subsequent episodes, the playback router checks the source against
+  // the actual episode list; a missing match reopens the chooser there.
+  assert(streammax_should_ask_episode_source(1, 0));
+  assert(!streammax_should_ask_episode_source(1, 1));
+  // Legacy automatic mode must not skip a first-time choice in the episode card.
+  assert(streammax_should_ask_episode_source(0, 0));
+  assert(!streammax_should_ask_episode_source(0, 1));
   return 0;
 }

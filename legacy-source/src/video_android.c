@@ -981,6 +981,8 @@ static void janelaSeMudou(int x, int y, int w, int h, int encaixa) {
   janelaKt(x, y, w, h, encaixa);
 }
 void video_janela(int x, int y, int w, int h) { janelaSeMudou(x, y, w, h, 1); }
+// Modo 2 usa a transformacao do plano no Kotlin: evita o crop do buffer da TCL.
+void video_janela_previa(int x, int y, int w, int h) { janelaSeMudou(x, y, w, h, 2); }
 
 // RECORTE DE FONTE PELO RETANGULO DE DESTINO AMPLIADO. Mesma conta do ROI do
 // .tpk (video_tpk.c, #178): desenhar o recorte (sx,sy,sw,sh) dentro de

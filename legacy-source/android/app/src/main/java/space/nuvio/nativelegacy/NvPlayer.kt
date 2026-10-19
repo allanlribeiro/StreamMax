@@ -27,7 +27,9 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
+import androidx.media3.ui.SubtitleView
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -95,6 +97,8 @@ object NvPlayer {
     private const val FAIXAS_MAX = 32 // NV_FAIXA_MAX do C
     private const val TIQUE_MS = 250L
     private const val RETRY_DECODER_MS = 5000L
+    // Igual ao watchdog do Nuvio original: corrigir READY parado antes do primeiro quadro.
+    private const val FIRST_FRAME_WATCHDOG_MS = 1_200L
 
     private val principal = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
@@ -104,6 +108,8 @@ object NvPlayer {
     private var camada: FrameLayout? = null
     private var interfaceMobile = false
     private var superficie: SurfaceView? = null
+    // Bitmap subtitle view lives below the existing translucent SDL OSD.
+    private var legendaBitmapView: SubtitleView? = null
     // #202: a TCL segurou o AudioFlinger por 27-38 s ao soltar o audio do filme
     // anterior; release() no fio principal congelava o app. Cada abertura tem a
     // sua SurfaceView e o player velho e solto num fio proprio.
@@ -128,6 +134,10 @@ object NvPlayer {
     private var urlAtual = ""
     private var cabAtual = ""
     private var abriuEm = 0L
+    // Mesmo criterio do player original: so medir travamentos apos o 1o quadro.
+    private var rebufferInicioEm = 0L
+    private var rebufferTotalMs = 0L
+    private var rebufferCount = 0
     private var retentou = false
     private var pronto = false
     private var duracaoEnviada = -1
@@ -139,6 +149,8 @@ object NvPlayer {
     private var jw = TELA_W
     private var jh = TELA_H
     private var atrasoMs = 0
+    // Mudanca de faixa/atraso invalida cues agendados da faixa antiga.
+    private var versaoLegenda = 0
     private var audios = ArrayList<Pair<Tracks.Group, Int>>()
     private var legendas = ArrayList<Pair<Tracks.Group, Int>>()
     private var assinatura = ""
@@ -369,9 +381,12 @@ object NvPlayer {
     private const val PREPARO_MAX_US = 5_000_000L
     private const val PREPARO_ESPERA_MS = 30_000L
 
-    private class CargaPlayer(minMs: Int, maxMs: Int, bytes: Int, preparando: Boolean) :
-        DefaultLoadControl(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE),
-            minMs, maxMs, 2_500, 5_000, bytes, false, 0, false) {
+    private class CargaPlayer(
+        minMs: Int, maxMs: Int, bytes: Int, preparando: Boolean,
+        inicioMs: Int, recuoBufferMs: Int, backBufferMs: Int
+    ) : DefaultLoadControl(DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE),
+            minMs, maxMs, inicioMs, recuoBufferMs, bytes, false,
+            backBufferMs, backBufferMs > 0) {
         @Volatile var adotada = !preparando
         @Volatile var cancelada = false
         // At most 1/16 of the heap (1/32 on low-RAM, where the active player
@@ -1033,6 +1048,12 @@ object NvPlayer {
         val aindaAtual = pedidoAtivo == pedidos.get()
         val pedido = pedidos.incrementAndGet()
         if (aindaAtual) pedidoAtivo = pedido
+        // A Activity perdeu o foco: impedir que o watchdog de primeiro quadro
+        // religue a reproducao em segundo plano. O proximo Play explicito
+        // continua liberando pausaPedida via pausar(0).
+        atividadeOculta = true
+        pausaPedida = true
+        principal.removeCallbacks(vigiaPrimeiroQuadro)
         try { player?.pause() } catch (e: Exception) { Log.w(TAG, "pausarPeloSistema: $e") }
     }
 
@@ -1075,8 +1096,40 @@ object NvPlayer {
         principal.post { if (pedido == pedidos.get()) liberar() }
     }
     private var pausaPedida = false
+    // onPause pode chegar durante abertura de uma nova fonte: nenhuma abertura
+    // tardia deve iniciar video com a Activity em segundo plano.
+    private var atividadeOculta = false
+    @JvmStatic fun retomarPeloSistema() {
+        atividadeOculta = false
+        // So o controle do player retoma; o onResume nao inicia sozinho.
+    }
+    // O Media3 pode ficar em READY sem o primeiro quadro se playWhenReady for
+    // desativado por uma transicao. So reativar quando existir faixa de video
+    // selecionada e NAO houver pausa solicitada pelo usuario; nunca buscar
+    // outra fonte nem reabrir a sessao. Mesma politica do Nuvio original.
+    private val vigiaPrimeiroQuadro = Runnable {
+        val p = player
+        if (p != null && !quadroVisto && !pausaPedida && !atividadeOculta &&
+            p.playbackState == Player.STATE_READY && !p.playWhenReady &&
+            p.currentTracks.groups.any { g ->
+                g.type == C.TRACK_TYPE_VIDEO &&
+                    (0 until g.length).any { g.isTrackSelected(it) }
+            }) {
+            Log.w(TAG, "[player] READY sem primeiro quadro e sem pausa manual; retomando playWhenReady")
+            p.playWhenReady = true
+        }
+    }
+    private fun agendarVigiaPrimeiroQuadro() {
+        principal.removeCallbacks(vigiaPrimeiroQuadro)
+        if (!quadroVisto && !pausaPedida && !atividadeOculta)
+            principal.postDelayed(vigiaPrimeiroQuadro, FIRST_FRAME_WATCHDOG_MS)
+    }
     @JvmStatic fun pausar(p: Int) {
-        principal.post { pausaPedida = p != 0; player?.playWhenReady = !pausaPedida }
+        principal.post {
+            pausaPedida = p != 0
+            if (pausaPedida) principal.removeCallbacks(vigiaPrimeiroQuadro)
+            player?.playWhenReady = !pausaPedida && !atividadeOculta
+        }
     }
     // Episode handoff arms this token before the old visible session closes.
     // Stop only that session; the exact selected preload keeps its queues.
@@ -1123,7 +1176,7 @@ object NvPlayer {
         val v = centesimos.coerceIn(25, 400) / 100f
         principal.post { player?.setPlaybackSpeed(v) }
     }
-    @JvmStatic fun janela(x: Int, y: Int, w: Int, h: Int, encaixa: Int) { principal.post { definirJanela(x, y, w, h, encaixa != 0) } }
+    @JvmStatic fun janela(x: Int, y: Int, w: Int, h: Int, encaixa: Int) { principal.post { definirJanela(x, y, w, h, encaixa != 0, encaixa == 2) } }
     @JvmStatic fun escolher(tipo: Int, idx: Int) { principal.post { escolherMain(tipo, idx) } }
 
     // --- abrir / liberar ------------------------------------------------------
@@ -1163,8 +1216,32 @@ object NvPlayer {
         // preset = MiB from Settings (0 Auto). ExoPlayer holds it in the Java heap: never past heap/3.
         val (minMs, maxMs, bytes) = if (preset > 0)
             Triple(50_000, 150_000, minOf(preset.toLong() shl 20, heap / 3).toInt())
-        else Triple(50_000, 50_000, tetoBuffer)
-        val r = RecursosPlayer(CargaPlayer(minMs, maxMs, bytes, preparando), maxMs, if (preparando) idiomaAudio else "")
+        // Original Nuvio: a configuracao padrao de performance usa janela
+        // de 15 a 45 segundos, em vez de manter o Legacy fixo em 50 segundos.
+        // Nao ampliar o teto em bytes: a TCL P7K pode ser low-RAM.
+        else Triple(15_000, 45_000, tetoBuffer)
+
+        // O VOD automatico deve continuar com os limiares stock Media3
+        // mesmo quando chega de um player preparado. CargaPlayer so usa
+        // 2,5 s durante o preparo invisivel (!adotada); promover() liga
+        // adotada=true e passa a usar super.shouldStartPlayback (stock).
+        // Presets manuais conservam os limiares Legacy. Nao mudar o teto
+        // de bytes: a TCL tem memoria limitada.
+        val inicioOriginal = preset == 0
+        val inicioMs = if (inicioOriginal)
+            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500
+        val recuoBufferMs = if (inicioOriginal)
+            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else 5_000
+        // O Nuvio original conserva 1,5 s no stock Media3 para que um
+        // pequeno retrocesso nao force nova leitura. Nao muda o teto em bytes
+        // na TCL, nem o preparo invisivel ou buffers personalizados.
+        // O buffer retroativo de 1,5 s fica so nas aberturas frias; o
+        // preparo do proximo episodio conserva sua reserva reduzida de RAM.
+        val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0
+        val r = RecursosPlayer(
+            CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs),
+            maxMs, if (preparando) idiomaAudio else ""
+        )
         try {
             val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
                 .setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
@@ -1228,7 +1305,9 @@ object NvPlayer {
                 .setLoadErrorHandlingPolicy(PoliticaErroParalelo())
                 .setDataSourceFactory(DefaultDataSource.Factory(act, r.origem))
             if (construir) construirPlayer(act, r)
-            Log.i(TAG, "[player] buffer preset=$preset min=${minMs / 1000}s max=${maxMs / 1000}s teto=${bytes shr 20}MB preparo=$preparando")
+            Log.i(TAG, "[player] buffer preset=$preset min=${minMs / 1000}s max=${maxMs / 1000}s " +
+                "inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms backBuffer=${backBufferMs}ms " +
+                "teto=${bytes shr 20}MB preparo=$preparando originalStock=$inicioOriginal")
             return r
         } catch (e: Exception) {
             soltarRecursosPreparo(r)
@@ -1274,7 +1353,7 @@ object NvPlayer {
             liberar()
             // O C envia ganho/pausa depois de abrir; a espera nao pode apaga-los.
             ganhoPct = 100
-            if (!reabrindo) pausaPedida = false
+            if (!reabrindo && !atividadeOculta) pausaPedida = false
         }
         // MStar/Amlogic: o overlay e o decoder antigos precisam sair antes do novo.
         // Poll no Handler deixa Back/parar funcionar enquanto o release corre em fundo.
@@ -1303,6 +1382,9 @@ object NvPlayer {
         fracaoAtual = if (inicioMs > 0) 0 else fracao
         fracaoPendente = 0
         abriuEm = SystemClock.elapsedRealtime()
+        rebufferInicioEm = 0L
+        rebufferTotalMs = 0L
+        rebufferCount = 0
         if (!reabrindo) retentou = false
         try {
             ParaleloDataSource.Estat.zerar()
@@ -1361,7 +1443,7 @@ object NvPlayer {
                 } else p.setMediaItem(mediaItem)
                 if (inicioMs <= 0 && fracaoAtual > 0) fracaoPendente = fracaoAtual
                 else confirmarRetomada(geracao, inicioAceito)
-                p.playWhenReady = !pausaPedida
+                p.playWhenReady = !pausaPedida && !atividadeOculta
                 // false -> false nao gera callback quando a pausa chegou sem player.
                 if (pausaPedida) ev(EV_PAUSADO)
                 p.prepare()
@@ -1372,7 +1454,7 @@ object NvPlayer {
                 fracaoPendente = preparada.fracaoPendente
                 p.setMediaSource(r.fontePrecarregada!!, preparada.posicaoFonteMs)
                 if (fracaoPendente <= 0) confirmarRetomada(geracao, inicioMs > 0 || preparada.inicioAceito)
-                p.playWhenReady = true
+                p.playWhenReady = !pausaPedida && !atividadeOculta
                 p.prepare()
                 Log.i(TAG, "[preparo] proximo adotado token=${preparada.token} pos=${preparada.posicaoFonteMs}")
             } else {
@@ -1384,7 +1466,7 @@ object NvPlayer {
                 ouv.onTracksChanged(p.currentTracks)
                 ouv.onVideoSizeChanged(p.videoSize)
                 ouv.onPlaybackStateChanged(p.playbackState)
-                p.playWhenReady = true
+                p.playWhenReady = !pausaPedida && !atividadeOculta
                 Log.i(TAG, "[preparo] adotado token=${preparada.token} estado=${p.playbackState}")
             }
             principal.postDelayed(tique(minha), TIQUE_MS)
@@ -1399,6 +1481,9 @@ object NvPlayer {
     // Sobe a sessao e solta tudo; qualquer callback pendente do player velho
     // morre na conferencia do numero.
     private fun liberar() {
+        principal.removeCallbacks(vigiaPrimeiroQuadro)
+        encerrarRebuffer()
+        removerLegendaBitmap()
         sessao++
         medidor.encerrar()
         val recursos = recursosAtuais
@@ -1444,6 +1529,39 @@ object NvPlayer {
         tap.encerrar()
         try { nativeAudioEstado(AudioSyncTap.FMT_NENHUM) } catch (_: UnsatisfiedLinkError) {}
         superficie?.visibility = View.GONE
+    }
+
+    // Media3 renders bitmap PGS/VobSub and styled SSA/ASS cues in this
+    // existing video layer. Regular SRT/text remains on native SDL.
+    private fun limparLegendaBitmap() {
+        legendaBitmapView?.setCues(emptyList())
+        legendaBitmapView?.visibility = View.GONE
+    }
+
+    private fun removerLegendaBitmap() {
+        val v = legendaBitmapView ?: return
+        limparLegendaBitmap()
+        (v.parent as? FrameLayout)?.removeView(v)
+        legendaBitmapView = null
+    }
+
+    private fun mostrarLegendaBitmap(cues: List<Cue>) {
+        if (cues.isEmpty()) { limparLegendaBitmap(); return }
+        val c = camada ?: return
+        val v = legendaBitmapView ?: SubtitleView(c.context).also { view ->
+            // Do not steal D-pad focus from the SDL app.
+            view.isFocusable = false
+            view.isFocusableInTouchMode = false
+            view.isClickable = false
+            view.setViewType(SubtitleView.VIEW_TYPE_CANVAS)
+            val videoLp = superficie?.layoutParams as? FrameLayout.LayoutParams
+            val lp = videoLp?.let { FrameLayout.LayoutParams(it) } ?: FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            c.addView(view, lp)
+            legendaBitmapView = view
+        }
+        v.setCues(cues)
+        v.visibility = View.VISIBLE
     }
 
     private fun novaSuperficie(act: Activity) {
@@ -1550,10 +1668,11 @@ object NvPlayer {
     // false) ja vem com a proporcao certa e e aplicado exato.
     private var pedX = 0; private var pedY = 0; private var pedW = 0; private var pedH = 0
     private var pedEncaixa = true
+    private var pedPrevia = false
 
-    private fun definirJanela(x: Int, y: Int, w: Int, h: Int, encaixa: Boolean) {
+    private fun definirJanela(x: Int, y: Int, w: Int, h: Int, encaixa: Boolean, previa: Boolean) {
         if (player == null) return   // como o Video.cs: o C repete depois do videoInfo
-        pedX = x; pedY = y; pedW = w; pedH = h; pedEncaixa = encaixa
+        pedX = x; pedY = y; pedW = w; pedH = h; pedEncaixa = encaixa; pedPrevia = previa
         temJanela = true
         calcularJanela()
         Log.i(TAG, "[dvtrace] janela sessao=$sessao holder=${System.identityHashCode(superficie?.holder)} pedido=$x,$y ${w}x$h encaixa=$encaixa calculada=$jx,$jy ${jw}x$jh hdr=$ultHdr semRecriar=$semRecriar")
@@ -1626,6 +1745,39 @@ object NvPlayer {
         val altura = maxOf(1, y1 - y0)
         val gravidade = Gravity.TOP or Gravity.START
         val antes = sv.layoutParams as? FrameLayout.LayoutParams
+        if (pedPrevia) {
+            // TCL / Android TV: reduzir o layout da SurfaceView pode manter o
+            // buffer do decoder em 1920x1080 e mostrar so um recorte (zoom).
+            // Conservamos a Surface em tamanho inteiro e transformamos TODO
+            // o quadro ate a miniatura, sem reabrir o canal nem o decoder.
+            if (antes == null || antes.width != cw || antes.height != ch ||
+                antes.leftMargin != 0 || antes.topMargin != 0 ||
+                antes.rightMargin != 0 || antes.bottomMargin != 0 ||
+                antes.gravity != gravidade) {
+                sv.layoutParams = FrameLayout.LayoutParams(cw, ch, gravidade)
+            }
+            sv.pivotX = 0f; sv.pivotY = 0f
+            sv.scaleX = largura.toFloat() / cw
+            sv.scaleY = altura.toFloat() / ch
+            sv.translationX = x0.toFloat()
+            sv.translationY = y0.toFloat()
+            legendaBitmapView?.let { view ->
+                val old = view.layoutParams as? FrameLayout.LayoutParams
+                if (old == null || old.width != largura || old.height != altura ||
+                    old.leftMargin != x0 || old.topMargin != y0) {
+                    view.layoutParams = FrameLayout.LayoutParams(largura, altura, gravidade).apply {
+                        leftMargin = x0; topMargin = y0
+                    }
+                }
+            }
+            return
+        }
+        // Ao sair do PiP, restaurar a geometria normal antes do dedupe.
+        if (sv.scaleX != 1f || sv.scaleY != 1f ||
+            sv.translationX != 0f || sv.translationY != 0f) {
+            sv.scaleX = 1f; sv.scaleY = 1f
+            sv.translationX = 0f; sv.translationY = 0f
+        }
         // Inspect the current SurfaceView, not a cached rectangle: resize or
         // replacing the surface must still apply its actual layout. Avoid both
         // allocation and requestLayout when repeated requests change nothing.
@@ -1637,6 +1789,15 @@ object NvPlayer {
         lp.leftMargin = x0
         lp.topMargin = y0
         sv.layoutParams = lp
+        // Match subtitles to the video crop/letterbox without recreating
+        // the TCL decoder Surface or adding an overlay video surface.
+        legendaBitmapView?.let { view ->
+            val old = view.layoutParams as? FrameLayout.LayoutParams
+            if (old == null || old.width != largura || old.height != altura ||
+                old.leftMargin != x0 || old.topMargin != y0) {
+                view.layoutParams = FrameLayout.LayoutParams(lp)
+            }
+        }
         // A TCL PRENDE A GEOMETRIA DO PLANO DE VIDEO: aplica o primeiro tamanho
         // e posicao da superficie e ignora as mudancas seguintes (o dono: "entra
         // recortado e nao sai; entra no esticar e fica esticado"). Recriar a
@@ -1808,7 +1969,18 @@ object NvPlayer {
     // --- escolha de faixa ----------------------------------------------------
 
     private fun escolherMain(tipo: Int, idx: Int) {
-        if (tipo == 2) { atrasoMs = idx; return }
+        if (tipo == 2) {
+            if (atrasoMs != idx) {
+                // Invalidating pending cues is not enough: the previous cue
+                // might already be visible. Clear both native text and the
+                // bitmap/ASS overlay when the user changes subtitle timing.
+                versaoLegenda++
+                try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+                limparLegendaBitmap()
+            }
+            atrasoMs = idx
+            return
+        }
         if (tipo == 3) { tap.ligado = idx != 0; return }   // F06: escuta de PCM liga/desliga
         val p = player ?: return
         try {
@@ -1826,20 +1998,44 @@ object NvPlayer {
                         .setOverrideForType(TrackSelectionOverride(g.mediaTrackGroup, i))
                 }
             } else return
-            p.trackSelectionParameters = par.build()
+            val novosParametros = par.build()
+            // Evita mostrar uma cue antiga em atraso depois da troca de faixa.
+            // Repetir a selecao atual nao interrompe uma legenda valida.
+            if (tipo == 1 && novosParametros != p.trackSelectionParameters) {
+                versaoLegenda++
+                try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+                limparLegendaBitmap()
+            }
+            p.trackSelectionParameters = novosParametros
         } catch (e: Exception) { Log.w(TAG, "escolher $tipo/$idx: $e") }
     }
 
     // --- eventos do player ----------------------------------------------------
+
+    private fun encerrarRebuffer() {
+        if (rebufferInicioEm == 0L) return
+        val ultimaPausaMs = (SystemClock.elapsedRealtime() - rebufferInicioEm).coerceAtLeast(0L)
+        rebufferInicioEm = 0L
+        rebufferTotalMs += ultimaPausaMs
+        Log.i(TAG, "[player] rebuffer fim ultimaMs=$ultimaPausaMs ocorrencias=$rebufferCount totalMs=$rebufferTotalMs")
+    }
 
     private fun ouvinte(minha: Int) = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             if (!atual(minha)) return
             val p = player ?: return
             Log.i(TAG, "[player] onPlaybackStateChanged state=$state renderer=audio(${p.audioFormat?.sampleMimeType}),video(${p.videoFormat?.sampleMimeType}) loadMs=${SystemClock.elapsedRealtime() - abriuEm}")
+            if (state == Player.STATE_BUFFERING && quadroVisto && p.playWhenReady && rebufferInicioEm == 0L) {
+                rebufferCount++
+                rebufferInicioEm = SystemClock.elapsedRealtime()
+                Log.i(TAG, "[player] rebuffer inicio ocorrencia=$rebufferCount")
+            } else if (state != Player.STATE_BUFFERING) {
+                encerrarRebuffer()
+            }
             when (state) {
                 Player.STATE_BUFFERING -> ev(EV_BUFFER, 0)
                 Player.STATE_READY -> {
+                    if (!quadroVisto) agendarVigiaPrimeiroQuadro()
                     ev(EV_BUFFER, 100)
                     relatarAudio(minha, "pronto volume=${p.volume} playWhenReady=${p.playWhenReady} suppression=${p.playbackSuppressionReason}")
                     if (!pronto) {
@@ -1867,7 +2063,13 @@ object NvPlayer {
             if (!atual(minha)) return
             val p = player ?: return
             relatarAudio(minha, "playWhenReady=$playWhenReady reason=$reason")
-            if (!playWhenReady && !p.isPlaying && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
+            // Pausa voluntaria nao e travamento de rede.
+            if (!playWhenReady) {
+                encerrarRebuffer()
+                if (pausaPedida) principal.removeCallbacks(vigiaPrimeiroQuadro)
+                else if (p.playbackState == Player.STATE_READY && !quadroVisto) agendarVigiaPrimeiroQuadro()
+            }
+            if (!playWhenReady && pausaPedida && !p.isPlaying && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
             medirEstado(p)
         }
 
@@ -1884,7 +2086,21 @@ object NvPlayer {
             val p = player ?: return
             if (isPlaying) { if (pronto) ev(EV_TOCANDO) }
             // Parar de tocar por buffer nao e pausa (o evento 7 ja disse).
-            else if (!p.playWhenReady && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
+            else if (!p.playWhenReady && pausaPedida && p.playbackState != Player.STATE_ENDED) ev(EV_PAUSADO)
+        }
+
+        // Media3 can deliver delayed subtitle cues from before a seek.
+        // Drop pending old-position cues and clear the overlay immediately;
+        // freshly emitted cues after the discontinuity belong to the new time.
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            if (!atual(minha) || reason != Player.DISCONTINUITY_REASON_SEEK) return
+            versaoLegenda++
+            try { nativeLegenda("", 0) } catch (_: UnsatisfiedLinkError) { }
+            limparLegendaBitmap()
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
@@ -1897,6 +2113,7 @@ object NvPlayer {
 
         override fun onRenderedFirstFrame() {
             if (!atual(minha)) return
+            principal.removeCallbacks(vigiaPrimeiroQuadro)
             Log.i(TAG, "[player] onRenderedFirstFrame renderer=video loadMs=${SystemClock.elapsedRealtime() - abriuEm} sessao=$sessao hdr=$ultHdr holder=${System.identityHashCode(superficie?.holder)} soltando=${soltando != null}")
             esconderQuadro()
             ev(EV_PRIMEIRO_QUADRO)
@@ -1918,6 +2135,7 @@ object NvPlayer {
         override fun onTracksChanged(tracks: Tracks) {
             if (!atual(minha)) return
             publicarFaixas(tracks)
+            if (!quadroVisto && player?.playbackState == Player.STATE_READY) agendarVigiaPrimeiroQuadro()
             for (g in tracks.groups) if (g.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until g.length) if (g.isTrackSelected(i)) {
                     val f = g.getTrackFormat(i)
@@ -1929,13 +2147,26 @@ object NvPlayer {
 
         override fun onCues(cueGroup: CueGroup) {
             if (!atual(minha)) return
-            val texto = cueGroup.cues.mapNotNull { it.text?.toString()?.trim() }
+            // SSA/ASS position and style live in Cue fields/Spannables.
+            // Flattening to String loses both; let Media3 paint those cues.
+            // Native SDL continues to paint ordinary text subtitles.
+            val usaAss = player?.currentTracks?.groups?.any { g ->
+                g.type == C.TRACK_TYPE_TEXT && (0 until g.length).any { i ->
+                    g.isTrackSelected(i) && g.getTrackFormat(i).sampleMimeType == MimeTypes.TEXT_SSA
+                }
+            } == true
+            val imagens = if (usaAss) cueGroup.cues else cueGroup.cues.filter { it.bitmap != null }
+            val texto = if (usaAss) "" else cueGroup.cues.mapNotNull { it.text?.toString()?.trim() }
                 .filter { it.isNotEmpty() }.joinToString("\n")
             // O Media3 nao diz quando o cue acaba: estimativa pelo tamanho, e o
             // proximo grupo (inclusive o vazio) substitui antes disso.
             val dur = if (texto.isEmpty()) 0 else (800 + texto.length * 60).coerceIn(2000, 7000)
+            val versao = versaoLegenda
             val entregar = Runnable {
-                if (atual(minha)) try { nativeLegenda(texto, dur) } catch (e: UnsatisfiedLinkError) { }
+                if (atual(minha) && versao == versaoLegenda) {
+                    try { nativeLegenda(texto, dur) } catch (e: UnsatisfiedLinkError) { }
+                    mostrarLegendaBitmap(imagens)
+                }
             }
             if (atrasoMs > 0) principal.postDelayed(entregar, atrasoMs.toLong()) else entregar.run()
         }
@@ -1946,16 +2177,23 @@ object NvPlayer {
             val p = player
             val timeout = generateSequence(error.cause) { it.cause }
                 .filterIsInstance<androidx.media3.exoplayer.ExoTimeoutException>().firstOrNull()
-            if (p != null && RecriaHdr.timeoutRecuperavel(error.errorCode,
+            if (p != null && !recuperouSuperficie && RecriaHdr.timeoutRecuperavel(error.errorCode,
                     recriando, timeout?.timeoutOperation ?: -1)) {
-                // Our detach timeout must never become a source-open error.
-                if (!recuperouSuperficie) {
-                    recuperouSuperficie = true
-                    principal.post {
-                        if (!atual(minha) || player !== p) return@post
-                        superficie?.let { p.setVideoSurfaceView(it) }
+                // A detach timeout during TCL surface recreation gets ONE
+                // recovery attempt. A second timeout is a real playback error:
+                // never swallow it and leave the player buffering forever.
+                recuperouSuperficie = true
+                principal.post {
+                    if (!atual(minha) || player !== p) return@post
+                    try {
+                        val sv = superficie ?: throw IllegalStateException("video surface unavailable")
+                        p.setVideoSurfaceView(sv)
                         p.seekTo(superficiePos)
                         p.prepare()
+                    } catch (retryError: Exception) {
+                        // Do not crash the main looper or leak stream URLs.
+                        Log.w(TAG, "[player] surface recovery failed (" + retryError.javaClass.simpleName + ")")
+                        ev(EV_ERRO, error.errorCode, C.TRACK_TYPE_VIDEO)
                     }
                 }
                 return
@@ -2109,7 +2347,14 @@ object NvPlayer {
         for ((g, i) in a) sig.append('a').append(g.getTrackFormat(i).id).append(g.getTrackFormat(i).language).append(';')
         for ((g, i) in l) sig.append('l').append(g.getTrackFormat(i).id).append(g.getTrackFormat(i).language).append(';')
         val nova = sig.toString()
-        if (nova == assinatura) return
+        if (nova == assinatura) {
+            // HLS/DASH may publish new Tracks.Group instances with the same
+            // visible language/id. Refresh the Media3 selection references
+            // without resetting the user's open audio/subtitle menus in C.
+            audios = a
+            legendas = l
+            return
+        }
         val tinhaLegenda = legendas.isNotEmpty()
         assinatura = nova
         audios = a
@@ -2117,6 +2362,8 @@ object NvPlayer {
         if (a.isEmpty() && l.isEmpty()) return
         // Lista de legendas mudou: a escolha antiga nao vale (o C zera legAtual).
         if (tinhaLegenda || l.isNotEmpty()) {
+            versaoLegenda++
+            limparLegendaBitmap()
             player?.let {
                 it.trackSelectionParameters = it.trackSelectionParameters.buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).clearOverridesOfType(C.TRACK_TYPE_TEXT).build()

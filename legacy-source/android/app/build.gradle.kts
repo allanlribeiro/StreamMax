@@ -120,6 +120,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
     implementation("androidx.media3:media3-exoplayer-dash:1.8.0")
+    // SubtitleView only for image-based PGS/VobSub cues; native SDL retains text/OSD.
+    implementation("androidx.media3:media3-ui:1.8.0")
     // Decodificador de AUDIO por FFmpeg (DTS, DTS-HD, TrueHD, E-AC-3...) para
     // quando a TV nao tem o decodificador nem passa o bitstream adiante: sem
     // ele a fonte toca muda (evento 9). Compilado e publicado pela Jellyfin no

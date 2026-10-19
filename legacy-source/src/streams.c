@@ -8,6 +8,7 @@
 #include "livetv_regras.h"
 #include "idioma.h"
 #include "linguas.h"
+#include "streammax_source_ptbr.h"
 #include "badges.h"
 #include "selospacote.h"
 #include "logotitulo.h"
@@ -688,7 +689,7 @@ void stream_lista_acrescentar(const Stream *l, int qtd, int ordemAddon) {
       else if (!l[i].url[0] && !debrid_ativo() && !p2p_ativo()) semLinkSemDebrid++;
       else outros++;
     }
-    // Safe summary only: do not log URLs, hashes, addon tokens or file names.
+    // Counts only: never log source URLs, tokens, hashes or filenames.
     printf("[fonte] %s: %d recebidas, %d oferecidas, %d sem link/debrid, %d exigem P2P, %d outras descartadas\n",
            l[0].provedor, qtd, k, semLinkSemDebrid, exigeP2P, outros);
   }
@@ -3057,6 +3058,7 @@ static int automaticoDaFolhaModo(void) {
 
 
 
+// 0 Todos, 1 Portugues, 2 Ingles, 3 Dual Audio.
 static int grupo, filtro, soMp4, soCache, soDub;
 
 // BOTOES DO CABECALHO. "Sem HDR" so existe onde ha o que renegociar (webOS);
@@ -3087,7 +3089,7 @@ static int nBotoes(void) {
   return (video_pode_forcar_sdr() ? 6 : 5) + (recarregarFonteContexto != 0);
 }
 static const char *idiomaFiltroAudio(void) {
-  return ling_audio_fonte(idioma_iso(ajustes_idioma()));
+  return soDub == 1 ? "pt" : soDub == 2 ? "en" : "";
 }
 static const char *rotuloBotao(int b) {
   if (b == BT_SEM_HDR) return "Sem HDR";
@@ -3095,14 +3097,16 @@ static const char *rotuloBotao(int b) {
   if (b == BT_CACHE)   return "Em cache";
   if (b == BT_DUB) {
     static char rotulo[96];
-    const char *pref = idiomaFiltroAudio();
-    snprintf(rotulo, sizeof rotulo, i18n("Áudio: %s"), pref[0] ? ling_selo(pref) : i18n("Todos"));
+    const char *nome = soDub == 1 ? "🇧🇷 Português"
+                      : soDub == 2 ? "🇺🇸 Inglês"
+                      : soDub == 3 ? "Dual Audio" : "Todos";
+    snprintf(rotulo, sizeof rotulo, "Áudio: %s", nome);
     return rotulo;
   }
   return NULL;
 }
 static int botaoLigado(int b) {
-  return (b == BT_SO_MP4 && soMp4) || (b == BT_CACHE && soCache) || (b == BT_DUB && soDub);
+  return (b == BT_SO_MP4 && soMp4) || (b == BT_CACHE && soCache) || (b == BT_DUB && soDub != 0);
 }
 static const char *iconeBotao(int b) {
   return b == BT_RECARREGAR ? "aj_rotate-cw" : b == BT_RECARREGAR_FONTE
@@ -3448,6 +3452,8 @@ static const char *faixaIdiomaDoNome(const char *raw) {
     { "Brazilian Portuguese", "pob" }, { "Portuguese (Brazil)", "pob" },
     { "Portuguese (Brasil)", "pob" }, { "Portuguese (BR)", "pob" },
     { "Português (Brasil)", "pob" }, { "Português (BR)", "pob" },
+    { "Português brasileiro", "pob" }, { "Portugues brasileiro", "pob" },
+    { "Português do Brasil", "pob" }, { "Portuguese Brazilian", "pob" },
     { "Portuguese (Portugal)", "pt-PT" }, { "Portuguese (PT)", "pt-PT" },
     { "Português (Portugal)", "pt-PT" },
     { "ptbr", "pob" },
@@ -3546,11 +3552,28 @@ int stream_faixas_texto(const Stream *s, int legendas, char *saida, unsigned tam
   fim = p + strnlen(p, sizeof s->audioIdiomas);
   while (p < fim) {
     const char *f = memchr(p, ',', (size_t)(fim - p)), *ate = f ? f : fim;
-    char raw[sizeof s->audioIdiomas], nome[sizeof s->audioIdiomas + 64];
+    char raw[sizeof s->audioIdiomas], nome[sizeof s->audioIdiomas + 96] = "";
+    char semBandeira[sizeof s->audioIdiomas + 64], codigo[32];
     while (p < ate && isspace((unsigned char)*p)) p++;
     while (ate > p && isspace((unsigned char)ate[-1])) ate--;
     snprintf(raw, sizeof raw, "%.*s", (int)(ate - p), p);
-    if (faixaIdiomaNome(raw, nome, sizeof nome) && !faixaNomeRepetido(saida, nome)) {
+    if (faixaIdiomaNome(raw, semBandeira, sizeof semBandeira)) {
+      const char *cod = faixaIdiomaDoNome(raw), *bandeira = "";
+      if (!cod && faixaIdiomaEtiqueta(raw, codigo, sizeof codigo)) cod = codigo;
+      if (!legendas && cod) {
+        // Qualquer variante de portugues (inclusive pt-PT) leva a bandeira
+        // brasileira, e ingles leva a dos EUA. Nunca inferir por legendas.
+        if ((!strncasecmp(cod, "pt", 2) && (!cod[2] || cod[2] == '-')) ||
+            !strcasecmp(cod, "pob") || !strcasecmp(cod, "pb") ||
+            !strcasecmp(cod, "br") || !strcasecmp(cod, "ptb"))
+          bandeira = "🇧🇷 ";
+        else if ((!strncasecmp(cod, "en", 2) && (!cod[2] || cod[2] == '-')) ||
+                 !strcasecmp(cod, "eng"))
+          bandeira = "🇺🇸 ";
+      }
+      snprintf(nome, sizeof nome, "%s%s", bandeira, semBandeira);
+    }
+    if (nome[0] && !faixaNomeRepetido(saida, nome)) {
       size_t q = strlen(nome), separador = usado ? 2 : 0;
       // Somente nomes completos: uma saida curta nunca corta um glifo UTF-8.
       if (usado + separador + q >= tam) break;
@@ -3613,31 +3636,88 @@ static int audioDeclaradoEm(const Stream *s, const char *pref) {
 // O IDIOMA nao tem logo no pacote de selos, entao vai como texto no fim da
 // fileira. Os rotulos antigos continuam onde o addon nao informa audio;
 // quando informa, nenhum deles contradiz a lista declarada.
+static int audioDeclaradoDual(const Stream *s);
 static const char *idiomaDa(const Stream *s) {
   int podePt = !s->audioIdiomas[0] || audioDeclaradoEm(s, "pt");
+  // O rotulo usa a MESMA evidencia que o filtro Dual: nunca somente "dual"
+  // em legenda ou em texto ambiguo.
+  int dual = s->audioIdiomas[0] ? audioDeclaradoDual(s)
+           : streammax_dual_marca_release(s->arquivo) ||
+             streammax_dual_marca_release(s->rotulo) ||
+             streammax_dual_descricao_audio(s->descricao);
+  if (dual) return "Dual áudio";
   if (podePt && (temNoTexto(s, "dublado") || temNoTexto(s, "dub"))) return "Dublado";
-  if (podePt && temNoTexto(s, "dual")) return "Dual áudio";
   // Uma secao de legendas em portugues nao anuncia audio em portugues.
+  // Uma referencia isolada a portugues nao prova duas faixas.
+  // A grade conserva o estilo original, mas evita o selo "Dual" enganoso.
   if (podePt && (s->audioIdiomas[0] || !s->legendaIdiomas[0]) &&
       (temNoTexto(s, "portuguese") || temNoTexto(s, "português") ||
-       temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Dual áudio";
+       temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Português";
   if (temNoTexto(s, "legendado") || temNoTexto(s, "leg")) return "Legendado";
-  return NULL;
+  // Sem audio informado pelo addon ou pelo release: sinalizar ausencia de dados,
+  // sem transformar legendas em audio e sem esconder a fonte na lista.
+  return s->audioIdiomas[0] ? NULL : "Áudio não identificado";
+}
+// Dual Audio exige pelo menos dois idiomas distintos informados pelo addon.
+// Uma lista de legendas nunca entra nessa contagem.
+static int audioDeclaradoDual(const Stream *s) {
+  // A lista declarada pelo addon e a fonte da verdade. Percorre uma so vez
+  // usando os mesmos parsers de idioma exibidos na grade, sem whitelist que
+  // exclui pares reais (por exemplo: arabe + turco).
+  const char *p = s->audioIdiomas;
+  const char *fim = p + strnlen(p, sizeof s->audioIdiomas);
+  char primeiro[32] = "";
+  while (p < fim) {
+    const char *f = memchr(p, ',', (size_t)(fim - p));
+    const char *ate = f ? f : fim;
+    while (p < ate && isspace((unsigned char)*p)) p++;
+    while (ate > p && isspace((unsigned char)ate[-1])) ate--;
+    size_t n = (size_t)(ate - p);
+    if (n && faixaIdiomaInformado(p, n)) {
+      char raw[sizeof s->audioIdiomas + 1], codigo[32];
+      memcpy(raw, p, n); raw[n] = 0;
+      const char *cod = faixaIdiomaDoNome(raw);
+      if (!cod && faixaIdiomaEtiqueta(raw, codigo, sizeof codigo)) cod = codigo;
+      if (cod && cod[0]) {
+        if (!primeiro[0]) snprintf(primeiro, sizeof primeiro, "%s", cod);
+        else if (!ling_casa(primeiro, cod)) return 1;
+      }
+    }
+    p = f ? f + 1 : fim;
+  }
+  return 0;
 }
 static int temAudioPreferido(const Stream *s) {
   const char *pref = idiomaFiltroAudio();
-  // An explicit "All" (or an unresolved "Original") is not a guessed
-  // language. Otherwise require declared audio metadata, never subtitles,
-  // filenames or generic "dub/dual" labels whose language is unknown.
-  return !pref[0] || audioDeclaradoEm(s, pref);
+  if (soDub == 0) return 1;
+  if (soDub == 3) {
+    // Metadados com duas linguas distintas ou indicacao expressa de Dual.
+    // Evitar tratar legenda, resolucao ou a palavra DUB como dual.
+    if (s->audioIdiomas[0]) {
+      return audioDeclaradoDual(s);
+    }
+    return streammax_dual_marca_release(s->arquivo) ||
+           streammax_dual_marca_release(s->rotulo) ||
+           streammax_dual_descricao_audio(s->descricao);
+  }
+  // All / unresolved Original: sem filtrar. Declaracao do addon sempre
+  // prevalece, inclusive uma lista explicitamente ES ou EN.
+  if (!pref[0] || audioDeclaradoEm(s, pref)) return 1;
+  if (s->audioIdiomas[0]) return 0;
+  // Alguns addons identificam a dublagem no nome/rotulo, mas nao enviam
+  // audioTracks/languages. Nao perder essas fontes no filtro PT/pt-BR.
+  // A dica so vale para a familia portuguesa e nunca vem de subtitles.
+  if (ling_casa("pt", pref))
+    return streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao);
+  if (ling_casa("en", pref))
+    return streammax_en_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao);
+  return 0;
 }
 static const char *ajudaFiltroAudio(void) {
   static char ajuda[512];
   const char *pref = idiomaFiltroAudio();
-  snprintf(ajuda, sizeof ajuda, i18n(soDub
-    ? "Idioma do filtro de áudio: %s. OK tira o filtro."
-    : "Idioma do filtro de áudio: %s. OK liga o filtro."),
-    pref[0] ? i18n(ling_nome(pref)) : i18n("Todos"));
+  snprintf(ajuda, sizeof ajuda, "OK alterna: Todos → Português → Inglês → Dual Audio. Atual: %s.",
+    soDub == 3 ? "Dual Audio" : pref[0] ? ling_nome(pref) : "Todos");
   return ajuda;
 }
 
@@ -4254,7 +4334,7 @@ void stream_folha_evento(const SDL_Event *e) {
         case BT_SEM_HDR:    video_forcar_sdr(); aberta=0; break;
         case BT_SO_MP4:     soMp4 = !soMp4; rolagem=0;velRol=0; break;
         case BT_CACHE:      soCache = !soCache; rolagem=0;velRol=0; break;
-        case BT_DUB:        soDub = !soDub; rolagem=0;velRol=0; break;
+        case BT_DUB:        soDub = (soDub + 1) % 4; rolagem=0;velRol=0; break;
         default:            aberta=0; break;
       }
     }

@@ -18,7 +18,7 @@ checks = {
         "lembrada = base[0] ? fontepref_escolher_manual(base) : -1;",
         "ultRevisao != fontepref_revisao()",
         "ultManual != manual",
-        "ultLembrada = manual ? fontepref_escolher_manual(base) : fontepref_escolher(base);",
+        "ultLembrada = fontepref_escolher_manual(base);",
         "fontepref_escolher_manual(base)",
         "if (base[0]) fontepref_guardar(base, s);",
     ],
@@ -70,7 +70,7 @@ checks = {
     "src/streammax_first_source.h": [
         "static inline int streammax_should_ask_first_source(",
         "(void)manualEnabled;",
-        "return availableStreams > 0 && rememberedIndex < 0;",
+        "return availableStreams > 0 && (rememberedIndex < 0 || rememberedIndex >= availableStreams);",
     ],
     "src/fontepref.h": [
         "int fontepref_escolher_manual(const char *id);",

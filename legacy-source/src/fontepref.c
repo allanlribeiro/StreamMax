@@ -585,6 +585,18 @@ static int nota(const Stream *s, const FontePref *p) {
 // no app web (um `find` por bingeGroup e mais nada): o campo JA E a declaracao
 // de identidade de fonte, e exigir provedor por cima so criaria um jeito novo
 // de nao casar.
+static int contemMarcas(const char *t, const char *lembrada);
+
+// Um bingeGroup identifica a familia de streams, mas pode conter arquivos
+// com audio diferente. Nao trocar silenciosamente a marca escolhida pela
+// pessoa: na duvida, a folha manual e mais segura do que tocar outra faixa.
+static int trilhaCompativel(const FontePref *p, const Stream *s) {
+  char trilha[FONTEPREF_TRILHA];
+  if (!p->trilha[0]) return 1;
+  fontepref_trilha(s, trilha, sizeof trilha);
+  return contemMarcas(trilha, p->trilha);
+}
+
 static int porBinge(const FontePref *p) {
   int i, melhor = -1, melhorNota = -1, total = stream_n();
   if (!p->bingeGroup[0]) return -1;
@@ -593,6 +605,7 @@ static int porBinge(const FontePref *p) {
     int n;
     if (!s || !s->bingeGroup[0]) continue;
     if (strcmp(s->bingeGroup, p->bingeGroup)) continue;
+    if (!trilhaCompativel(p, s)) continue;
     n = nota(s, p);
     // `>` e nao `>=`, a mesma disciplina de stream_automatico: em empate fica
     // o PRIMEIRO da lista, que e a ordem em que o addon devolveu.
@@ -740,6 +753,7 @@ int fontepref_escolher_lista(const char *id, const Stream *fontes, int total,
     if (p->bingeGroup[0]) for (int i = 0; i < total; i++) {
       const Stream *s = &fontes[i];
       if (strcmp(s->bingeGroup, p->bingeGroup)) continue;
+      if (!trilhaCompativel(p, s)) continue;
       int n = nota(s, p);
       if (n > melhorNota) { melhorNota = n; melhor = i; }
     }

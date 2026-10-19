@@ -146,3 +146,61 @@ Este documento descreve decisões do fork; não é documentação oficial do pro
 - Regra de primeira escolha VOD isolada em `streammax_first_source.h` e exercitada em teste C para casos de primeira reprodução, mesma fonte no próximo episódio, desaparecimento da fonte, lista vazia e opção automática escolhida pelo usuário.
 - CI de UI/player passa a rodar também na PR de correção, com compilação nativa Linux e regressões; **não gera APK**.
 - Ainda não aprovado em dispositivo: o teste com vídeo real na TCL P7K, áudio/legendas, continuidade de episódios, foco do controle remoto, HDR e tempos de carregamento depende de APK de validação posterior. Não chamar o player de homologado antes desses testes.
+
+## Reproducao baseada no Nuvio original — primeira migracao funcional (18/10/2026)
+
+- A PR #14 de escolha inicial e memoria da fonte foi integrada em `streammax/legacy-migration` com testes de fluxo e compilacao Linux aprovados; o proximo trabalho e o **player**, nao TV ao vivo ou Android 14.
+- Comparacao real no codigo: o original `PlayerRuntimeControllerInitialization.kt` usa Media3 ExoPlayer, com caminho `DefaultLoadControl.Builder()`. O Legacy Android ja reproduz por Media3 ExoPlayer em `NvPlayer.kt` (por SurfaceView). Trocar para o player original exige migrar **comportamento, OSD e tratamento de sessoes**, nao instalar simplesmente outra biblioteca de video.
+- Etapa da PR #15: no VOD com buffer automatico (preset 0) e sem preparo, usar a janela 15–45 s inspirada em `NuvioExoPlayerPerformanceHelper` e os limiares stock Media3 para inicio/rebuffer. Preservar os tetos de bytes dependentes da RAM da TCL. Presets de buffer explicitos e a instancia invisivel de preparo conservam os limiares Legacy.
+- Aceleracao esperada: menor espera imposta pelo buffer apos uma fonte valida; **nao** resolve atrasos de consulta a addon ou disponibilidade de link. Monitorar travamentos/rebuffer em fontes lentas e reverter a politica se necessario.
+- Teste estatico em `migration/check-player-original-engine.py` e workflow sem APK; falta compilacao Android com Media3/NDK e teste de duracao ate o primeiro quadro com a TCL.
+- Criterios da migracao completa **antes do proximo APK**: abertura manual de primeira fonte, continuidade de episodios com mesma fonte quando disponivel, retomada sem voltar ao inicio ao trocar de fonte, OSD e foco proximos do Nuvio original com logo de titulo e acento azul StreamMax, idioma/legendas, 4K HDR10+/Dolby Vision, controle de erros, troca de faixa e fluxo de retorno usando controle remoto.
+- Manter compatibilidade Android 12 da TCL P7K; Android 14 e Tizen fora desta etapa.
+
+- Avanco funcional adicional no mesmo player Media3: no VOD com preset Auto e sem preparo invisivel, reter 1,5 s de back-buffer a partir de keyframe, espelhando o `DefaultLoadControl.Builder().setBackBuffer(1_500, true)` do original. O teto de memoria/bytes da TCL nao foi aumentado. Preparo invisivel e preset manual continuam sem essa retencao.
+- Telemetria para comparacao em aparelho: log do primeiro quadro (`loadMs`, ja presente) e novos logs de rebuffer apenas **apos** primeiro quadro (`ocorrencias`, `ultimaMs`, `totalMs`). Pausa voluntaria encerra a contagem de rebuffer. Sao medidas da instancia Media3, nao incluem tempo de busca de fontes nos addons.
+- Risco e criterio de aceitacao: back-buffer pode disputar memoria com streams 4K de bitrate alto; medir HDR, memoria, inicio, pequenos retrocessos e travamentos na TCL Android 12. Se rebuffer piorar, ajustar a retencao antes de distribuir. Sem Android APK novo nesta etapa.
+- Clique curto na fileira de episodios (Android): se ja existe escolha manual persistida para a serie no perfil, seguir o fluxo normal de reproducao em vez de reabrir a folha de fontes em todo episodio. O roteador so toca automaticamente quando a lista atual confirma a identidade dessa fonte; se nao casar, a folha de fontes reaparece. Primeira escolha continua obrigatoria e menu de fontes por pressao longa continua explicito. Outras plataformas preservam regra anterior.
+- Testes de unidade do seletor e verificacao do elo `detail.c` → `app.c` incluidos no job da PR #15. Confirmar na TCL P7K clique em episodios (primeiro, segundo e fonte ausente) antes de fechar a PR.
+
+
+## Controle de escopo sem retrabalho — player (18/10/2026)
+
+**Regra de trabalho:** preservar a versão experimental testada e aprovada na TCL. Não reiniciar a migração, não refazer etapas integradas e não misturar TV ao vivo/Android 14/Tizen com a PR #15. Antes de propor alteração, procurar contrato, implementação e regressão já existentes. Só alterar diferenças funcionais específicas comprovadas na comparação com o Nuvio original.
+
+**Já implementado; não refazer por padrão:**
+- PRs #13 e #14 integradas: OSD inspirado no original com marca StreamMax, escolha inicial manual, migração das preferências antigas e memória de fonte por título/perfil. Permanecem pendentes as provas completas em dispositivo.
+- PR #15: Media3 ExoPlayer já é o motor de Android; ajuste stock 15–45 s sem preset manual, limiares de início/rebuffer, proteção do primeiro quadro/pausa, telemetria, retomada, adoção de sessão preparada e pré-consulta apenas de metadados quando houver escolha manual.
+- Fluxos atuais de áudio, legenda, HDR, Dolby Vision, foco do D-pad e fontes: preservar até identificar falha concreta, sem substituir o player por Compose ou reiniciar código.
+- Correção na PR #15: seek descarta cues de legendas atrasadas e limpa a sobreposição; contrato estático adicionado. Execução de verificações de código #39153689712 concluída com sucesso. Compilação Android #39153689886 foi observada em andamento; não deduzir aprovação dela.
+
+**Só faltam validação de equivalência funcional e eventuais correções pontuais comprovadas:**
+- Conferir em base real o tempo do primeiro quadro, troca e retomada de fonte, continuidade e seleção de episódios, pausa/Back, buffer e recuperação após erro, faixas de áudio/legenda, 4K e HDR/Dolby Vision na TCL P7K com Android 12.
+- CI/testes estáticos comprovam presença de contratos, não execução completa com vídeos reais. Não chamar a reprodução de 100% equivalente ou homologada sem prova prática.
+- Pedido expresso do proprietário: **não enviar APK experimental para novos testes**. Oferecer apenas versão candidata final depois de revisão funcional e verificações automáticas; a homologação de 100% na TCL ainda necessitará avaliação real do proprietário.
+
+**Próxima tarefa de código:** auditar somente diferenças ainda não cobertas pelo código/testes em PR #15 e corrigir regressões demonstráveis. Evitar alterar arquivos fora do player/contratos, exceto documentação técnica de controle de escopo.
+
+### Estado da lacuna de legendas (sem retrabalho, 18/10/2026)
+
+- **Implementado na PR #15, aguardando build/teste TCL:** legendas gráficas que Media3 entrega em Cue.bitmap (por exemplo PGS/VobSub compatíveis com o decoder) agora passam a um SubtitleView Canvas exclusivo para bitmaps, criado sob demanda na camada já existente do vídeo. Não há outra Surface de vídeo nem alteração da camada SDL do OSD.
+- **Preservado:** caminho de legendas de texto em nativeLegenda, seleção/desativação de faixas, atraso positivo para cues, foco do controle remoto, buffer/Media3, escolha manual da fonte, perfil e continuidade de episódios.
+- **Proteções novas:** descartar cues antigos ao trocar faixa ou buscar outro ponto, remover canvas ao liberar a sessão, acompanhar o retângulo de vídeo mesmo com letterbox/recorte. A dependência media3-ui tem a mesma versão 1.8.0 do motor.
+- **Ainda pendente:** confirmar que a camada aparece na TCL durante reprodução real e que formatos gráficos específicos são decodificados; avaliar fidelidade completa de estilo/animações ASS em relação ao AssSubtitleView do Nuvio original. Não confundir implementação e aprovação em dispositivo.
+- A checagem estática migration/check-player-original-engine.py cobre o novo caminho e a compilação Android determina se o código Kotlin/Media3 integra sem erros. A exigência de não enviar APK intermediário permanece.
+
+## Feedback real TCL — motor de vídeo e seletor visual (18/10/2026)
+
+- **Confirmado pelo usuário na TCL:** reprodução de conteúdo 4K, Dolby Vision e HDR está funcionando no APK gerado pelo GitHub Actions #39156897487. Não inferir desta validação que todas as demais funções de reprodução e faixas estão aprovadas.
+- **Diferença visual comprovada:** a escolha de legenda ainda surgia como painel Legacy no canto superior direito, ligado à ilha do relógio. A adaptação anterior de barra e botões do player **não incluía** esse painel; não descrever a estética inteira como equivalente ao Nuvio original.
+- **Correção nesta PR #15:** a folha de legendas e a aba de estilo pedem cartão independente ancorado embaixo à esquerda, preservando seleção, foco, faixas e o mesmo motor Media3; a folha de áudio permanece temporariamente como estava. Testes estáticos adicionados.
+- **Escopo ainda pendente de fidelidade visual:** as colunas específicas de idiomas, opções e estilo de `SubtitleSelectionOverlay.kt` (Compose) ainda não foram totalmente reproduzidas no painel nativo SDL/C. Não confundir mudança de posição com paridade completa.
+- **Pendente:** compilação e validação do novo painel na TCL — abertura via botão Legendas, setas/OK/Voltar, textos sem corte e uso da aba Estilo; repetir o teste 4K/DV/HDR após a mudança antes de declarar a interface homologada.
+
+## Evolucao do seletor de legendas — coluna de idiomas
+
+- **Solicitacao confirmada pelo usuario:** manter o motor de reproducao 4K / HDR / Dolby Vision aprovado na TCL, mas aproximar a interface de legendas do Nuvio original.
+- **Implementado nesta PR #15:** painel ancorado a esquerda e ampliado somente para legendas, com coluna de idiomas navegavel via D-pad e ponteiro, lista de opcoes independente, OK no idioma filtrando a lista sem iniciar/recarregar qualquer legenda; a aba de Estilo segue existente e acessivel a direita.
+- **Compatibilidade intencional:** audio da folha anterior preservado, filtros de fontes, posicao do video e parser de legenda fora do escopo.
+- **Pendencias visuais:** Estilo ainda usa aba propria, nao e uma terceira coluna simultanea identica a Compose; testar na TCL abertura, idiomas, navegacao ESQUERDA/DIREITA, OK/Voltar, muitas linguas e textos compridos.
+- **Solicitacao subsequente, ainda nao implementada:** melhorar o filtro de audio das fontes para reconhecer dublagem PT-BR tambem com etiquetas genericas de portugues. A rotina atual esta em `streams.c` (`temAudioPreferido`, `audioDeclaradoEm`, `faixaIdiomaDoNome`); preservar distincao entre PT-BR confirmado, PT-PT explicito e PT generico, sem afirmar origem brasileira por chute de legenda, URL ou titulo.

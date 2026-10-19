@@ -222,7 +222,9 @@ static int autoParcialPronto(void) {
   static int ultN = -1, ultLembrada = -1, ultManual = -1;
   static unsigned ultGeracao, ultRevisao;
   static char ultBase[24] = "";
-  const int manual = ajustes_fonte_manual();
+  // StreamMax VOD: uma configuracao automatica herdada do Legacy nao pode
+  // iniciar conteudo sem escolha de fonte. A TV ao vivo sai abaixo.
+  const int manual = 1;
   if (!addons_busca_parcial() || player_id_canal()[0]) return 0;
   if (stream_n() < 1 || stream_n() <= autoEsperaN) return 0;
   if (stream_n_candidatas() < 1) return 0;
@@ -241,7 +243,7 @@ static int autoParcialPronto(void) {
       ultN = stream_n(); ultGeracao = stream_lista_geracao();
       ultManual = manual; ultRevisao = fontepref_revisao();
       snprintf(ultBase, sizeof ultBase, "%s", base);
-      ultLembrada = manual ? fontepref_escolher_manual(base) : fontepref_escolher(base);
+      ultLembrada = fontepref_escolher_manual(base);
     }
     lembrada = ultLembrada;
     prefPendente = lembrada < 0 && addons_pendente_nome(fp->provedor);
@@ -1203,7 +1205,7 @@ static const char *urlCanal(const Stream *s, char *buf, size_t n) {
 static int tocarFonteGuardada(void) {
   Stream s;
   char alvo[64], base[24];
-  int manual = ajustes_fonte_manual();
+  // StreamMax exige escolha manual anterior para atalho de fonte guardada.
   // StreamMax: primeira vez, a pessoa escolhe a fonte. Retomar pode ser
   // rapido DEPOIS da escolha se o link guardado ainda e valido para este
   // titulo/episodio e casa com a preferencia manual do mesmo perfil.
@@ -1212,14 +1214,12 @@ static int tocarFonteGuardada(void) {
   if (!fontevolta_toca_guardada(0, fontefalha_ativa(),
                                 player_id_canal()[0], player_aberto()))
     return 0;
-  if (manual) {
-    idBaseDoTitulo(base, sizeof base);
-    if (!base[0] || !fontepref_tem(base)) return 0;
-  }
+  idBaseDoTitulo(base, sizeof base);
+  if (!base[0] || !fontepref_tem(base)) return 0;
   alvoPlayer(alvo, sizeof alvo);
   if (!alvo[0] || !fontevolta_pegar(alvo, sessao_usuario(), perfis_ativo(), SDL_GetTicks(), &s))
     return 0;
-  if (manual && fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)
+  if (fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)
     return 0;
   // A regra de fontes pode mudar entre uma sessao e outra. Se a fonte
   // lembrada ficou proibida, descarte-a e abra a selecao normal dos addons.
@@ -2153,7 +2153,10 @@ static void prepararAoAbrir(void) {
   const CatItem *ci;
   unsigned g;
   int lembrada;
-  if (!preparoAtivo() || ajustes_fonte_manual() || player_aberto() || player_mini_ativo() ||
+  // Nao preparar video na pagina de detalhe antes da primeira escolha.
+  // Mesmo com configuracao automatica antiga, somente a preferencia manual
+  // pode autorizar o preparo de uma fonte neste titulo.
+  if (!preparoAtivo() || player_aberto() || player_mini_ativo() ||
       player_retido() || aguardandoFonte || !detail_aberto() || preparoRodando) return;
   if (addons_estado() == ADD_BUSCANDO || stream_n() < 1 || stream_n_candidatas() < 1) return;
   ci = cat_item(detail_indice());
@@ -2169,11 +2172,12 @@ static void prepararAoAbrir(void) {
     static int ultN = -1, ultLembrada = -1;
     if (ultN != stream_n() || ultG != g || ultRev != fontepref_revisao() || strcmp(ultBase, base) ||
         SDL_GetTicks() - ultT > 1000) {
-      ultLembrada = base[0] ? fontepref_escolher(base) : -1;
+      ultLembrada = base[0] ? fontepref_escolher_manual(base) : -1;
       ultN = stream_n(); ultG = g; ultRev = fontepref_revisao(); ultT = SDL_GetTicks();
       snprintf(ultBase, sizeof ultBase, "%s", base);
     }
     lembrada = ultLembrada; }
+  if (lembrada < 0) { preparoInvalidar(); return; }
   preparoContexto(&contexto);
   if (preparoVale(alvo, lembrada)) { preparoBufferTentar(); return; }
   if (!preparo.falhou && preparoUltimo.tem && preparoUltimo.lista == g && !strcmp(preparoUltimo.alvo, alvo) &&
@@ -5093,13 +5097,15 @@ void app_atualizar(float dt, Uint32 agora) {
       if (ci && cwTocarT >= 0 && cwTocarE > 0)
         cat_id_stream(detail_indice(), cwTocarT, cwTocarE, alvoPreparo, sizeof alvoPreparo);
       idBaseDoTitulo(basePreparo, sizeof basePreparo);
-      int lembradaPreparo = basePreparo[0] ? fontepref_escolher(basePreparo) : -1;
+      // Preparo herdado do Legacy nao autoriza autoplay de uma fonte nova.
+      // Apenas uma escolha manual persistida pode ser reutilizada.
+      int lembradaPreparo = basePreparo[0] ? fontepref_escolher_manual(basePreparo) : -1;
 #ifdef NV_ANDROID
       if (doInicio && preparo.token) {
         player_precarregar_cancelar(preparo.token); preparo.token = 0;
       }
 #endif
-      int usouPreparo = !ajustes_fonte_manual() &&
+      int usouPreparo = lembradaPreparo >= 0 &&
                        preparoUsar(alvoPreparo, lembradaPreparo, &idxPreparado);
       // Armado antes da abertura: o proximo quadro nao cancela o worker
       // quando a pagina do titulo cede lugar ao player.
@@ -5270,8 +5276,8 @@ void app_atualizar(float dt, Uint32 agora) {
       // Com "escolher a fonte ao reproduzir" ligado so vale a escolha da PESSOA:
       // a memoria do automatico (bingeGroup) nao pode tocar sozinha aqui nem
       // aparecer como "Sua escolha anterior" na folha que vai abrir.
-      // Only a source explicitly chosen by the viewer can skip the first picker.
-      // An automatically ranked source is not a prior manual choice.
+      // StreamMax: autoplay legado nao constitui uma escolha manual do usuario.
+      // So uma fonte escolhida e ainda compativel permite pular o seletor.
       lembrada = base[0] ? fontepref_escolher_manual(base) : -1;
       stream_preferir(lembrada);
       // QUEM ESCOLHE E A PESSOA, quando ela pediu isso em Ajustes.

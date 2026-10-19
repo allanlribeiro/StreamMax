@@ -96,6 +96,8 @@ static char cenT[200], cenD[80], cenI[32], cenUT[200], cenUD[80], cenUI[32];
 static int temCen;
 static float cenA, cenCorpoA, cenW, cenH, cenVW, cenVH;
 static Uint32 cenQuadro;
+// O retangulo do seletor independente: tambem usado pelo recorte do ponteiro.
+static GfxRect painelLegRect;
 // Quanto a pilula da HORA segura depois que um corpo com `voltaRelogio` acaba,
 // antes de encolher e sair (o corpo vira o relogio e ai some).
 #define HORA_SEGURA_MS 800u
@@ -138,8 +140,18 @@ int plrilha_direita(void) {
   return 1;   // sempre a direita (dono, 03/10)
 }
 
-int plrilha_rect(GfxRect *r) { if (ultOk && r) *r = ultRect; return ultOk; }
-float plrilha_corpo_alfa(void) { return temUlt ? corpoA : 0.0f; }
+int plrilha_rect(GfxRect *r) {
+  if (cenA > 0.01f && cenUlt.painelEsquerdo && painelLegRect.w > 0.0f) {
+    if (r) *r = painelLegRect;
+    return 1;
+  }
+  if (ultOk && r) *r = ultRect;
+  return ultOk;
+}
+float plrilha_corpo_alfa(void) {
+  if (cenA > 0.01f && cenUlt.painelEsquerdo) return cenCorpoA;
+  return temUlt ? corpoA : 0.0f;
+}
 
 // --- a linha da pilula ------------------------------------------------------------
 typedef struct {
@@ -285,11 +297,27 @@ static void cartaoCentro(Uint32 agora) {
 #ifdef NV_SHOT_HOOKS
   shotCentro = (GfxRect){0};
 #endif
-  if (cenA < 0.01f) { cenA = cenCorpoA = 0.0f; cenW = cenH = 0.0f; cenVW = cenVH = 0.0f; return; }
+  if (cenA < 0.01f) {
+    cenA = cenCorpoA = 0.0f; cenW = cenH = 0.0f; cenVW = cenVH = 0.0f;
+    painelLegRect = (GfxRect){0};
+    return;
+  }
   { const PlrIlhaPedido *c = &cenUlt;
     float w = cenW < 8.0f ? 8.0f : cenW, h = cenH < 8.0f ? 8.0f : cenH;
     GfxRect R = { (NV_TELA_W - w) * 0.5f, (NV_TELA_H - h) * 0.5f, w, h };
     GfxRect F = { (NV_TELA_W - c->w) * 0.5f, (NV_TELA_H - c->h) * 0.5f, c->w, c->h };
+    if (c->painelEsquerdo) {
+      // Como o SubtitleSelectionOverlay Compose: ocupa a esquerda do video
+      // e fica proximo da base, sem nascer da hora no canto superior direito.
+      // A altura acompanha o conteudo e nunca corta o topo em telas menores.
+      const float x = 52.0f, margemBaixo = 76.0f, topoMin = 36.0f;
+      R.x = F.x = x;
+      R.y = NV_TELA_H - h - margemBaixo;
+      F.y = NV_TELA_H - c->h - margemBaixo;
+      if (R.y < topoMin) R.y = topoMin;
+      if (F.y < topoMin) F.y = topoMin;
+    }
+    painelLegRect = c->painelEsquerdo ? R : (GfxRect){0};
 #ifdef NV_SHOT_HOOKS
     shotCentro = R;
 #endif

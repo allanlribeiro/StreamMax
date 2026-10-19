@@ -255,7 +255,10 @@ static void plrui_barra_base(float x, float y, float w, float frac, float buf, i
   if (frac < 0.0f) frac = 0.0f;
   if (frac > 1.0f) frac = 1.0f;
   acentoStreamMax(&ar, &ag, &ab);
-  gfx_cor((GfxRect){ x, yy, w, h }, 0.5f, 1, 1, 1, 0.20f * a);
+  // Player original: trilho branco a 30% em repouso e 45% quando focado.
+  // Ajuste so de contraste, sem alterar geometria, seek ou recursos do video.
+  float trilhoAlpha = foco ? 0.45f : 0.30f;
+  gfx_cor((GfxRect){ x, yy, w, h }, 0.5f, 1, 1, 1, trilhoAlpha * a);
   if (buf > frac + 0.002f) {
     if (buf > 1.0f) buf = 1.0f;
     gfx_cor((GfxRect){ x, yy, w * buf, h }, 0.5f, 1, 1, 1, 0.30f * a);
