@@ -3326,6 +3326,7 @@ static void spotAtender(void) {
 }
 
 int app_no_login(void) { return tela == TELA_LOGIN; }
+int app_em_escolha_perfil(void) { return tela == TELA_ESCOLHA_PERFIL; }
 
 int app_na_home(void) {
   return tela == TELA_HOME && homePronta && !player_aberto() && !detail_aberto() &&
