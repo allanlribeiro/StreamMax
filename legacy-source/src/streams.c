@@ -9,6 +9,7 @@
 #include "idioma.h"
 #include "linguas.h"
 #include "streammax_source_ptbr.h"
+#include "streammax_source_audio.h"
 #include "streammax_flags.h"
 #include "badges.h"
 #include "selospacote.h"
@@ -3676,8 +3677,14 @@ static int audioDeclaradoEm(const Stream *s, const char *pref) {
 // quando informa, nenhum deles contradiz a lista declarada.
 static const char *idiomaDa(const Stream *s) {
   int podePt = !s->audioIdiomas[0] || audioDeclaradoEm(s, "pt");
+  // Dual Audio e um rotulo explicito de release, NAO uma declaracao de
+  // faixas PT-BR/EN. O Torrentio frequentemente envia-o em title/filename.
+  // Mostrar o rotulo mesmo sem audioTracks, sem inventar bandeiras e sem
+  // modificar o filtro de dublagem.
+  if (streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?
+                                 s->nomeFonteCompleto : s->rotulo,
+                                 s->tituloFonte, s->descricao)) return "Dual áudio";
   if (podePt && (temNoTexto(s, "dublado") || temNoTexto(s, "dub"))) return "Dublado";
-  if (podePt && temNoTexto(s, "dual")) return "Dual áudio";
   // PT-BR isolado nao confirma DUAS trilhas de audio. O chip "Dual áudio"
   // deve depender de marcador explicito "dual" (acima), nunca da mera
   // presenca de idioma no nome — que pode indicar somente legenda.
@@ -3885,6 +3892,26 @@ static const char *arquivoDa(const Stream *s) {
   return ult;
 }
 
+// Dados ORIGINAIS do addon no cartao expandido. O StreamMax tinha apenas
+// rotulo curto/description: o title e o name completo desapareciam apos parse.
+// Duplicatas nao ocupam uma linha; os dados seguem intactos para os filtros.
+static int streammaxFonteDadosOriginais(const Stream *s, const char *linhas[3]) {
+  int n = 0;
+  if (s->nomeFonteCompleto[0] &&
+      strcmp(s->nomeFonteCompleto, s->rotulo))
+    linhas[n++] = s->nomeFonteCompleto;
+  if (s->tituloFonte[0] &&
+      strcmp(s->tituloFonte, s->rotulo) &&
+      strcmp(s->tituloFonte, s->nomeFonteCompleto) &&
+      strcmp(s->tituloFonte, s->descricao))
+    linhas[n++] = s->tituloFonte;
+  if (s->descricao[0] && strcmp(s->descricao, s->rotulo) &&
+      strcmp(s->descricao, s->tituloFonte) &&
+      strcmp(s->descricao, s->nomeFonteCompleto))
+    linhas[n++] = s->descricao;
+  return n;
+}
+
 // A linha de marca e so para o que esta tocando e para a escolha anterior.
 // A fonte que o automatico tocaria ganha o selo "Melhor para esta TV" ao
 // lado do titulo (melhorDaFolha), e nao mais uma linha "Escolha automatica".
@@ -3907,7 +3934,10 @@ static float alturaLinha(int i, int automatica) {
     if (h < 96) h = 96;
   } else {
     // The connection line opens with the focused row even without a file name.
-    float extra = (arquivoDa(&lista[i])[0] ? FOLHA_ARQ_H : 0) + FOLHA_FIT_H * fitLinhas(i);
+    const char *originais[3];
+    int nOriginais = streammaxFonteDadosOriginais(&lista[i], originais);
+    float extra = (arquivoDa(&lista[i])[0] ? FOLHA_ARQ_H : 0) +
+                  FOLHA_ARQ_H * nOriginais + FOLHA_FIT_H * fitLinhas(i);
     if (grupo == 1 && nOrdem == foco) h += extra * abreFoco;
     else if (nOrdem == linhaAnt)      h += extra * abreAnt;
   }
@@ -5211,7 +5241,17 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
     // O ARQUIVO, so na linha em foco: e o que distingue duas fontes iguais
     // (grupo de release, versao), e em toda linha era ruido.
     { float a=(sel?abreFoco:row==linhaAnt?abreAnt:0);
+      const char *originais[3];
+      int nOriginais=streammaxFonteDadosOriginais(s,originais);
+      float dadosAltura=FOLHA_ARQ_H*(float)nOriginais*a;
       const char *arq=arquivoDa(s);
+      if(a>.02f) for(int mi=0;mi<nOriginais;mi++){
+        char d[2048];
+        snprintf(d,sizeof d,"%s",originais[mi]);
+        for(char *p=d;*p;p++) if((unsigned char)*p<32)*p=' ';
+        txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,155,168,187,255,tr-tx),
+                           tx,cy+FOLHA_ARQ_H*(float)mi*a,anim*a);
+      }
       if(a>.02f && arq[0]){ char d[512];
         snprintf(d,sizeof d,"%s",arq);
         for(char *p=d;*p;p++)if((unsigned char)*p<32)*p=' ';
@@ -5221,10 +5261,10 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
         while (fimTexto && (isspace((unsigned char)d[fimTexto - 1]) ||
                             d[fimTexto - 1] == '/')) d[--fimTexto] = 0;
         if (d[0])
-          txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,125,125,123,255,tr-tx),tx,cy,anim*a); }
+          txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,125,125,123,255,tr-tx),tx,cy+dadosAltura,anim*a); }
       if(a>.02f){ char f1[160], f2[128]; StreamfitClasse fc=fitTexto2(i,f1,sizeof f1,f2,sizeof f2);
         if(f1[0]){
-        float fy=cy+(arq[0]?FOLHA_ARQ_H:0);
+        float fy=cy+dadosAltura+(arq[0]?FOLHA_ARQ_H*a:0);
         int c=fc==SF_DESCONHECIDA?118:150;
         txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,f1,c,c,c-2,255,tr-tx),tx,fy,anim*a);
         if(f2[0]){
