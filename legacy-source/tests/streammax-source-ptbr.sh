@@ -20,6 +20,15 @@ assert 'if (!pref[0] || audioDeclaradoEm(s, pref)) return 1;' in section
 assert 'soDub = (soDub + 1) % 4;' in code
 assert 'soDub == 1 ? "pt" : soDub == 2 ? "en" : ""' in code
 assert 'Áudio: %s' in code
+# Bandeiras pertencem somente a idiomas de audio declarados na grade;
+# nao sao inferidas das legendas nem alteram os elementos da interface.
+faixas = code.split("int stream_faixas_texto(", 1)[1].split("static int linhasFaixas(", 1)[0]
+assert 'if (!legendas && cod)' in faixas
+assert 'bandeira = "🇧🇷 ";' in faixas
+assert 'bandeira = "🇺🇸 ";' in faixas
+assert '(!cod[2] || cod[2] == \'-\')' in faixas
+assert 'snprintf(nome, sizeof nome, "%s%s", bandeira, semBandeira);' in faixas
+
 visual = code.split("static const char *idiomaDa(const Stream *s) {", 1)[1].split("// Dual Audio exige", 1)[0]
 assert 'if (dual) return "Dual áudio";' in visual
 assert 'streammax_dual_descricao_audio(s->descricao)' in visual
