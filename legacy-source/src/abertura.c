@@ -81,12 +81,8 @@ void abertura_iniciar(const char *dirArte) {
   snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.png", dirArte ? dirArte : ".");
   s = IMG_Load(cam);
   if (s) arteCheia = 1;
-  if (!s && logoapp_atual() == LOGO_NOVO) {
-    // O logo Novo: sem arte cheia, o fundo liso e a marca (PNG com alfa) nitidos
-    // em qualquer resolucao. Sem o arquivo, cai no Classico.
-    s = IMG_Load(logoapp_caminho(LOGO_NOVO, LOGO_F_MARCA));
-    if (s) marcaW = AB_NOVO_W;
-  }
+  // Somente a arte cinematografica oficial ocupa o splash. Qualquer
+  // logo alternativo ficaria visualmente diferente antes da tela de perfis.
   // Nao usar o splash nem a palavra Nuvio do Legacy como fallback.
   // Se a arte StreamMax nao existir, usar apenas o fundo azul-marinho.
   if (!s) {
