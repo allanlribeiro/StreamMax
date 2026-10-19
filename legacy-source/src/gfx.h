@@ -261,7 +261,10 @@ typedef enum {
   // quando o fundo da Dinamica esta pendente e o destaque cobre o topo da tela
   // (ver gfx_fundo_din_desenhar). uDin = cor do topo e queda.
   GFX_VITRINE_DIN = 44,
-  GFX_NMODOS = 45
+  // O video Android no hero aparece atraves de um furo com transparencia
+  // progressiva a esquerda e na base. Nao e um veu escuro sobre um retangulo.
+  GFX_FURO_HERO = 45,
+  GFX_NMODOS = 46
 } GfxModo;
 
 typedef struct {
@@ -790,6 +793,8 @@ void gfx_furo(GfxRect r);
 void gfx_furo_raio(GfxRect r, float raio);
 // Furo parcial: cor e alfa do retangulo vezes 1 - a (a >= 0,995 e o gfx_furo).
 void gfx_furo_alfa(GfxRect r, float a);
+// Revela video no hero com dissolucao real do canvas nas bordas (Android).
+void gfx_furo_hero_suave(GfxRect r, float a, float bordaEsquerda, float inicioBase);
 // Furo com cantos + veu so-veu do GFX_JANELA (cor 0) numa passada: ver gfx.c.
 void gfx_furo_raio_veu(GfxRect r, float raio, float veu, float rolada, float exp, float ca);
 void gfx_textura(GfxRect r, GLuint tex);
