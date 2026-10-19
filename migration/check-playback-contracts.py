@@ -87,7 +87,7 @@ checks = {
     ],
     "src/streams.c": [
         "stream_faixas_texto(s, legendas, idiomas, sizeof idiomas)",
-        'if (podePt && temNoTexto(s, "dual")) return "Dual áudio";',
+        'streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?',
     ],
     "src/fontepref.h": [
         "int fontepref_escolher_manual(const char *id);",
