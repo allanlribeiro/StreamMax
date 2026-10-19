@@ -287,7 +287,9 @@ static void prepararProximo(int ehSerie, double resta) {
     proximopreparo_cancelar(); return;
   }
   addons_capturar_escopo(&escopo);
-  const int manual = ajustes_fonte_manual();
+  // StreamMax: a primeira fonte e sempre escolhida pelo usuario. O preparo
+  // antecipado pode consultar metadados, mas nao resolver outro video em silencio.
+  const int manual = 1;
   const int preloadVideo = ajustes_fonte_precarregar();
   const int temManual = manual && preloadVideo && ci->imdb[0] && fontepref_tem(ci->imdb);
   // Fonte escolhida uma vez: a lista do proximo episodio pode ser consultada
