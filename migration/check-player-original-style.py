@@ -107,6 +107,16 @@ checks["painel de audio continua com tamanho anterior"] = (
     "modo ? 1180.0f : IL_W;" in faixas
 )
 
+gfx = (root / "src/gfx.c").read_text(encoding="utf-8")
+checks["degrade do trailer com rodape mais curto apenas no video"] = (
+    'gfx_rect(r, 0, modoHero, 0, 1.0f, 1.0f, 0.0f, 0, 0, 0, aTrailer);' in (root / "src/home.c").read_text(encoding="utf-8")
+    and gfx.count('"    if (uPar.y > 0.5) {\\n"') == 2
+    and 'clamp((y-0.900)/0.042' in gfx
+    and 'clamp((y-0.840)/0.070' in gfx
+    and 'clamp((y-0.820)/0.072' in gfx
+    and 'clamp((y-0.640)/0.108' in gfx
+)
+
 failed = [name for name, ok in checks.items() if not ok]
 for name, ok in checks.items():
     print(("OK" if ok else "FALHOU") + ": " + name)
