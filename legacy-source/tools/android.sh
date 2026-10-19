@@ -53,6 +53,11 @@ done
 echo "[2/5] arte e fontes -> $EST/assets"
 rm -rf "$EST/assets"; mkdir -p "$EST/assets"
 NUVIO_ARTE_ESTAGIO="build/android/assets/art" bash tools/tizen-art.sh >/dev/null
+# A abertura oficial do StreamMax vive em art/marcas, fora da arvore
+# deploy/app/art usada pelo estagio comum de Tizen. Empacotar explicitamente
+# no Android para que a tela aprovada nao seja substituida pelo fallback.
+install -Dm644 "$RAIZ/art/marcas/streammax_splash.jpg" \
+  "$EST/assets/art/marcas/streammax_splash.jpg"
 # Garante que a abertura aprovada foi realmente copiada para o pacote Android.
 # Verificar apenas a presenca na arvore fonte nao impede uma APK sem a arte.
 test -s "$EST/assets/art/marcas/streammax_splash.jpg" || {
