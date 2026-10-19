@@ -29,6 +29,18 @@ assert "NV_DIN_REPOUSO_FIL - 120.0f" in home
 assert "GfxRect furo = heroTrailerArea(r);" in home
 assert "heroTrailerArea(heroArteRect)" in home
 assert "gfx_furo_alfa(furo, aTrailer);" in home
+assert "gfx_furo_hero_suave(furo, aTrailer, 0.48f, 0.58f);" in home
+assert "else if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);" in home
+gfx = Path("src/gfx.c").read_text()
+gfx_h = Path("src/gfx.h").read_text()
+assert "GFX_FURO_HERO = 45" in gfx_h
+assert "GFX_NMODOS = 46" in gfx_h
+assert "void gfx_furo_hero_suave(" in gfx
+assert "glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA);" in gfx
+assert "float e = smoothstep(0.0, max(uPar.x,0.02), vUv.x);" in gfx
+assert "float b = 1.0-smoothstep(uPar.y, 1.0, vUv.y);" in gfx
+assert "1.0-abertura" in gfx
+
 assert "gfx_rect(furo, 0, GFX_HERO, 0, 1.0f, 0, 0.0f, 0, 0, 0, aTrailer);" in home
 trailer = Path("src/trailer.c").read_text()
 assert "dono == TRAILER_DONO_HOME && !noCartao && !cheia" in trailer
@@ -44,5 +56,5 @@ assert "#ifndef NV_ANDROID" in first.split("if (deslizando)",1)[0]
 assert "destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerArea(heroArteRect)" in home
 # O trailer nao ativa o modo cinema de tela cheia na TCL.
 assert "&& 0" in home.split("// TCL: trailer permanece no hero",1)[1].split("#endif",1)[0]
-print(f"OK: trailer do hero na borda direita com cover precoce e rampa esquerda ({slot_bottom:.0f}px antes das fileiras)")
+print(f"OK: trailer direito com feather real de alfa a esquerda e na base ({slot_bottom:.0f}px antes das fileiras)")
 PY
