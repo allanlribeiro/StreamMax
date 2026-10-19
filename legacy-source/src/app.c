@@ -5102,7 +5102,8 @@ void app_atualizar(float dt, Uint32 agora) {
                        preparoUsar(alvoPreparo, lembradaPreparo, &idxPreparado);
       // Armado antes da abertura: o proximo quadro nao cancela o worker
       // quando a pagina do titulo cede lugar ao player.
-      if (!usouPreparo && preparoEmCurso(alvoPreparo, lembradaPreparo)) {
+      if (lembradaPreparo >= 0 && !usouPreparo &&
+          preparoEmCurso(alvoPreparo, lembradaPreparo)) {
         preparoEspera = 1; preparoLembradaPlay = lembradaPreparo;
       }
       diagnostico_cancelar_vazao();
