@@ -5282,14 +5282,19 @@ static void desenhaHero(Uint32 agora, float saida) {
   // rampas fica constante no crossfade. Desenhado DEPOIS do furo, com alfa:
   // no .tpk/LG/Android o plano de video aparece com 1 - alfa sob a rampa.
 #ifdef NV_ANDROID
-  // Fura depois de pintar a imagem inteira: preserva o backdrop parado nas
-  // fileiras e revela o SurfaceView apenas na regiao delimitada do destaque.
-  if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);
+  // SurfaceView a direita, arte da home ainda visivel a esquerda e na base.
+  // Antes o furo retangular + veu preto usava um degrade cuja COR nao era
+  // a cor do backdrop real. O video parecia um quadrado preto com borda.
+  // Agora o recorte dissolve o ALFA do canvas em duas direcoes; o fundo que
+  // ja estava desenhado continua aparecendo ate o ponto de transicao.
+  if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
+    gfx_furo_hero_suave(furo, aTrailer, 0.48f, 0.58f);
+  else if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);
 #else
   if (aTrailer > 0.0f && aTrailer < 0.995f) gfx_furo_alfa(furo, aTrailer);
-#endif
   if (aTrailer > 0.0f && (modoHero == GFX_HERO || modoHero == GFX_HERO_CHEIO))
     gfx_rect(furo, 0, GFX_HERO, 0, 1.0f, 0, 0.0f, 0, 0, 0, aTrailer);
+#endif
   gfx_tex_aspect_atual = 0.0f;
   heroArteRect = r;
 #ifdef NV_TOUCH_UI
