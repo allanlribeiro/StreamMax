@@ -13,6 +13,8 @@ app = Path("src/app.c").read_text()
 detail = Path("src/detail.c").read_text()
 assert "streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)" in app
 assert "lembrada = base[0] ? fontepref_escolher_manual(base) : -1;" in app, "fonte automatica antiga nao pode pular a primeira escolha"
+assert "int lembradaPreparo = basePreparo[0] ? fontepref_escolher_manual(basePreparo) : -1;" in app, "preparo nao pode usar preferencia automatica antiga"
+assert "int usouPreparo = lembradaPreparo >= 0 &&" in app, "preparo sem preferencia manual nao pode ser adotado"
 partial = app.split("static int autoParcialPronto(void) {", 1)[1].split("\n}\n", 1)[0]
 assert "const int manual = 1;" in partial, "busca parcial nao pode usar autoplay Legacy"
 assert "fontepref_escolher_manual(base)" in partial, "busca parcial exige preferencia da pessoa"
