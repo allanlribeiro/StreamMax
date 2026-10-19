@@ -1553,6 +1553,18 @@ static const char *FS_CORPO[GFX_NMODOS] = {
   "  vec3 o = mix(bg, c, a);\n"
   "  gl_FragColor = (uLeve > 0.5 && a > 0.5) ? vec4(o, 1.0) : nv_dither(o, 1.0);\n"
   "}\n",
+
+  // GFX_FURO_HERO — mascara de ALFA do SurfaceView Android. O pixel da
+  // arte permanece intacto em x=0 e y=1; o miolo vai a alpha 0 para revelar
+  // o video atras do canvas. Um unico quad; sem FBO, blur ou texture fetch.
+  // uFoco = quanto o trailer entrou; uPar.x = largura do fade esquerdo;
+  // uPar.y = inicio do fade inferior. smoothstep zera a inclinacao na emenda.
+  "void main(){\n"
+  "  float e = smoothstep(0.0, max(uPar.x,0.02), vUv.x);\n"
+  "  float b = 1.0-smoothstep(uPar.y, 1.0, vUv.y);\n"
+  "  float abertura = clamp(uFoco,0.0,1.0) * e * b;\n"
+  "  gl_FragColor = vec4(0.0,0.0,0.0,1.0-abertura);\n"
+  "}\n",
 };
 
 // Cada corpo declara o que usa; montar so o necessario mantem o shader enxuto.
@@ -1590,7 +1602,8 @@ static const struct { int sdf, cover; } PRECISA[GFX_NMODOS] = {
   {1,0},   /* GFX_MINI — SDF dos cantos; a textura e um FBO */
   {1,0},   /* GFX_TEXTURA — SDF dos cantos; o recorte vem pronto em uJan */
   {1,0},   /* GFX_VIDRO — SDF proprio em pixels; o {1,..} so liga a margem de 1 px do quad */
-  {1,0}    /* GFX_VITRINE_DIN — o do GFX_VITRINE */
+  {1,0},   /* GFX_VITRINE_DIN — o do GFX_VITRINE */
+  {0,0}    /* GFX_FURO_HERO — apenas mascara de alfa */
 };
 
 static GLuint compila(GLenum tipo, const char *src) {
@@ -4259,6 +4272,29 @@ void gfx_furo_alfa(GfxRect r, float a) {
   vidroFuro(t);
   glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA);
   gfx_rect(r, 0, GFX_COR, 0, 0, 0, 0.0f, 0, 0, 0, 1.0f - a);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+// Diferente de gfx_furo_alfa, o hero nao abre um buraco retangular.
+// A borda esquerda e a base convergem para o proprio backdrop ja pintado
+// neste frame, nao para preto: elimina o quadrado na TCL ao rolar a home.
+// A operacao e um unico multiplicador de cor e alfa e nao mexe no player.
+void gfx_furo_hero_suave(GfxRect r, float a, float bordaEsquerda, float inicioBase) {
+  GfxRect t = r;
+  if (a <= 0.0f || r.w <= 0.0f || r.h <= 0.0f) return;
+  if (bordaEsquerda < 0.02f) bordaEsquerda = 0.02f;
+  if (bordaEsquerda > 0.90f) bordaEsquerda = 0.90f;
+  if (inicioBase < 0.10f) inicioBase = 0.10f;
+  if (inicioBase > 0.95f) inicioBase = 0.95f;
+  if (dinPendente) dinDescarregar();
+  if (ambPendente) gfx_ambiente_descarregar();
+  ambIntacta = 0;
+  GFX_TR_RECT(t.x, t.y, t.w, t.h);
+  if (escAtiva != 1.0f) { t.x *= escAtiva; t.y *= escAtiva; t.w *= escAtiva; t.h *= escAtiva; }
+  vidroFuro(t);
+  glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA);
+  gfx_rect(r, 0, GFX_FURO_HERO, a, bordaEsquerda, inicioBase, 0.0f,
+           0, 0, 0, 1.0f);
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 
