@@ -78,8 +78,14 @@ void abertura_iniciar(const char *dirArte) {
   logoapp_iniciar(dirArte);
   // Marca oficial StreamMax: splash estatico em 16:9, carregado uma unica vez.
   // Se ainda nao instalada, manter o comportamento original.
-  snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.png", dirArte ? dirArte : ".");
+  // Preferir JPEG leve para a abertura cinematografica aprovada.
+  // PNG permanece aceito para instalacoes anteriores.
+  snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.jpg", dirArte ? dirArte : ".");
   s = IMG_Load(cam);
+  if (!s) {
+    snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.png", dirArte ? dirArte : ".");
+    s = IMG_Load(cam);
+  }
   if (s) arteCheia = 1;
   // Somente a arte cinematografica oficial ocupa o splash. Qualquer
   // logo alternativo ficaria visualmente diferente antes da tela de perfis.
