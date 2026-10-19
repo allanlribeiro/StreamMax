@@ -46,7 +46,7 @@ jobs:
             touch local.dev.properties
           fi
 
-      - name: Configure optional QR login backend
+      - name: Configure required QR login backend
         env:
           STREAMMAX_BACKEND_URL: ${{ vars.NUVIO_SUPABASE_URL }}
           STREAMMAX_BACKEND_KEY: ${{ secrets.NUVIO_SUPABASE_ANON_KEY }}
@@ -56,7 +56,8 @@ jobs:
               "$STREAMMAX_BACKEND_URL" "$STREAMMAX_BACKEND_KEY" >> local.dev.properties
             echo "Custom QR-login backend settings supplied."
           else
-            echo "::warning::Backend URL/key not supplied; QR login remains unverified."
+            echo "::error::Missing QR login backend configuration. Set repository variable NUVIO_SUPABASE_URL and secret NUVIO_SUPABASE_ANON_KEY (or supply both via local.dev.properties)." 
+            exit 1
           fi
 
       - name: Prepare CI signing config
