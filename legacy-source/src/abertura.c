@@ -145,11 +145,18 @@ int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
     }
   }
   if (estado == 2) {
-    float p = (float)(agora - saidaEm) / es.saidaMs;
+    float p = (float)(agora - saidaEm) / ((arteCheia && fundoFica && !anim_politica_reduzida) ? 760.0f : es.saidaMs);
     if (p >= 1.0f) { acabar(); return 0; }
     // A marca cresce um pouco por mola (a mesma de segunda ordem do resto do
     // app) — abre para a home.
     abSaida(p, &veu, &alfaMarca);
+    // Na passagem da arte cheia para os perfis, usar smoothstep: o
+    // antigo q^3 apagava quase tudo nos primeiros quadros (corte seco).
+    // Somente a camada visual muda; nenhuma tela/perfil e reiniciado.
+    if (arteCheia && fundoFica) {
+      float q = 1.0f - p;
+      veu = q * q * (3.0f - 2.0f * q);
+    }
     if (es.zoom) alvo = 1.09f;
   }
   // Sem zoom (So esmaece, Direto, animacoes reduzidas): so o esvanecimento.
