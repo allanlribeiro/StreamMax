@@ -32,7 +32,11 @@ jobs:
         run: bash legacy-source/tests/streammax-first-source.sh
       - name: Testar preparacao do proximo episodio
         run: bash legacy-source/tests/streammax-next-prefetch.sh
+      - name: Testar deteccao de audio PT-BR em fontes
+        run: bash legacy-source/tests/streammax-source-ptbr.sh
       - name: Proteger comportamento do player Media3 e filtros de audio
         run: python3 migration/check-player-original-engine.py
+      - name: Conferir identidade visual do player sem compilar
+        run: python3 migration/check-player-original-style.py
       - name: Identificar revisao validada
         run: echo "Player contracts commit $GITHUB_SHA"
