@@ -3651,8 +3651,11 @@ static int temAudioPreferido(const Stream *s) {
   // Alguns addons identificam a dublagem no nome/rotulo, mas nao enviam
   // audioTracks/languages. Nao perder essas fontes no filtro PT/pt-BR.
   // A dica so vale para a familia portuguesa e nunca vem de subtitles.
-  return ling_casa("pt", pref) &&
-         streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao);
+  if (ling_casa("pt", pref))
+    return streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao);
+  if (ling_casa("en", pref))
+    return streammax_en_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao);
+  return 0;
 }
 static const char *ajudaFiltroAudio(void) {
   static char ajuda[512];
