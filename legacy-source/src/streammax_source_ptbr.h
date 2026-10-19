@@ -114,4 +114,28 @@ static inline int streammax_dual_marca_release(const char *s) {
   return 1;
 }
 
+
+static inline int streammax_dual_descricao_audio(const char *descricao) {
+  const char *p = descricao;
+  if (!p) return 0;
+  while (*p) {
+    char linha[1024];
+    size_t n = 0;
+    while (*p && *p != '\\n') {
+      if (n + 1 < sizeof linha) linha[n++] = *p;
+      p++;
+    }
+    if (*p) p++;
+    linha[n] = 0;
+    const char *v = linha;
+    while (*v == ' ' || *v == '\\t') v++;
+    if (!strncasecmp(v, "subs:", 5) || !strncasecmp(v, "subtitle:", 9) ||
+        !strncasecmp(v, "subtitles:", 10) ||
+        !strncasecmp(v, "legendas:", 9) || !strncasecmp(v, "legenda:", 8))
+      continue;
+    if (streammax_dual_marca_release(v)) return 1;
+  }
+  return 0;
+}
+
 #endif
