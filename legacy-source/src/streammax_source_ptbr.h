@@ -141,6 +141,13 @@ static inline int streammax_dual_descricao_audio(const char *descricao) {
 
 static inline int streammax_en_marca_release(const char *s) {
   if (!s) return 0;
+  // Declaracao expressa de audio em ingles prevalece sobre legendas adicionais.
+  if (streammax_pt_token(s, "english audio") ||
+      streammax_pt_token(s, "english.audio") ||
+      streammax_pt_token(s, "english_audio") ||
+      streammax_pt_token(s, "eng audio") ||
+      streammax_pt_token(s, "eng.audio") ||
+      streammax_pt_token(s, "eng_audio")) return 1;
   if (streammax_pt_token(s, "subs") || streammax_pt_token(s, "subtitle") ||
       streammax_pt_token(s, "subtitles") || streammax_pt_token(s, "legendado") ||
       streammax_pt_token(s, "legendas")) return 0;
