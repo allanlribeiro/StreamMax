@@ -283,17 +283,12 @@ static void muralRecriar(void) {
 }
 
 static void muralAtualizarAlvosLuz(void) {
-  int m = perfis_n();
-  int idx = foco >= 0 && foco < m ? foco : 0;
-  int vizinho = m > 1 ? (idx + 1) % m : idx;
-  const ContaPerfil *p = m > 0 ? perfis_item(idx) : NULL;
-  const ContaPerfil *q = m > 0 ? perfis_item(vizinho) : NULL;
-  float cr = 0.43f, cg = 0.18f, cb = 0.92f;
-  float vr = cr, vg = cg, vb = cb;
-  if (p && corDe(p->corHex, &cr, &cg, &cb)) corLegivel(&cr, &cg, &cb);
-  if (q && corDe(q->corHex, &vr, &vg, &vb)) corLegivel(&vr, &vg, &vb);
-  muralLuzAlvo[0] = cr; muralLuzAlvo[1] = cg; muralLuzAlvo[2] = cb;
-  muralLuzAlvo[3] = vr; muralLuzAlvo[4] = vg; muralLuzAlvo[5] = vb;
+  // StreamMax Signature: luz ambiente consistente entre os perfis.
+  // As fotos e a cor PESSOAL dos avatares nao mudam; apenas o mural
+  // abandona os verdes/amarelos do perfil anterior em favor do azul da marca.
+  // A mola de muralLuz continua fazendo a transicao sem cortes.
+  muralLuzAlvo[0] = 0.045f; muralLuzAlvo[1] = 0.325f; muralLuzAlvo[2] = 0.88f;
+  muralLuzAlvo[3] = 0.185f; muralLuzAlvo[4] = 0.095f; muralLuzAlvo[5] = 0.47f;
 }
 
 static void muralParticulasIniciar(void) {
@@ -1218,8 +1213,9 @@ static void halo(GfxRect a, const ContaPerfil *p, float f) {
   float cr = 0.12f, cg = 0.53f, cb = 0.90f;
   int i;
   if (f <= 0.02f) return;
-  corDe(p->corHex, &cr, &cg, &cb);
-  corLegivel(&cr, &cg, &cb);
+  (void)p;
+  // Avatar preserva sua cor pessoal; o halo de foco usa a marca StreamMax.
+  cr = 0.035f; cg = 0.55f; cb = 1.0f;
   // UMA LUZ DIFUSA na cor do perfil, e nao os aneis concentricos ("tira esse
   // overlay em volta dos perfis", dono, 21/09/2026): a mancha de queda radial
   // do GFX_SOMBRA, do dobro do avatar, so acende com o foco.
@@ -1257,6 +1253,29 @@ static void giro(GfxRect av, Uint32 agora, float alfa, int reduzida) {
                    cy + sinf(ang) * raio - ponto * 0.5f, ponto, ponto };
     gfx_cor(pt, .5f, ar, ag, ab, br * pulso * alfa);
   }
+}
+
+// Identidade StreamMax Signature na escolha de perfis. Nao adiciona imagem
+// nem acesso a rede; desenha com o mesmo pipeline tipografico da TV ao vivo.
+// Todos os fundos configurados continuam disponiveis sob a tinta cinematografica.
+static void streammaxPerfilAcabamento(float a) {
+  const GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
+  TxtLinha stream, maximo, linha;
+  gfx_cor(tela, 0.0f, 0.007f, 0.017f, 0.041f, 0.64f * a);
+  if (!gfx_efeitos_minimos()) {
+    gfx_rect((GfxRect){ NV_TELA_W*0.5f-740.0f, 80.0f, 1480.0f, 1100.0f },
+             0, GFX_SOMBRA, 1.0f, 0, 0, 0.5f,
+             0.035f, 0.22f, 0.52f, 0.19f*a);
+  }
+  // Discreta linha superior: o mesmo ciano/azul do guia StreamMax.
+  gfx_cor((GfxRect){ 68.0f, 47.0f, 5.0f, 53.0f }, 0.19f,
+          0.035f, 0.63f, 1.0f, a);
+  stream = txt_linha(TXT_G30B, "STREAM", 232, 242, 255, 255);
+  maximo = txt_linha(TXT_G30B, "MAX", 52, 173, 255, 255);
+  txt_desenhar_alpha(stream, 90.0f, 51.0f, a);
+  txt_desenhar_alpha(maximo, 90.0f + (float)stream.w - 1.0f, 51.0f, a);
+  linha = txt_linha(TXT_CAPTION, "ESCOLHA DE PERFIL", 136, 166, 206, 255);
+  txt_desenhar_alpha(linha, 90.0f, 92.0f, a);
 }
 
 static void desenhaFundo(void) {
@@ -1395,13 +1414,18 @@ void perfilsel_desenhar(Uint32 agora) {
         muralDesenhar(a * (1.0f - cob) * (pinDe >= 0 ? 0.30f : 1.0f), reduzida);
     } }
 
+  // Por cima de QUALQUER fundo (Filmes, Luz, Projetor ou arte pessoal),
+  // manter contraste e assinatura cromatica sem alterar o mural da conta.
+  streammaxPerfilAcabamento(a * (pinDe >= 0 ? 0.60f : 1.0f));
+
   { TxtLinha t = txt_linha(TXT_TITULO1, "Quem está assistindo?", 255, 255, 255, 255);
     TxtLinha sombra = txt_linha(TXT_TITULO1, "Quem está assistindo?", 0, 0, 0, 230);
     txt_desenhar_alpha(sombra, (NV_TELA_W - sombra.w) * 0.5f + 2.0f,
                        PS_TITULO_Y + subida + 3.0f, a * 0.78f);
     txt_desenhar_alpha(t, (NV_TELA_W - t.w) * 0.5f, PS_TITULO_Y + subida, a); }
 
-  // Sem a marca no canto (dono, 05/10): a tela e so a pergunta e as pessoas.
+  // Marca pequena no alto para ligar a escolha de perfil ao StreamMax. A
+  // pergunta e os avatares seguem dominantes e centralizados.
 
   // Enquanto a lista nao chega, dizer isso. Uma tela com titulo e nada abaixo
   // le como travamento.
@@ -1466,7 +1490,7 @@ void perfilsel_desenhar(Uint32 agora) {
     if (f > 0.02f) {
       float e = NV_ANEL_FOCO * f;
       gfx_rect((GfxRect){ av.x - e, av.y - e, av.w + e * 2, av.h + e * 2 },
-               0, GFX_DISCO, 0, 0, 0, 0, 0.97f, 0.97f, 0.99f, f * a);
+               0, GFX_DISCO, 0, 0, 0, 0, 0.18f, 0.70f, 1.0f, f * a);
     }
     // So anima o avatar em foco, e nao quando o teclado do PIN esta por cima:
     // gif.c segura uma animacao por vez e os dois discos disputariam a textura.
