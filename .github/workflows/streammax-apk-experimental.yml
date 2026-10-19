@@ -5,7 +5,7 @@ name: StreamMax APK experimental
 # Mantem login por e-mail e bibliotecas nativas completas.
 on:
   push:
-    branches: [streammax/live-tv-three-columns-tcl-1018, streammax/tcl-feedback-four-fixes-1018]
+    branches: [streammax/live-tv-three-columns-tcl-1018, streammax/tcl-feedback-four-fixes-1018, streammax/integracao-pre-apk-1018]
     paths:
       - '.github/workflows/streammax-apk-experimental.yml'
       - 'legacy-source/src/guia.c'
@@ -218,7 +218,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-Legacy-TCL-PR18-${{ github.run_number }}
+          name: StreamMax-Legacy-TCL-Integracao-${{ github.run_number }}
           path: |
             legacy-source/build/android/*-android-debug.apk
             legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
