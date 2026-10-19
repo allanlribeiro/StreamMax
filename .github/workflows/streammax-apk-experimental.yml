@@ -15,6 +15,11 @@ on:
       - 'legacy-source/tests/test_streammax_first_source.c'
       - 'legacy-source/src/detail.c'
       - 'legacy-source/src/app.c'
+      - 'legacy-source/src/streams.c'
+      - 'legacy-source/src/fonteregra.c'
+      - 'legacy-source/tests/streammax-first-source.sh'
+      - 'legacy-source/src/posplay.c'
+      - 'legacy-source/tests/streammax-next-prefetch.sh'
   workflow_dispatch:
 
 permissions:
