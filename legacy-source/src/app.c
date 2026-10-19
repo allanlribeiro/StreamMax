@@ -222,7 +222,9 @@ static int autoParcialPronto(void) {
   static int ultN = -1, ultLembrada = -1, ultManual = -1;
   static unsigned ultGeracao, ultRevisao;
   static char ultBase[24] = "";
-  const int manual = ajustes_fonte_manual();
+  // StreamMax VOD: uma configuracao automatica herdada do Legacy nao pode
+  // iniciar conteudo sem escolha de fonte. A TV ao vivo sai abaixo.
+  const int manual = 1;
   if (!addons_busca_parcial() || player_id_canal()[0]) return 0;
   if (stream_n() < 1 || stream_n() <= autoEsperaN) return 0;
   if (stream_n_candidatas() < 1) return 0;
