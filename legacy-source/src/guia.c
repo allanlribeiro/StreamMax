@@ -1405,16 +1405,19 @@ static Uint32 okDesde; static int okLongo;
 // mesmo fluxo vai da tela cheia ao preview e volta so trocando o retangulo.
 //
 // QUEM ESTA NO PREVIEW:
-//   - guia aberto sem canal no ar, preview ligado: o canal FOCADO, depois de
+//   - Na tela StreamMax de 3 colunas, o canal FOCADO na coluna de canais
+//     passa automaticamente ao preview depois de um descanso curto. Mesmo
+//     voltando da tela cheia, o preview volta a seguir o foco.
+//   - No guia classico sem canal no ar e com preview ligado: canal FOCADO, depois de
 //     o foco descansar G_PREVIEW_ESPERA_MS;
 //   - guia aberto COM canal no ar (Voltar da tela cheia, guia cheio aberto da
 //     faixa, guia aberto da barra com o PiP no ar): o canal que ESTAVA
 //     tocando, e ele fica — navegar nao troca o que toca, como no YouTube TV
 //     e no TiviMate. So OK em outro canal troca (e ai ele vai a tela cheia).
 //     `previewPreso` guarda isso.
-// Descanso do foco antes de pedir o preview. 600 e nao os 350 do fio antigo:
-// agora cada pedido e uma busca de fonte do player, e passar a seta por tres
-// canais nao deve abrir tres buscas.
+// Descanso do foco antes de pedir o preview. O guia classico mantem
+// 600ms; a tela StreamMax usa 500ms para parecer responsiva na TCL sem
+// buscar uma nova fonte para cada frame ao manter a seta pressionada.
 #define G_PREVIEW_ESPERA_MS 600u
 static int      previewPreso;           // canal no ar adotado: nao segue o foco
 static char     previewId[80];          // canal pedido/tocando no preview
@@ -1668,7 +1671,9 @@ void guia_abrir(void) {
   if (!previewLido) previewLer();
   aberta = 1; querSair = 0; entrada = 0.0f;
   focoTopo = 0; painel = 0;
-  tvColunaFoco = SM_TV_COL_CATEGORIAS;
+  // Abrir ja com o foco no primeiro canal da categoria: assim o preview
+  // aparece depois do descanso do foco, sem obrigar apertar OK.
+  tvColunaFoco = tvTresColunas ? SM_TV_COL_CANAIS : SM_TV_COL_CATEGORIAS;
   previewPreso = 0; previewId[0] = 0;
   previewUltLin = previewUltCol = -1; previewFocoMudou = SDL_GetTicks();
   focoValido();
@@ -1682,10 +1687,15 @@ void guia_abrir(void) {
 void guia_adotar_canal(const char *id) {
   if (!id || !id[0]) return;
   snprintf(previewId, sizeof previewId, "%s", id);
-  previewPreso = 1; pedPreview = 0; pedPararPreview = 0;
+  // No guia classico o canal trazido da tela cheia fica preso; na
+  // StreamMax Signature so permanece enquanto o foco continuar nele.
+  // Nao reiniciar a mesma sessao se o foco nao mudou.
+  previewPreso = !tvTresColunas; pedPreview = 0; pedPararPreview = 0;
   overlay = 0; aberta = 1;
+  if (tvTresColunas) tvColunaFoco = SM_TV_COL_CANAIS;
   guia_focar_id(id);
   previewUltLin = focoLin; previewUltCol = focoCol;
+  previewFocoMudou = SDL_GetTicks();
 }
 
 int guia_pediu_preview(CatItem *it) {
@@ -2667,18 +2677,28 @@ void guia_atualizar(float dt, Uint32 agora) {
   // O foco mudou de canal: o relogio do descanso recomeca.
   { static int ul = -1, uc = -1;
     if (focoLin != ul || focoCol != uc) { ul = focoLin; uc = focoCol; previewFocoMudou = agora; } }
-  // StreamMax TV: ao focar um CANAL, o preview usa a sessao mini EXISTENTE.
-  // Nunca iniciar preview so ao passear entre categorias; esperar 600ms no
-  // canal evita abrir uma nova fonte a cada toque do controle.
-  if (aberta && !overlay && (previewLigado || tvTresColunas) &&
-      (!tvTresColunas || tvColunaFoco == SM_TV_COL_CANAIS) &&
-      !previewPreso && !player_aberto() &&
-      nCanais > 0 && (estado == G_PRONTO || estado == G_BAIXANDO) &&
-      (focoLin != previewUltLin || focoCol != previewUltCol) &&
-      agora - previewFocoMudou >= G_PREVIEW_ESPERA_MS) {
-    GCanal *c = linhaItem(focoLin, focoCol);
-    previewUltLin = focoLin; previewUltCol = focoCol;
-    if (c && c->id[0] && strcmp(c->id, previewId)) previewPedir(c);
+  // StreamMax TV: o foco na COLUNA DE CANAIS pede automaticamente a previa.
+  // O guia classico conserva seu ajuste "Preview" e a opcao de fixar canal.
+  // So o APP abre as fontes; este bloco agenda o pedido depois de repousar
+  // 500ms na TCL (600ms no guia classico), nunca durante a navegacao rapida.
+  { const Uint32 espera = tvTresColunas ? SM_TV_PREVIEW_FOCO_MS : G_PREVIEW_ESPERA_MS;
+    if (aberta && !overlay && (previewLigado || tvTresColunas) &&
+        streammax_tv_preview_segue_foco(tvTresColunas, tvColunaFoco, previewPreso) &&
+        !player_aberto() &&
+        nCanais > 0 && (estado == G_PRONTO || estado == G_BAIXANDO) &&
+        (focoLin != previewUltLin || focoCol != previewUltCol) &&
+        agora - previewFocoMudou >= espera) {
+      GCanal *c = linhaItem(focoLin, focoCol);
+      previewUltLin = focoLin; previewUltCol = focoCol;
+      // Se o pedido anterior falhou, visitar este canal de novo permite
+      // nova tentativa. Se a mesma mini-sessao segue viva, nao recarrega.
+      if (c && c->id[0] &&
+          (strcmp(c->id, previewId) || !player_mini_no_guia_ativo())) {
+        printf("[guia] previa automatica: foco descansou %u ms no canal\n", (unsigned)espera);
+        fflush(stdout);
+        previewPedir(c);
+      }
+    }
   }
   if (!guia_visivel()) { buscaFechar(); return; }
   buscaAtualizar(dt, agora);
