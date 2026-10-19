@@ -24,14 +24,14 @@ assert 'gAgora(canal,agoraT,&ag)' in section
 assert 'gProximo(canal,agoraT,0,&prox)' in section
 assert 'streammax_tv_progresso(' in section
 assert 'streammaxTvAnimar(dt);' in src
-assert 'smTvCatFocoPos = anim_mola(' in section
-assert 'smTvCanFocoPos = anim_mola(' in section
+assert 'smTvCatFocoPos = anim_mola(' in src
+assert 'smTvCanFocoPos = anim_mola(' in src
 assert 'gfx_cor((GfxRect){0,116.0f,NV_TELA_W,2.0f}' in section
 assert 'txt_linha(TXT_G30B, "STREAM"' in section
 assert 'txt_linha(TXT_G30B, "MAX"' in section
 assert 'smTvFoco(foco, tvColunaFoco == SM_TV_COL_CANAIS' in section
-assert 'smTvCanaisFade = anim_mola(' in section
-assert 'smTvProgramaFade = anim_mola(' in section
+assert 'smTvCanaisFade = anim_mola(' in src
+assert 'smTvProgramaFade = anim_mola(' in src
 assert 'if(c->fav) gfx_icone(' in section
 assert 'if(ph>330.0f)' in section
 assert 'px=infX+(infW-pw)*0.5f;' in section
@@ -41,8 +41,8 @@ assert 'i18n("Selecione um canal para prévia")' in section
 
 assert 'logoNaCaixa(c,' in section
 assert 'pedirCanal(' not in section
-assert 'gfx_furo_raio(pv, raio);' in section
-assert 'video_pronto() && !player_carregando()' in section
+assert 'gfx_furo_raio(pv,raio);' in section
+assert 'video_pronto()&&!player_carregando()' in section
 assert 'guia_selo_ao_vivo(' in section
 assert '(previewLigado || tvTresColunas)' in src
 assert 'tvColunaFoco == SM_TV_COL_CANAIS' in src
