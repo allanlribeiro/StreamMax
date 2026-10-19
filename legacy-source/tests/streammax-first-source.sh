@@ -30,6 +30,14 @@ saved = app.split("static int tocarFonteGuardada(void) {", 1)[1].split("\n}\n", 
 assert "if (!base[0] || !fontepref_tem(base)) return 0;" in saved
 assert "if (fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)" in saved
 assert "ajustes_fonte_manual()" not in saved, "fonte guardada nunca pula escolha por ajuste herdado"
+# The three playback shortcuts must agree on an explicit remembered choice.
+# Check function bodies rather than mere occurrences elsewhere in app.c.
+partial = app.split("static int autoParcialPronto(void) {", 1)[1].split("\n}\n", 1)[0]
+open_flow = app.split("if ((detail_pediu_reproduzir() || doInicio) && aguardandoFonte != 2) {", 1)[1].split("diagnostico_cancelar_vazao();", 1)[0]
+saved = app.split("static int tocarFonteGuardada(void) {", 1)[1].split("\n}\n", 1)[0]
+assert "fontepref_escolher(base)" not in partial, "busca parcial caiu no automatico Legacy"
+assert "fontepref_escolher(basePreparo)" not in open_flow, "preparo antecipado caiu no automatico Legacy"
+assert "fontepref_escolher_lista(base, &s, 1, NULL, NULL)" in saved, "retomada nao checa a fonte manual"
 assert "folhaParaTocar = 1;" in app
 print("OK: detalhe e roteador VOD respeitam primeira fonte manual")
 PY
