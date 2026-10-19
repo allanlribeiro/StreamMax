@@ -24,6 +24,13 @@ assert 'streammax_tv_preview_segue_foco(tvTresColunas, tvColunaFoco, previewPres
 assert 'const Uint32 espera = tvTresColunas ? SM_TV_PREVIEW_FOCO_MS : G_PREVIEW_ESPERA_MS;' in src
 assert 'agora - previewFocoMudou >= espera' in src
 assert 'previewPedir(c);' in src
+assert 'static void streammaxTvHoverCanal(int l, int i)' in src
+assert 'static void streammaxTvHoverCategoria(int l, int ignorado)' in src
+assert 'ponteiro_alvo(item.x,item.y,item.w,item.h,streammaxTvHoverCanal,NULL,focoLin,cidx)' in src
+assert 'ponteiro_alvo(item.x,item.y,item.w,item.h,streammaxTvHoverCategoria,NULL,l,0)' in src
+assert 'if (a > 0.99f && ponteiro_ativo())' in src
+assert 'ponteiroCanal(l, i);' in src
+
 assert 'previewUltLin = focoLin; previewUltCol = focoCol;' in src
 assert '(strcmp(c->id, previewId) || !player_mini_no_guia_ativo())' in src
 assert 'player_mini_no_guia_ativo()' in src
