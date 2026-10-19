@@ -118,6 +118,17 @@ else:
     with splash.open("rb") as arquivo:
         if arquivo.read(3) != bytes((0xFF, 0xD8, 0xFF)):
             errors.append("A abertura final deve ser JPEG valido")
+# A janela Android e o primeiro quadro GLES devem exibir a mesma arte.
+# Sem isso aparece a tela vazia que o teste na TCL identificou.
+launch = root / "android/app/src/main/res/drawable-nodpi/streammax_launch.jpg"
+if not launch.is_file() or (splash.is_file() and launch.read_bytes() != splash.read_bytes()):
+    errors.append("Janela Android nao usa exatamente a imagem aprovada do splash")
+janela = root / "android/app/src/main/res/drawable/abertura.xml"
+if not janela.is_file() or '@drawable/streammax_launch' not in janela.read_text(encoding="utf-8"):
+    errors.append("A janela Android nao exibe o splash antes do primeiro quadro")
+tema31 = root / "android/app/src/main/res/values-v31/themes.xml"
+if not tema31.is_file() or 'name="Tema.StreamMax"' not in tema31.read_text(encoding="utf-8"):
+    errors.append("O Android 12+ nao esta usando o tema de abertura StreamMax")
 abertura = root / "src/abertura.c"
 if abertura.is_file():
     conteudo_abertura = abertura.read_text(encoding="utf-8")
@@ -125,6 +136,8 @@ if abertura.is_file():
         # A string no codigo inclui o prefixo de formato %s.
         if '"%s/marcas/streammax_splash.jpg"' not in conteudo_abertura:
             errors.append("Codigo de abertura nao referencia splash oficial")
+    if "veu = q * q * (3.0f - 2.0f * q);" not in conteudo_abertura:
+        errors.append("Fade suave da abertura para perfis ausente")
 for name, needles in checks.items():
     path = root / name
     if not path.is_file():
