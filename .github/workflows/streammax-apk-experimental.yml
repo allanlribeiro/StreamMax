@@ -19,6 +19,12 @@ on:
       - 'legacy-source/tests/test_streammax_first_source.c'
       - 'legacy-source/tests/streammax-livetv-columns.sh'
       - 'legacy-source/tools/android.sh'
+      - 'legacy-source/src/streammax_flags.h'
+      - 'legacy-source/tests/test_streammax_flags.c'
+      - 'legacy-source/tests/streammax-source-ptbr.sh'
+      - 'legacy-source/src/gfx.c'
+      - 'legacy-source/src/gfx.h'
+      - 'legacy-source/deploy/app/art/icones/sm_flag_*.png'
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [streammax/legacy-migration]
