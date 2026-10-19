@@ -29,5 +29,19 @@ int main(void) {
   // The legacy toggle must not bypass the mandatory initial choice.
   assert(streammax_should_ask_episode_source(0, 0));
   assert(!streammax_should_ask_episode_source(0, 1));
+  // Um seletor de fonte aberto bloqueia o auto-play por QUALQUER tempo.
+  // O prazo dos addons pode ter expirado: isso nao equivale ao OK do usuario.
+  const int esperaSeg[] = { 0, 1, 5, 15, 30, 60, 300 };
+  for (unsigned i = 0; i < sizeof esperaSeg / sizeof esperaSeg[0]; i++) {
+    (void)esperaSeg[i];
+    assert(!streammax_auto_may_play(0, 1, 1));
+    assert(!streammax_auto_may_play(0, 0, 1));
+    assert(!streammax_auto_may_play(0, 1, 0));
+  }
+  // So depois do OK, sem folha aberta, a reproducao VOD pode prosseguir.
+  assert(streammax_auto_may_play(0, 0, 0));
+  // O zapping da TV ao vivo continua sendo automatico.
+  assert(streammax_auto_may_play(1, 1, 1));
+  assert(streammax_auto_may_play(1, 0, 0));
   return 0;
 }
