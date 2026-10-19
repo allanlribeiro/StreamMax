@@ -83,16 +83,14 @@ void abertura_iniciar(const char *dirArte) {
     s = IMG_Load(logoapp_caminho(LOGO_NOVO, LOGO_F_MARCA));
     if (s) marcaW = AB_NOVO_W;
   }
+  // Nao usar o splash nem a palavra Nuvio do Legacy como fallback.
+  // Se a arte StreamMax nao existir, usar apenas o fundo azul-marinho.
   if (!s) {
-  snprintf(cam, sizeof cam, "%s/marcas/abertura.jpg", dirArte ? dirArte : ".");
-  s = IMG_Load(cam);
-  if (s) arteCheia = 1;
-  else {
-    snprintf(cam, sizeof cam, "%s/marcas/nuvio_wordmark.png", dirArte ? dirArte : ".");
-    s = IMG_Load(cam);
+    marca = 0;
+    marcaAsp = 1.0f;
+    printf("[abertura] arte StreamMax ausente; fundo cinematografico\n");
+    return;
   }
-  }
-  if (!s) { printf("[abertura] sem a marca (%s)\n", cam); return; }
   c = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);   // RGBA em bytes
   SDL_FreeSurface(s);
   if (!c) return;
