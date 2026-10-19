@@ -3541,11 +3541,28 @@ int stream_faixas_texto(const Stream *s, int legendas, char *saida, unsigned tam
   fim = p + strnlen(p, sizeof s->audioIdiomas);
   while (p < fim) {
     const char *f = memchr(p, ',', (size_t)(fim - p)), *ate = f ? f : fim;
-    char raw[sizeof s->audioIdiomas], nome[sizeof s->audioIdiomas + 64];
+    char raw[sizeof s->audioIdiomas], nome[sizeof s->audioIdiomas + 96] = "";
+    char semBandeira[sizeof s->audioIdiomas + 64], codigo[32];
     while (p < ate && isspace((unsigned char)*p)) p++;
     while (ate > p && isspace((unsigned char)ate[-1])) ate--;
     snprintf(raw, sizeof raw, "%.*s", (int)(ate - p), p);
-    if (faixaIdiomaNome(raw, nome, sizeof nome) && !faixaNomeRepetido(saida, nome)) {
+    if (faixaIdiomaNome(raw, semBandeira, sizeof semBandeira)) {
+      const char *cod = faixaIdiomaDoNome(raw), *bandeira = "";
+      if (!cod && faixaIdiomaEtiqueta(raw, codigo, sizeof codigo)) cod = codigo;
+      if (!legendas && cod) {
+        // Qualquer variante de portugues (inclusive pt-PT) leva a bandeira
+        // brasileira, e ingles leva a dos EUA. Nunca inferir por legendas.
+        if ((!strncasecmp(cod, "pt", 2) && (!cod[2] || cod[2] == '-')) ||
+            !strcasecmp(cod, "pob") || !strcasecmp(cod, "pb") ||
+            !strcasecmp(cod, "br") || !strcasecmp(cod, "ptb"))
+          bandeira = "🇧🇷 ";
+        else if ((!strncasecmp(cod, "en", 2) && (!cod[2] || cod[2] == '-')) ||
+                 !strcasecmp(cod, "eng"))
+          bandeira = "🇺🇸 ";
+      }
+      snprintf(nome, sizeof nome, "%s%s", bandeira, semBandeira);
+    }
+    if (nome[0] && !faixaNomeRepetido(saida, nome)) {
       size_t q = strlen(nome), separador = usado ? 2 : 0;
       // Somente nomes completos: uma saida curta nunca corta um glifo UTF-8.
       if (usado + separador + q >= tam) break;
