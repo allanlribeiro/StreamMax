@@ -9,6 +9,8 @@ original = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/NuvioExoPla
 original_controller = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerRuntimeControllerInitialization.kt").read_text()
 original_watchdog = (root / "app/src/main/java/com/nuvio/tv/ui/screens/player/PlayerFirstFrameWatchdogPolicy.kt").read_text()
 postplay = (root / "legacy-source/src/posplay.c").read_text()
+source_filter = (root / "legacy-source/src/fonteregra.c").read_text()
+
 activity = (root / "legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NuvioActivity.kt").read_text()
 
 # Pausar o app pelo Android nunca pode ser confundido com transicao READY:
@@ -153,6 +155,13 @@ checks = {
     "prepared sessions obey user pause": source.count("p.playWhenReady = !pausaPedida") >= 3,
     "no false paused events without explicit user pause": "if (!playWhenReady && pausaPedida && !p.isPlaying" in source
         and "else if (!p.playWhenReady && pausaPedida && p.playbackState" in source,
+    # Audio/language source filtering is a deliberate StreamMax feature and
+    # MUST survive player parity work. These are static guards, not playback tests.
+    "source filter exposes language presets": "static const char *const MODELOS[]" in source_filter,
+    "source filter keeps Portuguese recognition": '"PT-?BR|Portugu|Dublado|' in source_filter,
+    "source filter keeps English recognition": '"\\\\bENG?\\\\b|English|' in source_filter,
+    "source filter keeps DUAL-labelled streams": '"\\\\bDUAL\\\\b"' in source_filter,
+    "source filter keeps non-destructive preference vs scope": "int fonteregra_grupo(" in source_filter and "int fonteregra_no_escopo(" in source_filter,
     "manual source blocks unintended next-video preloading": "streammax_next_video_preload(preloadVideo, manual)" in postplay,
     "manual source permits metadata-only next prefetch": "streammax_next_metadata_prefetch(" in postplay,
     "metadata prefetch requires remembered manual source": "fontepref_tem(ci->imdb)" in postplay,
