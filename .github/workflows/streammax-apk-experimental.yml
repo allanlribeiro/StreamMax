@@ -17,6 +17,7 @@ on:
       - 'legacy-source/src/abertura.c'
       - 'migration/check-playback-contracts.py'
       - 'legacy-source/tests/test_streammax_first_source.c'
+      - 'legacy-source/tests/streammax-livetv-columns.sh'
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [streammax/legacy-migration]
