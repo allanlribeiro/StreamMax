@@ -3608,10 +3608,17 @@ static int audioDeclaradoEm(const Stream *s, const char *pref) {
 // O IDIOMA nao tem logo no pacote de selos, entao vai como texto no fim da
 // fileira. Os rotulos antigos continuam onde o addon nao informa audio;
 // quando informa, nenhum deles contradiz a lista declarada.
+static int audioDeclaradoDual(const Stream *s);
 static const char *idiomaDa(const Stream *s) {
   int podePt = !s->audioIdiomas[0] || audioDeclaradoEm(s, "pt");
+  // O rotulo usa a MESMA evidencia que o filtro Dual: nunca somente "dual"
+  // em legenda ou em texto ambiguo.
+  int dual = s->audioIdiomas[0] ? audioDeclaradoDual(s)
+           : streammax_dual_marca_release(s->arquivo) ||
+             streammax_dual_marca_release(s->rotulo) ||
+             streammax_dual_descricao_audio(s->descricao);
+  if (dual) return "Dual áudio";
   if (podePt && (temNoTexto(s, "dublado") || temNoTexto(s, "dub"))) return "Dublado";
-  if (podePt && temNoTexto(s, "dual")) return "Dual áudio";
   // Uma secao de legendas em portugues nao anuncia audio em portugues.
   // Uma referencia isolada a portugues nao prova duas faixas.
   // A grade conserva o estilo original, mas evita o selo "Dual" enganoso.
