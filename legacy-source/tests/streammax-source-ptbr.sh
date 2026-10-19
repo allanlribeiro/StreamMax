@@ -28,6 +28,21 @@ assert '#include "streammax_source_audio.h"' in code
 assert 'streammax_audio_dual_fonte(' in code
 assert 's->tituloFonte, s->descricao' in code
 assert 'streammaxFonteDadosOriginais(' in code
+# Nome/title/description completos precisam ocupar linhas independentes
+# quando o addon envia varias linhas no proprio description.
+assert '#define SM_FONTE_ORIG_LINHAS 12' in code
+assert 'static int streammaxFonteLinhasOriginais(' in code
+assert "while (*fim && *fim != '\\n' && *fim != '\\r') fim++;" in code
+assert 'streammaxFonteLinhasOriginais(&lista[i], originais)' in code
+assert 'streammaxFonteLinhasOriginais(s,originais)' in code
+assert 'snprintf(d,sizeof d,"%.*s",(int)originais[mi].n,originais[mi].inicio)' in code
+# A etiqueta Dual Audio nao pode sumir quando a linha tem muitos selos.
+assert 'int dualReservado = 0;' in code
+assert 'if(idiomaMarca && !strcmp(idiomaMarca, "Dual áudio"))' in code
+assert 'tx0+=(float)du.w+22.0f;' in code
+assert 'txtW0-=(float)du.w+22.0f;' in code
+assert 'if(id && !dualReservado)' in code
+
 assert 'FOLHA_ARQ_H * nOriginais' in code
 assert 'txt_linha_corta(TXT_PG_FIM,d,155,168,187,255,tr-tx)' in code
 assert 'char nomeFonteCompleto[1024];' in Path("src/streams.h").read_text()
