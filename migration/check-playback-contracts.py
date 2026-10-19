@@ -15,6 +15,7 @@ checks = {
         "t == epTrocaT && e == epTrocaE",
         "player_definir_retomada_fonte(posTroca)",
         "streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)",
+        "lembrada = base[0] ? fontepref_escolher_manual(base) : -1;",
         "ultRevisao != fontepref_revisao()",
         "ultManual != manual",
         "ultLembrada = manual ? fontepref_escolher_manual(base) : fontepref_escolher(base);",
@@ -58,9 +59,18 @@ checks = {
         "streammaxMigrarPrimeiraFonte(0);",
         "streammaxMigrarPrimeiraFonte(1);",
     ],
+    "src/addons.c": [
+        'const char *entrada = js_array(corpo, NULL, "streams");',
+        'JSON=%d fontes, parser=%d',
+    ],
+    "src/streams.c": [
+        'sem link/debrid',
+        'exigem P2P',
+    ],
     "src/streammax_first_source.h": [
         "static inline int streammax_should_ask_first_source(",
-        "return manualEnabled && availableStreams > 0 && rememberedIndex < 0;",
+        "(void)manualEnabled;",
+        "return availableStreams > 0 && (rememberedIndex < 0 || rememberedIndex >= availableStreams);",
     ],
     "src/fontepref.h": [
         "int fontepref_escolher_manual(const char *id);",

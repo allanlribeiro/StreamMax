@@ -681,7 +681,18 @@ void stream_lista_acrescentar(const Stream *l, int qtd, int ordemAddon) {
   if (!nova) return;
   for (i = 0; i < qtd; i++)
     if (fonteOferecida(&l[i])) nova[k++] = l[i];
-  if (qtd - k) printf("[fonte] %d fontes indisponiveis descartadas\n", qtd - k);
+  if (qtd - k) {
+    int semLinkSemDebrid = 0, exigeP2P = 0, outros = 0;
+    for (i = 0; i < qtd; i++) {
+      if (fonteOferecida(&l[i])) continue;
+      if (pedeP2P(&l[i]) && !p2p_ativo()) exigeP2P++;
+      else if (!l[i].url[0] && !debrid_ativo() && !p2p_ativo()) semLinkSemDebrid++;
+      else outros++;
+    }
+    // Counts only: never log source URLs, tokens, hashes or filenames.
+    printf("[fonte] %s: %d recebidas, %d oferecidas, %d sem link/debrid, %d exigem P2P, %d outras descartadas\n",
+           l[0].provedor, qtd, k, semLinkSemDebrid, exigeP2P, outros);
+  }
   for (i = 0; i < qtd; i++)
     if (!fonteOferecida(&l[i])) { descartadosSemDebrid++; descartadosP2P += pedeP2P(&l[i]); }   // #505: idem
   if (!k) { free(nova); return; }
