@@ -44,6 +44,10 @@ assert "float abertura = clamp(uFoco,0.0,1.0) * e * t * b;" in gfx
 assert "1.0-abertura" in gfx
 
 assert "gfx_rect(furo, 0, GFX_HERO, 0, 1.0f, 0, 0.0f, 0, 0, 0, aTrailer);" in home
+# A arte do destaque deve sumir progressivamente no Android,
+# sem afetar o texto e as fileiras.
+assert "if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA &&" in home
+assert "aArte *= (1.0f - aTrailer);" in home.split("// Dissolver o backdrop quando o trailer assume o destaque.",1)[1].split("#endif",1)[0]
 trailer = Path("src/trailer.c").read_text()
 assert "dono == TRAILER_DONO_HOME && !noCartao && !cheia" in trailer
 assert "if (!heroAndroid && recortePendente" in trailer
