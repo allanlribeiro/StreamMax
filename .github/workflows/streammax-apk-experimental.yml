@@ -13,6 +13,9 @@ on:
       - 'legacy-source/src/streams.c'
       - 'legacy-source/src/streammax_source_ptbr.h'
       - 'legacy-source/src/stream_parse.c'
+      - 'legacy-source/art/marcas/streammax_splash.jpg'
+      - 'legacy-source/src/abertura.c'
+      - 'migration/check-playback-contracts.py'
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [streammax/legacy-migration]
