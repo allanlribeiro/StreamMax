@@ -23,7 +23,7 @@ section = src.split('static void streammaxTvDesenhar(', 1)[1].split('void guia_d
 assert 'gAgora(canal, agoraT, &ag)' in section
 assert 'gProximo(canal, agoraT, 0, &prox)' in section
 assert 'streammax_tv_progresso(' in section
-assert 'guia_logo_desenhar(' not in section and 'logoNaCaixa(' not in section
+assert 'logoNaCaixa(c, logoCx' in section
 assert 'pedirCanal(' not in section
 assert 'gfx_furo_raio(pv, raio);' in section
 assert 'video_pronto() && !player_carregando()' in section
