@@ -35,6 +35,16 @@ int main(void) {
       "", "", "", "Dual Audio\nAudio: English\nSubs: pt-BR") == SM_DUAL_EN);
   assert(streammax_audio_dual_idiomas_fonte(
       "", "", "", "Dual Audio 🇧🇷\nLegendas: English") == SM_DUAL_BR);
+  // PT-PT e portugues generico sao faixas portuguesas, mas nunca
+  // devem virar pt-BR na filtragem; a bandeira BR e apenas visual.
+  assert(streammax_audio_dual_idiomas_fonte(
+      "Filme.DUAL.AUDIO.PT-PT.EN-GB.mkv", "", "", "") ==
+      (SM_DUAL_PTPT | SM_DUAL_EN));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio", "Audio: Portuguese / English") ==
+      (SM_DUAL_PT | SM_DUAL_EN));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio", "Subs: Portuguese / English") == 0);
   // A tag Dual Audio, sozinha, NAO permite deduzir PT-BR nem English.
   assert(streammax_audio_dual_idiomas_fonte(
       "", "Torrentio TB", "Dual Audio", "25.9 GB") == 0);
@@ -46,6 +56,13 @@ int main(void) {
       "", "", "Audio: pt-BR English", "") == 0);
   assert(streammax_audio_dual_idiomas_fonte(
       "", "", "Dual Audio / 🇺🇸", "") == SM_DUAL_EN);
+  // Caso observado no Nuvio original: ingles e portugues de Portugal.
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio / 🇬🇧 / 🇵🇹", "") == (SM_DUAL_EN | SM_DUAL_PTPT));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio\\n🇬🇧 / 🇵🇹", "") == (SM_DUAL_EN | SM_DUAL_PTPT));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio\\nSubs: 🇧🇷 / 🇬🇧", "") == 0);
   puts("OK: Dual Audio e idiomas com evidencias reais, sem transformar legenda em audio");
   return 0;
 }

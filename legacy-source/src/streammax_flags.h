@@ -19,28 +19,27 @@ static inline int streammax_flag_idioma_legivel(const char *s) {
 static inline const char *streammax_flag_icone(const char *s) {
   if (!s) return NULL;
 #define SM_EQ(x) (!strcasecmp(s, (x)))
-  // EN generico usa 🇺🇸 por convencao visual escolhida pelo usuario.
-  // PT e ES genericos continuam como texto; regioes explicitas tem prioridade.
-  if (SM_EQ("pt-BR") || SM_EQ("pt_BR") || SM_EQ("ptbr") ||
-      SM_EQ("pob") || SM_EQ("br") || SM_EQ("pb") || SM_EQ("ptb") ||
-      SM_EQ("Brazilian Portuguese") || SM_EQ("Portuguese Brazilian") ||
-      SM_EQ("Portuguese (Brazil)") || SM_EQ("Portuguese (Brasil)") ||
-      SM_EQ("Portuguese (BR)") || SM_EQ("Portugues brasileiro") ||
-      SM_EQ("Português brasileiro") || SM_EQ("Português do Brasil") ||
-      SM_EQ("Portuguese (brasil)") || SM_EQ("Português (Brasil)"))
+  // Convencao de interface solicitada: TODO portugues -> Brasil;
+  // TODO ingles -> EUA, inclusive pt-PT e en-GB.
+  // As etiquetas originais ficam intactas para filtros e selecao de audio.
+  if (SM_EQ("pt") || SM_EQ("por") || SM_EQ("pob") ||
+      SM_EQ("pb") || SM_EQ("br") || SM_EQ("ptb") || SM_EQ("ptbr") ||
+      !strncasecmp(s, "pt-", 3) || !strncasecmp(s, "pt_", 3) ||
+      SM_EQ("Portuguese") || SM_EQ("Português") ||
+      SM_EQ("Portugues") || SM_EQ("Brazilian Portuguese") ||
+      SM_EQ("Portuguese Brazilian") ||
+      SM_EQ("Português brasileiro") ||
+      SM_EQ("Portugues brasileiro") ||
+      SM_EQ("Português do Brasil") ||
+      !strncasecmp(s, "Portuguese (", 12) ||
+      !strncasecmp(s, "Português (", 12) ||
+      !strncasecmp(s, "Portugues (", 11))
     return "sm_flag_br";
-  if (SM_EQ("pt-PT") || SM_EQ("pt_PT") ||
-      SM_EQ("Portuguese (Portugal)") || SM_EQ("Portuguese (PT)") ||
-      SM_EQ("Português (Portugal)") || SM_EQ("Português (PT)"))
-    return "sm_flag_pt";
   if (SM_EQ("en") || SM_EQ("eng") || SM_EQ("English") ||
-      SM_EQ("en-US") || SM_EQ("en_US") || SM_EQ("English (US)") ||
-      SM_EQ("English (USA)") || SM_EQ("English (United States)"))
+      SM_EQ("Inglês") || SM_EQ("Ingles") ||
+      !strncasecmp(s, "en-", 3) || !strncasecmp(s, "en_", 3) ||
+      !strncasecmp(s, "English (", 9))
     return "sm_flag_us";
-  if (SM_EQ("en-GB") || SM_EQ("en_GB") || SM_EQ("en-UK") ||
-      SM_EQ("English (UK)") || SM_EQ("English (GB)") ||
-      SM_EQ("English (United Kingdom)"))
-    return "sm_flag_gb";
   if (SM_EQ("es-ES") || SM_EQ("es_ES") || SM_EQ("Spanish (Spain)") ||
       SM_EQ("Español (España)"))
     return "sm_flag_es";
@@ -49,5 +48,38 @@ static inline const char *streammax_flag_icone(const char *s) {
     return "sm_flag_mx";
 #undef SM_EQ
   return NULL;
+}
+
+// Recupera SOMENTE bandeiras com idioma explicitamente declarado no campo
+// audioIdiomas (CSV); sem inferir idiomas de "Dual Audio" ou de legendas.
+// Retorna no maximo 'cap' icones distintos, sem alocar memoria.
+static inline unsigned streammax_audio_bandeiras(const char *csv,
+                                                 const char **flags,
+                                                 unsigned cap) {
+  unsigned n = 0;
+  if (!csv || !flags || !cap) return 0;
+  for (const char *p = csv; *p && n < cap;) {
+    const char *fim = strchr(p, ',');
+    const char *ate = fim ? fim : p + strlen(p);
+    char codigo[128];
+    const char *icone;
+    while (p < ate && isspace((unsigned char)*p)) p++;
+    while (ate > p && isspace((unsigned char)ate[-1])) ate--;
+    size_t len = (size_t)(ate - p);
+    icone = NULL;
+    if (len && len < sizeof codigo) {
+      memcpy(codigo, p, len);
+      codigo[len] = 0;
+      icone = streammax_flag_icone(codigo);
+    }
+    if (icone) {
+      unsigned i;
+      for (i = 0; i < n; i++)
+        if (!strcmp(flags[i], icone)) break;
+      if (i == n) flags[n++] = icone;
+    }
+    p = fim ? fim + 1 : ate;
+  }
+  return n;
 }
 #endif

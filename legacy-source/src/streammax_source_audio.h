@@ -3,6 +3,7 @@
 #ifndef STREAMMAX_SOURCE_AUDIO_H
 #define STREAMMAX_SOURCE_AUDIO_H
 #include "streammax_source_ptbr.h"
+#include <stdio.h>
 
 static inline int streammax_audio_dual_texto(const char *s) {
   // Releases Torrentio/TorBox: separadores como ponto e hifen sao comuns.
@@ -35,6 +36,8 @@ static inline int streammax_audio_dual_fonte(const char *arquivo,
 // nem portugues de "TB", qualidade, URL, debrid ou legendas.
 #define SM_DUAL_BR 1u
 #define SM_DUAL_EN 2u
+#define SM_DUAL_PT 4u    // portugues generico; nao transformar em PT-BR no filtro
+#define SM_DUAL_PTPT 8u  // portugues de Portugal, mostrado com bandeira BR
 static inline unsigned streammax_audio_dual_idiomas_linha(const char *txt) {
   const char *p = txt;
   char linha[1100];
@@ -57,6 +60,20 @@ static inline unsigned streammax_audio_dual_idiomas_linha(const char *txt) {
       !streammax_pt_token(linha, "dual")) return 0;
   unsigned bits = 0;
   if (streammax_pt_dica_explicitamente_brasileira(linha)) bits |= SM_DUAL_BR;
+  else if (strstr(linha, "🇵🇹") ||
+           streammax_pt_token(linha, "pt-pt") ||
+           streammax_pt_token(linha, "pt_pt") ||
+           streammax_pt_token(linha, "portuguese (portugal)") ||
+           streammax_pt_token(linha, "portuguese (pt)") ||
+           streammax_pt_token(linha, "português (portugal)") ||
+           streammax_pt_token(linha, "português (pt)"))
+    bits |= SM_DUAL_PTPT;
+  else if (streammax_pt_token(linha, "portuguese") ||
+           streammax_pt_token(linha, "portugues") ||
+           streammax_pt_token(linha, "português") ||
+           streammax_pt_token(linha, "por") ||
+           streammax_pt_token(linha, "pt"))
+    bits |= SM_DUAL_PT;
   if (streammax_pt_token(linha, "english") ||
       streammax_pt_token(linha, "inglês") ||
       streammax_pt_token(linha, "ingles") ||
@@ -76,7 +93,35 @@ static inline unsigned streammax_audio_dual_idiomas_texto(const char *txt) {
       txt++;
     }
     linha[n] = 0;
-    bits |= streammax_audio_dual_idiomas_linha(linha);
+    // Alguns addons dividem o selo Dual Audio e as bandeiras em linhas
+    // consecutivas. A linha seguinte so vale quando e explicitamente de
+    // audio, e nunca quando se trata de legendas.
+    if (streammax_audio_dual_texto(linha)) {
+      bits |= streammax_audio_dual_idiomas_linha(linha);
+      const char *next = txt;
+      if (*next) next++;
+      if (*next) {
+        char seguinte[1100];
+        size_t j = 0;
+        while (next[j] && next[j] != '\n' && next[j] != '\r' &&
+               j + 1 < sizeof seguinte) {
+          seguinte[j] = next[j];
+          j++;
+        }
+        seguinte[j] = 0;
+        if ((strstr(seguinte, "🇵🇹") || strstr(seguinte, "🇧🇷") ||
+             strstr(seguinte, "🇬🇧") || strstr(seguinte, "🇺🇸")) &&
+            !streammax_pt_token(seguinte, "subs") &&
+            !streammax_pt_token(seguinte, "subtitle") &&
+            !streammax_pt_token(seguinte, "legendas")) {
+          char junto[2200];
+          snprintf(junto, sizeof junto, "Dual Audio %s", seguinte);
+          bits |= streammax_audio_dual_idiomas_linha(junto);
+        }
+      }
+    } else {
+      bits |= streammax_audio_dual_idiomas_linha(linha);
+    }
     if (*txt) txt++;
   }
   return bits;

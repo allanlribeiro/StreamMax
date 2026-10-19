@@ -5265,6 +5265,28 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
           dualReservado=1;
         }
       }
+      // Bandeiras de audio visiveis ja na linha compacta da fonte, junto
+      // de "Dual audio". Sao apenas iconografia do audio que foi declarado
+      // pelo addon (ou explicitamente no release); nao leem legendas nem
+      // modificam a preferencia/filtro. Nao inventar BR+EUA para Dual sozinho.
+      if (s->audioIdiomas[0] && txtW0 > 130.0f) {
+        const char *bandeiras[3] = {0};
+        unsigned nb = streammax_audio_bandeiras(s->audioIdiomas, bandeiras, 3);
+        // Guardar espaco para os selos de qualidade e MP4.
+        while (nb && (float)nb * 28.0f + (float)(nb - 1) * 5.0f + 12.0f > txtW0 - 90.0f)
+          nb--;
+        if (nb) {
+          float bx = tx0;
+          for (unsigned bi = 0; bi < nb; bi++) {
+            gfx_icone_colorido((GfxRect){bx, cy + (FOLHA_SELO_H - 28.0f) * .5f,
+                                         28.0f, 28.0f}, bandeiras[bi], anim);
+            bx += 28.0f + 5.0f;
+          }
+          float usado = bx - tx0 + 7.0f;
+          tx0 += usado;
+          txtW0 -= usado;
+        }
+      }
       int ehMp4=!strcmp(containerDa(s),"MP4");
       TxtLinha mp;
       if(ehMp4){ mp=txt_linha(TXT_HERO_META,"MP4",ai,(int)(ag*255),(int)(ab*255),255); mpW=mp.w+18; }

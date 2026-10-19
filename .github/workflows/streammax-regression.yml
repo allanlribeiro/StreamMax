@@ -1,0 +1,19 @@
+name: StreamMax regression tests
+on:
+  pull_request:
+    paths:
+      - 'legacy-source/src/**'
+      - 'legacy-source/tests/**'
+      - '.github/workflows/streammax-regression.yml'
+  workflow_dispatch:
+jobs:
+  source-and-hero:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source audio and flags
+        run: bash legacy-source/tests/streammax-source-ptbr.sh
+      - name: Hero trailer static regression
+        run: bash legacy-source/tests/streammax-hero-trailer.sh
