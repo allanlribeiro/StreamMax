@@ -1076,6 +1076,11 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
         fhd = fhdNoNome(nomeFonte);
       textoRaizLinhas(p, fim, "description", s.descricao, sizeof s.descricao);
       textoRaizLinhas(p, fim, "title", titulo, sizeof titulo);
+      // O nome do arquivo pode trazer idiomas explicitos que nao constam
+      // nos rotulos abreviados do addon. Ler apenas o campo raiz desta fonte.
+      textoRaizLinhas(p, fim, "filename", s.arquivo, sizeof s.arquivo);
+      if (!s.arquivo[0])
+        textoRaizLinhas(p, fim, "fileName", s.arquivo, sizeof s.arquivo);
       // Nuvio original apresenta name/title/description da MESMA resposta
       // separadamente. O StreamMax mantinha apenas o name curto + description
       // e o title se perdia apos ser usado na classificacao.
