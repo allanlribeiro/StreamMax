@@ -4975,8 +4975,8 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
     txt_desenhar_alpha(t, item.x+10.0f,
                        item.y+(item.h-(float)t.h)*0.5f,ai);
     // Imagem real do canal mantida; logos sem azulejo ou download extra.
-    logoNaCaixa(c,(GfxRect){item.x+73.0f,item.y+8.0f,70.0f,item.h-16.0f},
-                66.0f,45.0f,1.0f,ai);
+    { GfxRect logoCx = {item.x+73.0f,item.y+8.0f,70.0f,item.h-16.0f};
+      logoNaCaixa(c, logoCx, 66.0f,45.0f,1.0f,ai); }
     { float tx=item.x+155.0f, tw=item.w-178.0f;
       t=txt_linha_corta(TXT_PG_ROTULO,c->nome,sel?250:210,
                         sel?249:221,sel?255:240,255,tw);
