@@ -4815,8 +4815,8 @@ static void toqueGuiaRetomar(void) {
 #endif
 
 // StreamMax TV ao vivo (TCL): categorias | canais | programa no ar.
-// Usa os dados do proprio guia (Xtream/addons + EPG); sem logos, sem chamadas
-// de rede adicionais e sem tocar num canal ao simplesmente mudar o foco.
+// Usa os dados do proprio guia (Xtream/addons + EPG), reaproveitando
+// logos ja disponíveis sem chamadas adicionais ao simplesmente mudar foco.
 static void streammaxTvDesenhar(float a, time_t agoraT) {
   const float x = G_AREA_X, gap = SM_TV_COL_GAP, y = SM_TV_BODY_Y;
   const float catX = x, catW = SM_TV_CAT_W;
@@ -4877,13 +4877,17 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
     if (!c) continue;
     if (foc) gfx_cor(item, .17f, .10f, .34f, .60f, a);
     else if (sel) gfx_cor(item, .17f, .070f, .16f, .28f, a);
+    // A mesma arte usada no guia classico, sem consultar novas URLs.
+    GfxRect logoCx = {item.x + 9.0f, item.y + 8.0f, 66.0f, item.h - 16.0f};
+    logoNaCaixa(c, logoCx, 60.0f, 45.0f, 1.0f, a);
+    float textoX = item.x + 84.0f, textoW = item.w - 96.0f;
     t = txt_linha_corta(TXT_PG_ROTULO, c->nome, sel ? 247 : 204,
-                        sel ? 251 : 216, sel ? 255 : 227, 255, item.w - 38.0f);
-    txt_desenhar_alpha(t, item.x + 14.0f, item.y + 7.0f, a);
+                        sel ? 251 : 216, sel ? 255 : 227, 255, textoW);
+    txt_desenhar_alpha(t, textoX, item.y + 7.0f, a);
     meta = txt_linha_corta(TXT_DET_META2,
               gAgora(c, agoraT, &ag) && ag.titulo ? ag.titulo : i18n("Ao vivo"),
-              129, 147, 174, 255, item.w - 38.0f);
-    txt_desenhar_alpha(meta, item.x + 14.0f, item.y + 36.0f, a);
+              129, 147, 174, 255, textoW);
+    txt_desenhar_alpha(meta, textoX, item.y + 36.0f, a);
   }
 
   { float px = infX + 20.0f;
