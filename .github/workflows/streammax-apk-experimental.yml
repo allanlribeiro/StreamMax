@@ -3,9 +3,15 @@ name: StreamMax APK experimental
 # O APK de teste da PR 15 deve conter o proprio player da PR, nunca
 # uma revisao antiga da base. Mantem login e bibliotecas nativas completas.
 # APK somente apos concluir demandas e aprovar a revisao do player.
-# Execucao manual intencional, sem disparo por push ou pull_request.
+# Disparo pontual do APK experimental na PR 15; restaurar manual-only
+# depois de confirmar a fila. Nenhum push de código normal aciona este fluxo.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - streammax/player-original-tcl-1018
+    paths:
+      - .github/workflows/streammax-apk-experimental.yml
 
 permissions:
   contents: read
