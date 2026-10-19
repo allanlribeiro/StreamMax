@@ -97,4 +97,14 @@ static inline int streammax_pt_audio_sem_declaracao(
          streammax_pt_marca_release(rotulo) ||
          streammax_pt_descricao_audio(descricao);
 }
+ // Indicio de duas faixas no nome do release (na ausencia de audio declarado).
+ // "DUAL SUBS" e "DUAL LEGENDAS" nao comprovam Dual Audio.
+static inline int streammax_dual_marca_release(const char *s) {
+  if (!s || !streammax_pt_token(s, "dual")) return 0;
+  if (streammax_pt_token(s, "subs") || streammax_pt_token(s, "subtitle") ||
+      streammax_pt_token(s, "subtitles") || streammax_pt_token(s, "legendas") ||
+      streammax_pt_token(s, "legendado")) return 0;
+  return 1;
+}
+
 #endif
