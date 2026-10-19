@@ -4836,6 +4836,24 @@ static void toqueGuiaRetomar(void) {
 }
 #endif
 
+// Hover real (mouse/air-mouse) usa a MESMA selecao do D-pad. So muda o
+// foco: o preview e solicitado no passo do guia, depois do debounce.
+static void streammaxTvHoverCanal(int l, int i) {
+  if (guiaCamadaAberta() || l < 0 || l >= nLinhas() ||
+      i < 0 || i >= linhaN(l)) return;
+  if (tvColunaFoco != SM_TV_COL_CANAIS) {
+    tvColunaFoco = SM_TV_COL_CANAIS;
+    previewFocoMudou = SDL_GetTicks();
+  }
+  ponteiroCanal(l, i);
+}
+static void streammaxTvHoverCategoria(int l, int ignorado) {
+  (void)ignorado;
+  if (guiaCamadaAberta() || l < 0 || l >= nLinhas()) return;
+  tvColunaFoco = SM_TV_COL_CATEGORIAS;
+  focoTopo = 0; focoLin = l; focoCol = 0;
+}
+
 // StreamMax Signature / TCL: identidade azul cinematografica (10/2026).
 // A estrutura e a navegacao das tres colunas sao mantidas. Nao alterar
 // a geometria da janela do preview sem atualizar guia_preview_rect tambem.
@@ -4963,6 +4981,8 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
     float ry = catLinY + SM_TV_ROW_H * j;
     int sel = l == focoLin;
     GfxRect item = {catX+9.0f, ry+4.0f, catW-18.0f, SM_TV_ROW_H-9.0f};
+    if (a > 0.99f && ponteiro_ativo())
+      ponteiro_alvo(item.x,item.y,item.w,item.h,streammaxTvHoverCategoria,NULL,l,0);
     char quantidade[24];
     TxtLinha t, q;
     if (!sel) gfx_cor(item, 0.14f, 0.020f, 0.042f, 0.082f, 0.68f*a);
@@ -4984,6 +5004,8 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
     float ry = catLinY + SM_TV_ROW_H * j;
     int sel = cidx == focoCol;
     GfxRect item = {canX+9.0f, ry+4.0f, canW-18.0f, SM_TV_ROW_H-9.0f};
+    if (a > 0.99f && ponteiro_ativo())
+      ponteiro_alvo(item.x,item.y,item.w,item.h,streammaxTvHoverCanal,NULL,focoLin,cidx);
     char posicao[20];
     TxtLinha t, meta;
     EpgProg ag;
