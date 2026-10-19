@@ -32,6 +32,12 @@ checks = {
     "barra oficial chamada": "plrui_barra_original(bx, yBarra" in player,
     "barra oficial declarada": "void plrui_barra_original(" in header,
     "barra oficial implementada": "void plrui_barra_original(" in plrui,
+    "contraste do trilho como Nuvio original": (
+        "Color.White.copy(alpha = 0.45f)" in compose
+        and "Color.White.copy(alpha = 0.3f)" in compose
+        and "float trilhoAlpha = foco ? 0.45f : 0.30f;" in plrui
+        and "trilhoAlpha * a" in plrui
+    ),
     "barra Legacy preservada": "void plrui_barra(" in plrui,
     "cabeça branca exclusiva do Legacy": "if (foco && cabecaBranca)" in plrui,
     "degrade do rodape": "NV_VTELA_H - 400.0f" in player,
