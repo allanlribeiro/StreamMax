@@ -5095,13 +5095,15 @@ void app_atualizar(float dt, Uint32 agora) {
       if (ci && cwTocarT >= 0 && cwTocarE > 0)
         cat_id_stream(detail_indice(), cwTocarT, cwTocarE, alvoPreparo, sizeof alvoPreparo);
       idBaseDoTitulo(basePreparo, sizeof basePreparo);
-      int lembradaPreparo = basePreparo[0] ? fontepref_escolher(basePreparo) : -1;
+      // Preparo herdado do Legacy nao autoriza autoplay de uma fonte nova.
+      // Apenas uma escolha manual persistida pode ser reutilizada.
+      int lembradaPreparo = basePreparo[0] ? fontepref_escolher_manual(basePreparo) : -1;
 #ifdef NV_ANDROID
       if (doInicio && preparo.token) {
         player_precarregar_cancelar(preparo.token); preparo.token = 0;
       }
 #endif
-      int usouPreparo = !ajustes_fonte_manual() &&
+      int usouPreparo = lembradaPreparo >= 0 &&
                        preparoUsar(alvoPreparo, lembradaPreparo, &idxPreparado);
       // Armado antes da abertura: o proximo quadro nao cancela o worker
       // quando a pagina do titulo cede lugar ao player.
