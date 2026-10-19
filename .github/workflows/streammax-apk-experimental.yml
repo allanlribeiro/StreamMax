@@ -4,41 +4,6 @@ name: StreamMax APK experimental
 # Nao confundir com o APK Kotlin/fullDebug da branch feature/reproducao-idiomas-nuvio.
 # Mantem login por e-mail e bibliotecas nativas completas.
 on:
-  push:
-    branches: [streammax/live-tv-three-columns-tcl-1018, streammax/tcl-feedback-four-fixes-1018, streammax/integracao-pre-apk-1018]
-    paths:
-      - '.github/workflows/streammax-apk-experimental.yml'
-      - 'legacy-source/src/guia.c'
-      - 'legacy-source/src/streammax_livetv_columns.h'
-      - 'legacy-source/src/streams.c'
-      - 'legacy-source/src/streammax_source_ptbr.h'
-      - 'legacy-source/src/stream_parse.c'
-      - 'legacy-source/art/marcas/streammax_splash.jpg'
-      - 'legacy-source/src/abertura.c'
-      - 'migration/check-playback-contracts.py'
-      - 'legacy-source/tests/test_streammax_first_source.c'
-      - 'legacy-source/src/app.c'
-      - 'legacy-source/src/home.c'
-      - 'legacy-source/src/perfilsel.c'
-      - 'legacy-source/tests/streammax-ui-brand.sh'
-      - 'legacy-source/tests/streammax-hero-trailer.sh'
-      - 'legacy-source/src/streammax_first_source.h'
-      - 'legacy-source/tests/streammax-first-source.sh'
-      - 'legacy-source/tests/streammax-livetv-columns.sh'
-      - 'legacy-source/tools/android.sh'
-      - 'legacy-source/src/streammax_flags.h'
-      - 'legacy-source/tests/test_streammax_flags.c'
-      - 'legacy-source/tests/streammax-source-ptbr.sh'
-      - 'legacy-source/src/gfx.c'
-      - 'legacy-source/src/gfx.h'
-      - 'legacy-source/deploy/app/art/icones/sm_flag_*.png'
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [streammax/legacy-migration]
-    paths:
-      - '.github/workflows/streammax-apk-experimental.yml'
-      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
-      - 'migration/check-player-original-engine.py'
   workflow_dispatch:
 
 permissions:
@@ -176,15 +141,25 @@ jobs:
           python3 migration/check-android-isolation.py legacy-source
           # Regressao de arte dos cards, especialmente Continuar assistindo.
           bash legacy-source/tests/streammax-cw-art.sh
-      - name: Compilar versão experimental sem assinatura de distribuição
+      - name: Compilar RC1 assinada com chave permanente
         working-directory: legacy-source
         env:
           NUVIO_P2P_MOTOR: 'none'
           NUVIO_RUST_MKVCORE: '0'
           NUVIO_BUILD_JOBS: '2'
+          STREAMMAX_RELEASE_KEYSTORE_B64: ${{ secrets.STREAMMAX_RELEASE_KEYSTORE_B64 }}
+          NUVIO_KEYSTORE_PASS: ${{ secrets.STREAMMAX_RELEASE_STORE_PASSWORD }}
+          NUVIO_KEY_ALIAS: ${{ secrets.STREAMMAX_RELEASE_KEY_ALIAS }}
+          NUVIO_KEY_PASS: ${{ secrets.STREAMMAX_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          bash tools/android.sh
+          test -n "$STREAMMAX_RELEASE_KEYSTORE_B64" || { echo 'Falta secret STREAMMAX_RELEASE_KEYSTORE_B64'; exit 1; }
+          test -n "$NUVIO_KEYSTORE_PASS" && test -n "$NUVIO_KEY_ALIAS" && test -n "$NUVIO_KEY_PASS" || { echo 'Faltam secrets de assinatura'; exit 1; }
+          export NUVIO_KEYSTORE="$RUNNER_TEMP/streammax-rc1.jks"
+          umask 077
+          printf '%s' "$STREAMMAX_RELEASE_KEYSTORE_B64" | base64 --decode > "$NUVIO_KEYSTORE"
+          test -s "$NUVIO_KEYSTORE"
+          bash tools/android.sh --release-only
       - name: Conferir servidor incorporado no APK e instalacao isolada
         shell: bash
         run: |
@@ -202,9 +177,9 @@ jobs:
           values = [configs.get("NUVIO_SUPABASE_URL", ""), configs.get("NUVIO_SUPABASE_ANON_KEY", "")]
           if not all(values):
               raise SystemExit("ERRO: configuracao do servidor incompleta")
-          paths = glob.glob("legacy-source/build/android/*-android-debug.apk")
+          paths = glob.glob("legacy-source/build/android/*-android.apk")
           if len(paths) != 1:
-              raise SystemExit(f"ERRO: esperado um APK debug, encontrados {len(paths)}")
+              raise SystemExit(f"ERRO: esperado um APK release, encontrados {len(paths)}")
           with ZipFile(paths[0]) as apk:
               for abi in ("arm64-v8a", "armeabi-v7a"):
                   entry = f"lib/{abi}/libmain.so"
@@ -220,10 +195,10 @@ jobs:
                           raise SystemExit(f"ERRO: {name} do servidor nao incorporada em {abi}")
           print("OK: URL e chave publica incorporadas nas duas arquiteturas; valores nao exibidos.")
           PY
-          apk=(legacy-source/build/android/*-android-debug.apk)
+          apk=(legacy-source/build/android/*-android.apk)
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$aapt"
-          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv.strictdebug'"
+          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv'"
           "$aapt" dump badging "${apk[0]}" | grep -Fq "application-label:'StreamMax'"
           echo "OK: app StreamMax verificado por package name e rotulo visivel."
           {
@@ -231,17 +206,17 @@ jobs:
             printf 'Branch: %s\n' "$GITHUB_REF_NAME"
             printf 'Commit: %s\n' "$GITHUB_SHA"
             printf 'GitHub Actions run: %s\n' "$GITHUB_RUN_ID"
-            printf 'Android package: com.streammax.tv.strictdebug\n'
+            printf 'Android package: com.streammax.tv\n'
             printf 'Base: legacy-source (Android C/SDL e Media3)\n'
-            printf 'Nao e a APK Kotlin/fullDebug. Requer teste real de login e player na TCL.\n'
+            printf 'RC1 assinada. Compatibilidade Philips ainda nao validada em aparelho real.\n'
           } > legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
-      - name: Disponibilizar APK de teste do player original
+      - name: Disponibilizar RC1 assinada para testes externos
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-Legacy-TCL-Integracao-${{ github.run_number }}
+          name: StreamMax-RC1-Assinada-${{ github.run_number }}
           path: |
-            legacy-source/build/android/*-android-debug.apk
+            legacy-source/build/android/*-android.apk
             legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
