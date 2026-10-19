@@ -53,6 +53,12 @@ int main(void) {
   assert(!streammax_dual_descricao_audio("Subtitles: Dual Audio"));
   assert(!streammax_dual_descricao_audio("Legendas: DUAL\nAudio: English"));
   assert(!streammax_dual_descricao_audio(NULL));
+  assert(streammax_en_audio_sem_declaracao("Movie.ENG.1080p.mkv", "", ""));
+  assert(streammax_en_audio_sem_declaracao("", "", "Audio: English\\nSubs: PT-BR"));
+  assert(!streammax_en_audio_sem_declaracao("", "", "Subtitles: English"));
+  assert(!streammax_en_audio_sem_declaracao("Movie.ENG.SUBS.mkv", "", ""));
+  assert(!streammax_en_audio_sem_declaracao("", "", "Audio: Portuguese\\nSubs: English"));
+
   printf("OK: cenarios de dublagem PT-BR e limites de string no seletor\n");
   return 0;
 }
