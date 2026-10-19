@@ -105,7 +105,8 @@ static inline int streammax_dual_marca_release(const char *s) {
   if (streammax_pt_token(s, "dual audio") ||
       streammax_pt_token(s, "dual.audio") ||
       streammax_pt_token(s, "dual_audio") ||
-      streammax_pt_token(s, "dual áudio")) return 1;
+      streammax_pt_token(s, "dual áudio") ||
+      streammax_pt_token(s, "dual Áudio")) return 1;
   if (!streammax_pt_token(s, "dual")) return 0;
   // DUAL isolado perto de marca de legenda e ambiguo: nao presumir audio.
   if (streammax_pt_token(s, "subs") || streammax_pt_token(s, "subtitle") ||
