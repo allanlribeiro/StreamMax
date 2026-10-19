@@ -27,11 +27,12 @@ assert '#include "streammax_source_ptbr.h"' in code
 assert '#include "streammax_source_audio.h"' in code
 assert 'streammax_audio_dual_fonte(' in code
 assert 'streammax_audio_dual_idiomas_fonte(' in parse
-assert 'if (!s.audioIdiomas[0]) {' in parse
-assert 'if (bits & SM_DUAL_BR)' in parse
-assert 'else if (bits & SM_DUAL_PTPT)' in parse
-assert 'else if (bits & SM_DUAL_PT)' in parse
-assert 'if (bits & SM_DUAL_EN)' in parse
+assert 'unsigned bits = streammax_audio_dual_idiomas_fonte(' in parse
+assert 'const char *extras[2] = {NULL, NULL};' in parse
+assert 'if ((bits & (SM_DUAL_BR | SM_DUAL_PTPT | SM_DUAL_PT))' in parse
+assert 'if ((bits & SM_DUAL_EN)' in parse
+assert 'snprintf(s.audioIdiomas + k, sizeof s.audioIdiomas - k,' in parse
+assert 'if (!s.audioIdiomas[0]) {\n        unsigned bits' not in parse
 assert 'i18n("Áudio: idiomas não informados")' in code
 assert 'if (!s->audioIdiomas[0] &&' in code
 assert 'i18n("Idiomas não informados")' in code
