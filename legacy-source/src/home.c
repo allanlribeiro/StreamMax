@@ -4646,10 +4646,15 @@ static void ponteiroHero(int a, int b);
 static GfxRect heroTrailerArea(GfxRect arte) {
 #ifdef NV_ANDROID
   if (layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone()) {
-    // Com foco no hero a Moderna promove o backdrop estatico a 1920x1080.
-    // O video pertence ao slot direito do hero, acima do viewport das fileiras.
-    float x = NV_HERO_ARTE_X;
-    float w = fminf(NV_HERO_ARTE_W, NV_TELA_W - x);
+    // A foto enviada da TCL mostrou o trailer 16:9 centralizado e uma area
+    // vazia a DIREITA. O SurfaceView Android faz aspect-fit numa janela muito
+    // larga ate receber o recorte de fonte (ver trailer.c). O destino do hero
+    // deve encostar no lado direito SEM cobrir logo/meta no esquerdo.
+    // Nao reutilizar o rect da arte de tela cheia, nem entrar nas fileiras.
+    // A rampa GFX_HERO (aplicada abaixo APOS o furo) dissolve a borda
+    // esquerda ate a ficha/logo, sem imagem escurecida no miolo.
+    float w = fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f);
+    float x = NV_TELA_W - w;
     float h = fminf(NV_HERO_ARTE_H, corteFileiras());
     return (GfxRect){x, 0.0f, w, h};
   }
