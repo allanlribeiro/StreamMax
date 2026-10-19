@@ -5215,7 +5215,13 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
       if(a>.02f && arq[0]){ char d[512];
         snprintf(d,sizeof d,"%s",arq);
         for(char *p=d;*p;p++)if((unsigned char)*p<32)*p=' ';
-        txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,125,125,123,255,tr-tx),tx,cy,anim*a); }
+        // So a exibicao: remover barras vazias de descricoes como
+        // "Dual Audio / /"; o texto original permanece intacto para o addon.
+        size_t fimTexto = strlen(d);
+        while (fimTexto && (isspace((unsigned char)d[fimTexto - 1]) ||
+                            d[fimTexto - 1] == '/')) d[--fimTexto] = 0;
+        if (d[0])
+          txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,125,125,123,255,tr-tx),tx,cy,anim*a); }
       if(a>.02f){ char f1[160], f2[128]; StreamfitClasse fc=fitTexto2(i,f1,sizeof f1,f2,sizeof f2);
         if(f1[0]){
         float fy=cy+(arq[0]?FOLHA_ARQ_H:0);
