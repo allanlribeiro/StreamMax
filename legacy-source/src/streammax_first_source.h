@@ -22,7 +22,10 @@ static inline int streammax_should_ask_first_source(int manualEnabled,
  // Long-press "Fontes deste episodio" still opens the source picker.
 static inline int streammax_should_ask_episode_source(int manualEnabled,
                                                       int hasManualPreference) {
-  return manualEnabled && !hasManualPreference;
+  // Keep the episode card consistent with StreamMax's first-source rule.
+  // A legacy automatic setting cannot silently bypass the first choice.
+  (void)manualEnabled;
+  return !hasManualPreference;
 }
 
 #endif
