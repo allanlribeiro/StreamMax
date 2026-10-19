@@ -24,4 +24,13 @@ static inline int streammax_should_ask_episode_source(int manualEnabled,
   return !hasManualPreference;
 }
 
+// A busca pode terminar com o seletor ainda aberto. Nenhum timeout, refresh
+// de addon ou resposta tardia autoriza reproduzir sem OK na fonte.
+// A TV ao vivo usa outro fluxo e continua escolhendo pela playlist.
+static inline int streammax_auto_may_play(int isLiveTV,
+                                         int pickerVisible,
+                                         int awaitingManualChoice) {
+  return isLiveTV || (!pickerVisible && !awaitingManualChoice);
+}
+
 #endif
