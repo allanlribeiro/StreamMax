@@ -63,6 +63,16 @@ checks = {
         "return availableStreams > 0 && rememberedIndex < 0;",
         "return !hasManualPreference;",
     ],
+    "src/stream_parse.c": [
+        "metadadosFaixas(p, fim, &s);",
+        "const char *pistasFonte[] = {nomeFonte, titulo, s.descricao, s.arquivo};",
+        'if (audioPista && !s.audioIdiomas[0])',
+        'if (legendaPista && !s.legendaIdiomas[0])',
+    ],
+    "src/streams.c": [
+        "stream_faixas_texto(s, legendas, idiomas, sizeof idiomas)",
+        'if (podePt && temNoTexto(s, "dual")) return "Dual áudio";',
+    ],
     "src/fontepref.h": [
         "int fontepref_escolher_manual(const char *id);",
         "int fontepref_guardar(const char *id, const Stream *s);",
@@ -91,6 +101,17 @@ for name, needles in checks.items():
     errors += [f"{name}: falta {needle}" for needle in needles if needle not in text]
     if name == "src/app.c" and '\\n  // lembrada ficou proibida' in text:
         errors.append("src/app.c: comentário com quebra de linha literal inválida")
+# Evitar regressao: uma palavra de idioma isolada nao comprova Dual Audio.
+streams_text = (root / "src/streams.c").read_text(encoding="utf-8") if (root / "src/streams.c").is_file() else ""
+if 'temNoTexto(s, "pt-br") || temNoTexto(s, "ptbr"))) return "Dual áudio"' in streams_text:
+    errors.append("src/streams.c: PT-BR isolado nao pode ser chamado de Dual Audio")
+
+app_text = (root / "src/app.c").read_text(encoding="utf-8") if (root / "src/app.c").is_file() else ""
+if "if (lembradaPreparo >= 0 && !usouPreparo &&" not in app_text:
+    errors.append("src/app.c: prefetch pendente pode pular escolha inicial")
+if "if (!base[0] || !fontepref_tem(base)) return 0;" not in app_text:
+    errors.append("src/app.c: link salvo sem escolha manual pode pular folha")
+
 if errors:
     print("\n".join(errors), file=sys.stderr)
     sys.exit(1)
