@@ -3912,6 +3912,37 @@ static int streammaxFonteDadosOriginais(const Stream *s, const char *linhas[3]) 
   return n;
 }
 
+// Nuvio original apresenta as linhas do title/description recebidas.
+// No modo StreamMax a descricao estava achatada numa unica linha cortada:
+// o "Dual Audio" na segunda/terceira linha simplesmente nao aparecia.
+// Guardar somente spans: nenhuma alocacao, nenhuma alteracao nos filtros.
+// Limitar a 12 linhas expandidas preserva desempenho/navegacao da TCL.
+#define SM_FONTE_ORIG_LINHAS 12
+typedef struct { const char *inicio; size_t n; } SmFonteLinhaOriginal;
+static int streammaxFonteLinhasOriginais(const Stream *s,
+                SmFonteLinhaOriginal saida[SM_FONTE_ORIG_LINHAS]) {
+  const char *originais[3];
+  int qtd = streammaxFonteDadosOriginais(s, originais), total = 0;
+  for (int i = 0; i < qtd && total < SM_FONTE_ORIG_LINHAS; i++) {
+    const char *p = originais[i];
+    while (*p && total < SM_FONTE_ORIG_LINHAS) {
+      const char *fim = p;
+      while (*fim && *fim != '\n' && *fim != '\r') fim++;
+      const char *a = p, *b = fim;
+      while (a < b && isspace((unsigned char)*a)) a++;
+      while (b > a && isspace((unsigned char)b[-1])) b--;
+      if (b > a) {
+        saida[total].inicio = a;
+        saida[total++].n = (size_t)(b - a);
+      }
+      if (!*fim) break;
+      p = fim + 1;
+      if (fim[0] == '\r' && *p == '\n') p++;
+    }
+  }
+  return total;
+}
+
 // A linha de marca e so para o que esta tocando e para a escolha anterior.
 // A fonte que o automatico tocaria ganha o selo "Melhor para esta TV" ao
 // lado do titulo (melhorDaFolha), e nao mais uma linha "Escolha automatica".
@@ -3934,8 +3965,8 @@ static float alturaLinha(int i, int automatica) {
     if (h < 96) h = 96;
   } else {
     // The connection line opens with the focused row even without a file name.
-    const char *originais[3];
-    int nOriginais = streammaxFonteDadosOriginais(&lista[i], originais);
+    SmFonteLinhaOriginal originais[SM_FONTE_ORIG_LINHAS];
+    int nOriginais = streammaxFonteLinhasOriginais(&lista[i], originais);
     float extra = (arquivoDa(&lista[i])[0] ? FOLHA_ARQ_H : 0) +
                   FOLHA_ARQ_H * nOriginais + FOLHA_FIT_H * fitLinhas(i);
     if (grupo == 1 && nOrdem == foco) h += extra * abreFoco;
@@ -5241,13 +5272,13 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
     // O ARQUIVO, so na linha em foco: e o que distingue duas fontes iguais
     // (grupo de release, versao), e em toda linha era ruido.
     { float a=(sel?abreFoco:row==linhaAnt?abreAnt:0);
-      const char *originais[3];
-      int nOriginais=streammaxFonteDadosOriginais(s,originais);
+      SmFonteLinhaOriginal originais[SM_FONTE_ORIG_LINHAS];
+      int nOriginais=streammaxFonteLinhasOriginais(s,originais);
       float dadosAltura=FOLHA_ARQ_H*(float)nOriginais*a;
       const char *arq=arquivoDa(s);
       if(a>.02f) for(int mi=0;mi<nOriginais;mi++){
         char d[2048];
-        snprintf(d,sizeof d,"%s",originais[mi]);
+        snprintf(d,sizeof d,"%.*s",(int)originais[mi].n,originais[mi].inicio);
         for(char *p=d;*p;p++) if((unsigned char)*p<32)*p=' ';
         txt_desenhar_alpha(txt_linha_corta(TXT_PG_FIM,d,155,168,187,255,tr-tx),
                            tx,cy+FOLHA_ARQ_H*(float)mi*a,anim*a);
