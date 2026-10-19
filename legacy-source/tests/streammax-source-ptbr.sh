@@ -26,6 +26,14 @@ assert 'streammax_pt_audio_sem_declaracao(s->arquivo, s->rotulo, s->descricao)' 
 assert '#include "streammax_source_ptbr.h"' in code
 assert '#include "streammax_source_audio.h"' in code
 assert 'streammax_audio_dual_fonte(' in code
+assert 'streammax_audio_dual_idiomas_fonte(' in parse
+assert 'if (!s.audioIdiomas[0]) {' in parse
+assert 'if (bits & SM_DUAL_BR)' in parse
+assert 'if (bits & SM_DUAL_EN)' in parse
+assert 'i18n("Áudio: idiomas não informados")' in code
+assert 'if (!s->audioIdiomas[0] &&' in code
+assert 'i18n("Idiomas não informados")' in code
+
 assert 's->tituloFonte, s->descricao' in code
 assert 'streammaxFonteDadosOriginais(' in code
 # Nome/title/description completos precisam ocupar linhas independentes
