@@ -41,6 +41,9 @@ int main(void) {
   nao(NULL, NULL, NULL);
   assert(streammax_dual_marca_release("Filme.2160p.DUAL.mkv"));
   assert(streammax_dual_marca_release("Filme.Dual.Audio.WEB-DL"));
+  assert(streammax_dual_marca_release("Filme.DUAL.AUDIO.SUBS.mkv"));
+  assert(streammax_dual_marca_release("Filme.DUAL_AUDIO.Legendas.mkv"));
+  assert(streammax_dual_marca_release("Filme.DUAL ÁUDIO + SUBS"));
   assert(!streammax_dual_marca_release("Filme.DUAL.SUBS.mkv"));
   assert(!streammax_dual_marca_release("Filme.DUAL.LEGENDAS.mkv"));
   assert(!streammax_dual_marca_release("Filme.DUBLADO.mkv"));
