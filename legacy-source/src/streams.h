@@ -21,6 +21,8 @@
 
 typedef struct Stream {
   char rotulo[192];     // Nome curto da fonte
+  // Name completo do addon (rotulo curto e usado no restante do app).
+  char nomeFonteCompleto[1024];
   char provedor[96];
   // Origem real da instancia do addon, sem URL/token nem inferencia pelo nome.
   char addonChave[FONTEFALHA_CHAVE];
@@ -61,7 +63,7 @@ typedef struct Stream {
   char descricao[2048];
   // "title" do stream, separado de name/description como no Nuvio original.
   // Apenas exibicao/identificacao de metadados; nao participa do player.
-  char tituloFonte[768];
+  char tituloFonte[1024];
   char arquivo[512];
   // O QUE O ADDON DECLARA COMO "a mesma fonte" entre episodios:
   // behaviorHints.bingeGroup, a convencao do Stremio. Quem manda o campo
