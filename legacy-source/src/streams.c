@@ -3641,7 +3641,8 @@ static int temAudioPreferido(const Stream *s) {
       return audioDeclaradoDual(s);
     }
     return streammax_dual_marca_release(s->arquivo) ||
-           streammax_dual_marca_release(s->rotulo);
+           streammax_dual_marca_release(s->rotulo) ||
+           streammax_dual_descricao_audio(s->descricao);
   }
   // All / unresolved Original: sem filtrar. Declaracao do addon sempre
   // prevalece, inclusive uma lista explicitamente ES ou EN.
