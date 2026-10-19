@@ -1079,6 +1079,30 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
       s.emCache = cache > 0 || (cache == 0 && marcaEmCache(p, fim));
       s.cacheNegado = cache < 0;
       metadadosFaixas(p, fim, &s);
+      // Algumas fontes Torrentio trazem o idioma apenas no nome. Usar a
+      // pista SOMENTE quando o nome associa explicitamente idioma e tipo:
+      // "PT-BR DUBLADO"/"PT-BR DUAL AUDIO" (audio) ou
+      // "PT-BR LEGENDADO"/"PT-BR SUB" (legendas). Uma bandeira isolada
+      // nao prova que a faixa de audio e brasileira.
+      // Metadados estruturados do addon tem precedencia.
+      if (nomeFonte[0]) {
+        int ptbrNome = token(nomeFonte, "pt-br") ||
+                       token(nomeFonte, "ptbr") ||
+                       token(nomeFonte, "brazilian portuguese");
+        if (ptbrNome) {
+          int temDublagem = token(nomeFonte, "dublado") ||
+                            token(nomeFonte, "dubbed") ||
+                            token(nomeFonte, "dual audio") ||
+                            token(nomeFonte, "dualaudio");
+          int temLegenda = token(nomeFonte, "legendado") ||
+                           token(nomeFonte, "legendas pt-br") ||
+                           token(nomeFonte, "sub pt-br");
+          if (temDublagem && !s.audioIdiomas[0])
+            snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-BR");
+          if (temLegenda && !s.legendaIdiomas[0])
+            snprintf(s.legendaIdiomas, sizeof s.legendaIdiomas, "%s", "pt-BR");
+        }
+      }
       metadadosFiltro(p, fim, nomeFonte, s.descricao, titulo, &s);
       // behaviorHints.bingeGroup — ANCORADO NO OBJETO, e nao procurado solto.
       //
