@@ -3648,12 +3648,29 @@ static const char *idiomaDa(const Stream *s) {
 // Dual Audio exige pelo menos dois idiomas distintos informados pelo addon.
 // Uma lista de legendas nunca entra nessa contagem.
 static int audioDeclaradoDual(const Stream *s) {
-  static const char *idiomas[] = {
-    "pt", "en", "es", "fr", "de", "it", "ja", "ko", "ru", "zh", "hi"
-  };
-  int encontrados = 0;
-  for (size_t i = 0; i < sizeof idiomas / sizeof idiomas[0]; i++) {
-    if (audioDeclaradoEm(s, idiomas[i]) && ++encontrados >= 2) return 1;
+  // A lista declarada pelo addon e a fonte da verdade. Percorre uma so vez
+  // usando os mesmos parsers de idioma exibidos na grade, sem whitelist que
+  // exclui pares reais (por exemplo: arabe + turco).
+  const char *p = s->audioIdiomas;
+  const char *fim = p + strnlen(p, sizeof s->audioIdiomas);
+  char primeiro[32] = "";
+  while (p < fim) {
+    const char *f = memchr(p, ',', (size_t)(fim - p));
+    const char *ate = f ? f : fim;
+    while (p < ate && isspace((unsigned char)*p)) p++;
+    while (ate > p && isspace((unsigned char)ate[-1])) ate--;
+    size_t n = (size_t)(ate - p);
+    if (n && faixaIdiomaInformado(p, n)) {
+      char raw[sizeof s->audioIdiomas + 1], codigo[32];
+      memcpy(raw, p, n); raw[n] = 0;
+      const char *cod = faixaIdiomaDoNome(raw);
+      if (!cod && faixaIdiomaEtiqueta(raw, codigo, sizeof codigo)) cod = codigo;
+      if (cod && cod[0]) {
+        if (!primeiro[0]) snprintf(primeiro, sizeof primeiro, "%s", cod);
+        else if (!ling_casa(primeiro, cod)) return 1;
+      }
+    }
+    p = f ? f + 1 : fim;
   }
   return 0;
 }
