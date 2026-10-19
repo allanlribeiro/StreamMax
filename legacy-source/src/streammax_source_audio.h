@@ -103,7 +103,7 @@ static inline unsigned streammax_audio_dual_idiomas_texto(const char *txt) {
       if (*next) {
         char seguinte[1100];
         size_t j = 0;
-        while (next[j] && next[j] != '\\n' && next[j] != '\\r' &&
+        while (next[j] && next[j] != '\n' && next[j] != '\r' &&
                j + 1 < sizeof seguinte) {
           seguinte[j] = next[j];
           j++;
