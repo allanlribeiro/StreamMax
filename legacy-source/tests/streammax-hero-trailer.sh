@@ -17,11 +17,25 @@ assert slot_bottom > 0 and slot_bottom < define("NV_TELA_BASE_H")
 assert define("NV_HERO_ARTE_X") < define("NV_TELA_BASE_W")
 assert "static GfxRect heroTrailerArea(GfxRect arte)" in home
 assert "float h = fminf(NV_HERO_ARTE_H, corteFileiras());" in home
+# Na TCL a imagem deve tocar a borda DIREITA: o quadro nativo nao pode
+# continuar alinhado ao centro com tarja preta no lado direito.
+assert "float w = fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f);" in home
+assert "float x = NV_TELA_W - w;" in home
+assert "return (GfxRect){x, 0.0f, w, h};" in home
+assert 0.60 <= 0.64 <= 0.70
+
 assert "NV_DIN_REPOUSO_FIL - 120.0f" in home
 # O destino do SurfaceView e o furo do canvas devem ser IDENTICOS.
 assert "GfxRect furo = heroTrailerArea(r);" in home
 assert "heroTrailerArea(heroArteRect)" in home
 assert "gfx_furo_alfa(furo, aTrailer);" in home
+assert "gfx_rect(furo, 0, GFX_HERO, 0, 1.0f, 0, 0.0f, 0, 0, 0, aTrailer);" in home
+trailer = Path("src/trailer.c").read_text()
+assert "dono == TRAILER_DONO_HOME && !noCartao && !cheia" in trailer
+assert "if (!heroAndroid && recortePendente" in trailer
+assert "(heroAndroid || (tocandoDesde && SDL_GetTicks() - tocandoDesde >= 800))" in trailer
+assert "video_janela_fonte(sx, sy, sw, sh," in trailer
+
 # O Android preserva o backdrop fora do furo, em vez de apagar a tela inteira.
 first = home.split("// No Android a arte de fundo continua opaca fora do hero.",1)[1]
 assert first.split("#endif",1)[0].count("aArte *= (1.0f - aTrailer);") == 1
@@ -30,5 +44,5 @@ assert "#ifndef NV_ANDROID" in first.split("if (deslizando)",1)[0]
 assert "destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerArea(heroArteRect)" in home
 # O trailer nao ativa o modo cinema de tela cheia na TCL.
 assert "&& 0" in home.split("// TCL: trailer permanece no hero",1)[1].split("#endif",1)[0]
-print(f"OK: preview do hero limitado antes das fileiras ({slot_bottom:.0f}px na Moderna), autoplay preservado")
+print(f"OK: trailer do hero na borda direita com cover precoce e rampa esquerda ({slot_bottom:.0f}px antes das fileiras)")
 PY
