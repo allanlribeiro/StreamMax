@@ -92,7 +92,35 @@ static inline unsigned streammax_audio_dual_idiomas_texto(const char *txt) {
       txt++;
     }
     linha[n] = 0;
-    bits |= streammax_audio_dual_idiomas_linha(linha);
+    // Alguns addons dividem o selo Dual Audio e as bandeiras em linhas
+    // consecutivas. A linha seguinte so vale quando e explicitamente de
+    // audio, e nunca quando se trata de legendas.
+    if (streammax_audio_dual_texto(linha)) {
+      bits |= streammax_audio_dual_idiomas_linha(linha);
+      const char *next = txt;
+      if (*next) next++;
+      if (*next) {
+        char seguinte[1100];
+        size_t j = 0;
+        while (next[j] && next[j] != '\\n' && next[j] != '\\r' &&
+               j + 1 < sizeof seguinte) {
+          seguinte[j] = next[j];
+          j++;
+        }
+        seguinte[j] = 0;
+        if ((strstr(seguinte, "🇵🇹") || strstr(seguinte, "🇧🇷") ||
+             strstr(seguinte, "🇬🇧") || strstr(seguinte, "🇺🇸")) &&
+            !streammax_pt_token(seguinte, "subs") &&
+            !streammax_pt_token(seguinte, "subtitle") &&
+            !streammax_pt_token(seguinte, "legendas")) {
+          char junto[2200];
+          snprintf(junto, sizeof junto, "Dual Audio %s", seguinte);
+          bits |= streammax_audio_dual_idiomas_linha(junto);
+        }
+      }
+    } else {
+      bits |= streammax_audio_dual_idiomas_linha(linha);
+    }
     if (*txt) txt++;
   }
   return bits;
