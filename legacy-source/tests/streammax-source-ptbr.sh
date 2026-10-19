@@ -20,6 +20,10 @@ assert 'if (!pref[0] || audioDeclaradoEm(s, pref)) return 1;' in section
 assert 'soDub = (soDub + 1) % 4;' in code
 assert 'soDub == 1 ? "pt" : soDub == 2 ? "en" : ""' in code
 assert 'Áudio: %s' in code
+visual = code.split("static const char *idiomaDa(const Stream *s) {", 1)[1].split("// Dual Audio exige", 1)[0]
+assert 'return "Português";' in visual, "texto isolado PT nao comprova audio duplo"
+assert 'temNoTexto(s, "pt-br")' in visual, "manter identificação textual PT"
+
 assert 'if (s->audioIdiomas[0]) return 0;' in section
 assert 'if (ling_casa("pt", pref))' in section
 assert 'if (ling_casa("en", pref))' in section
