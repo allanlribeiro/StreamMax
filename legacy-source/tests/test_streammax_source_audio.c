@@ -25,6 +25,27 @@ int main(void) {
   nao("Filme.Brazilian.Portuguese.mkv","","","");
   nao("Filme.mkv","","","Dolby Audio Atmos");
   nao(NULL,NULL,NULL,NULL);
-  puts("OK: Dual Audio marcado apenas por indicacao explicita da fonte");
+  // O release pode listar as DUAS trilhas de fato, em nome, title ou
+  // descricao; so nesse caso o parser pode mostrar duas bandeiras.
+  assert(streammax_audio_dual_idiomas_fonte(
+      "Filme.DUAL.AUDIO.PTBR.ENG.mkv", "", "", "") == (SM_DUAL_BR | SM_DUAL_EN));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Torrentio TB / Dual Audio / 🇧🇷 🇺🇸", "") == (SM_DUAL_BR | SM_DUAL_EN));
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "", "Dual Audio\nAudio: English\nSubs: pt-BR") == SM_DUAL_EN);
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "", "Dual Audio 🇧🇷\nLegendas: English") == SM_DUAL_BR);
+  // A tag Dual Audio, sozinha, NAO permite deduzir PT-BR nem English.
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "Torrentio TB", "Dual Audio", "25.9 GB") == 0);
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio / Subs: PT-BR / English", "") == 0);
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio", "Subs: 🇧🇷 / 🇺🇸") == 0);
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Audio: pt-BR English", "") == 0);
+  assert(streammax_audio_dual_idiomas_fonte(
+      "", "", "Dual Audio / 🇺🇸", "") == SM_DUAL_EN);
+  puts("OK: Dual Audio e idiomas com evidencias reais, sem transformar legenda em audio");
   return 0;
 }
