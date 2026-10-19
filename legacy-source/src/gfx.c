@@ -4441,6 +4441,18 @@ void gfx_icones_dir(const char *dirArte) {
   snprintf(dirIcones, sizeof dirIcones, "%s/icones", dirArte ? dirArte : ".");
 }
 
+void gfx_icone_colorido(GfxRect r, const char *nome, float alfa) {
+  char caminho[600];
+  GLuint textura;
+  if (!nome || !*nome || !dirIcones[0] || alfa <= 0.0f ||
+      r.w <= 0.0f || r.h <= 0.0f) return;
+  snprintf(caminho, sizeof caminho, "%s/%s.png", dirIcones, nome);
+  textura = tex_obter_larg(caminho, r.w * escAtiva);
+  if (!textura) return;
+  gfx_tex_aspect_atual = 0.0f; // bandeira dentro do sprite quadrado com alpha
+  gfx_rect(r, textura, GFX_TEXTO, 0, 0, 0, 0.0f, 1, 1, 1, alfa);
+}
+
 void gfx_icone(GfxRect r, const char *nome, float cr, float cg, float cb, float ca) {
   char cam[600];
   GLuint t;
