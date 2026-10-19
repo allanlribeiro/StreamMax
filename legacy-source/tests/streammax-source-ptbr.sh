@@ -34,6 +34,10 @@ assert 'char nomeFonteCompleto[1024];' in Path("src/streams.h").read_text()
 assert 'char tituloFonte[1024];' in Path("src/streams.h").read_text()
 assert 'snprintf(s.nomeFonteCompleto, sizeof s.nomeFonteCompleto' in parse
 assert 'snprintf(s.tituloFonte, sizeof s.tituloFonte' in parse
+assert 'streammax_audio_dual_fonte(s->arquivo, s->nomeFonteCompleto[0] ?' in code
+assert 'if (podePt && (temNoTexto(s, "dublado") || temNoTexto(s, "dub")))' in code
+assert 'if (podePt && temNoTexto(s, "dual"))' not in code
+
 
 # Nao reutilizar a conversao de bandeiras na triagem da fonte.
 assert '#include "streammax_flags.h"' in code
