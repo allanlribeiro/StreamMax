@@ -1091,19 +1091,32 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
       // APENAS identificadores explicitos no proprio release Dual Audio.
       // A tag "Dual Audio" isolada nao significa automaticamente BR + EN.
       // Informacao de SUBS nunca alimenta audioIdiomas.
-      if (!s.audioIdiomas[0]) {
+      // Complementar idiomas explicitos do release mesmo quando os metadados
+      // estruturados trouxerem apenas uma faixa. Nao inferir pelo selo Dual.
+      {
         unsigned bits = streammax_audio_dual_idiomas_fonte(
             s.arquivo, s.nomeFonteCompleto, s.tituloFonte, s.descricao);
-        if (bits & SM_DUAL_BR)
-          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-BR");
-        else if (bits & SM_DUAL_PTPT)
-          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-PT");
-        else if (bits & SM_DUAL_PT)
-          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt");
-        if (bits & SM_DUAL_EN) {
+        const char *extras[2] = {NULL, NULL};
+        unsigned nextras = 0;
+        // Evitar duplicar portugues ja declarado em qualquer variante.
+        if ((bits & (SM_DUAL_BR | SM_DUAL_PTPT | SM_DUAL_PT)) &&
+            !streammax_pt_token(s.audioIdiomas, "pt-BR") &&
+            !streammax_pt_token(s.audioIdiomas, "pt-PT") &&
+            !streammax_pt_token(s.audioIdiomas, "portuguese") &&
+            !streammax_pt_token(s.audioIdiomas, "pt"))
+          extras[nextras++] = (bits & SM_DUAL_BR) ? "pt-BR" :
+                              (bits & SM_DUAL_PTPT) ? "pt-PT" : "pt";
+        if ((bits & SM_DUAL_EN) &&
+            !streammax_pt_token(s.audioIdiomas, "English") &&
+            !streammax_pt_token(s.audioIdiomas, "en") &&
+            !streammax_pt_token(s.audioIdiomas, "en-US") &&
+            !streammax_pt_token(s.audioIdiomas, "en-GB"))
+          extras[nextras++] = "English";
+        for (unsigned ei = 0; ei < nextras; ei++) {
           size_t k = strlen(s.audioIdiomas);
-          snprintf(s.audioIdiomas + k, sizeof s.audioIdiomas - k,
-                   "%sEnglish", k ? "," : "");
+          if (k + strlen(extras[ei]) + (k ? 1u : 0u) + 1u <= sizeof s.audioIdiomas)
+            snprintf(s.audioIdiomas + k, sizeof s.audioIdiomas - k,
+                     "%s%s", k ? "," : "", extras[ei]);
         }
       }
       // O Torrentio pode colocar o release em title ou description, deixando
