@@ -26,6 +26,10 @@ assert "tituloAtual && fontepref_tem(tituloAtual->imdb)" in detail
 assert "pedFontesT = ep->temporada; pedFontesE = ep->episodio;" in detail
 # Even if an old preference no longer matches new episode sources, the
 # playback router must fall back to the picker instead of arbitrary autoplay.
+saved = app.split("static int tocarFonteGuardada(void) {", 1)[1].split("\n}\n", 1)[0]
+assert "if (!base[0] || !fontepref_tem(base)) return 0;" in saved
+assert "if (fontepref_escolher_lista(base, &s, 1, NULL, NULL) != 0)" in saved
+assert "ajustes_fonte_manual()" not in saved, "fonte guardada nunca pula escolha por ajuste herdado"
 assert "folhaParaTocar = 1;" in app
 print("OK: detalhe e roteador VOD respeitam primeira fonte manual")
 PY
