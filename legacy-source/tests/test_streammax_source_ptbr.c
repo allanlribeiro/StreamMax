@@ -33,7 +33,12 @@ int main(void) {
   nao("Filme.mkv", "", "Titulo do Filme Portugal");
   nao("redublado123.mkv", "", "");
   nao("Filme.DUB.EN.mkv", "", "");
+  // Marcas maiores que os dados nao podem ler alem do fim da string.
+  nao("", "", "");
+  nao("p", "pt", "D");
+  nao("filme.pt", "", "Audio: p");
+  sim("pt-br", "", "");
   nao(NULL, NULL, NULL);
-  printf("OK: 23 cenarios de dublagem PT-BR no seletor de fontes\n");
+  printf("OK: cenarios de dublagem PT-BR e limites de string no seletor\n");
   return 0;
 }
