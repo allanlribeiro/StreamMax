@@ -15,6 +15,8 @@ static inline int streammax_pt_token(const char *texto, const char *marca) {
   if (!texto || !marca || !(n = strlen(marca))) return 0;
   for (const char *p = texto; *p; p++) {
     if (p != texto && isalnum((unsigned char)p[-1])) continue;
+    // p[n] so e valido depois de confirmar que restam n caracteres.
+    if (strlen(p) < n) continue;
     if (!strncasecmp(p, marca, n) && !isalnum((unsigned char)p[n])) return 1;
   }
   return 0;
