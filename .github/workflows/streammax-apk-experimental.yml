@@ -10,6 +10,11 @@ on:
       - '.github/workflows/streammax-apk-experimental.yml'
       - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
       - 'migration/check-player-original-engine.py'
+      - 'legacy-source/src/fontepref.c'
+      - 'legacy-source/src/streammax_first_source.h'
+      - 'legacy-source/tests/test_streammax_first_source.c'
+      - 'legacy-source/src/detail.c'
+      - 'legacy-source/src/app.c'
   workflow_dispatch:
 
 permissions:
