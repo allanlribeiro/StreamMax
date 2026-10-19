@@ -1176,7 +1176,7 @@ object NvPlayer {
         val v = centesimos.coerceIn(25, 400) / 100f
         principal.post { player?.setPlaybackSpeed(v) }
     }
-    @JvmStatic fun janela(x: Int, y: Int, w: Int, h: Int, encaixa: Int) { principal.post { definirJanela(x, y, w, h, encaixa != 0) } }
+    @JvmStatic fun janela(x: Int, y: Int, w: Int, h: Int, encaixa: Int) { principal.post { definirJanela(x, y, w, h, encaixa != 0, encaixa == 2) } }
     @JvmStatic fun escolher(tipo: Int, idx: Int) { principal.post { escolherMain(tipo, idx) } }
 
     // --- abrir / liberar ------------------------------------------------------
@@ -1668,10 +1668,11 @@ object NvPlayer {
     // false) ja vem com a proporcao certa e e aplicado exato.
     private var pedX = 0; private var pedY = 0; private var pedW = 0; private var pedH = 0
     private var pedEncaixa = true
+    private var pedPrevia = false
 
-    private fun definirJanela(x: Int, y: Int, w: Int, h: Int, encaixa: Boolean) {
+    private fun definirJanela(x: Int, y: Int, w: Int, h: Int, encaixa: Boolean, previa: Boolean) {
         if (player == null) return   // como o Video.cs: o C repete depois do videoInfo
-        pedX = x; pedY = y; pedW = w; pedH = h; pedEncaixa = encaixa
+        pedX = x; pedY = y; pedW = w; pedH = h; pedEncaixa = encaixa; pedPrevia = previa
         temJanela = true
         calcularJanela()
         Log.i(TAG, "[dvtrace] janela sessao=$sessao holder=${System.identityHashCode(superficie?.holder)} pedido=$x,$y ${w}x$h encaixa=$encaixa calculada=$jx,$jy ${jw}x$jh hdr=$ultHdr semRecriar=$semRecriar")
@@ -1744,6 +1745,39 @@ object NvPlayer {
         val altura = maxOf(1, y1 - y0)
         val gravidade = Gravity.TOP or Gravity.START
         val antes = sv.layoutParams as? FrameLayout.LayoutParams
+        if (pedPrevia) {
+            // TCL / Android TV: reduzir o layout da SurfaceView pode manter o
+            // buffer do decoder em 1920x1080 e mostrar so um recorte (zoom).
+            // Conservamos a Surface em tamanho inteiro e transformamos TODO
+            // o quadro ate a miniatura, sem reabrir o canal nem o decoder.
+            if (antes == null || antes.width != cw || antes.height != ch ||
+                antes.leftMargin != 0 || antes.topMargin != 0 ||
+                antes.rightMargin != 0 || antes.bottomMargin != 0 ||
+                antes.gravity != gravidade) {
+                sv.layoutParams = FrameLayout.LayoutParams(cw, ch, gravidade)
+            }
+            sv.pivotX = 0f; sv.pivotY = 0f
+            sv.scaleX = largura.toFloat() / cw
+            sv.scaleY = altura.toFloat() / ch
+            sv.translationX = x0.toFloat()
+            sv.translationY = y0.toFloat()
+            legendaBitmapView?.let { view ->
+                val old = view.layoutParams as? FrameLayout.LayoutParams
+                if (old == null || old.width != largura || old.height != altura ||
+                    old.leftMargin != x0 || old.topMargin != y0) {
+                    view.layoutParams = FrameLayout.LayoutParams(largura, altura, gravidade).apply {
+                        leftMargin = x0; topMargin = y0
+                    }
+                }
+            }
+            return
+        }
+        // Ao sair do PiP, restaurar a geometria normal antes do dedupe.
+        if (sv.scaleX != 1f || sv.scaleY != 1f ||
+            sv.translationX != 0f || sv.translationY != 0f) {
+            sv.scaleX = 1f; sv.scaleY = 1f
+            sv.translationX = 0f; sv.translationY = 0f
+        }
         // Inspect the current SurfaceView, not a cached rectangle: resize or
         // replacing the surface must still apply its actual layout. Avoid both
         // allocation and requestLayout when repeated requests change nothing.
