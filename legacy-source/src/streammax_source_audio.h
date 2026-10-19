@@ -29,4 +29,67 @@ static inline int streammax_audio_dual_fonte(const char *arquivo,
          streammax_audio_dual_texto(titulo) ||
          streammax_audio_dual_texto(descricao);
 }
+
+// Retorna APENAS os idiomas explicitamente escritos junto da marca de audio
+// no proprio nome/arquivo/descricao da fonte. Nao deduz ingles de "Dual"
+// nem portugues de "TB", qualidade, URL, debrid ou legendas.
+#define SM_DUAL_BR 1u
+#define SM_DUAL_EN 2u
+static inline unsigned streammax_audio_dual_idiomas_linha(const char *txt) {
+  const char *p = txt;
+  char linha[1100];
+  size_t n = 0;
+  if (!p || !*p) return 0;
+  // Secoes de subs/legendas NUNCA contam como faixas de audio, mesmo que
+  // tragam 🇧🇷, PT-BR ou EN no meio da descricao do Torrentio.
+  for (; *p && *p != '\n' && *p != '\r' && n + 1 < sizeof linha; p++) {
+    if (streammax_pt_token(p, "subs") || streammax_pt_token(p, "subtitles") ||
+        streammax_pt_token(p, "legendas") || streammax_pt_token(p, "legendado") ||
+        streammax_pt_token(p, "subtitle:")) break;
+    linha[n++] = *p;
+  }
+  linha[n] = 0;
+  if (!streammax_audio_dual_texto(linha) &&
+      !streammax_pt_token(linha, "audio:") &&
+      !streammax_pt_token(linha, "áudio:") &&
+      !streammax_pt_token(linha, "audio languages:") &&
+      !streammax_pt_token(linha, "audio languages") &&
+      !streammax_pt_token(linha, "dual")) return 0;
+  unsigned bits = 0;
+  if (streammax_pt_dica_explicitamente_brasileira(linha)) bits |= SM_DUAL_BR;
+  if (streammax_pt_token(linha, "english") ||
+      streammax_pt_token(linha, "inglês") ||
+      streammax_pt_token(linha, "ingles") ||
+      streammax_pt_token(linha, "eng") ||
+      streammax_pt_token(linha, "en") ||
+      strstr(linha, "🇬🇧") || strstr(linha, "🇺🇸")) bits |= SM_DUAL_EN;
+  return bits;
+}
+static inline unsigned streammax_audio_dual_idiomas_texto(const char *txt) {
+  unsigned bits = 0;
+  if (!txt) return 0;
+  while (*txt) {
+    char linha[1100];
+    size_t n = 0;
+    while (*txt && *txt != '\n' && *txt != '\r') {
+      if (n + 1 < sizeof linha) linha[n++] = *txt;
+      txt++;
+    }
+    linha[n] = 0;
+    bits |= streammax_audio_dual_idiomas_linha(linha);
+    if (*txt) txt++;
+  }
+  return bits;
+}
+static inline unsigned streammax_audio_dual_idiomas_fonte(const char *arquivo,
+                                                           const char *nome,
+                                                           const char *titulo,
+                                                           const char *descricao) {
+  // Detectar marcas apenas se a fonte DECLAROU dual audio.
+  if (!streammax_audio_dual_fonte(arquivo, nome, titulo, descricao)) return 0;
+  return streammax_audio_dual_idiomas_texto(arquivo) |
+         streammax_audio_dual_idiomas_texto(nome) |
+         streammax_audio_dual_idiomas_texto(titulo) |
+         streammax_audio_dual_idiomas_texto(descricao);
+}
 #endif
