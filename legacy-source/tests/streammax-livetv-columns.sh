@@ -20,10 +20,26 @@ assert 'else if (!okDesde) { okDesde = agora; okLongo = 0; }' in src
 assert '(previewLigado || tvTresColunas)' in src
 assert 'if (tvTresColunas && !gRetrato()) {' in src
 section = src.split('static void streammaxTvDesenhar(', 1)[1].split('void guia_desenhar(', 1)[0]
-assert 'gAgora(canal, agoraT, &ag)' in section
-assert 'gProximo(canal, agoraT, 0, &prox)' in section
+assert 'gAgora(canal,agoraT,&ag)' in section
+assert 'gProximo(canal,agoraT,0,&prox)' in section
 assert 'streammax_tv_progresso(' in section
-assert 'logoNaCaixa(c, logoCx' in section
+assert 'streammaxTvAnimar(dt);' in src
+assert 'smTvCatFocoPos = anim_mola(' in section
+assert 'smTvCanFocoPos = anim_mola(' in section
+assert 'gfx_cor((GfxRect){0,116.0f,NV_TELA_W,2.0f}' in section
+assert 'txt_linha(TXT_G30B, "STREAM"' in section
+assert 'txt_linha(TXT_G30B, "MAX"' in section
+assert 'smTvFoco(foco, tvColunaFoco == SM_TV_COL_CANAIS' in section
+assert 'smTvCanaisFade = anim_mola(' in section
+assert 'smTvProgramaFade = anim_mola(' in section
+assert 'if(c->fav) gfx_icone(' in section
+assert 'if(ph>330.0f)' in section
+assert 'px=infX+(infW-pw)*0.5f;' in section
+assert 'GfxRect pv={px,y+84.0f,pw,ph};' in section
+assert 'i18n("Sem programação disponível")' in section
+assert 'i18n("Selecione um canal para prévia")' in section
+
+assert 'logoNaCaixa(c,' in section
 assert 'pedirCanal(' not in section
 assert 'gfx_furo_raio(pv, raio);' in section
 assert 'video_pronto() && !player_carregando()' in section
