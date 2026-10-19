@@ -2155,7 +2155,10 @@ static void prepararAoAbrir(void) {
   const CatItem *ci;
   unsigned g;
   int lembrada;
-  if (!preparoAtivo() || ajustes_fonte_manual() || player_aberto() || player_mini_ativo() ||
+  // Nao preparar video na pagina de detalhe antes da primeira escolha.
+  // Mesmo com configuracao automatica antiga, somente a preferencia manual
+  // pode autorizar o preparo de uma fonte neste titulo.
+  if (!preparoAtivo() || player_aberto() || player_mini_ativo() ||
       player_retido() || aguardandoFonte || !detail_aberto() || preparoRodando) return;
   if (addons_estado() == ADD_BUSCANDO || stream_n() < 1 || stream_n_candidatas() < 1) return;
   ci = cat_item(detail_indice());
@@ -2171,11 +2174,12 @@ static void prepararAoAbrir(void) {
     static int ultN = -1, ultLembrada = -1;
     if (ultN != stream_n() || ultG != g || ultRev != fontepref_revisao() || strcmp(ultBase, base) ||
         SDL_GetTicks() - ultT > 1000) {
-      ultLembrada = base[0] ? fontepref_escolher(base) : -1;
+      ultLembrada = base[0] ? fontepref_escolher_manual(base) : -1;
       ultN = stream_n(); ultG = g; ultRev = fontepref_revisao(); ultT = SDL_GetTicks();
       snprintf(ultBase, sizeof ultBase, "%s", base);
     }
     lembrada = ultLembrada; }
+  if (lembrada < 0) { preparoInvalidar(); return; }
   preparoContexto(&contexto);
   if (preparoVale(alvo, lembrada)) { preparoBufferTentar(); return; }
   if (!preparo.falhou && preparoUltimo.tem && preparoUltimo.lista == g && !strcmp(preparoUltimo.alvo, alvo) &&
