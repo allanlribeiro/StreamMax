@@ -330,6 +330,16 @@ int trailer_suportado(void) {
 }
 static void nativoAplicar(void) {
   if (!aberto) return;
+  // Na TCL o trailer do HERO e uma SurfaceView debaixo do canvas. O fit
+  // inicial centralizava um quadro 16:9 numa janela muito larga, deixando
+  // um vazio preto no canto direito. Aplicar o cover assim que o quadro tem
+  // dimensoes, sem esperar os 800ms de estabilizacao do webOS/Tizen.
+  // O player de filmes e o trailer da pagina de detalhes nao mudam.
+#if defined(NV_ANDROID)
+  const int heroAndroid = dono == TRAILER_DONO_HOME && !noCartao && !cheia;
+#else
+  const int heroAndroid = 0;
+#endif
 #ifdef NV_TPK
   video_tpk_cartao_marcar(noCartao);
 #endif
@@ -360,7 +370,8 @@ static void nativoAplicar(void) {
   // ao plano no videoInfo como quadro INTEIRO e o zoom de verdade so e pedido
   // pela pessoa com o filme ja tocando. Pedido antes de tocar, o recorte era
   // aceito (-> 1) e ignorado (20/09/2026, meia noite de tentativas).
-  if (recortePendente && video_pronto() && video_largura() > 0 && video_altura() > 0 &&
+  if (!heroAndroid && recortePendente && video_pronto() &&
+      video_largura() > 0 && video_altura() > 0 &&
       !video_tocando() && !quadroInteiroEnviado) {
     video_janela_fonte(0, 0, video_largura(), video_altura(),
                        (int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
@@ -368,7 +379,7 @@ static void nativoAplicar(void) {
   }
   if (recortePendente && video_tocando() && !tocandoDesde) tocandoDesde = SDL_GetTicks();
   if (recortePendente && video_pronto() && video_largura() > 0 && video_altura() > 0 &&
-      tocandoDesde && SDL_GetTicks() - tocandoDesde >= 800) {
+      (heroAndroid || (tocandoDesde && SDL_GetTicks() - tocandoDesde >= 800))) {
     int sw, sh, sx, sy;
 #ifdef NV_TPK
     // O cartao e cover puro (zoom 1): video_tpk.c recorta a fonte onde ha
