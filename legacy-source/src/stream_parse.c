@@ -1096,6 +1096,10 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
             s.arquivo, s.nomeFonteCompleto, s.tituloFonte, s.descricao);
         if (bits & SM_DUAL_BR)
           snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-BR");
+        else if (bits & SM_DUAL_PTPT)
+          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt-PT");
+        else if (bits & SM_DUAL_PT)
+          snprintf(s.audioIdiomas, sizeof s.audioIdiomas, "%s", "pt");
         if (bits & SM_DUAL_EN) {
           size_t k = strlen(s.audioIdiomas);
           snprintf(s.audioIdiomas + k, sizeof s.audioIdiomas - k,
