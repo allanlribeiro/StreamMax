@@ -116,7 +116,7 @@ elif splash.stat().st_size < 1024:
     errors.append("Arte de abertura invalida ou vazia")
 else:
     with splash.open("rb") as arquivo:
-        if arquivo.read(3) != b"\\xff\\xd8\\xff":
+        if arquivo.read(3) != bytes((0xFF, 0xD8, 0xFF)):
             errors.append("A abertura final deve ser JPEG valido")
 abertura = root / "src/abertura.c"
 if abertura.is_file():
