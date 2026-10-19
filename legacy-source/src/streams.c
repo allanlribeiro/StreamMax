@@ -3047,6 +3047,7 @@ static int automaticoDaFolhaModo(void) {
 
 
 
+// 0 Todos, 1 Portugues, 2 Ingles, 3 Dual Audio.
 static int grupo, filtro, soMp4, soCache, soDub;
 
 // BOTOES DO CABECALHO. "Sem HDR" so existe onde ha o que renegociar (webOS);
@@ -3077,7 +3078,7 @@ static int nBotoes(void) {
   return (video_pode_forcar_sdr() ? 6 : 5) + (recarregarFonteContexto != 0);
 }
 static const char *idiomaFiltroAudio(void) {
-  return ling_audio_fonte(idioma_iso(ajustes_idioma()));
+  return soDub == 1 ? "pt" : soDub == 2 ? "en" : "";
 }
 static const char *rotuloBotao(int b) {
   if (b == BT_SEM_HDR) return "Sem HDR";
@@ -3085,14 +3086,16 @@ static const char *rotuloBotao(int b) {
   if (b == BT_CACHE)   return "Em cache";
   if (b == BT_DUB) {
     static char rotulo[96];
-    const char *pref = idiomaFiltroAudio();
-    snprintf(rotulo, sizeof rotulo, i18n("Áudio: %s"), pref[0] ? ling_selo(pref) : i18n("Todos"));
+    const char *nome = soDub == 1 ? "🇧🇷 Português"
+                      : soDub == 2 ? "🇺🇸 Inglês"
+                      : soDub == 3 ? "Dual Audio" : "Todos";
+    snprintf(rotulo, sizeof rotulo, "Áudio: %s", nome);
     return rotulo;
   }
   return NULL;
 }
 static int botaoLigado(int b) {
-  return (b == BT_SO_MP4 && soMp4) || (b == BT_CACHE && soCache) || (b == BT_DUB && soDub);
+  return (b == BT_SO_MP4 && soMp4) || (b == BT_CACHE && soCache) || (b == BT_DUB && soDub != 0);
 }
 static const char *iconeBotao(int b) {
   return b == BT_RECARREGAR ? "aj_rotate-cw" : b == BT_RECARREGAR_FONTE
@@ -3618,6 +3621,19 @@ static const char *idiomaDa(const Stream *s) {
 }
 static int temAudioPreferido(const Stream *s) {
   const char *pref = idiomaFiltroAudio();
+  if (soDub == 0) return 1;
+  if (soDub == 3) {
+    // Metadados com duas linguas distintas ou indicacao expressa de Dual.
+    // Evitar tratar legenda, resolucao ou a palavra DUB como dual.
+    if (s->audioIdiomas[0]) {
+      return audioDeclaradoEm(s, "pt") && audioDeclaradoEm(s, "en");
+    }
+    return streammax_pt_token(s->arquivo, "dual audio") ||
+           streammax_pt_token(s->arquivo, "dual.audio") ||
+           streammax_pt_token(s->rotulo, "dual audio") ||
+           streammax_pt_token(s->rotulo, "dual áudio") ||
+           streammax_pt_token(s->rotulo, "dual.audio");
+  }
   // All / unresolved Original: sem filtrar. Declaracao do addon sempre
   // prevalece, inclusive uma lista explicitamente ES ou EN.
   if (!pref[0] || audioDeclaradoEm(s, pref)) return 1;
@@ -3631,10 +3647,8 @@ static int temAudioPreferido(const Stream *s) {
 static const char *ajudaFiltroAudio(void) {
   static char ajuda[512];
   const char *pref = idiomaFiltroAudio();
-  snprintf(ajuda, sizeof ajuda, i18n(soDub
-    ? "Idioma do filtro de áudio: %s. OK tira o filtro."
-    : "Idioma do filtro de áudio: %s. OK liga o filtro."),
-    pref[0] ? i18n(ling_nome(pref)) : i18n("Todos"));
+  snprintf(ajuda, sizeof ajuda, "OK alterna: Todos → Português → Inglês → Dual Audio. Atual: %s.",
+    soDub == 3 ? "Dual Audio" : pref[0] ? ling_nome(pref) : "Todos");
   return ajuda;
 }
 
@@ -4251,7 +4265,7 @@ void stream_folha_evento(const SDL_Event *e) {
         case BT_SEM_HDR:    video_forcar_sdr(); aberta=0; break;
         case BT_SO_MP4:     soMp4 = !soMp4; rolagem=0;velRol=0; break;
         case BT_CACHE:      soCache = !soCache; rolagem=0;velRol=0; break;
-        case BT_DUB:        soDub = !soDub; rolagem=0;velRol=0; break;
+        case BT_DUB:        soDub = (soDub + 1) % 4; rolagem=0;velRol=0; break;
         default:            aberta=0; break;
       }
     }
