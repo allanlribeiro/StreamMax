@@ -18,6 +18,10 @@ on:
     paths:
       - '.github/workflows/streammax-apk-experimental.yml'
       - 'legacy-source/tests/streammax-home-visual.sh'
+      - 'legacy-source/tools/tizen-config.xml'
+      - 'legacy-source/deploy/app/appinfo.json'
+      - 'legacy-source/src/home.c'
+      - 'legacy-source/src/streammax_update.h'
 
 permissions:
   contents: read
