@@ -1,0 +1,22 @@
+name: StreamMax 1.0.6 Home checks
+on:
+  push:
+    branches:
+      - streammax/legacy-home-prefetch-106
+    paths:
+      - '.github/workflows/streammax-home-106-check.yml'
+      - 'legacy-source/src/home.c'
+      - 'legacy-source/tests/streammax-home-visual.sh'
+permissions:
+  contents: read
+jobs:
+  home-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Legacy Home visuals and artwork priority
+        run: bash legacy-source/tests/streammax-home-visual.sh
+      - name: Validate native playback regression contracts
+        run: |
+          bash legacy-source/tests/streammax-startup-stage.sh
+          bash legacy-source/tests/streammax-next-prefetch.sh
