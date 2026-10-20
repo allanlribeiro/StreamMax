@@ -12,6 +12,9 @@ int main(void) {
 
   // When the source disappears, show the list and let the viewer choose again.
   assert(streammax_should_ask_first_source(1, 3, -1));
+  assert(streammax_should_ask_first_source(1, 3, 3));
+  assert(streammax_should_ask_first_source(1, 3, 99));
+  assert(!streammax_should_ask_first_source(1, 3, 2));
 
   // No list yet: wait for add-ons, never show an empty selection dialog.
   assert(!streammax_should_ask_first_source(1, 0, -1));
