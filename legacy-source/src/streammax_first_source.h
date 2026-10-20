@@ -10,7 +10,10 @@ static inline int streammax_should_ask_first_source(int manualEnabled,
                                                      int availableStreams,
                                                      int rememberedIndex) {
   (void)manualEnabled;
-  return availableStreams > 0 && rememberedIndex < 0;
+  // Uma preferencia fora do intervalo nao pode iniciar uma fonte incorreta.
+  // Reabrir o seletor para que a pessoa escolha entre as fontes atuais.
+  return availableStreams > 0 &&
+         (rememberedIndex < 0 || rememberedIndex >= availableStreams);
 }
 
  // A series episode short-click is a playback request, not an explicit
