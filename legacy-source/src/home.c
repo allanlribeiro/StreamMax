@@ -1746,7 +1746,9 @@ static float escalaFil(int r) {
   if (homeCinematicaTV()) {
     TipoFileira t = fileiras[r].tipo;
     if (t == FILEIRA_CONTINUE || t == FILEIRA_RETORNO) e *= 0.76f;
-    else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.70f;
+    // StreamMax 1.0.7: TV de 50": ~8 posteres por fileira no lugar de ~11.
+    // Mantem escala e deslocamento ligados ao foco; nao altera celular/outros layouts.
+    else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.96f;
   }
   return e;
 }
