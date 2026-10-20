@@ -60,7 +60,7 @@ checks = {
     ],
     "src/streammax_first_source.h": [
         "static inline int streammax_should_ask_first_source(",
-        "return availableStreams > 0 && rememberedIndex < 0;",
+        "rememberedIndex < 0 || rememberedIndex >= availableStreams",
         "return !hasManualPreference;",
     ],
     "src/stream_parse.c": [
