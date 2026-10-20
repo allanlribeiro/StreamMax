@@ -5,6 +5,9 @@ name: StreamMax APK experimental
 # Mantem login por e-mail e bibliotecas nativas completas.
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - streammax/integracao-rc1-aprovada-tcl-1019
 
 permissions:
   contents: read
