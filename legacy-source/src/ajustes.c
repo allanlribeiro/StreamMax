@@ -3376,6 +3376,12 @@ float ajustes_rail_largura_fixa(void) {
   if (ajustes_rail_recolhida() || ajustes_menu_topo()) return 0.0f;
   borda = ajustes_home_layout() == HOME_LAYOUT_PADRAO ? NV_MENU_RAIL_BORDA_PADRAO
                                                       : NV_MENU_RAIL_BORDA_MODERNA;
+#ifdef NV_ANDROID
+  // Reservar a largura da barra rotulada (ja escalada 1.2x) e o vao
+  // de 64 px: as fileiras nunca ficam debaixo de "Configuracoes".
+  if (ajustes_home_layout() == HOME_LAYOUT_MODERNA && !layout_modo_mobile())
+    borda = 48.0f + 250.0f * NV_MENU_MODERNA_AUMENTO;
+#endif
   // The menu grows with the text scale (menuEscala, menu.c): real-space callers
   // (diagnostico, social) get that real width; a layer that already carries
   // the text scale (every layer when it is on) keeps the constants in its own

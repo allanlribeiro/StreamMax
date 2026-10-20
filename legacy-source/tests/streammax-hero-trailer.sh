@@ -12,12 +12,12 @@ def define(key):
     return float(match.group(1))
 # A imagem pode ser tela cheia; o video usa um destino proprio e termina
 # ANTES do viewport onde as fileiras ficam visiveis (TCL/Android TV).
-slot_bottom = min(define("NV_HERO_ARTE_H"), define("NV_SHELF_TOP") + 40.0)
+slot_bottom = min(define("NV_HERO_ARTE_H"), 378.0 + 60.0)
 assert slot_bottom > 0 and slot_bottom < define("NV_TELA_BASE_H")
 assert define("NV_HERO_ARTE_X") < define("NV_TELA_BASE_W")
 assert "static GfxRect heroTrailerArea(GfxRect arte)" in home
-assert "float h = fminf(NV_HERO_ARTE_H, NV_SHELF_TOP + 40.0f);" in home
-assert slot_bottom >= 550.0
+assert "float h = fminf(NV_HERO_ARTE_H, homeShelfTop() + 60.0f);" in home
+assert 420.0 <= slot_bottom <= 460.0
 # Na TCL a imagem deve tocar a borda DIREITA: o quadro nativo nao pode
 # continuar alinhado ao centro com tarja preta no lado direito.
 assert "float w = fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f);" in home
@@ -63,5 +63,5 @@ assert "#ifndef NV_ANDROID" in first.split("if (deslizando)",1)[0]
 assert "destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerArea(heroArteRect)" in home
 # O trailer nao ativa o modo cinema de tela cheia na TCL.
 assert "&& 0" in home.split("// TCL: trailer permanece no hero",1)[1].split("#endif",1)[0]
-print(f"OK: trailer direito 558 px, degradê inferior começa em 75%, esmaecimento alfa preservado (h={slot_bottom:.0f})")
+print(f"OK: trailer na vitrine compacta, degradê inferior começa em 75%, esmaecimento alfa preservado (h={slot_bottom:.0f})")
 PY

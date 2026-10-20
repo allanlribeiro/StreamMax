@@ -706,6 +706,21 @@ static float escalaDoAjuste(void) {
 // fileiras (home_desenhar). MODERNA devolve exatamente as constantes que este
 // arquivo sempre usou: tests/homelayouts_shot.sh compara o quadro byte a byte.
 static int layoutHome(void) { return ajustes_home_layout(); }
+// StreamMax 1.0.4: design de listas na Android TV. Layouts alternativos,
+// telefone e player continuam usando as geometrias de antes.
+static int homeCinematicaTV(void) {
+#ifdef NV_ANDROID
+  return layoutHome() == HOME_LAYOUT_MODERNA && !layout_modo_mobile();
+#else
+  return 0;
+#endif
+}
+static float homeShelfTop(void) {
+  return homeCinematicaTV() ? 378.0f : NV_SHELF_TOP;
+}
+static float homeCabecalhoH(void) {
+  return homeCinematicaTV() ? 48.0f : NV_LEGACY_ROW_HEAD_H;
+}
 static int homeRetratoTelefone(void) {
 #ifdef NV_TOUCH_UI
   return layout_modo_mobile() && NV_TELA_H > NV_TELA_W;
@@ -758,6 +773,7 @@ static float empurraHeroModerna(void) {
   if (homeRetratoTelefone()) return 620.0f - NV_SHELF_TOP;
   // O celular conserva o empurrao anterior: o layout compacto compartilha
   // esta conta, mas nao deve herdar a densidade nova da Home Android TV.
+  if (homeCinematicaTV()) return 24.0f;
   return heroCompactoTelefone()
        ? (NV_SHELF_TOP + 481.0f) * 0.75f - NV_SHELF_TOP
        : NV_HOME_HERO_EMPURRA;
@@ -786,7 +802,7 @@ static float topoFileiras(void) {
     case HOME_LAYOUT_PADRAO:
       return heroOn ? NV_PAD_TOPO_FIL : NV_DIN_TOPO_FIL - 10.0f;
     case HOME_LAYOUT_DINAMICA: return NV_DIN_TOPO_FIL;
-    default:                   return NV_SHELF_TOP;
+    default:                   return homeShelfTop();
   }
 }
 // Acima disto nada de fileira se desenha (o gfx_recorte): a Moderna deixa as
@@ -808,7 +824,7 @@ static float corteFileiras(void) {
     case HOME_LAYOUT_PADRAO:
       return ajustes_hero_ligado() ? NV_PAD_BANNER_Y + NV_PAD_BANNER_H + 8.0f : 0.0f;
     case HOME_LAYOUT_DINAMICA: return 0.0f;
-    default:                   return NV_SHELF_TOP - (heroCompactoTelefone() ? 0.0f : 96.0f);
+    default:                   return homeShelfTop() - (heroCompactoTelefone() ? 0.0f : 96.0f);
   }
 }
 // Quanto as fileiras DESCEM com o foco no destaque (a rolagem vale menos isto).
@@ -846,7 +862,7 @@ static float divPainelW(void) { return homeLarguraUtil() * NV_DIV_PAINEL_F; }
 static float divArteH(void) {
   float h = divPainelW() * 9.0f / 16.0f;
   if (layoutHome() != HOME_LAYOUT_DINAMICA) {
-    float hMax = NV_TELA_H - topoFileiras() - NV_LEGACY_ROW_HEAD_H - NV_DIV_META_H - 24.0f;
+    float hMax = NV_TELA_H - topoFileiras() - homeCabecalhoH() - NV_DIV_META_H - 24.0f;
     if (h > hMax) h = hMax;
   }
   return h;
@@ -872,7 +888,7 @@ static int cartazPadrao(void) {
 static float escalaCartazPadrao(void) {
   // Em px reais: a escala de texto engorda o topo (hero, titulos) mas nao o
   // cartaz; o teto nunca fica abaixo do que seria com a escala em 100%.
-  float teto = (NV_TELA_H / gfx_poster_k() - topoFileiras() - NV_LEGACY_ROW_HEAD_H - NV_PAD_CARTAZ_FOLGA)
+  float teto = (NV_TELA_H / gfx_poster_k() - topoFileiras() - homeCabecalhoH() - NV_PAD_CARTAZ_FOLGA)
              / NV_PAD_CARTAZ_H;
   float e = escalaDoAjuste();
   if (homeRetratoTelefone()) e *= homeLarguraUtil() * 0.28f / (NV_PAD_CARTAZ_W * gfx_poster_k());
@@ -1485,6 +1501,7 @@ static float fileiraGapBase(void) {
   // Dinamica: um vao so, mais justo, para caber mais fileiras em volta da do
   // meio (layout.h, NV_DIN_FILEIRA_GAP).
   if (layoutHome() == HOME_LAYOUT_DINAMICA) return NV_DIN_FILEIRA_GAP;
+  if (homeCinematicaTV()) return 36.0f;
   return ajustes_posteres_deitados() ? NV_FILEIRA_GAP_LAND : NV_FILEIRA_GAP;
 }
 // Raio do card, em fracao do menor lado (o SDF do shader e normalizado). Este e
@@ -1659,7 +1676,7 @@ static float escalaDe(TipoFileira t) {
 static float limita43(float fator, float e) {
   float hMax, eMax, teto;
   if (fator <= 1.0f || layoutHome() == HOME_LAYOUT_DINAMICA) return e;
-  hMax = NV_TELA_H - (topoFileiras() + NV_LEGACY_ROW_HEAD_H) - NV_43_FOLGA_BASE;
+  hMax = NV_TELA_H - (topoFileiras() + homeCabecalhoH()) - NV_43_FOLGA_BASE;
   // O foco cresce para BAIXO no 4:3 (cardY), e o anel fica por fora.
   hMax = hMax / (1.0f + escalaDe(FILEIRA_DESTAQUE_QUADRADO))
        - (ajustes_borda_foco() ? NV_ANEL_FOCO : 0.0f);
@@ -1685,7 +1702,7 @@ static void medidaCol(const Fileira *f, float *w, float *h) {
 static float limitaPosterG(float e) {
   float hMax;
   if (layoutHome() == HOME_LAYOUT_DINAMICA) return e;
-  hMax = NV_TELA_H - (topoFileiras() + NV_LEGACY_ROW_HEAD_H) - NV_43_FOLGA_BASE;
+  hMax = NV_TELA_H - (topoFileiras() + homeCabecalhoH()) - NV_43_FOLGA_BASE;
   hMax = hMax / (1.0f + escalaDe(FILEIRA_POSTER_GRANDE))
        - (ajustes_borda_foco() ? NV_ANEL_FOCO : 0.0f);
   return e * (NV_POSTER_G_H * gfx_poster_k()) > hMax ? hMax / (NV_POSTER_G_H * gfx_poster_k()) : e;
@@ -1724,6 +1741,13 @@ static float escalaFil(int r) {
     float limite = (homeLarguraUtil() - xOffTipo(fileiras[r].tipo)) * 0.9f;
     if (w > 0.0f && e * w > limite) e = limite / w;
   }
+  // Molduras compactas da referencia visual, mantendo a altura e a largura
+  // na mesma proporcao e sem mexer na ordem das fileiras.
+  if (homeCinematicaTV()) {
+    TipoFileira t = fileiras[r].tipo;
+    if (t == FILEIRA_CONTINUE || t == FILEIRA_RETORNO) e *= 0.76f;
+    else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.70f;
+  }
   return e;
 }
 static float larguraFil(int r) {
@@ -1759,14 +1783,14 @@ static float alturaTotalFil(int r) {
 static float alfaFileiraHome(int r, float y, float topo, float corte) {
   float fade = anim_clamp((y - (topo - 80.0f)) / 80.0f, 0.0f, 1.0f);
   if (layoutHome() == HOME_LAYOUT_DINAMICA) {
-    float meia = 0.5f * (NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r));
+    float meia = 0.5f * (homeCabecalhoH() + alturaTotalFil(r));
     fade = anim_clamp((y + meia) / meia, 0.0f, 1.0f);
-    float fatia = anim_clamp((y + NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r)) / 480.0f, 0.0f, 1.0f);
+    float fatia = anim_clamp((y + homeCabecalhoH() + alturaTotalFil(r)) / 480.0f, 0.0f, 1.0f);
     if (fatia > fade) fade = fatia;
   }
 #ifdef NV_TOUCH_UI
   if ((telefoneui_ativo() && toqueLivreY) || homeRetratoTelefone())
-    fade = anim_clamp((y + NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r) - corte) / 80.0f, 0.0f, 1.0f);
+    fade = anim_clamp((y + homeCabecalhoH() + alturaTotalFil(r) - corte) / 80.0f, 0.0f, 1.0f);
 #endif
   return fade;
 }
@@ -1803,8 +1827,8 @@ static float dinRolagemCentrada(int r, float off) {
   int i;
   if (r < 0 || r >= nFileiras) return off;
   for (i = 0; i < nFileiras; i++)
-    total += NV_LEGACY_ROW_HEAD_H + alturaTotalFil(i) + (i ? fileiraGap() : 0.0f);
-  s = NV_DIN_TOPO_FIL + off + 0.5f * (NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r))
+    total += homeCabecalhoH() + alturaTotalFil(i) + (i ? fileiraGap() : 0.0f);
+  s = NV_DIN_TOPO_FIL + off + 0.5f * (homeCabecalhoH() + alturaTotalFil(r))
     - NV_DIN_CENTRO_FIL;
   sMax = NV_DIN_TOPO_FIL + total - (NV_TELA_H - NV_DIN_FOLGA_BASE);
   if (s > sMax) s = sMax;
@@ -1885,7 +1909,7 @@ static int palcoColunaEm(int r, float u);
 static float toqueHomeMaxY(void) {
   float fim = topoFileiras();
   for (int r = 0; r < nFileiras; r++)
-    fim += NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r) + (r + 1 < nFileiras ? fileiraGap() : 0.0f);
+    fim += homeCabecalhoH() + alturaTotalFil(r) + (r + 1 < nFileiras ? fileiraGap() : 0.0f);
   return fmaxf(-empurraHero(), fim - NV_TELA_H + 48.0f);
 }
 static float toqueHomeMaxX(int r) {
@@ -2035,7 +2059,7 @@ static int toqueHomeRolar(const PonteiroRolagem *e) {
     toqueFileira = -1;
     if (!e->eixoY) {
       for (int r = 0; r < nFileiras; r++) {
-        float h = NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r);
+        float h = homeCabecalhoH() + alturaTotalFil(r);
         if (e->y >= y && e->y < y + h) { toqueFileira = r; break; }
         y += h + fileiraGap();
       }
@@ -2074,7 +2098,7 @@ static void toqueHomeRetomarFoco(void) {
     float y = topoFileiras() - scrollY, melhor = 1e9f;
     int escolhido = foco.fileira;
     for (int r = 0; r < nFileiras; r++) {
-      float h = NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r);
+      float h = homeCabecalhoH() + alturaTotalFil(r);
       float d = fabsf(y + h * 0.5f - (corteFileiras() + NV_TELA_H) * 0.5f);
       if (d < melhor) { melhor = d; escolhido = r; }
       y += h + fileiraGap();
@@ -3940,7 +3964,7 @@ static void home_atualizar_(float dt, Uint32 agora) {
   } else {
     int r = foco.fileira;
     for (int i = 0; i < r && i < nFileiras; i++)
-      alvoY += NV_LEGACY_ROW_HEAD_H + alturaTotalFil(i) + fileiraGap();
+      alvoY += homeCabecalhoH() + alturaTotalFil(i) + fileiraGap();
     if (layoutHome() == HOME_LAYOUT_DINAMICA) alvoY = dinRolagemCentrada(r, alvoY);
   }
   scrollY = homeScrollYPasso(alvoY, dt, motionReduzido);
@@ -4664,7 +4688,8 @@ static GfxRect heroTrailerArea(GfxRect arte) {
     // degradê de base comecava aos 245 px. Agora o trailer ocupa a faixa
     // superior até 558 px, sem passar da primeira fileira (topo > 660 px).
     // Nao estender ate os 1080 do backdrop nem cortar em corteFileiras().
-    float h = fminf(NV_HERO_ARTE_H, NV_SHELF_TOP + 40.0f);
+    // O trailer termina ANTES dos cards, com fade suave nos 25% finais.
+    float h = fminf(NV_HERO_ARTE_H, homeShelfTop() + 60.0f);
     return (GfxRect){x, 0.0f, w, h};
   }
   if (layoutHome() == HOME_LAYOUT_DINAMICA) {
@@ -4718,7 +4743,7 @@ static GfxRect heroArtworkOverlayRect(GfxRect r, GfxRect hero) {
 static float heroBaseCopia(int lay, GfxRect r, float empurra, float descida) {
   if (lay == HOME_LAYOUT_PADRAO) return r.y + r.h - NV_PAD_TEXTO_BASE + descida;
   if (lay == HOME_LAYOUT_DINAMICA) return r.y + alturaTextoHeroDin() - NV_DIN_TEXTO_BASE + descida;
-  return NV_SHELF_TOP - NV_HERO_COPY_GAP - 24.0f + empurra + descida;
+  return homeShelfTop() - NV_HERO_COPY_GAP - 24.0f + empurra + descida;
 }
 static GfxRect heroEditorialRect(int editorial, float aspect) {
   float largura = NV_TELA_W;
@@ -4811,6 +4836,11 @@ static void desenhaHero(Uint32 agora, float saida) {
     btnH = NV_HERO_BOTAO_COMPACTO_H; btnGap = 22.0f;
   }
 
+  // Logo, descricao e botao ficam na faixa cinematografica compacta da TCL.
+  if (homeCinematicaTV()) {
+    logoH = 118.0f; sinW = 560.0f; sinLinhas = 2;
+    btnH = 54.0f; btnGap = 12.0f;
+  }
   sinW = homeTextoLargura(sinW);
   if(!focoHero && lay==HOME_LAYOUT_MODERNA && foco.fileira>=0 && foco.fileira<nFileiras && fileiras[foco.fileira].tipo==FILEIRA_SOCIAL) {
     float x=homeConteudoX(),a=(1-saida)*heroVisivelToque();
@@ -5333,7 +5363,9 @@ static void desenhaHero(Uint32 agora, float saida) {
   // each layout's bottom boundary; use the measured copy for the action Y.
   float empurra = scrollY < 0.0f ? -scrollY : 0.0f;
   float empurraMax = lay == HOME_LAYOUT_MODERNA ? empurraHero() : NV_HOME_HERO_EMPURRA;
-  float aBotao = anim_clamp(empurra / empurraMax, 0.0f, 1.0f);
+  float aBotao = empurraMax > 1.0f
+                ? anim_clamp(empurra / empurraMax, 0.0f, 1.0f)
+                : (float)focoHero;
   float base = heroBaseCopia(lay, r, empurra, descidaCopy);
   // Padrao e Dinamica ancoram o bloco na BASE DO PROPRIO DESTAQUE (e o botao
   // sempre existe, com o foco ou sem ele): o texto anda com a arte, e nao com
@@ -7449,7 +7481,7 @@ static void home_desenhar_(Uint32 agora) {
     gfx_opacidade_grupo=fade*fade*(3-2*fade)*(1.0f-cinema);
     const float grupoFil = gfx_opacidade_grupo;
     { int n = fileiras[r].n;
-      int visivel = y < NV_TELA_H && y + NV_LEGACY_ROW_HEAD_H + alturaFil(r) > corte;
+      int visivel = y < NV_TELA_H && y + homeCabecalhoH() + alturaFil(r) > corte;
       // Fileira que acabou de ganhar itens (o catalogo chegou) ou a volta
       // depois de uma ausencia. So as VISIVEIS: as de baixo ja estarao
       // assentadas quando o foco descer ate elas.
@@ -7470,13 +7502,13 @@ static void home_desenhar_(Uint32 agora) {
     // `y` é o topo do cabeçalho da fileira; os cards começam depois do título.
     // Separar os dois evita que o título da fileira seguinte seja desenhado
     // sobre a arte da anterior quando a fileira tem cards altos.
-    float cardY = y + NV_LEGACY_ROW_HEAD_H;
+    float cardY = y + homeCabecalhoH();
 
     int deitado = editorial(tipo) || tipo == FILEIRA_LARGA || tipo == FILEIRA_HEROI ||
                   ((tipo != FILEIRA_CONTINUE && tipo != FILEIRA_POSTER_GRANDE && tipo != FILEIRA_HEROI_DIVIDIDO) &&
                    ajustes_posteres_deitados());
     int rotuloFora = temRotulo(tipo);
-    if (y < NV_TELA_H + 200 && y + NV_LEGACY_ROW_HEAD_H + lh > -200) {
+    if (y < NV_TELA_H + 200 && y + homeCabecalhoH() + lh > -200) {
       // `catalogTypeSuffixEnabled`. formatCatalogRowTitle (homeUtils.js:62) faz
       // `if (!showTypeSuffix) return base;` — devolve o nome capitalizado e
       // pronto. Aqui o sufixo e tirado no DESENHO e nao na descoberta, senao a
@@ -7542,12 +7574,12 @@ static void home_desenhar_(Uint32 agora) {
         amigosfil_desenhar(homeConteudoX() + bordaX(r), cardY, alturaFil(r), corte,
                            foco.fileira == r && !focoHero, foco.coluna, agora);
         if (foco.fileira == r && !focoHero) temItemFoco = 0;
-        y += NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r) + fileiraGap();
+        y += homeCabecalhoH() + alturaTotalFil(r) + fileiraGap();
         continue;
       }
       if (tipo == FILEIRA_CATALOGOS) {
         desenhaAtalhos(r, cardY);
-        y += NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r) + fileiraGap();
+        y += homeCabecalhoH() + alturaTotalFil(r) + fileiraGap();
         continue;
       }
 
@@ -7920,7 +7952,7 @@ static void home_desenhar_(Uint32 agora) {
       if (tipo == FILEIRA_PALCO) palcoLegenda(r, cardY + artH, lw);
       if (tipo == FILEIRA_HEROI_DIVIDIDO) desenhaDividido(r, cardY);
     } else if (tipo == FILEIRA_LINHA_TEMPO) tempoEntraEm[r] = 0;   // fora: redesenha ao voltar
-    y += NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r) + fileiraGap();
+    y += homeCabecalhoH() + alturaTotalFil(r) + fileiraGap();
   }
 
   // DEPOIS DA ULTIMA FILEIRA: o aviso de que ha mais catalogo do que caberia.
@@ -7978,11 +8010,11 @@ static void home_desenhar_(Uint32 agora) {
     int primeira = -1, ultima = -1;
     float fy = topoFil - scrollY + bordaPag.x;
     for (int r = 0; r < nFileiras; r++) {
-      if (fy < NV_TELA_H + 200 && fy + NV_LEGACY_ROW_HEAD_H + alturaFil(r) > -200) {
+      if (fy < NV_TELA_H + 200 && fy + homeCabecalhoH() + alturaFil(r) > -200) {
         if (primeira < 0) primeira = r;
         ultima = r;
       }
-      fy += NV_LEGACY_ROW_HEAD_H + alturaTotalFil(r) + fileiraGap();
+      fy += homeCabecalhoH() + alturaTotalFil(r) + fileiraGap();
     }
     int dir = adiante.direcao < 0 ? -1 : 1, pediu = 0;
     for (int passo = 1; primeira >= 0 && passo <= 3 && !pediu; passo++) {

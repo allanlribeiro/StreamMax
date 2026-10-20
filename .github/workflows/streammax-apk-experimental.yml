@@ -12,6 +12,7 @@ on:
       - streammax/atualizacao-direta-101-v1
       - streammax/ota-end-to-end-102-1020
       - streammax/home-cinematica-trailer-103-1020
+      - streammax/home-listas-premium-104-1020
 
 permissions:
   contents: read
