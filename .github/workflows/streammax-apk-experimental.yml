@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - streammax/integracao-rc1-aprovada-tcl-1019
+      - streammax/branding-discreto-rc1-142-1020
 
 permissions:
   contents: read
