@@ -13,6 +13,7 @@ on:
       - streammax/ota-end-to-end-102-1020
       - streammax/home-cinematica-trailer-103-1020
       - streammax/home-listas-premium-104-1020
+      - streammax/abertura-etapas-startup-105-1020
 
 permissions:
   contents: read
@@ -51,6 +52,7 @@ jobs:
           grep -Fq 'streammax_should_ask_episode_source(' legacy-source/src/detail.c
           python3 migration/check-player-original-engine.py
           bash legacy-source/tests/streammax-first-source.sh
+          bash legacy-source/tests/streammax-startup-stage.sh
           bash legacy-source/tests/streammax-hero-trailer.sh
           bash legacy-source/tests/streammax-home-visual.sh
           bash legacy-source/tests/streammax-next-prefetch.sh
