@@ -1225,7 +1225,7 @@ void legendasui_corpo(GfxRect c, float a) {
   montarLinhas();
   pont = !menu && a > 0.99f && ponteiro_ativo();
   plrui_kicker(tituloSessao(), x0 + 10.0f, y, 115, 115, 113, a);
-  { TxtLinha t = txt_linha(TXT_ILHA_PERGUNTA, ver ? nomeIdioma(verIdioma) : mais ? "Todas as legendas" : "Recomendadas", 243, 242, 239, 255);
+  { TxtLinha t = txt_linha(TXT_ILHA_PERGUNTA, ver ? nomeIdioma(verIdioma) : i18n("Legendas"), 243, 242, 239, 255);
     float ty = y + 22.0f;
     const char *rot[2] = { "Faixas", "Estilo" };
     int cont[2] = { nCand, -1 };
@@ -1238,6 +1238,14 @@ void legendasui_corpo(GfxRect c, float a) {
     } }
   y += LU_TIT_H + 14.0f;
   atualizarIdiomas();
+  // Divisao visual do Nuvio original: idiomas, lista e estilo no mesmo vidro.
+  // O conteudo e o foco existentes continuam sendo controlados pelo seletor.
+  { float sep1 = x0 + LU_IDIOMAS_LARG + LU_IDIOMAS_ESP * 0.5f;
+    float sep2 = c.x + c.w - LU_PAD_X - LU_EST_RESUMO_W - LU_EST_GAP * 0.5f;
+    float alto = 505.0f;
+    gfx_cor((GfxRect){sep1, y + 8.0f, 1.0f, alto}, 0.0f, 1, 1, 1, 0.12f * a);
+    gfx_cor((GfxRect){sep2, y + 8.0f, 1.0f, alto}, 0.0f, 1, 1, 1, 0.12f * a);
+  }
   desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);
   desenharEstiloResumo(c.x + c.w - LU_PAD_X - LU_EST_RESUMO_W,
                        y, LU_EST_RESUMO_W, a);
