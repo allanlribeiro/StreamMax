@@ -333,8 +333,9 @@ static void cartaoCentro(Uint32 agora) {
     float raio = RAIO_CORPO * cresce + h * 0.5f * (1.0f - cresce);
     if (raio > h * 0.5f) raio = h * 0.5f;
     if (raio > w * 0.5f) raio = w * 0.5f;
-    if (c->painelEsquerdo && c->w > 1200.0f) {
-      // Vidro fumê translúcido: o vídeo continua visível atrás das legendas.
+    if (c->painelEsquerdo) {
+      // Vidro fumê compartilhado por áudio, legendas e estilo: o vídeo
+      // continua visível e os painéis mantêm a mesma identidade visual.
       gfx_sombra_sob((GfxRect){ R.x - 12.0f, R.y - 4.0f, R.w + 24.0f, R.h + 20.0f },
                      1.0f, 0, 0.5f, 0, 0, 0, 0.32f * cenA, R, raio * R.h, cenA);
       gfx_cor(R, raio, 0.015f, 0.022f, 0.038f, 0.78f * cenA);
