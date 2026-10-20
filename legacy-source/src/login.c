@@ -210,12 +210,24 @@ static void loginAcento(float *r, float *g, float *b) {
 #endif
 }
 
+// A TCL informa NUVIO_INTERFACE_AUTO=0 quando o hardware e TV.
+// A preferencia de interface pode estar salva como Mobile em ajustes antigos;
+// por isso o branding do login NAO pode depender so de layout_modo_mobile().
+static int loginEhTvAndroid(void) {
+#ifdef NV_ANDROID
+  const char *autoMobile = getenv("NUVIO_INTERFACE_AUTO");
+  if (autoMobile && !strcmp(autoMobile, "0")) return 1;
+  return !layout_modo_mobile() && NV_TELA_W > NV_TELA_H;
+#else
+  return 0;
+#endif
+}
+
 // Cartao central somente na TV Android (canvas 1920x1080 da TCL P7K).
 // No celular e nas demais plataformas o layout tradicional permanece.
 static void painelLoginStreamMax(void) {
 #ifdef NV_ANDROID
-  // NV_TOUCH_UI e definido tambem no APK da TV: verificar o modo real.
-  if (layout_modo_mobile() || NV_TELA_W <= NV_TELA_H) return;
+  if (!loginEhTvAndroid()) return;
   GfxRect painel = { (NV_TELA_W - 1050.0f) * 0.5f, 82.0f, 1050.0f, 768.0f };
   // Fundo azul-marinho sem blur, translucido o suficiente para o splash.
   gfx_cor(painel, 0.033f, 0.025f, 0.041f, 0.076f, 0.94f);
@@ -364,7 +376,7 @@ void login_desenhar(Uint32 agora) {
   (void)agora;
   { GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
 #ifdef NV_ANDROID
-    if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {
+    if (loginEhTvAndroid()) {
       // Login StreamMax: fundo estatico preto-azulado como o restante da TCL.
       // Nao mostrar mais as listras roxas/laranjas do login Legacy.
       gfx_cor(tela, 0.0f, 0.004f, 0.010f, 0.023f, 1.0f);
@@ -379,13 +391,13 @@ void login_desenhar(Uint32 agora) {
   ponteiro_camada();
   ponteiro_alvo(0, 0, NV_TELA_W, NV_TELA_H, NULL, NULL, 0, 0);
 #ifdef NV_ANDROID
-  if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {
-    // Na posicao do antigo icone Nuvio, somente o S oficial.
-    logoapp_streammax_simbolo(
-        (GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 70.0f, 84.0f }, 1.0f);
-  } else
+  // Nunca deixar o logo do Nuvio reaparecer no login Android, mesmo quando
+  // a preferencia de layout ou o viewport da TV estiverem inconsistentes.
+  logoapp_streammax_simbolo(
+      (GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 70.0f, 84.0f }, 1.0f);
+#else
+  logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);
 #endif
-    logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);
   y = 118.0f;
   y += tituloLogin(y);
 
