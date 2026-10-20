@@ -4866,12 +4866,13 @@ static void stream_folha_desenharCorpo_(Uint32 agora) {
   // de vidro escolhe o miolo: translucido (gfx_vidro_folha) ou solido.
   { const int vid = ajustes_vidro();
     GfxRect corpo={x,FOLHA_MARGEM,FOLHA_W,NV_TELA_H-2*FOLHA_MARGEM};
-    gfx_cor((GfxRect){0,0,NV_TELA_W,NV_TELA_H},0,0,0,0,(vid?.30f:.42f)*anim);
-    if (vid) {
-      gfx_rect((GfxRect){corpo.x-18.0f,corpo.y-8.0f,corpo.w+36.0f,corpo.h+40.0f},
-               0,GFX_SOMBRA,1.0f,0,0,.5f,0,0,0,.38f*anim);
-      gfx_vidro_folha(corpo,FOLHA_RAIO_IL/corpo.h,anim);
-    } else plrui_material(corpo,FOLHA_RAIO_IL,0,anim); }
+    // Mesmo vidro fumê do seletor de áudio/legendas: preservar o vídeo
+    // visível atrás das fontes sem depender da preferência global de vidro.
+    gfx_veu_css((GfxRect){0,0,NV_TELA_W,NV_TELA_H},3,1.38f,1.0f,.42f*anim);
+    gfx_rect((GfxRect){corpo.x-18.0f,corpo.y-8.0f,corpo.w+36.0f,corpo.h+40.0f},
+             0,GFX_SOMBRA,1.0f,0,0,.5f,0,0,0,.32f*anim);
+    gfx_cor(corpo,FOLHA_RAIO_IL/corpo.h,.015f,.022f,.038f,.78f*anim);
+    (void)vid; }
   corpoFolha(x, FOLHA_W, anim, agora, 0);
 }
 // `anim` aqui e o alfa do corpo (sombra a variavel da mola de proposito: na
