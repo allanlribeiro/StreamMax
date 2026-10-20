@@ -41,7 +41,7 @@ assert 'return ajustes_borda_foco() ? 0.02f : 0.045f;' in home
 assert 'gfx_borda_foco_atual = ajustes_borda_foco() ? 0.55f : 0.0f;' in home
 assert "anim_mola(animFoco[r][c], alvo, dt" in home
 assert "ajustes_raio_poster_px()" in home
-assert '#define SM_UPDATE_VERSION "1.0.5"' in up
+assert '#define SM_UPDATE_VERSION "1.0.6"' in up
 assert "int limite = fileiras[r].n < 4 ? fileiras[r].n : 4;" in home
 print("OK: Home StreamMax: visual preservado e limite de arte prioritária validado")
 PY
