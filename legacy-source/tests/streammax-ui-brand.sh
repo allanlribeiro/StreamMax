@@ -27,3 +27,24 @@ assert 'if (animPin > 0.004f) desenhaPin();' in src
 assert 'foco = perfis_indice_sugerido();' in src
 print("OK: StreamMax Signature nos perfis, com fotos, PIN e Continuar intactos")
 PY
+
+# Contrato visual do player: audio, legendas e fontes compartilham vidro fume,
+# sem alterar a escolha manual, o Media3 ou a navegacao pelo controle remoto.
+python3 - <<'PY'
+from pathlib import Path
+ilha = Path("src/plrilha.c").read_text(encoding="utf-8")
+leg = Path("src/legendasui.c").read_text(encoding="utf-8")
+fontes = Path("src/streams.c").read_text(encoding="utf-8")
+faixas = Path("src/faixas.c").read_text(encoding="utf-8")
+assert 'if (c->painelEsquerdo) {' in ilha
+assert 'gfx_cor(R, raio, 0.015f, 0.022f, 0.038f, 0.78f * cenA);' in ilha
+assert 'const int seletorLegendas = c->w > 1200.0f;' in ilha
+assert 'desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);' in leg
+assert 'desenharEstiloResumo(' in leg
+assert 'float sep1 = ' in leg and 'float sep2 = ' in leg
+assert 'gfx_cor(corpo,FOLHA_RAIO_IL/corpo.h,.015f,.022f,.038f,.78f*anim);' in fontes
+assert 'stream_folha_escolheu' in fontes
+assert 'else if (modo) legendasui_corpo(c, a);' in faixas
+assert 'else corpoLista(c, a);' in faixas
+print("OK: identidade visual comum em audio, legendas e fontes")
+PY
