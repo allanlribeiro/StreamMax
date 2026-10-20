@@ -5076,10 +5076,10 @@ static void corpoFolha(float x, float w, float anim, Uint32 agora, int ilha) {
       if (b > t) ponteiro_alvo(r.x, t, r.w, b - t, ponteiroFolhaLinha, NULL, row, 0);
     }
     if(sel){
-      // Foco so pela superficie clara: o contorno saiu a pedido do dono (02/10).
-      // No solido a superficie e um cinza opaco um degrau acima do miolo.
-      if (ajustes_vidro()) gfx_cor(r,FOLHA_RAIO/h,1,1,1,.12f*anim);
-      else gfx_cor(r,FOLHA_RAIO/h,.17f,.176f,.204f,anim);
+      // Destaque cinematografico discreto: superficie azul-escura sem
+      // contorno pesado, preservando a leitura dos metadados da fonte.
+      if (ajustes_vidro()) gfx_cor(r,FOLHA_RAIO/h,.07f,.34f,.66f,.23f*anim);
+      else gfx_cor(r,FOLHA_RAIO/h,.055f,.15f,.27f,anim);
     }
     // COLUNA DA DIREITA: tamanho grande, addon embaixo. Medida primeiro: o
     // titulo e a fileira de logos param antes dela.
