@@ -69,7 +69,9 @@
 #include "telefoneui.h"
 // Referencia StreamMax: poster/contexto livre a esquerda, cards e chips em
 // painel amplo a direita. Dentro do player preserva o tamanho legado.
-#define FOLHA_W        telefoneui_largura((player_aberto() ? 820.0f : 1070.0f), NV_TELA_W, FOLHA_MARGEM)
+// Antes de tocar: painel amplo (60% da tela) para ler os detalhes da fonte.
+// Durante a reproducao: painel compacto, preservando a imagem do video.
+#define FOLHA_W        telefoneui_largura((player_aberto() ? 820.0f : NV_TELA_W * 0.60f), NV_TELA_W, FOLHA_MARGEM)
 #define FOLHA_MARGEM    40.0f
 #define FOLHA_RAIO_IL   36.0f
 #define FOLHA_PAD_E     48.0f  // da borda da folha ao cartao da linha
