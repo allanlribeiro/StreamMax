@@ -4925,7 +4925,7 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   const float catLinY = y + 47.0f;
   GCanal *canal = linhaItem(focoLin, focoCol);
   GfxRect fundo = {0, 0, NV_TELA_W, NV_TELA_H};
-  TxtLinha sub;
+  TxtLinha titulo, sub;
   char aux[160];
 
   // Cabecalho com a escrita oficial (sem trocar o layout de 3 colunas).
