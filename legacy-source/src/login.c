@@ -363,23 +363,26 @@ void login_desenhar(Uint32 agora) {
   float y;
   (void)agora;
   { GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
-    if (!login_fundo_desenhar(1.0f))
-      gfx_cor(tela, 0.0f, NV_COR_FUNDO_R, NV_COR_FUNDO_G, NV_COR_FUNDO_B, 1.0f);
 #ifdef NV_ANDROID
     if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {
-      // As listras do splash viram textura sutil, nao dominam o formulario.
-      gfx_cor(tela, 0.0f, 0.012f, 0.022f, 0.045f, 0.80f);
+      // Login StreamMax: fundo estatico preto-azulado como o restante da TCL.
+      // Nao mostrar mais as listras roxas/laranjas do login Legacy.
+      gfx_cor(tela, 0.0f, 0.004f, 0.010f, 0.023f, 1.0f);
+      gfx_cor((GfxRect){0, 0, NV_TELA_W, 170.0f},
+              0.0f, 0.008f, 0.024f, 0.054f, 0.42f);
       painelLoginStreamMax();
-    }
+    } else
 #endif
+    if (!login_fundo_desenhar(1.0f))
+      gfx_cor(tela, 0.0f, NV_COR_FUNDO_R, NV_COR_FUNDO_G, NV_COR_FUNDO_B, 1.0f);
   }
   ponteiro_camada();
   ponteiro_alvo(0, 0, NV_TELA_W, NV_TELA_H, NULL, NULL, 0, 0);
 #ifdef NV_ANDROID
   if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {
-    // Marca tipografica propria, sem reintroduzir o simbolo do Nuvio Legacy.
-    TxtLinha marca = txt_linha(TXT_G30B, "STREAMMAX", 218, 234, 255, 255);
-    txt_desenhar_alpha(marca, NV_MARGEM_X, NV_MARGEM_Y + 20.0f, 1.0f);
+    // Na posicao do antigo icone Nuvio, somente o S oficial.
+    logoapp_streammax_simbolo(
+        (GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 70.0f, 84.0f }, 1.0f);
   } else
 #endif
     logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);

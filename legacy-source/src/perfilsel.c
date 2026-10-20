@@ -13,6 +13,7 @@
 #include "sessao.h"
 #include "catalogo.h"
 #include "iconeapp.h"
+#include "logoapp.h"
 #include "cachearte.h"
 #include "ponteiro.h"
 #include "plrui.h"
@@ -1260,7 +1261,7 @@ static void giro(GfxRect av, Uint32 agora, float alfa, int reduzida) {
 // Todos os fundos configurados continuam disponiveis sob a tinta cinematografica.
 static void streammaxPerfilAcabamento(float a) {
   const GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
-  TxtLinha stream, maximo, linha;
+  TxtLinha linha;
   gfx_cor(tela, 0.0f, 0.007f, 0.017f, 0.041f, 0.64f * a);
   if (!gfx_efeitos_minimos()) {
     gfx_rect((GfxRect){ NV_TELA_W*0.5f-740.0f, 80.0f, 1480.0f, 1100.0f },
@@ -1270,10 +1271,8 @@ static void streammaxPerfilAcabamento(float a) {
   // Discreta linha superior: o mesmo ciano/azul do guia StreamMax.
   gfx_cor((GfxRect){ 68.0f, 47.0f, 5.0f, 53.0f }, 0.19f,
           0.035f, 0.63f, 1.0f, a);
-  stream = txt_linha(TXT_G30B, "STREAM", 232, 242, 255, 255);
-  maximo = txt_linha(TXT_G30B, "MAX", 52, 173, 255, 255);
-  txt_desenhar_alpha(stream, 90.0f, 51.0f, a);
-  txt_desenhar_alpha(maximo, 90.0f + (float)stream.w - 1.0f, 51.0f, a);
+  // Escrita da arte original (sem recriar a fonte ou exibir o simbolo aqui).
+  logoapp_streammax_wordmark((GfxRect){90.0f, 47.0f, 236.0f, 42.0f}, a);
   linha = txt_linha(TXT_CAPTION, "ESCOLHA DE PERFIL", 136, 166, 206, 255);
   txt_desenhar_alpha(linha, 90.0f, 92.0f, a);
 }
