@@ -1,7 +1,8 @@
 // Atualizador Android do StreamMax.
 // A versao comercial e independente da versao interna herdada do Legacy.
 // RC1 #146: StreamMax 1.0.0, Android 2.0.7 (20007).
-// Proxima RC de teste: StreamMax 1.0.1, Android 2.0.8 (20008).
+// RC1 148 aprovada no teste inicial: StreamMax 1.0.1, Android 2.0.8 (20008).
+// Candidato para testar OTA ponta a ponta: StreamMax 1.0.2, Android 2.0.9 (20009).
 // Alterar AMBAS as versoes a cada release: este define a versao que a
 // interface compara; deploy/app/appinfo.json define o versionCode do Android.
 #ifndef SM_UPDATE_H
@@ -10,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SM_UPDATE_VERSION "1.0.1"
+#define SM_UPDATE_VERSION "1.0.2"
 #define SM_UPDATE_API  "https://api.github.com/repos/allanlribeiro/StreamMax/releases/latest"
 #define SM_UPDATE_PAGE "https://github.com/allanlribeiro/StreamMax/releases"
 #define SM_UPDATE_DOWNLOAD "https://github.com/allanlribeiro/StreamMax/releases/download/"

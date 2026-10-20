@@ -14,7 +14,8 @@ int main(void) {
   assert(!sm_update_tag_valida("v1.0.2-rc1"));
   assert(!sm_update_nova_versao("v1.0.0"));
   assert(!sm_update_nova_versao("v1.0.1"));
-  assert(sm_update_nova_versao("v1.0.2"));
+  assert(!sm_update_nova_versao("v1.0.2"));
+  assert(sm_update_nova_versao("v1.0.3"));
   assert(sm_update_nova_versao("v1.1.0"));
   assert(sm_update_nova_versao("v2.0.0"));
   assert(!sm_update_nova_versao("v0.9.9"));

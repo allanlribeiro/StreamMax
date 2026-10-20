@@ -10,6 +10,7 @@ on:
       - streammax/integracao-rc1-aprovada-tcl-1019
       - streammax/branding-discreto-rc1-142-1020
       - streammax/atualizacao-direta-101-v1
+      - streammax/ota-end-to-end-102-1020
 
 permissions:
   contents: read
