@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="streammax_home_rename_row_action">Rename row</string>
+    <string name="streammax_home_rename_row_title">Rename Home row</string>
+    <string name="streammax_home_rename_row_field">Row title</string>
+    <string name="streammax_home_rename_row_save">Save</string>
+    <string name="streammax_home_rename_row_cancel">Cancel</string>
+</resources>
