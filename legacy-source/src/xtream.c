@@ -454,6 +454,106 @@ int xtream_canais(XtreamCanal *saida, int max) {
   return xtream_canais_sessao(saida, max, nv_perfil_sessao_ler());
 }
 
+// --- biblioteca IPTV: filmes e series, fora dos canais e do catalogo comum ---
+// Rede executada apenas no worker da futura tela IPTV. O mesmo chamarSt
+// serializa pedidos, protege a sessao ativa e NUNCA imprime as credenciais.
+// Limitamos a memoria entregue ao chamador; o JSON e liberado ao sair.
+int xtream_vod_categorias(int series, XtreamCategoriaVod *saida, int cap) {
+  char *corpo;
+  const char *p;
+  int st = 0, n = 0;
+  NvPerfilSessao sessao = nv_perfil_sessao_ler();
+  if (!saida || cap < 1 || !xtream_configurado()) return 0;
+  corpo = chamarSt(series ? "get_series_categories" : "get_vod_categories",
+                   XT_PRAZO_LISTA_S, &st, sessao);
+  if (!corpo || st < 200 || st >= 400 || !nv_perfil_sessao_atual(sessao)) {
+    free(corpo); return 0;
+  }
+  p = js_raiz_array(pulaBom(corpo));
+  while (p && n < cap) {
+    const char *fim = js_fim(p);
+    XtreamCategoriaVod c = {{0}};
+    if (!fim || fim <= p) break;
+    if (campoTextoOuNumero(p, fim, "category_id", c.id, sizeof c.id) &&
+        js_texto(p, fim, "category_name", c.nome, sizeof c.nome) &&
+        c.id[0] && c.nome[0]) saida[n++] = c;
+    p = js_prox(fim);
+  }
+  free(corpo);
+  return nv_perfil_sessao_atual(sessao) ? n : 0;
+}
+
+int xtream_vod_listar(int series, XtreamMidia *saida, int cap) {
+  char *corpo;
+  const char *p;
+  int st = 0, n = 0;
+  NvPerfilSessao sessao = nv_perfil_sessao_ler();
+  if (!saida || cap < 1 || !xtream_configurado()) return 0;
+  corpo = chamarSt(series ? "get_series" : "get_vod_streams",
+                   XT_PRAZO_LISTA_S, &st, sessao);
+  if (!corpo || st < 200 || st >= 400 || !nv_perfil_sessao_atual(sessao)) {
+    free(corpo); return 0;
+  }
+  p = js_raiz_array(pulaBom(corpo));
+  while (p && n < cap) {
+    const char *fim = js_fim(p);
+    char numero[24] = "";
+    XtreamMidia c = {{0}};
+    const char *chaveId = series ? "series_id" : "stream_id";
+    if (!fim || fim <= p) break;
+    if (campoTextoOuNumero(p, fim, chaveId, numero, sizeof numero) &&
+        js_texto(p, fim, "name", c.nome, sizeof c.nome) &&
+        numero[0] && c.nome[0]) {
+      const char *d;
+      // Id valido antes de virar rota Xtream. Nunca aceitar strings/URLs do painel.
+      for (d = numero; *d >= '0' && *d <= '9'; d++) {}
+      if (!*d) {
+        snprintf(c.id, sizeof c.id, "%s:%s", series ? "xtseries" : "xtvod", numero);
+        js_texto(p, fim, series ? "cover" : "stream_icon", c.poster, sizeof c.poster);
+        campoTextoOuNumero(p, fim, "category_id", c.categoriaId, sizeof c.categoriaId);
+        if (!series) js_texto(p, fim, "container_extension", c.extensao, sizeof c.extensao);
+        c.ano = (int)js_num(p, fim, "year", 0);
+        if (c.ano < 1900 || c.ano > 2100) c.ano = 0;
+        saida[n++] = c;
+      }
+    }
+    p = js_prox(fim);
+  }
+  free(corpo);
+  return nv_perfil_sessao_atual(sessao) ? n : 0;
+}
+
+// Os IDs e a extensao vem de JSON de terceiros: validar antes de montar a
+// rota para nao aceitar uma URL arbitraria ou traversal no endpoint.
+// Episodios NAO usam este caminho: /series exige id e extensao do episodio.
+int xtream_vod_url(const XtreamMidia *filme, char *url, unsigned tam) {
+  char u[300], s[300], ext[16];
+  const char *id, *d;
+  int n;
+  if (!url || tam < 2) return 0;
+  url[0] = 0;
+  if (!filme || strncmp(filme->id, "xtvod:", 6)) return 0;
+  id = filme->id + 6;
+  if (!*id) return 0;
+  for (d = id; *d >= '0' && *d <= '9'; d++) {}
+  if (*d) return 0;
+  snprintf(ext, sizeof ext, "%s", filme->extensao[0] ? filme->extensao : "mp4");
+  if (strcmp(ext, "mp4") && strcmp(ext, "mkv") && strcmp(ext, "ts") &&
+      strcmp(ext, "avi") && strcmp(ext, "mov") && strcmp(ext, "m3u8")) return 0;
+  pthread_mutex_lock(&trava);
+  carregarTravado();
+  if (!servidor[0] || !usuario[0] || !senha[0]) {
+    pthread_mutex_unlock(&trava);
+    return 0;
+  }
+  urlenc(usuario, u, sizeof u);
+  urlenc(senha, s, sizeof s);
+  n = snprintf(url, tam, "%s/movie/%s/%s/%s.%s", servidor, u, s, id, ext);
+  pthread_mutex_unlock(&trava);
+  if (n < 0 || (unsigned)n >= tam) { url[0] = 0; return 0; }
+  return 1;
+}
+
 // --- reproducao ---------------------------------------------------------
 int xtream_e_id(const char *id) {
   return id && !strncmp(id, "xtream:", 7);
