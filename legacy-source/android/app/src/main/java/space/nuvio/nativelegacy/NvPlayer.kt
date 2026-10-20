@@ -134,6 +134,10 @@ object NvPlayer {
     private var urlAtual = ""
     private var cabAtual = ""
     private var abriuEm = 0L
+    // 1.0.7: timestamps monotonic of the Android playback request; never log URLs or headers.
+    private var pedidoRecebidoEm = 0L
+    private var preparadoEm = 0L
+    private var prontoEm = 0L
     // Mesmo criterio do player original: so medir travamentos apos o 1o quadro.
     private var rebufferInicioEm = 0L
     private var rebufferTotalMs = 0L
@@ -935,6 +939,7 @@ object NvPlayer {
 
     @JvmOverloads @JvmStatic fun abrirPreparada(url: String, cabecalhos: String, inicioMs: Int, fracao: Int,
                                  geracao: Int, token: Int, idiomaAudio: String = "") {
+        val inicioPedido = SystemClock.elapsedRealtime()
         val pedido = pedidos.incrementAndGet()
         val preparoPedido = synchronized(travaPreparo) {
             val n = pedidosPreparo.incrementAndGet()
@@ -957,10 +962,10 @@ object NvPlayer {
                     s.ouvinte?.let { r.p.removeListener(it) }
                     s.analitico?.let { r.p.removeAnalyticsListener(it) }
                 }
-                abrirMain(url, cabecalhos, false, inicio, geracao, pedido, f, preparada = s)
+                abrirMain(url, cabecalhos, false, inicio, geracao, pedido, f, preparada = s, inicioPedido = inicioPedido)
             } else {
                 soltarPreparo()
-                abrirMain(url, cabecalhos, false, inicio, geracao, pedido, f)
+                abrirMain(url, cabecalhos, false, inicio, geracao, pedido, f, inicioPedido = inicioPedido)
             }
         }
     }
@@ -1076,18 +1081,20 @@ object NvPlayer {
 
     @JvmStatic fun abrir(url: String, cabecalhos: String) { abrirPosicao(url, cabecalhos, 0, 0) }
     @JvmStatic fun abrirPosicao(url: String, cabecalhos: String, inicioMs: Int, geracao: Int) {
+        val inicioPedido = SystemClock.elapsedRealtime()
         cancelarPreparo(0)
         val pedido = pedidos.incrementAndGet()
         principal.post {
-            if (pedido == pedidos.get()) abrirMain(url, cabecalhos, false, inicioMs.coerceAtLeast(0), geracao, pedido)
+            if (pedido == pedidos.get()) abrirMain(url, cabecalhos, false, inicioMs.coerceAtLeast(0), geracao, pedido, inicioPedido = inicioPedido)
         }
     }
     @JvmStatic fun abrirRetomada(url: String, cabecalhos: String, inicioMs: Int, fracao: Int, geracao: Int) {
+        val inicioPedido = SystemClock.elapsedRealtime()
         cancelarPreparo(0)
         val pedido = pedidos.incrementAndGet()
         principal.post {
             if (pedido == pedidos.get())
-                abrirMain(url, cabecalhos, false, inicioMs.coerceAtLeast(0), geracao, pedido, fracao.coerceIn(0, 9999))
+                abrirMain(url, cabecalhos, false, inicioMs.coerceAtLeast(0), geracao, pedido, fracao.coerceIn(0, 9999), inicioPedido = inicioPedido)
         }
     }
     @JvmStatic fun parar() {
@@ -1337,7 +1344,7 @@ object NvPlayer {
 
     private fun abrirMain(url: String, cabecalhos: String, reabrindo: Boolean,
                           inicioMs: Int, geracao: Int, pedido: Int, fracao: Int = 0, esperaInicio: Long = -1L,
-                          preparada: Preparo? = null) {
+                          preparada: Preparo? = null, inicioPedido: Long = -1L) {
         if (pedido != pedidos.get()) {
             preparada?.recursos?.let { soltarRecursosPreparo(it) }
             return
@@ -1350,6 +1357,9 @@ object NvPlayer {
         }
         val espera = if (esperaInicio < 0) SystemClock.elapsedRealtime() else esperaInicio
         if (esperaInicio < 0) {
+            Log.i(TAG, "[startup] etapa=pedido filaMs=" +
+                (if (inicioPedido > 0L) (espera - inicioPedido).coerceAtLeast(0L) else -1L) +
+                " caminho=" + (if (preparada == null) "frio" else "preparado"))
             liberar()
             // O C envia ganho/pausa depois de abrir; a espera nao pode apaga-los.
             ganhoPct = 100
@@ -1361,7 +1371,7 @@ object NvPlayer {
             val ms = SystemClock.elapsedRealtime() - espera
             if (liberacoesEmCurso.get() > 0 && ms < 3000) {
                 principal.postDelayed({
-                    abrirMain(url, cabecalhos, reabrindo, inicioMs, geracao, pedido, fracao, espera, preparada)
+                    abrirMain(url, cabecalhos, reabrindo, inicioMs, geracao, pedido, fracao, espera, preparada, inicioPedido)
                 }, 25)
                 return
             }
@@ -1382,6 +1392,11 @@ object NvPlayer {
         fracaoAtual = if (inicioMs > 0) 0 else fracao
         fracaoPendente = 0
         abriuEm = SystemClock.elapsedRealtime()
+        pedidoRecebidoEm = if (inicioPedido > 0L) inicioPedido else abriuEm
+        preparadoEm = 0L
+        prontoEm = 0L
+        Log.i(TAG, "[startup] etapa=superficie desdePedidoMs=" +
+            (abriuEm - pedidoRecebidoEm).coerceAtLeast(0L))
         rebufferInicioEm = 0L
         rebufferTotalMs = 0L
         rebufferCount = 0
@@ -1446,6 +1461,7 @@ object NvPlayer {
                 p.playWhenReady = !pausaPedida && !atividadeOculta
                 // false -> false nao gera callback quando a pausa chegou sem player.
                 if (pausaPedida) ev(EV_PAUSADO)
+                preparadoEm = SystemClock.elapsedRealtime()
                 p.prepare()
             } else if (preparada.proximo) {
                 // The next-episode source owns the warmed sample queues. Its
@@ -1455,6 +1471,7 @@ object NvPlayer {
                 p.setMediaSource(r.fontePrecarregada!!, preparada.posicaoFonteMs)
                 if (fracaoPendente <= 0) confirmarRetomada(geracao, inicioMs > 0 || preparada.inicioAceito)
                 p.playWhenReady = !pausaPedida && !atividadeOculta
+                preparadoEm = SystemClock.elapsedRealtime()
                 p.prepare()
                 Log.i(TAG, "[preparo] proximo adotado token=${preparada.token} pos=${preparada.posicaoFonteMs}")
             } else {
@@ -2005,6 +2022,11 @@ object NvPlayer {
                     ev(EV_BUFFER, 100)
                     relatarAudio(minha, "pronto volume=${p.volume} playWhenReady=${p.playWhenReady} suppression=${p.playbackSuppressionReason}")
                     if (!pronto) {
+                        prontoEm = SystemClock.elapsedRealtime()
+                        Log.i(TAG, "[startup] etapa=ready desdePedidoMs=" +
+                            (prontoEm - pedidoRecebidoEm).coerceAtLeast(0L) +
+                            " desdePrepareMs=" +
+                            (if (preparadoEm > 0L) (prontoEm - preparadoEm).coerceAtLeast(0L) else -1L))
                         // Antes do EV_PRONTO: o C le o ack ao ver o "pronto".
                         if (fracaoPendente > 0) {
                             fracaoPendente = 0
@@ -2081,6 +2103,11 @@ object NvPlayer {
             if (!atual(minha)) return
             principal.removeCallbacks(vigiaPrimeiroQuadro)
             Log.i(TAG, "[player] onRenderedFirstFrame renderer=video loadMs=${SystemClock.elapsedRealtime() - abriuEm} sessao=$sessao hdr=$ultHdr holder=${System.identityHashCode(superficie?.holder)} soltando=${soltando != null}")
+            val primeiroQuadroEm = SystemClock.elapsedRealtime()
+            Log.i(TAG, "[startup] etapa=primeiro_quadro desdePedidoMs=" +
+                (primeiroQuadroEm - pedidoRecebidoEm).coerceAtLeast(0L) +
+                " desdeReadyMs=" +
+                (if (prontoEm > 0L) (primeiroQuadroEm - prontoEm).coerceAtLeast(0L) else -1L))
             esconderQuadro()
             ev(EV_PRIMEIRO_QUADRO)
             quadroVisto = true
