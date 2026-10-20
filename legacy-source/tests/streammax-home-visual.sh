@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+home = Path("src/home.c").read_text(encoding="utf-8")
+layout = Path("src/layout.h").read_text(encoding="utf-8")
+aj = Path("src/ajustes.c").read_text(encoding="utf-8")
+up = Path("src/streammax_update.h").read_text(encoding="utf-8")
+
+# O formato é uma escolha já existente: não modificar o índice persistido.
+assert 'V_POSTER_FORMAT[] = { "Horizontais", "Verticais" }' in aj
+assert 'ESC("Formato dos pôsteres",       V_POSTER_FORMAT, 2)' in aj
+assert "return lig(AJ_LANDSCAPE);" in aj
+assert "ajustes_posteres_deitados()" in home
+assert "FILEIRA_CONTINUE" in home and "continuar_desenhar" in home
+# O layout TV fica mais compacto sem mudar a geometria antiga do celular.
+assert "#define NV_HOME_HERO_EMPURRA 144.0f" in layout
+assert "(NV_SHELF_TOP + 481.0f) * 0.75f" in home
+# O destaque ganha mais vídeo visível e mantém área reservada para as fileiras.
+assert "float h = fminf(NV_HERO_ARTE_H, NV_SHELF_TOP + 40.0f);" in home
+assert "gfx_furo_hero_suave(furo, aTrailer, 0.40f, 0.75f);" in home
+assert "heroTrailerArea(heroArteRect)" in home
+# O foco e o raio continuam animados e ajustáveis; acabamento do card mais fino.
+assert "#define NV_HOME_ANEL_SUTIL 2.0f" in home
+assert 'return ajustes_borda_foco() ? 0.02f : 0.045f;' in home
+assert 'gfx_borda_foco_atual = ajustes_borda_foco() ? 0.55f : 0.0f;' in home
+assert "anim_mola(animFoco[r][c], alvo, dt" in home
+assert "ajustes_raio_poster_px()" in home
+assert '#define SM_UPDATE_VERSION "1.0.3"' in up
+print("OK: Home StreamMax 1.0.3: formato persistido, cards suaves e trailer mais alto")
+PY
