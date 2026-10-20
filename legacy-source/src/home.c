@@ -2368,7 +2368,9 @@ static void homeAtualizarReferenciasArte(void) {
   int r, i;
   cachearte_limpar_referencias_grupo(NV_CACHE_ARTE_GRUPO_HOME);
   for (r = 0; r < nFileiras; r++) {
-    int limite = fileiras[r].n < 8 ? fileiras[r].n : 8;
+    // Priorize as primeiras capas sem manter oito artes de cada fileira
+    // fixadas simultaneamente na memoria da TV.
+    int limite = fileiras[r].n < 4 ? fileiras[r].n : 4;
     float largura = larguraFil(r);
     for (i = 0; i < limite; i++) {
       int idx = fileiraItemIndice(&fileiras[r], i);
