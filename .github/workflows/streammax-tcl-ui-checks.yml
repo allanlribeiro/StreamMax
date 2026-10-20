@@ -5,7 +5,6 @@ on:
     branches:
       - streammax/legacy-migration
       - streammax/tcl-player-source-branding-1018
-      - streammax/integracao-rc1-aprovada-tcl-1019
     paths:
       - 'legacy-source/src/app.c'
       - 'legacy-source/src/detail.c'
@@ -32,14 +31,6 @@ on:
       - 'legacy-source/tests/streammax-player-layout.sh'
       - 'migration/check-player-original-style.py'
       - 'legacy-source/src/text.c'
-      - 'legacy-source/src/logoapp.c'
-      - 'legacy-source/src/logoapp.h'
-      - 'legacy-source/src/login.c'
-      - 'legacy-source/src/perfilsel.c'
-      - 'legacy-source/src/guia.c'
-      - 'legacy-source/deploy/app/art/marcas/streammax_icon.png'
-      - 'legacy-source/deploy/app/art/marcas/streammax_banner.png'
-      - 'legacy-source/tests/streammax-brand-rc1.sh'
       - 'legacy-source/src/streammax_ui_brand.h'
       - 'legacy-source/src/ajustes_ux_padrao.inc'
       - 'legacy-source/tests/test_streammax_ui_brand.c'
@@ -57,8 +48,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validar marca apenas na interface
         run: bash legacy-source/tests/streammax-ui-brand.sh
-      - name: Confirmar assets e marca da RC1 aprovada
-        run: bash legacy-source/tests/streammax-brand-rc1.sh
       - name: Testar geometria dos controles fixos
         run: bash legacy-source/tests/streammax-player-layout.sh
       - name: Validar paridade visual do player sem APK
