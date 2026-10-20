@@ -626,6 +626,7 @@ void stream_definir_lista(const Stream *l, int qtd) {
 static int selosPacoteDa(Stream *s);
 static void selosAgendar(int ini, int qtd);
 static void textoAddonLimpar(void);
+static void faixasCacheLimpar(void);
 void stream_definir_lista_idade(const Stream *l, int qtd, Uint32 idade) {
   int i, k = 0;
   Stream *nova = l && qtd > 0 ? malloc(sizeof(Stream) * (size_t)qtd) : NULL;
@@ -647,6 +648,7 @@ void stream_definir_lista_idade(const Stream *l, int qtd, Uint32 idade) {
   pthread_mutex_lock(&verTrava);
   free(lista); lista = nova; n = nova ? k : 0; atual = -1;
   textoAddonLimpar();
+  faixasCacheLimpar(); // List indices changed: do not reuse language-row heights.
   fitN = 0; // raw identities have been replaced; preserve an open snapshot
   free(chave); free(exib); chave = NULL; exib = NULL;
   if (n > 0) {
@@ -3613,6 +3615,31 @@ static int linhasFaixas(const Stream *s) {
                                 s->tituloFonte, s->descricao)) n++;
   return n;
 }
+// StreamMax 1.0.7: source language summaries are immutable until the source
+// list is replaced. The sheet rebuilds row geometry multiple times per frame;
+// parsing every (potentially long) audio/subtitle CSV each time is avoidable.
+// Cache only the number of metadata rows, NOT streams, selection or video state.
+// New sources append at the end; replacement explicitly resets this cache.
+static signed char *faixasCache;
+static int faixasCacheCap, faixasCacheN;
+static void faixasCacheLimpar(void) {
+  free(faixasCache);
+  faixasCache = NULL;
+  faixasCacheCap = faixasCacheN = 0;
+}
+static int faixasCacheDa(int i) {
+  if (i < 0 || i >= n) return 0;
+  if (faixasCacheCap < n) {
+    int novoCap = n + 32;
+    signed char *novo = realloc(faixasCache, (size_t)novoCap);
+    if (!novo) return linhasFaixas(&lista[i]); // low-memory fallback
+    faixasCache = novo;
+    faixasCacheCap = novoCap;
+  }
+  while (faixasCacheN <= i) faixasCache[faixasCacheN++] = -1;
+  if (faixasCache[i] < 0) faixasCache[i] = (signed char)linhasFaixas(&lista[i]);
+  return faixasCache[i];
+}
 static float desenharFaixas(const Stream *s, float x, float y, float w, int sel, float a) {
   float altura = 0;
   // Sem identificacao no stream recebido: nenhum pais pode ser inventado.
@@ -3992,7 +4019,7 @@ static float alturaLinha(int i, int automatica) {
     if (grupo == 1 && nOrdem == foco) h += extra * abreFoco;
     else if (nOrdem == linhaAnt)      h += extra * abreAnt;
   }
-  return h + linhasFaixas(&lista[i]) * FOLHA_FAIXA_H;
+  return h + faixasCacheDa(i) * FOLHA_FAIXA_H;
 }
 static void porLinha(int i, float *y, int automatica) {
   float h = alturaLinha(i, automatica);
