@@ -11,6 +11,17 @@ logo=Path("src/logoapp.c").read_text()
 for nome in ("streammax_icon.png", "streammax_banner.png"):
     assert (Path("deploy/app/art/marcas")/nome).is_file(), nome
 assert "logoapp_streammax_simbolo(" in login
+# Regressao RC1 143 na TCL: preferencias antigas de modo Mobile nao
+# podem devolver o login com a marca e o fundo Nuvio Legacy.
+assert "getenv(\"NUVIO_INTERFACE_AUTO\")" in login
+assert 'if (autoMobile && !strcmp(autoMobile, "0")) return 1;' in login
+assert "if (loginEhTvAndroid()) {" in login
+assert "if (!loginEhTvAndroid()) return;" in login
+assert 'if (!layout_modo_mobile() && NV_TELA_W > NV_TELA_H) {' not in login
+marca = login.split("void login_desenhar(Uint32 agora)", 1)[1]
+android = marca.split("#ifdef NV_ANDROID", 2)[2].split("#else", 1)[0]
+assert "logoapp_streammax_simbolo(" in android
+assert "logoapp_marca(" not in android
 assert "logoapp_streammax_wordmark(" in perfis
 assert "logoapp_streammax_wordmark(" in guia
 assert 'txt_linha(TXT_G30B, "STREAMMAX"' not in login
