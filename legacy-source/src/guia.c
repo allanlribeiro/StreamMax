@@ -80,6 +80,7 @@
 #include "streams.h"    /* Stream: url do preview vinda do fio */
 #include "livetv_regras.h" /* variantes FHD/HD/SD do mesmo canal */
 #include "streammax_livetv_columns.h"  /* StreamMax: guia em 3 colunas na TCL */
+#include "logoapp.h"
 #include "teclado.h"       /* a busca do guia */
 #include "buscanorm.h"     /* guia_buscar_canais (Spotlight) */
 #include <stdio.h>
@@ -4927,7 +4928,7 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   TxtLinha titulo, sub;
   char aux[160];
 
-  // Cabecalho, logotipo tipografico STREAM + MAX e sinalizador da secao.
+  // Cabecalho com a escrita oficial (sem trocar o layout de 3 colunas).
   // Sem imagens gigantes de fundo: o preview fica com o orçamento de GPU.
   gfx_cor(fundo, 0.0f, 0.007f, 0.018f, 0.039f, a);
   gfx_cor((GfxRect){0,0,NV_TELA_W,119.0f},
@@ -4936,10 +4937,7 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
           0, 0.035f, 0.35f, 0.72f, 0.48f*a);
   gfx_cor((GfxRect){x,39.0f,6.0f,46.0f},
           0.23f, 0.028f, 0.58f, 0.99f, a);
-  titulo = txt_linha(TXT_G30B, "STREAM", 242, 247, 255, 255);
-  txt_desenhar_alpha(titulo, x + 18.0f, 36.0f, a);
-  sub = txt_linha(TXT_G30B, "MAX", 46, 161, 255, 255);
-  txt_desenhar_alpha(sub, x + 18.0f + (float)titulo.w - 1.0f, 36.0f, a);
+  logoapp_streammax_wordmark((GfxRect){x + 18.0f, 36.0f, 246.0f, 44.0f}, a);
   gfx_cor((GfxRect){x+335.0f,41.0f,2.0f,37.0f},
           0, 0.13f, 0.30f, 0.52f, a);
   sub = txt_linha(TXT_G26B, i18n("TV AO VIVO"), 239, 247, 255, 255);

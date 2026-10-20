@@ -1,0 +1,46 @@
+name: StreamMax RC1 - branding discreto
+
+# Gate isolado: esta PR altera somente marca e pintura do login/perfis/guia.
+# Os testes antigos de paridade do player nao se aplicam aqui: o player
+# e a Home sao herdados sem nenhuma mudanca da RC1 #142 aprovada.
+on:
+  pull_request:
+    branches:
+      - streammax/integracao-rc1-aprovada-tcl-1019
+    paths:
+      - 'legacy-source/src/login.c'
+      - 'legacy-source/src/logoapp.c'
+      - 'legacy-source/src/logoapp.h'
+      - 'legacy-source/src/perfilsel.c'
+      - 'legacy-source/src/guia.c'
+      - 'legacy-source/deploy/app/art/marcas/streammax_icon.png'
+      - 'legacy-source/deploy/app/art/marcas/streammax_banner.png'
+      - 'legacy-source/tests/streammax-ui-brand.sh'
+      - 'legacy-source/tests/streammax-brand-rc1.sh'
+      - '.github/workflows/streammax-rc1-brand.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  branding:
+    name: Validar identidade StreamMax sobre RC1 142
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirmar marca aprovada e preservar login/perfis/TV
+        run: |
+          bash legacy-source/tests/streammax-brand-rc1.sh
+          bash legacy-source/tests/streammax-ui-brand.sh
+          bash legacy-source/tests/streammax-livetv-columns.sh
+          python3 migration/check-legacy-auth.py legacy-source
+      - name: Instalar dependencias nativas Linux (nao gera APK)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+            libgles2-mesa-dev libegl1-mesa-dev zlib1g-dev
+      - name: Compilar a base Legacy RC1 sem gerar APK
+        working-directory: legacy-source
+        run: bash tools/linux.sh --build

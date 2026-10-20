@@ -14,8 +14,8 @@ from pathlib import Path
 src = Path("src/perfilsel.c").read_text(encoding="utf-8")
 assert 'static void streammaxPerfilAcabamento(float a)' in src
 assert 'streammaxPerfilAcabamento(a * (pinDe >= 0 ? 0.60f : 1.0f));' in src
-assert 'txt_linha(TXT_G30B, "STREAM"' in src
-assert 'txt_linha(TXT_G30B, "MAX"' in src
+assert 'logoapp_streammax_wordmark((GfxRect){90.0f, 47.0f, 236.0f, 42.0f}, a);' in src
+assert 'txt_linha(TXT_G30B, "STREAM"' not in src
 assert '"ESCOLHA DE PERFIL"' in src
 assert 'muralLuzAlvo[0] = 0.045f;' in src
 assert 'cr = 0.035f; cg = 0.55f; cb = 1.0f;' in src

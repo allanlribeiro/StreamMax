@@ -36,4 +36,7 @@ int  logoapp_miniatura(int logo, GfxRect r, int ladrilho, float alpha);
 // alternativo de apoiador, se houver; senao o simbolo do logo Novo; com o Classico
 // nada (como era). Devolve 1 se desenhou.
 int  logoapp_marca(GfxRect r, float alpha);
+// StreamMax RC1: S oficial e escrita original sem fonte generica; so nas telas solicitadas.
+int  logoapp_streammax_simbolo(GfxRect r, float alpha);
+int  logoapp_streammax_wordmark(GfxRect r, float alpha);
 #endif

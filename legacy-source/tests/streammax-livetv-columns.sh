@@ -45,8 +45,8 @@ assert 'streammaxTvAnimar(dt);' in src
 assert 'smTvCatFocoPos = anim_mola(' in src
 assert 'smTvCanFocoPos = anim_mola(' in src
 assert 'gfx_cor((GfxRect){0,116.0f,NV_TELA_W,2.0f}' in section
-assert 'txt_linha(TXT_G30B, "STREAM"' in section
-assert 'txt_linha(TXT_G30B, "MAX"' in section
+assert 'logoapp_streammax_wordmark((GfxRect){x + 18.0f, 36.0f, 246.0f, 44.0f}, a);' in section
+assert 'txt_linha(TXT_G30B, "STREAM"' not in section
 assert 'smTvFoco(foco, tvColunaFoco == SM_TV_COL_CANAIS' in section
 assert 'smTvCanaisFade = anim_mola(' in src
 assert 'smTvProgramaFade = anim_mola(' in src
