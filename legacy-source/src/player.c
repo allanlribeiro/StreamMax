@@ -5487,6 +5487,33 @@ void player_morph_de(GfxRect logo, GfxRect play) {
   morphLogo = logo; morphPlay = play; morphEm = SDL_GetTicks();
 }
 
+// 1.0.5: etapa REAL da abertura, sem simular porcentagem de buffer.
+// O C ja sabe quando o addon ainda busca, quando o Android recebeu dados
+// (bytes do socket) e quando o Media3 anunciou READY, mas nao o primeiro quadro.
+// O texto acompanha essas observacoes, e nao um relogio artificial.
+static const char *streammaxEtapaInicio(char *buffer, size_t capacidade) {
+  VideoStats s;
+  if (esperandoFonte) {
+    return motivoInicio[0] ? motivoInicio : i18n("Procurando fontes…");
+  }
+#ifdef NV_ANDROID
+  // EV_TOCANDO e separado de EV_PRIMEIRO_QUADRO: o decoder ainda pode
+  // estar preparando a Surface da TCL apos STATE_READY.
+  if (video_tocando() && !video_quadro_visto())
+    return i18n("Iniciando reprodução…");
+#endif
+  video_estatisticas(&s);
+  if (s.bufferSeg >= 0.5) {
+    // Segundos realmente armazenados no player, nao % ficticia.
+    snprintf(buffer, capacidade, i18n("Carregando buffer: %.1f s"), s.bufferSeg);
+    return buffer;
+  }
+  if (s.bytes > 0 || s.primeiroByteMs >= 0)
+    return i18n("Recebendo dados da fonte…");
+  if (motivoInicio[0]) return motivoInicio; // debrid, verificacao e fallback
+  return i18n("Conectando à fonte…");
+}
+
 // A TELA CINEMA DA ABERTURA (#205, abrecine.h). Tudo multiplicado pelo veu,
 // que so cai com o quadro real (o crossfade e o veu saindo por cima dele).
 // CUSTO: na Arte (padrao), a textura do detalhe e uma rampa de meia tela, sem
@@ -5602,6 +5629,19 @@ static void desenharCinema(Uint32 agora, const CatItem *c, int furou) {
   // ajuste ligado; a de demora so depois de 8 s.
   base = canto ? ra.y + 4.0f : ra.y + ra.h + 30.0f; y = base;
   tx = ra.x + ra.w + 20.0f;
+  // A etapa fica legivel sem apertar Baixo para abrir a ficha detalhada.
+  // No estilo Canto aparece ACIMA do anel (na base sairia da tela).
+  // No estilo Central mora logo ABAIXO do anel, como o Nuvio original.
+  if (player_carregando()) {
+    char bufEtapa[100];
+    const char *fase = streammaxEtapaInicio(bufEtapa, sizeof bufEtapa);
+    TxtLinha l = txt_linha_corta(TXT_G19M, fase, 242, 245, 250, 255,
+                                 canto ? 1100.0f : 950.0f);
+    float etapaY = canto ? ra.y - 48.0f : y;
+    txt_desenhar_alpha(l, canto ? tx : cx - l.w * 0.5f,
+                       etapaY, v * entra);
+    if (!canto) y += 36.0f;
+  }
   if (linhaEp[0]) {
     TxtLinha l = txt_linha_corta(TXT_ILHA_SUB, linhaEp, 243, 242, 239, 170, 1100.0f);
     txt_desenhar_alpha(l, canto ? tx : cx - l.w * 0.5f, y, v * entra);
@@ -5933,6 +5973,12 @@ void player_desenhar(Uint32 agora) {
   else if (comVideo && !erroFonte && !saindo && video_bufferando_ms() >= 600 && cine.veu <= 0.01f) {
     ESCALA_INI();
     plrui_anel_solto(NV_VTELA_W * 0.5f, NV_VTELA_H * 0.5f, 56.0f, agora, entrada);
+    // Rebuffer DEPOIS do primeiro quadro: a pessoa nao ve apenas um circulo.
+    // Evitar percentual, que o Media3 nao publica como progresso de abertura.
+    { TxtLinha l = txt_linha(TXT_G19M, i18n("Recarregando buffer…"),
+                             243, 242, 239, 255);
+      txt_desenhar_alpha(l, (NV_VTELA_W - l.w) * 0.5f,
+                        NV_VTELA_H * 0.5f + 80.0f, entrada); }
     ESCALA_FIM();
   }
   if (erroFonte && ehCanal()) {

@@ -126,8 +126,11 @@ class ParaleloDataSource(
         private const val ADIANTE = 3         // pedacos em voo por conexao
         private const val TENTATIVAS = 3
         private val ESPERA_TENTATIVA_MS = longArrayOf(250L, 750L)
-        // O primeiro pedido e menor: a imagem nao espera 4 MB chegarem.
-        private const val PRIMEIRO = 1 shl 20
+        // TCL / StreamMax 1.0.5: reduzir a sonda de 1 MiB para 512 KiB.
+// O open() so devolve controle ao Media3 depois de baixar ESTE primeiro
+// trecho inteiro. Pedacos seguintes seguem em 4 MiB e em paralelo.
+// HLS/DASH continuam no seu caminho de conexao unica; RAM nao cresce.
+        private const val PRIMEIRO = 512 shl 10
         // Menor pedaco do FIM DO ARQUIVO (ver `cauda` em abrir).
         private const val PEDACO_CAUDA_MIN = 128 shl 10
 

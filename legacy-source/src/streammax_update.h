@@ -4,7 +4,8 @@
 // RC1 148 aprovada no teste inicial: StreamMax 1.0.1, Android 2.0.8 (20008).
 // StreamMax 1.0.2 aprovado no teste OTA da TCL: Android 2.0.9 (20009).
 // StreamMax 1.0.3 publicada: Android 2.0.10 (20010).
-// Candidato experimental StreamMax 1.0.4: Android 2.0.11 (20011), Home premium.
+// StreamMax 1.0.4 publicada: Android 2.0.11 (20011).
+// Candidato experimental StreamMax 1.0.5: Android 2.0.12 (20012), inicio informado e startup rapido.
 // Alterar AMBAS as versoes a cada release: este define a versao que a
 // interface compara; deploy/app/appinfo.json define o versionCode do Android.
 #ifndef SM_UPDATE_H
@@ -13,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SM_UPDATE_VERSION "1.0.4"
+#define SM_UPDATE_VERSION "1.0.5"
 #define SM_UPDATE_API  "https://api.github.com/repos/allanlribeiro/StreamMax/releases/latest"
 #define SM_UPDATE_PAGE "https://github.com/allanlribeiro/StreamMax/releases"
 #define SM_UPDATE_DOWNLOAD "https://github.com/allanlribeiro/StreamMax/releases/download/"
