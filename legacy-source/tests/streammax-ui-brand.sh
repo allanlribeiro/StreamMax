@@ -43,6 +43,9 @@ assert 'desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);' in leg
 assert 'desenharEstiloResumo(' in leg
 assert 'float sep1 = ' in leg and 'float sep2 = ' in leg
 assert 'gfx_cor(corpo,FOLHA_RAIO_IL/corpo.h,.015f,.022f,.038f,.78f*anim);' in fontes
+assert 'player_aberto() ? 820.0f : NV_TELA_W * 0.60f' in fontes
+assert 'float x=NV_TELA_W-FOLHA_W-FOLHA_MARGEM' in fontes
+assert 'FOLHA_PAD_E' in fontes and 'FOLHA_PAD_D' in fontes
 assert 'stream_folha_escolheu' in fontes
 assert 'else if (modo) legendasui_corpo(c, a);' in faixas
 assert 'else corpoLista(c, a);' in faixas
