@@ -554,6 +554,117 @@ int xtream_vod_url(const XtreamMidia *filme, char *url, unsigned tam) {
   return 1;
 }
 
+// Episodios do Xtream ficam em "episodes":{"1":[...],"2":[...]}, nao
+// no catalogo comum nem na lista de canais. O parser e independente da rede:
+// uma resposta incompleta devolve so os registros validos, sem ler fora da faixa.
+static int seriesEpisodiosParse(const char *json, XtreamEpisodio *saida, int cap) {
+  const char *obj, *fimObj, *p;
+  int n = 0;
+  if (!json || !saida || cap < 1) return 0;
+  obj = strstr(json, "\"episodes\"");
+  if (!obj) return 0;
+  obj = strchr(obj + strlen("\"episodes\""), ':');
+  if (!obj) return 0;
+  for (obj++; *obj && (unsigned char)*obj <= ' '; obj++) {}
+  if (*obj != '{') return 0;
+  fimObj = js_fim(obj);
+  if (!fimObj || fimObj <= obj || fimObj[-1] != '}') return 0;
+  p = obj + 1;
+  while (p < fimObj && n < cap) {
+    const char *arrFim, *item;
+    int temporada = 0;
+    while (p < fimObj && (*p == ',' || (unsigned char)*p <= ' ')) p++;
+    if (p >= fimObj || *p != '"') break;
+    p++;
+    while (p < fimObj && *p >= '0' && *p <= '9') {
+      if (temporada < 1000) temporada = temporada * 10 + (*p - '0');
+      p++;
+    }
+    if (p >= fimObj || *p++ != '"') break;
+    while (p < fimObj && (unsigned char)*p <= ' ') p++;
+    if (p >= fimObj || *p++ != ':') break;
+    while (p < fimObj && (unsigned char)*p <= ' ') p++;
+    if (p >= fimObj || *p != '[') break;
+    arrFim = js_fim(p);
+    if (!arrFim || arrFim > fimObj || arrFim <= p || arrFim[-1] != ']') break;
+    item = p + 1;
+    while (item && item < arrFim && n < cap) {
+      const char *fimItem, *d;
+      char id[32] = "";
+      XtreamEpisodio ep = {{0}};
+      while (item < arrFim && (unsigned char)*item <= ' ') item++;
+      if (item >= arrFim || *item != '{') break;
+      fimItem = js_fim(item);
+      if (!fimItem || fimItem > arrFim || fimItem[-1] != '}') break;
+      campoTextoOuNumero(item, fimItem, "id", id, sizeof id);
+      for (d = id; *d >= '0' && *d <= '9'; d++) {}
+      ep.temporada = (int)js_num(item, fimItem, "season", temporada);
+      ep.episodio = (int)js_num(item, fimItem, "episode_num", 0);
+      if (id[0] && !*d && ep.temporada > 0 && ep.episodio > 0) {
+        snprintf(ep.id, sizeof ep.id, "xtepisode:%s", id);
+        js_texto(item, fimItem, "title", ep.titulo, sizeof ep.titulo);
+        if (!ep.titulo[0])
+          snprintf(ep.titulo, sizeof ep.titulo, "Episodio %d", ep.episodio);
+        js_texto(item, fimItem, "container_extension", ep.extensao, sizeof ep.extensao);
+        saida[n++] = ep;
+      }
+      item = js_prox(fimItem);
+    }
+    p = arrFim;
+  }
+  return n;
+}
+
+int xtream_series_episodios(const char *seriesId, XtreamEpisodio *saida, int cap) {
+  char acao[128];
+  const char *id, *d;
+  char *corpo;
+  int st = 0, n;
+  NvPerfilSessao sessao = nv_perfil_sessao_ler();
+  if (!seriesId || strncmp(seriesId, "xtseries:", 9) ||
+      !saida || cap < 1 || !xtream_configurado()) return 0;
+  id = seriesId + 9;
+  if (!*id) return 0;
+  for (d = id; *d >= '0' && *d <= '9'; d++) {}
+  if (*d || strlen(id) > 24) return 0;
+  snprintf(acao, sizeof acao, "get_series_info&series_id=%s", id);
+  corpo = chamarSt(acao, XT_PRAZO_LISTA_S, &st, sessao);
+  if (!corpo || st < 200 || st >= 400 || !nv_perfil_sessao_atual(sessao)) {
+    free(corpo); return 0;
+  }
+  n = seriesEpisodiosParse(pulaBom(corpo), saida, cap);
+  free(corpo);
+  return nv_perfil_sessao_atual(sessao) ? n : 0;
+}
+
+int xtream_episodio_url(const XtreamEpisodio *ep, char *url, unsigned tam) {
+  char u[300], s[300], ext[16];
+  const char *id, *d;
+  int n;
+  if (!url || tam < 2) return 0;
+  url[0] = 0;
+  if (!ep || strncmp(ep->id, "xtepisode:", 10)) return 0;
+  id = ep->id + 10;
+  if (!*id) return 0;
+  for (d = id; *d >= '0' && *d <= '9'; d++) {}
+  if (*d) return 0;
+  snprintf(ext, sizeof ext, "%s", ep->extensao[0] ? ep->extensao : "mp4");
+  if (strcmp(ext, "mp4") && strcmp(ext, "mkv") && strcmp(ext, "ts") &&
+      strcmp(ext, "avi") && strcmp(ext, "mov") && strcmp(ext, "m3u8")) return 0;
+  pthread_mutex_lock(&trava);
+  carregarTravado();
+  if (!servidor[0] || !usuario[0] || !senha[0]) {
+    pthread_mutex_unlock(&trava);
+    return 0;
+  }
+  urlenc(usuario, u, sizeof u);
+  urlenc(senha, s, sizeof s);
+  n = snprintf(url, tam, "%s/series/%s/%s/%s.%s", servidor, u, s, id, ext);
+  pthread_mutex_unlock(&trava);
+  if (n < 0 || (unsigned)n >= tam) { url[0] = 0; return 0; }
+  return 1;
+}
+
 // --- reproducao ---------------------------------------------------------
 int xtream_e_id(const char *id) {
   return id && !strncmp(id, "xtream:", 7);
