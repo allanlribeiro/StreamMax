@@ -756,8 +756,10 @@ static float repousoFileirasDin(void) {
 }
 static float empurraHeroModerna(void) {
   if (homeRetratoTelefone()) return 620.0f - NV_SHELF_TOP;
+  // O celular conserva o empurrao anterior: o layout compacto compartilha
+  // esta conta, mas nao deve herdar a densidade nova da Home Android TV.
   return heroCompactoTelefone()
-       ? (NV_SHELF_TOP + NV_HOME_HERO_EMPURRA) * 0.75f - NV_SHELF_TOP
+       ? (NV_SHELF_TOP + 481.0f) * 0.75f - NV_SHELF_TOP
        : NV_HOME_HERO_EMPURRA;
 }
 static float heroVisivelToque(void) {
@@ -1607,7 +1609,8 @@ static void desenhaFaixaAberta(const CatItem *ci, int r, float px, float py,
   }
 }
 
-// ZERO. MEDIDO no app web (sessao logada, perfil do dono): o card em foco tem
+// StreamMax: foco discreto, com escala minima e acabamento ciano.
+// Originalmente, MEDIDO no app web (sessao logada, perfil do dono): o card em foco tem
 // `transform: none`, `scale: none` e o mesmo getBoundingClientRect do card ao
 // lado — 212x322 nos dois, mesma linha, mesmo topo. A escala de 9% e o
 // levantamento de 8px vinham das tabelas de Top Shelf do tvOS, e nao desta
@@ -1623,15 +1626,17 @@ static void desenhaFaixaAberta(const CatItem *ci, int r, float px, float py,
 // ser o tamanho. Pedido do dono: "vamos deixar ele crescer ao focar quando
 // tirar o contorno". As duas coisas nunca acontecem juntas.
 //
-// 6%, e o teto vem da medida que ja estava escrita aqui: o titulo da fileira
+// A nova Home usa ate 4,5% sem borda e 2% com borda, para um efeito mais limpo.
+// Antes eram 6%, e o teto vem da medida que ja estava escrita aqui: o titulo da fileira
 // fica 15 px acima dos cards, o crescimento e simetrico em torno do centro, e
 // um poster de 322 px sobe metade de 322*0,06 = 9,7 px. Os 9% do tvOS subiam
 // 14,5 px e era isso que encostava no titulo.
+#define NV_HOME_ANEL_SUTIL 2.0f  // contorno fino somente na Home; demais telas mantem 4 px
 static float escalaDe(TipoFileira t) {
   // O cartão Herói já é a fileira inteira: crescer no foco o tiraria da
   // tela. Quem diz que ele está em foco é o anel, como no redondo.
   if (t == FILEIRA_HEROI) return 0.0f;
-  return ajustes_borda_foco() ? 0.0f : 0.06f;
+  return ajustes_borda_foco() ? 0.02f : 0.045f;
 }
 // --- MEDIDA POR FILEIRA, e nao por tipo -------------------------------------
 //
@@ -4655,7 +4660,11 @@ static GfxRect heroTrailerArea(GfxRect arte) {
     // esquerda ate a ficha/logo, sem imagem escurecida no miolo.
     float w = fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f);
     float x = NV_TELA_W - w;
-    float h = fminf(NV_HERO_ARTE_H, corteFileiras());
+    // A antiga altura parava em 422 px: o video parecia achatado e o
+    // degradê de base comecava aos 245 px. Agora o trailer ocupa a faixa
+    // superior até 558 px, sem passar da primeira fileira (topo > 660 px).
+    // Nao estender ate os 1080 do backdrop nem cortar em corteFileiras().
+    float h = fminf(NV_HERO_ARTE_H, NV_SHELF_TOP + 40.0f);
     return (GfxRect){x, 0.0f, w, h};
   }
   if (layoutHome() == HOME_LAYOUT_DINAMICA) {
@@ -5295,7 +5304,7 @@ static void desenhaHero(Uint32 agora, float saida) {
   // Agora o recorte dissolve o ALFA do canvas em duas direcoes; o fundo que
   // ja estava desenhado continua aparecendo ate o ponto de transicao.
   if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
-    gfx_furo_hero_suave(furo, aTrailer, 0.48f, 0.58f);
+    gfx_furo_hero_suave(furo, aTrailer, 0.40f, 0.75f);
   else if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);
 #else
   if (aTrailer > 0.0f && aTrailer < 0.995f) gfx_furo_alfa(furo, aTrailer);
@@ -6872,7 +6881,7 @@ static void desenhaRedonda(const CatItem *ci, GLuint t, const char *caminho,
   GfxRect disco = { px, py, d, d }, miolo = { px + pad, py + pad, d - pad * 2, d - pad * 2 };
   ajustes_acento(&ar, &ag, &ab);
   if (f > 0.01f && ajustes_borda_foco())
-    gfx_rect(disco, 0, GFX_DISCO, 0, 0, 0, 0, ar, ag, ab, f);
+    gfx_rect(disco, 0, GFX_DISCO, 0, 0, 0, 0, ar, ag, ab, 0.72f * f);
   gfx_rect(miolo, 0, GFX_DISCO, 0, 0, 0, 0, NV_COR_ESQUELETO_R, NV_COR_ESQUELETO_G,
            NV_COR_ESQUELETO_B, 1);
   if (t) {
@@ -6900,13 +6909,13 @@ static void desenhaHeroiCard(const CatItem *ci, const char *selo, const char *te
   const float pad = NV_HEROI_PAD;
   GfxRect card = { px, py, w, h };
   if (f > 0.01f && ajustes_borda_foco()) {
-    GfxRect borda = { px - NV_ANEL_FOCO, py - NV_ANEL_FOCO,
-                      w + NV_ANEL_FOCO * 2, h + NV_ANEL_FOCO * 2 };
+    GfxRect borda = { px - NV_HOME_ANEL_SUTIL, py - NV_HOME_ANEL_SUTIL,
+                      w + NV_HOME_ANEL_SUTIL * 2, h + NV_HOME_ANEL_SUTIL * 2 };
     float ar, ag, ab; ajustes_acento(&ar, &ag, &ab);
     { float menor = w < h ? w : h;
       if (ajustes_vidro()) gfx_vidro_cartao((GfxRect){px, py, w, h}, raio, f, 1.0f);
       else
-      gfx_cor(borda, (raio * menor + NV_ANEL_FOCO) / (menor + 2 * NV_ANEL_FOCO),
+      gfx_cor(borda, (raio * menor + NV_HOME_ANEL_SUTIL) / (menor + 2 * NV_HOME_ANEL_SUTIL),
               ar, ag, ab, f); }
   }
   desenhaArteCard(card, FILEIRA_HEROI, caminho, t, ci, f, raio, aArte, varre);
@@ -7035,8 +7044,8 @@ static void pintarCartao(const CartaoFoco *k, float raio) {
     return;
   }
           if (f > 0.01f && ajustes_borda_foco()) {
-            GfxRect borda = { px - NV_ANEL_FOCO, py - NV_ANEL_FOCO,
-                              w + NV_ANEL_FOCO * 2, h + NV_ANEL_FOCO * 2 };
+            GfxRect borda = { px - NV_HOME_ANEL_SUTIL, py - NV_HOME_ANEL_SUTIL,
+                              w + NV_HOME_ANEL_SUTIL * 2, h + NV_HOME_ANEL_SUTIL * 2 };
             float ar, ag, ab; ajustes_acento(&ar, &ag, &ab);
             // RAIO DE FORA = raio do cartaz + espessura do anel, em pixels,
             // normalizado pelo lado menor DA BORDA. Passar o `raio` do cartaz
@@ -7046,8 +7055,8 @@ static void pintarCartao(const CartaoFoco *k, float raio) {
             { float menor = w < h ? w : h;
               if (ajustes_vidro()) gfx_vidro_cartao((GfxRect){px, py, w, h}, raio, f, 1.0f);
               else
-              gfx_cor(borda, (raio * menor + NV_ANEL_FOCO) / (menor + 2 * NV_ANEL_FOCO),
-                      ar, ag, ab, f); }
+              gfx_cor(borda, (raio * menor + NV_HOME_ANEL_SUTIL) / (menor + 2 * NV_HOME_ANEL_SUTIL),
+                      ar, ag, ab, 0.72f * f); }
           }
           GfxRect card = { px, py, w, h };
           // TRAILER NO CARTAZ (modo No card): o furo arredondado DEPOIS do anel
@@ -7349,7 +7358,7 @@ static void home_desenhar_(Uint32 agora) {
   // O REBORDO DO CARTAZ EM FOCO e ajuste da pessoa, e ele mora no shader do
   // GFX_CARD (nao e um retangulo desenhado por cima): por isso vai por uma
   // variavel de modulo, uma vez por quadro, e nao em cada chamada.
-  gfx_borda_foco_atual = ajustes_borda_foco() ? 1.0f : 0.0f;
+  gfx_borda_foco_atual = ajustes_borda_foco() ? 0.55f : 0.0f;
   desenhaFundo(agora);
   float pd = detail_progresso();
   const int vazioQr = homevazio_ativo(nFileiras);   // sem add-ons: o cartao com o QR no lugar da Home

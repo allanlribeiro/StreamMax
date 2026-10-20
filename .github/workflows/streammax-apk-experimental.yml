@@ -11,6 +11,7 @@ on:
       - streammax/branding-discreto-rc1-142-1020
       - streammax/atualizacao-direta-101-v1
       - streammax/ota-end-to-end-102-1020
+      - streammax/home-cinematica-trailer-103-1020
 
 permissions:
   contents: read
@@ -50,6 +51,7 @@ jobs:
           python3 migration/check-player-original-engine.py
           bash legacy-source/tests/streammax-first-source.sh
           bash legacy-source/tests/streammax-hero-trailer.sh
+          bash legacy-source/tests/streammax-home-visual.sh
           bash legacy-source/tests/streammax-next-prefetch.sh
           bash legacy-source/tests/streammax-source-ptbr.sh
           bash legacy-source/tests/streammax-livetv-columns.sh

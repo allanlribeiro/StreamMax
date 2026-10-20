@@ -259,7 +259,7 @@ int layout_modo_mobile(void);
 // diz "ha mais embaixo" — e so a borda de cima dos cards espia. O bloco de
 // texto do destaque desce junto (ver desenhaHero), entao a distancia dele ao
 // cabecalho da fileira nao muda.
-#define NV_HOME_HERO_EMPURRA 481.0f
+#define NV_HOME_HERO_EMPURRA 144.0f  // StreamMax: a primeira fileira aparece inteira sem descer o destaque
 // Altura e respiro do botao do destaque (o "Ver titulo"), e a mesma medida do
 // NV_HERO_BOTAO_H que o layout do hero ja usava para a linha de acoes.
 #define NV_HOME_HERO_BOTAO_GAP 26.0f

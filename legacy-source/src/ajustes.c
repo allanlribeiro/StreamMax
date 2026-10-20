@@ -684,6 +684,8 @@ _Static_assert(sizeof V_FUNDO_DIN_COR / sizeof *V_FUNDO_DIN_COR == sizeof FUNDO_
                "V_FUNDO_DIN_COR: um nome por linha de FUNDO_DIN_TEMA");
 static const char *V_QUALIDADE[] = { "Automática", "4K", "1080p", "720p" };
 static const char *V_LIGA[]      = { "Ligado", "Desligado" };
+// AJ_LANDSCAPE: indice zero equivale a ligado; manter indices da conta.
+static const char *V_POSTER_FORMAT[] = { "Horizontais", "Verticais" };
 // TRAILER DO CARTAZ EM FOCO EM TRES MODOS (dono, 07/10/2026). O indice e o
 // AJ_TRAILER_CARTAZ_* de ajustes.h e o gravado em "trailerCartazModo"; a chave
 // antiga (V_LIGA, a mesma do web) migra no carregar (focoTrailerMigrar) e a
@@ -1251,7 +1253,7 @@ static const Opcao OPCOES[AJ_N] = {
   ESC("Outra fonte se falhar",      V_FONTE_REPOR, 4), // local: ver ajustes_fonte_repor
   ESC("Texto das fontes",           V_FONTE_TEXTO, 3), // local: ver ajustes_fonte_texto_addon
 
-  ESC("Pôsteres horizontais",       V_LIGA, 2),   // modernLandscapePostersEnabled
+  ESC("Formato dos pôsteres",       V_POSTER_FORMAT, 2), // modernLandscapePostersEnabled: 0 horizontal, 1 vertical
   ESC("Fundo em tela cheia",        V_LIGA, 2),   // modernHeroFullScreenBackdropEnabled
   ESC("Background do hero",         V_HERO_FONTE, 8), // local: fonte real da arte
   // Card e destaque com fotos diferentes (dono, 22/09: "tem que ter um toggle
@@ -6785,7 +6787,7 @@ static const char *ajudaOpcaoBase(int op) {
     case AJ_FALHA_ADDON_LIMITE: return "Total de links distintos desta instância do add-on, incluindo o primeiro. De 1 a 10. O limite recomeça a cada provedor Debrid, respeitando o total daquele provedor.";
 
     // --- Home
-    case AJ_LANDSCAPE: return "Usa a arte deitada (16:9) no lugar do cartaz em pé nas fileiras que têm as duas.";
+    case AJ_LANDSCAPE: return "Escolha Horizontal (16:9) ou Vertical (2:3) nas fileiras que oferecem ambos os formatos. Sua escolha fica salva.";
     case AJ_HERO_GENERO: return "Mostra ou esconde o gênero sob o logo do destaque.";
     case AJ_HERO_SINOPSE: return "Mostra ou esconde a sinopse do destaque.";
     case AJ_HERO_NOTAS: return "Mostra ou esconde a nota do IMDb no destaque.";
