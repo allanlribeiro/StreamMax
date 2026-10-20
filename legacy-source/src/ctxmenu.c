@@ -30,6 +30,7 @@
 #include "badges.h"
 #include "idioma.h"
 #include "fileiras.h"
+#include "teclado.h"
 #include "colecoes.h"
 #include "listas.h"
 #include "home.h"
@@ -242,7 +243,7 @@ static int nOps;
 static float focoAnim[CTX_MAX];
 static int holdObservador;
 enum { OP_LISTA = 1, OP_ASSISTIDO, OP_TIRAR_CONTINUAR, OP_RECOMENDAR, OP_DISPENSAR,
-       OP_ESTILO, OP_CATEGORIA, OP_DETALHES, OP_L_ABRIR, OP_L_FIXAR, OP_L_HOME,
+       OP_ESTILO, OP_RENOMEAR_FILEIRA, OP_CATEGORIA, OP_DETALHES, OP_L_ABRIR, OP_L_FIXAR, OP_L_HOME,
        OP_EXTRA = 100 };   // OP_EXTRA + k = extras[k] (modo social)
 // "Mover para categoria" pedido no modo painel: o IMDb do titulo, consumido
 // uma vez pelo painel (ctx_pediu_categoria), que abre a escolha dele.
@@ -262,6 +263,19 @@ static int detalhesOk, detalhesPend, deOutraTela;
 // a lista de formas. Um grupo de colecao nao tem titulo por tras — o cartao e
 // uma pasta — e abre direto na pagina 1 (soFileira).
 static char filChave[192], filTitulo[96];
+// Keyboard outlives the context menu. Keep its source row and profile snapshot
+// so changing profile before pressing Concluir cannot write to another profile.
+static char renomearPendente[192];
+static NvPerfilSessao renomearSessao;
+static void renomearLerTeclado(void) {
+  int resultado;
+  if (!renomearPendente[0]) return;
+  resultado = teclado_resultado();
+  if (resultado == TECLADO_NADA) return;
+  if (resultado == TECLADO_PRONTO && nv_perfil_sessao_atual(renomearSessao))
+    fil_definir_apelido(renomearPendente, teclado_texto());
+  renomearPendente[0] = 0; // cancel always leaves the original title alone
+}
 // "Dispensar" do cartao "Retomar agora": pedido pela home (pend) e valido para
 // o menu aberto (op).
 static int dispensarPend, dispensarOp;
@@ -516,8 +530,11 @@ static void montar(void) {
   // Por ULTIMO: e da fileira, nao do titulo. So quando a home disse qual e a
   // fileira e ela tem forma para escolher (Continuar assistindo, Top 10 e o
   // destaque ficam com o visual deles — a home nem passa a chave).
-  if (!doPainel && filChave[0] && fil_estilos(filChave, NULL, NULL, FIL_TIPO_N) > 0)
+  if (!doPainel && filChave[0] && fil_estilos(filChave, NULL, NULL, FIL_TIPO_N) > 0) {
     juntar("Estilo da fileira", OP_ESTILO);
+    if (fil_origem_de(filChave) != FIL_ORIGEM_APP)
+      juntar("Renomear fileira", OP_RENOMEAR_FILEIRA);
+  }
   // Cartao "Retomar agora": soltar o titulo da faixa, sem apagar progresso.
   if (!doPainel && dispensarOp) juntar("Dispensar", OP_DISPENSAR);
   // As acoes da linha social por ULTIMO: sao dela, nao do titulo.
@@ -927,6 +944,26 @@ static void aplicar(void) {
     estAncorar(0.0f);
     return;
   }
+  if (acao == OP_RENOMEAR_FILEIRA && filChave[0]) {
+    char atualNome[FIL_TITULO] = "";
+    // Current visual label, not an add-on identity. The fileiras registry
+    // holds any earlier alias and enforces the per-profile save boundary.
+    for (int i = 0; i < fil_n(); i++)
+      if (!strcmp(fil_chave(i), filChave)) {
+        snprintf(atualNome, sizeof atualNome, "%s", fil_titulo(i));
+        break;
+      }
+    snprintf(renomearPendente, sizeof renomearPendente, "%s", filChave);
+    renomearSessao = nv_perfil_sessao_ler();
+    aberto = 0;
+    teclado_abrir_com("Renomear fileira", "Altera só o nome na Home. Vazio restaura o original.",
+                       FIL_TITULO - 1,
+                       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_.,&",
+                       atualNome[0] ? atualNome : filTitulo);
+    teclado_aceitar_utf8(1);   // preserve accents typed on Android TV or phone
+    teclado_permitir_vazio(1);
+    return;
+  }
   if (!ci) return;
   if (acao >= OP_EXTRA && acao < OP_EXTRA + nExtras) {
     int k = acao - OP_EXTRA;
@@ -1186,6 +1223,7 @@ void ctx_evento(const SDL_Event *e) {
 
 void ctx_atualizar(float dt, Uint32 agora) {
   int i;
+  renomearLerTeclado();
   int atual;
   if (!holdObservador) {
     SDL_AddEventWatch(observarHold, NULL);
@@ -2271,6 +2309,7 @@ void ctx_abrir_sessao(void) {
   detalhesOk = detalhesPend = deOutraTela = 0;
   dispensarPend = dispensarOp = 0;
   filChave[0] = filTitulo[0] = 0;
+  renomearPendente[0] = 0;
   nOps = 0;
   memset(ops, 0, sizeof ops);
   memset(focoAnim, 0, sizeof focoAnim);
