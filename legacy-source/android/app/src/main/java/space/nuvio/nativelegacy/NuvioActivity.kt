@@ -426,7 +426,7 @@ class NuvioActivity : SDLActivity() {
     @Suppress("DEPRECATION")
     private fun apkOficialParaAtualizar(apk: File): Boolean {
         val raiz = File(filesDir, "dados/atualizacao").canonicalFile
-        if (!apk.canonicalFile.toPath().startsWith(raiz.toPath())) return false
+        if (!apk.canonicalPath.startsWith(raiz.path + File.separator)) return false
         if (!apk.isFile || !apk.name.endsWith(".apk") ||
             apk.length() !in (5L * 1024 * 1024)..(350L * 1024 * 1024)) return false
         val flags = if (Build.VERSION.SDK_INT >= 28)
