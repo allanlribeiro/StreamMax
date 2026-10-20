@@ -15,6 +15,7 @@
 #include "menu.h"
 #include "ilha.h"
 #include "iconeapp.h"
+#include "logoapp.h"
 #include "perfis.h"
 #include "tex_cache.h"
 #include "gfx.h"
@@ -205,6 +206,16 @@ static void topoMover(int dir);
 
 static int padrao(void) { return ajustes_home_layout() == HOME_LAYOUT_PADRAO; }
 static int topo(void) { return ajustes_menu_topo(); }   // #461: barra no topo
+// Barra lateral compacta e rotulada do esboco: so na Home Moderna Android TV.
+// O controle remoto continua abrindo as mesmas funcoes, sem um segundo menu.
+static int cinemaRail(void) {
+#ifdef NV_ANDROID
+  return ajustes_home_layout() == HOME_LAYOUT_MODERNA && !layout_modo_mobile()
+         && !topo() && !ajustes_rail_recolhida();
+#else
+  return 0;
+#endif
+}
 static float limita01(float v) { return v < 0.0f ? 0.0f : v > 1.0f ? 1.0f : v; }
 
 // A GEOMETRIA DO PAINEL numa largura `e` (0 = rail, 1 = aberto; o repique da
@@ -229,9 +240,9 @@ static float alturaEm(float e) {
 static MenuGeo geoEm(float e, float entrada) {
   MenuGeo g;
   float ec = limita01(e);
-  g.w = anim_mistura(NV_MENU_W_RAIL, NV_MENU_W_ABERTO, e);
+  g.w = cinemaRail() ? MK(250.0f) : anim_mistura(NV_MENU_W_RAIL, NV_MENU_W_ABERTO, e);
   g.h = alturaEm(e);
-  g.raio = anim_mistura(NV_MENU_RAIO_RAIL, NV_MENU_RAIO_ABERTO, ec);
+  g.raio = cinemaRail() ? MK(18.0f) : anim_mistura(NV_MENU_RAIO_RAIL, NV_MENU_RAIO_ABERTO, ec);
   if (padrao()) {
     // Centrado pela altura ABERTA: as linhas ficam no mesmo y nas duas
     // larguras (so o rodape cresce), entao nada anda na vertical ao abrir.
@@ -239,7 +250,7 @@ static MenuGeo geoEm(float e, float entrada) {
     g.y = floorf((NV_TELA_H - alturaEm(1.0f)) * 0.5f);
   } else {
     g.x = NV_MENU_X;
-    g.y = (NV_TELA_H - g.h) * 0.5f;
+    g.y = cinemaRail() ? MK(154.0f) : (NV_TELA_H - g.h) * 0.5f;
   }
   g.fioM = anim_mistura(NV_MENU_FIO_RAIL, NV_MENU_FIO_ABRE, ec);
   g.fioY = g.y + itensFim() + NV_MENU_ITEM_VAO + g.fioM;
@@ -361,6 +372,11 @@ static void desenhaBarra(float e, float a, int focos, float entrada) {
   int k = 0;
   ajustes_acento(&ar, &ag, &ab);
   desenhaMaterial(&g, a);
+  if (cinemaRail()) {
+    // S e tipografia originais da marca aprovada; uma unica textura pequena.
+    logoapp_streammax_wordmark((GfxRect){g.x + MK(8.0f), MK(42.0f),
+                                         g.w - MK(16.0f), MK(56.0f)}, a);
+  }
 
   // Tudo daqui para baixo fica preso ao painel. Sem o recorte, o rotulo — que
   // e desenhado no x fixo do texto — vaza para o conteudo enquanto o painel
@@ -373,6 +389,10 @@ static void desenhaBarra(float e, float a, int focos, float entrada) {
     float cy = y + NV_MENU_ITEM_H * 0.5f;
     GfxRect linhaR = linhaRect(&g, y, NV_MENU_ITEM_H, e);
     int atual = (i == destino);
+    if (cinemaRail() && atual && !focos) {
+      gfx_cor(linhaR, 0.28f, 0.016f, 0.15f, 0.28f, 0.93f * a);
+      gfx_anel(linhaR, 0.28f, MK(1.2f), 0.08f, 0.60f, 1.0f, 0.72f * a);
+    }
     focoLinha(linhaR, f, a);
     // ONDE VOCE ESTA: um ponto de 5 px no acento (regra 4: acento so para
     // estado). Aberto, a 6 px da ponta esquerda da linha, no meio da altura
@@ -724,7 +744,7 @@ float menu_barra_borda(void) {
   if (tvAtivo() || topo()) return 0.0f;
   if (aberto) e = 1.0f;
   else if (desliza >= 0.002f || expande > 0.004f) e = limita01(expande);
-  else if (railFixa()) e = 0.0f;
+  else if (railFixa()) e = cinemaRail() ? 1.0f : 0.0f;
   else return 0.0f;
   g = geoEm(e, railFixa() ? 1.0f : (aberto ? 1.0f : anim_suave(desliza)));
   return (g.x + g.w) * NV_MENU_ESCALA;
@@ -752,8 +772,9 @@ static void menu_desenharCorpo_(Uint32 agora) {
   int fixa = railFixa();
   if (!aberto && desliza < 0.002f && expande <= 0.004f) {
     if (fixa) {
-      MenuGeo g = geoEm(0.0f, 1.0f);
-      desenhaBarra(0.0f, 1.0f, 0, 1.0f);
+      float e = cinemaRail() ? 1.0f : 0.0f;
+      MenuGeo g = geoEm(e, 1.0f);
+      desenhaBarra(e, 1.0f, 0, 1.0f);
       alvosDasLinhas(&g, g.x, g.w);
     } else {
       // Recolhida, a rail nao existe na tela; uma faixa na borda faz o papel
@@ -767,7 +788,7 @@ static void menu_desenharCorpo_(Uint32 agora) {
   // O VEU usa a rampa CRUA: a medida da referencia e uma reta (ver
   // NV_MENU_ABRIR_MS). A FORMA anda na mola da ilha (`expande`).
   float entrada = anim_suave(desliza);
-  float e = expande;
+  float e = cinemaRail() ? 1.0f : expande;
   // Luz ESCURA nascendo 600 px fora da tela, na altura do meio: e quase uma
   // rampa horizontal (o centro esta longe), zerada por volta de x = 1100. Um
   // quad do tamanho da area que ela alcanca, nao da tela inteira.
