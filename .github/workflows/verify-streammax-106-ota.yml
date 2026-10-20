@@ -1,0 +1,49 @@
+name: Verify StreamMax 1.0.6 OTA compatibility
+on:
+  push:
+    branches:
+      - streammax/legacy-home-prefetch-106
+    paths:
+      - '.github/workflows/verify-streammax-106-ota.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download signed candidate and stable 1.0.5
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p candidate stable
+          gh run download 39450119431 --repo "$GITHUB_REPOSITORY" --name StreamMax-RC1-Assinada-156 --dir candidate
+          gh run download 39431785860 --repo "$GITHUB_REPOSITORY" --name StreamMax-RC1-Assinada-152 --dir stable
+          grep -Fq 'Commit: 3441f2ec60640748be75b1ff7d43bbec1190e2d1' candidate/STREAMMAX-BUILD-INFO.txt
+      - name: Verify update package, version and signing certificate
+        run: |
+          set -euo pipefail
+          mapfile -t new_apks < <(find candidate -maxdepth 1 -name '*-android.apk' -type f)
+          mapfile -t old_apks < <(find stable -maxdepth 1 -name '*-android.apk' -type f)
+          test "${#new_apks[@]}" -eq 1
+          test "${#old_apks[@]}" -eq 1
+          new="${new_apks[0]}"
+          old="${old_apks[0]}"
+          unzip -tq "$new" >/dev/null
+          sdk="$ANDROID_HOME/build-tools/35.0.0"
+          test -x "$sdk/aapt"
+          test -x "$sdk/apksigner"
+          "$sdk/aapt" dump badging "$new" > new.txt
+          "$sdk/aapt" dump badging "$old" > old.txt
+          grep -Fq "package: name='com.streammax.tv' versionCode='20013' versionName='2.0.13'" new.txt
+          grep -Fq "package: name='com.streammax.tv' versionCode='20012' versionName='2.0.12'" old.txt
+          "$sdk/apksigner" verify --print-certs "$new" > new-certs.txt
+          "$sdk/apksigner" verify --print-certs "$old" > old-certs.txt
+          new_cert="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' new-certs.txt | head -1)"
+          old_cert="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' old-certs.txt | head -1)"
+          test -n "$new_cert"
+          test "$new_cert" = "$old_cert"
+          echo 'PASS: same app package and signer; versionCode increased 20012 -> 20013'
+          sha256sum "$new"
