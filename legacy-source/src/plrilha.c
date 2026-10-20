@@ -307,11 +307,17 @@ static void cartaoCentro(Uint32 agora) {
     GfxRect R = { (NV_TELA_W - w) * 0.5f, (NV_TELA_H - h) * 0.5f, w, h };
     GfxRect F = { (NV_TELA_W - c->w) * 0.5f, (NV_TELA_H - c->h) * 0.5f, c->w, c->h };
     if (c->painelEsquerdo) {
-      // Como o SubtitleSelectionOverlay Compose: ocupa a esquerda do video
-      // e fica proximo da base, sem nascer da hora no canto superior direito.
-      // A altura acompanha o conteudo e nunca corta o topo em telas menores.
-      const float x = 52.0f, margemBaixo = 76.0f, topoMin = 36.0f;
-      R.x = F.x = x;
+      // O seletor de legendas de tres colunas usa um overlay amplo e central,
+      // como o Nuvio original. A folha de audio (mais estreita) nao muda.
+      const int seletorLegendas = c->w > 1200.0f;
+      const float margemBaixo = seletorLegendas ? 30.0f : 76.0f;
+      const float topoMin = 36.0f;
+      if (seletorLegendas) {
+        R.x = (NV_TELA_W - w) * 0.5f;
+        F.x = (NV_TELA_W - c->w) * 0.5f;
+      } else {
+        R.x = F.x = 52.0f;
+      }
       R.y = NV_TELA_H - h - margemBaixo;
       F.y = NV_TELA_H - c->h - margemBaixo;
       if (R.y < topoMin) R.y = topoMin;
@@ -327,7 +333,14 @@ static void cartaoCentro(Uint32 agora) {
     float raio = RAIO_CORPO * cresce + h * 0.5f * (1.0f - cresce);
     if (raio > h * 0.5f) raio = h * 0.5f;
     if (raio > w * 0.5f) raio = w * 0.5f;
-    plrui_material(R, raio, c->modal, cenA);
+    if (c->painelEsquerdo && c->w > 1200.0f) {
+      // Vidro fumê translúcido: o vídeo continua visível atrás das legendas.
+      gfx_sombra_sob((GfxRect){ R.x - 12.0f, R.y - 4.0f, R.w + 24.0f, R.h + 20.0f },
+                     1.0f, 0, 0.5f, 0, 0, 0, 0.32f * cenA, R, raio * R.h, cenA);
+      gfx_cor(R, raio, 0.015f, 0.022f, 0.038f, 0.78f * cenA);
+    } else {
+      plrui_material(R, raio, c->modal, cenA);
+    }
     gfx_recorte(R.x, R.y, R.w, R.h);
     // O corpo fica no tamanho final e o recorte da forma o corta (centrado, ou
     // preso ao topo da forma com `ancoraTopo`).
