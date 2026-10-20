@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <pthread.h>
 #include "perfisessao.h"
 
@@ -30,6 +31,7 @@ extern void addons_destravar_lista(void) NV_PERFIL_OPCIONAL;
 typedef struct {
   char chave[FIL_CHAVE];
   char titulo[FIL_TITULO];
+  char apelido[FIL_TITULO]; // StreamMax: nome exibido, local por perfil; chave e origem intactas
   int  oculta;   // 0, OC_PESSOA ou OC_SUGESTAO
   int  tipo;    // FilTipo
   int  tam;     // FilTam
@@ -310,7 +312,7 @@ static void gravar(void) {
   // 64 linhas de ate ~310 bytes (chave 192 + titulo 96 + quatro numeros), mais
   // o cabecalho. Alocado e nao na pilha: sao ~20 KB e esta funcao roda no fio
   // do desenho.
-  size_t cap = 128 + 64 + (size_t)FIL_MAX * (2 * FIL_CHAVE + FIL_TITULO + 56);
+  size_t cap = 128 + 64 + (size_t)FIL_MAX * (3 * FIL_CHAVE + 2 * FIL_TITULO + 84);
   char *txt = malloc(cap);
   size_t k;
   int i;
@@ -354,6 +356,11 @@ static void gravar(void) {
     if (linhas[i].ordem > 0 && linhas[i].ordem < FIL_ORD_N)
       k += (size_t)snprintf(txt + k, cap - k, "ordemfileira %s %d\n",
                             linhas[i].chave, linhas[i].ordem);
+  // Optional alias line. Old versions ignore it without corrupting "linha".
+  for (i = 0; i < nLinhas && k < cap; i++)
+    if (linhas[i].apelido[0])
+      k += (size_t)snprintf(txt + k, cap - k, "apelido %s\t%s\n",
+                            linhas[i].chave, linhas[i].apelido);
   if (k < cap) dados_gravar(arquivoDoPerfil(), txt);
   free(txt);
   revisao++;
@@ -416,6 +423,15 @@ static void carregar(void) {
         if (o > 0 && o < FIL_ORD_N)
           for (int i = 0; i < nLinhas; i++)
             if (!strcmp(linhas[i].chave, buf + 13)) linhas[i].ordem = o;
+      }
+    } else if (!strncmp(buf, "apelido ", 8)) {
+      char *tab = strchr(buf + 8, '\t');
+      if (tab) {
+        *tab++ = 0;
+        if (strlen(tab) < FIL_TITULO && !strchr(tab, '\t'))
+          for (int i = 0; i < nLinhas; i++)
+            if (!strcmp(linhas[i].chave, buf + 8))
+              snprintf(linhas[i].apelido, FIL_TITULO, "%s", tab);
       }
     } else if (!strncmp(buf, "visibilidade ", 13)) {
       for (int i = 0; i < nLinhas; i++)
@@ -1560,7 +1576,8 @@ const char *fil_titulo(int i) {
   // Sem titulo conhecido a tela mostra a CHAVE, que e feia mas verdadeira.
   // Inventar "Fileira 3" esconderia qual catalogo esta sendo desligado.
   if (i < 0 || i >= nLinhas) return "";
-  return linhas[i].titulo[0] ? linhas[i].titulo : linhas[i].chave;
+  return linhas[i].apelido[0] ? linhas[i].apelido :
+         linhas[i].titulo[0] ? linhas[i].titulo : linhas[i].chave;
 }
 int fil_linha_oculta(int i) { return (i >= 0 && i < nLinhas && (linhas[i].oculta || linhas[i].ocultaConta || linhas[i].emColecao || linhas[i].semAddon || linhas[i].semDecl)) ? 1 : 0; }
 int fil_linha_sem_addon(int i) { return (i >= 0 && i < nLinhas && linhas[i].semAddon) ? 1 : 0; }
@@ -1748,6 +1765,35 @@ int fil_definir_ordem(const char *chave, int o) {
     ok = 1;
     // Mesma ordem: nao reescreve o arquivo nem remonta a home por nada.
     if (linhas[i].ordem != o) { linhas[i].ordem = o; gravar(); }
+  }
+  pthread_mutex_unlock(&trava);
+  return ok;
+}
+
+// Changes ONLY the displayed label. Empty name restores the add-on title.
+// Uses the existing per-profile Home file, never edits add-on URLs or catalog IDs.
+int fil_definir_apelido(const char *chave, const char *nome) {
+  int i, ok = 0;
+  char limpo[FIL_TITULO];
+  size_t ini = 0, fim;
+  if (!chave || !*chave || !nome || fil_origem_de(chave) == FIL_ORIGEM_APP) return 0;
+  fim = strlen(nome);
+  while (ini < fim && isspace((unsigned char)nome[ini])) ini++;
+  while (fim > ini && isspace((unsigned char)nome[fim - 1])) fim--;
+  if (fim - ini >= sizeof limpo) return 0; // do not cut UTF-8 or persist oversized aliases
+  for (size_t j = ini; j < fim; j++)
+    if ((unsigned char)nome[j] < 0x20) return 0; // tabs/newlines break the optional line format
+  memcpy(limpo, nome + ini, fim - ini);
+  limpo[fim - ini] = 0;
+  pthread_mutex_lock(&trava);
+  garantir();
+  i = achar(chave);
+  if (i >= 0) {
+    ok = 1;
+    if (strcmp(linhas[i].apelido, limpo)) {
+      snprintf(linhas[i].apelido, FIL_TITULO, "%s", limpo);
+      gravar(); // revisao makes Home repaint while preserving the stable key
+    }
   }
   pthread_mutex_unlock(&trava);
   return ok;
