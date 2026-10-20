@@ -123,6 +123,21 @@ int xtream_vod_listar(int series, XtreamMidia *saida, int cap);
 // NUNCA enviar esta URL aos logs ou ao historico: ela contem credenciais.
 int xtream_vod_url(const XtreamMidia *filme, char *url, unsigned tam);
 
+// A API de series devolve temporadas e episodios numa resposta separada.
+// IDs dos episodios nao sao IDs dos canais e nunca entram no guia ao vivo.
+typedef struct {
+  char id[80];            // "xtepisode:<id>"
+  char titulo[192];
+  char extensao[16];
+  int temporada, episodio;
+} XtreamEpisodio;
+
+// Busca episodios de uma serie retornada por xtream_vod_listar(1, ...).
+// Apenas de um worker; devolve quantidade copiada ou 0 se vazia/falha.
+int xtream_series_episodios(const char *seriesId, XtreamEpisodio *saida, int cap);
+// Monta /series/U/P/<id>.<ext>, mantendo a URL com credencial so no player.
+int xtream_episodio_url(const XtreamEpisodio *ep, char *url, unsigned tam);
+
 // ------------------------------------------------------------ reproducao
 int xtream_e_id(const char *id);
 // Monta a URL do canal em `url`. Nao vai a rede: e so o cadastro + o id. 0
