@@ -420,13 +420,50 @@ class NuvioActivity : SDLActivity() {
 
     private var instalando = false
 
+    // Inspeciona o APK assinado ANTES de abrir permissoes ou o instalador.
+    // Nao aceita pacote estranho, downgrade, certificado diferente ou caminho
+    // fora da pasta privada criada pelo atualizador do StreamMax.
+    @Suppress("DEPRECATION")
+    private fun apkOficialParaAtualizar(apk: File): Boolean {
+        val raiz = File(filesDir, "dados/atualizacao").canonicalFile
+        if (!apk.canonicalPath.startsWith(raiz.path + File.separator)) return false
+        if (!apk.isFile || !apk.name.endsWith(".apk") ||
+            apk.length() !in (5L * 1024 * 1024)..(350L * 1024 * 1024)) return false
+        val flags = if (Build.VERSION.SDK_INT >= 28)
+            PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+        val arquivo = packageManager.getPackageArchiveInfo(apk.absolutePath, flags) ?: return false
+        val instalado = packageManager.getPackageInfo(packageName, flags)
+        if (arquivo.packageName != packageName) return false
+        val novoCodigo = if (Build.VERSION.SDK_INT >= 28) arquivo.longVersionCode
+                         else arquivo.versionCode.toLong()
+        val atualCodigo = if (Build.VERSION.SDK_INT >= 28) instalado.longVersionCode
+                          else instalado.versionCode.toLong()
+        if (novoCodigo <= atualCodigo) return false
+
+        fun certificados(info: android.content.pm.PackageInfo): List<String> {
+            val assinaturas = if (Build.VERSION.SDK_INT >= 28)
+                info.signingInfo?.apkContentsSigners else info.signatures
+            return assinaturas?.map { assinatura ->
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(assinatura.toByteArray())
+                    .joinToString("") { b -> "%02x".format(b.toInt() and 255) }
+            }?.sorted() ?: emptyList()
+        }
+        val oficiais = certificados(instalado)
+        val recebidos = certificados(arquivo)
+        return oficiais.isNotEmpty() && oficiais == recebidos
+    }
+
     // Chamado pelo C (android_instalar_apk, atualizacao.c), do fio do SDL.
     // 1 = instalador aberto, 2 = falta a permissao "instalar apps desta fonte"
     // (abre a tela dela), 0 = falhou. Nao bloqueia: o resultado e do sistema.
     fun instalarApk(caminho: String): Int {
         return try {
             val arq = File(caminho)
-            if (!arq.isFile) return 0
+            if (!apkOficialParaAtualizar(arq)) {
+                Log.w("StreamMax", "Atualizacao recusada: APK, versao ou assinatura invalidos")
+                return 0
+            }
             if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
                 startActivity(
                     Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName"))

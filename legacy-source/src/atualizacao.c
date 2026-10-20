@@ -35,6 +35,7 @@
 #include "qr.h"
 #ifdef NV_ANDROID
 #include "android.h"
+#include "streammax_update.h"   // RC1 -> 1.0.1: versao publica independente do Legacy
 #include <sys/stat.h>
 #endif
 #include <stdio.h>
@@ -129,9 +130,19 @@ static void at_sha256_hex(const unsigned char *buf, size_t n, char *hex65) {
 }
 #endif
 
-#define AT_URL   "https://api.github.com/repos/iqui27/nuvio-native-legacy/releases/latest"
-#define AT_ARQ   "atualizacao-vista.txt"
+#ifdef NV_ANDROID
+// O StreamMax Android consulta SOMENTE releases estaveis oficiais do proprio app.
+// As outras plataformas continuam usando o atualizador original (fora do escopo).
+#define AT_URL    SM_UPDATE_API
+#define AT_PAGINA SM_UPDATE_PAGE
+#define AT_ARQ    "streammax-atualizacao-vista.txt"
+#define AT_VERSAO_INSTALADA SM_UPDATE_VERSION
+#else
+#define AT_URL    "https://api.github.com/repos/iqui27/nuvio-native-legacy/releases/latest"
+#define AT_ARQ    "atualizacao-vista.txt"
 #define AT_PAGINA "https://github.com/iqui27/nuvio-native-legacy/releases"
+#define AT_VERSAO_INSTALADA NV_VERSAO
+#endif
 #define AT_APPID  NV_APP_ID
 #define AT_LUNA_PUB "/usr/bin/luna-send-pub"
 #define AT_LOG_INST "/tmp/nuvio-instalar.log"
@@ -465,11 +476,18 @@ static int acharAnexo(const char *corpo, char *dst, size_t tam, char *hash, size
 #endif
 
 #ifdef NV_ANDROID
-// Contrato do anexo: "Nuvio-<versao>-android.apk". "-android-debug.apk" e
-// "-android-preview.N.apk" NAO terminam em "-android.apk", entao nao casam.
+// Aceita SOMENTE StreamMax-X.Y.Z-android.apk DA tag consultada, publicado no
+// nosso GitHub. Mesmo um outro APK terminando em "-android.apk" e recusado.
 #define AT_APK_SUFIXO "-android.apk"
-static int acharApk(const char *corpo, char *dst, size_t tam, char *hash, size_t tamHash) {
-  return acharAnexo(corpo, dst, tam, hash, tamHash, AT_APK_SUFIXO);
+static int acharApk(const char *corpo, const char *tag,
+                    char *dst, size_t tam, char *hash, size_t tamHash) {
+  if (!sm_update_tag_valida(tag)) return 0;
+  if (!acharAnexo(corpo, dst, tam, hash, tamHash, AT_APK_SUFIXO)) return 0;
+  if (!sm_update_url_apk_valida(tag, dst)) {
+    dst[0] = 0; hash[0] = 0;
+    return 0;
+  }
+  return 1;
 }
 #endif
 
@@ -573,14 +591,19 @@ static int fioConsulta(void *arg) {
     acharSo(corpo, lSo, sizeof lSo, lSoH, sizeof lSoH);
 #endif
 #ifdef NV_ANDROID
-    acharApk(corpo, lApk, sizeof lApk, lApkH, sizeof lApkH);
+    if (!sm_update_tag_valida(tag)) tag[0] = 0;
+    if (tag[0]) acharApk(corpo, tag, lApk, sizeof lApk, lApkH, sizeof lApkH);
 #endif
     free(corpo);
   }
   SDL_LockMutex(mtx);
   if (tag[0]) {
     const char *v = tag[0] == 'v' ? tag + 1 : tag;
-    if (maisNova(v, NV_VERSAO)) {
+#ifdef NV_ANDROID
+    if (sm_update_nova_versao(tag)) {
+#else
+    if (maisNova(v, AT_VERSAO_INSTALADA)) {
+#endif
       if (strcmp(v, tagNova) != 0) geracao++;
       snprintf(tagNova, sizeof tagNova, "%s", v);
       limparNotas(body, notas, sizeof notas);
@@ -599,7 +622,7 @@ static int fioConsulta(void *arg) {
       snprintf(apkVer, sizeof apkVer, "%s", v);
 #endif
     }
-    printf("[atualizacao] instalada %s, no GitHub %s%s (consulta %d)\n", NV_VERSAO, v,
+    printf("[atualizacao] instalada %s, no GitHub %s%s (consulta %d)\n", AT_VERSAO_INSTALADA, v,
            tagNova[0] ? " -- NOVA" : "", consultas + 1);
     fflush(stdout);
   }
@@ -813,7 +836,7 @@ static int podeAtualizarTpk(void) { return 0; }
 #endif
 
 #ifdef NV_ANDROID
-// BAIXA O APK para <dados>/atualizacao/Nuvio-<v>.apk, CONFERE o sha256 contra o
+// BAIXA O APK para <dados>/atualizacao/StreamMax-<v>.apk, CONFERE o SHA-256 contra o
 // digest da release (HTTPS) e entrega ao instalador do sistema (NuvioActivity).
 // Hash errado ou download parcial: apaga e nao instala nada. Se o arquivo ja
 // esta la com o hash certo (a pessoa foi conceder a permissao e voltou), nao
@@ -835,7 +858,7 @@ static int fioInstalarApk(void *arg) {
   snprintf(hash, sizeof hash, "%s", apkHash);
   apkPerm = 0;
   SDL_UnlockMutex(mtx);
-  snprintf(nome, sizeof nome, "Nuvio-%s.apk", ver);
+  snprintf(nome, sizeof nome, "StreamMax-%s.apk", ver);
   snprintf(rel, sizeof rel, "atualizacao/%s", nome);
   if (!dados_caminho(dir, sizeof dir, "atualizacao") || !dados_caminho(arq, sizeof arq, rel)) {
     printf("[atualizacao] sem pasta de dados para o APK\n"); fflush(stdout);
@@ -1233,7 +1256,7 @@ void atualizacao_atualizar(float dt, Uint32 agora) {
         char t[160];
         IlhaAvisoEx e;
         memset(&e, 0, sizeof e);
-        snprintf(t, sizeof t, i18n("Você está na versão mais recente (%s)"), NV_VERSAO);
+        snprintf(t, sizeof t, i18n("Você está na versão mais recente (%s)"), AT_VERSAO_INSTALADA);
         e.chave = "atualizacao"; e.tipo = ILHA_OK; e.icone = "check"; e.texto = t;
         e.kicker = i18n("Em dia"); e.ms = 6000u;
         ilha_avisar_ex(&e);
@@ -1749,7 +1772,7 @@ void atualizacao_desenhar(Uint32 agora) {
       float yc = y + 36.0f, bx = x;
 #ifdef NV_ANDROID
       if (apkPerm) {
-        TxtLinha l = txt_linha(TXT_DET_SIN, i18n("Permita instalar apps do Nuvio e tente de novo"), AT_TX, 255);
+        TxtLinha l = txt_linha(TXT_DET_SIN, i18n("Permita instalar apps do StreamMax e tente de novo"), AT_TX, 255);
         txt_desenhar_alpha(l, x, rodY - 12.0f - (float)l.h, ca * 0.80f);
       }
 #endif

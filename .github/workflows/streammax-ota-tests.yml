@@ -1,0 +1,27 @@
+name: StreamMax OTA updater tests
+on:
+  pull_request:
+    branches:
+      - release/streammax-1.0.0-tcl-rc146
+    paths:
+      - 'legacy-source/src/atualizacao.c'
+      - 'legacy-source/src/streammax_update.h'
+      - 'legacy-source/tests/test_streammax_update.c'
+      - 'legacy-source/tests/streammax-updater.sh'
+      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NuvioActivity.kt'
+      - 'legacy-source/deploy/app/appinfo.json'
+      - '.github/workflows/streammax-ota-tests.yml'
+permissions:
+  contents: read
+jobs:
+  updater-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: OTA, semver, integridade, instalador e certificado
+        run: |
+          bash legacy-source/tests/streammax-updater.sh
+          bash legacy-source/tests/streammax-first-source.sh
+          bash legacy-source/tests/streammax-livetv-columns.sh
+          python3 migration/check-legacy-auth.py legacy-source
