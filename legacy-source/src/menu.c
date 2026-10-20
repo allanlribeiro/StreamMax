@@ -129,7 +129,7 @@ static float menuEscala(void) {
 // "Inicio" sem acento era erro de portugues NA TELA. E "Busca", nao "Buscar":
 // os outros tres sao substantivos (Biblioteca, Ajustes) e o verbo destoava.
 // Rotulos e ordem conferidos na referencia.
-static const char *ROTULOS[MENU_N] = { "Início", "Explorar", "Guia TV", "Busca", "Biblioteca", "Agenda", "Perfil e Stats", "Ajustes" };
+static const char *ROTULOS[MENU_N] = { "Início", "Explorar", "IPTV", "Busca", "Biblioteca", "Agenda", "Perfil e Stats", "Ajustes" };
 
 // ITEM ESCONDIDO (#162): Explorar, Guia, Agenda e Perfil somem da barra quando
 // desligados nos Ajustes. Inicio, Busca, Biblioteca e Ajustes ficam sempre —
