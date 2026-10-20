@@ -9,6 +9,7 @@ on:
     branches:
       - streammax/integracao-rc1-aprovada-tcl-1019
       - streammax/branding-discreto-rc1-142-1020
+      - streammax/atualizacao-direta-101-v1
 
 permissions:
   contents: read
