@@ -1746,7 +1746,9 @@ static float escalaFil(int r) {
   if (homeCinematicaTV()) {
     TipoFileira t = fileiras[r].tipo;
     if (t == FILEIRA_CONTINUE || t == FILEIRA_RETORNO) e *= 0.76f;
-    else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.70f;
+    // StreamMax 1.0.7: enlarge only the portrait rows on Modern Android TV.
+    // Existing 0.70 compact scale -> 0.78 (+11.4%), same aspect ratio.
+    else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.78f;
   }
   return e;
 }
