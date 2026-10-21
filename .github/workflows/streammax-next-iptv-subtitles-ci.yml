@@ -26,6 +26,13 @@ jobs:
             legacy-source/tests/test_streammax_subtitle_regions.c \
             -o /tmp/streammax-subtitle-regions
           /tmp/streammax-subtitle-regions
+      - name: Testar reconexao de canais sem travar player
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Werror \
+            legacy-source/tests/test_streammax_livetv_stall.c \
+            -o /tmp/streammax-livetv-stall
+          /tmp/streammax-livetv-stall
       - name: Conferir sintaxe do backend Xtream VOD
         run: |
           set -euo pipefail
