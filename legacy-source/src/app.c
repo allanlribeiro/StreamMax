@@ -148,6 +148,7 @@
 #include "vazao.h"
 #include "stalker.h"
 #include "xtream.h"
+#include "streammax_iptv_vod.h"
 #include "rede.h"
 #include "ts_sonda.h"
 #include <unistd.h>
@@ -2881,6 +2882,38 @@ static void tocarCanal(const CatItem *it) {
   }
   aguardandoFonte = 1;
   marco("guia: buscando fontes do canal");
+}
+
+// Xtream VOD tem fonte PRONTA no provedor, nao consulta Torrentio nem addons.
+// A ficha e efemera: item sintético para o player nativo, nunca publicado
+// como catalogo de TMDB nem catalogo da Home.
+static void tocarIptvVod(const StreamMaxVodPedido *v) {
+  CatItem it = {0};
+  int ni;
+  if (!v || !v->url[0] || !v->id[0] ||
+      (strncmp(v->id, "xtvod:", 6) && strncmp(v->id, "xtepisode:", 10)))
+    return;
+  snprintf(it.imdb, sizeof it.imdb, "%s", v->id);
+  snprintf(it.tipo, sizeof it.tipo, "%s", "movie");
+  snprintf(it.titulo, sizeof it.titulo, "%s", v->nome);
+  snprintf(it.poster, sizeof it.poster, "%s", v->poster);
+  snprintf(it.meta, sizeof it.meta, "%s",
+           v->episodio > 0 ? "Episódio IPTV" : "Filme IPTV");
+  it.temporada = v->temporada;
+  it.episodio = v->episodio;
+  ni = cat_indice_por_imdb_tipo(it.imdb, it.tipo);
+  if (ni < 0) ni = cat_acrescentar(&it);
+  if (ni < 0) return;
+  if (player_aberto() || player_retido() || player_mini_ativo()) player_encerrar();
+  diagnostico_cancelar_vazao();
+  limparFonteVOD();
+  novaGeracaoFonte();
+  limparFontePendente();
+  aguardandoFonte = 0; fonteEscolhida = -1;
+  canalFonteIdx = -1; canalViaProxy = 0;
+  stream_definir_lista(NULL, 0);
+  // A URL contém usuário e senha Xtream: passar direto ao player, sem printf.
+  player_abrir(ni, v->url);
 }
 
 // O CANAL NO AR VAI PARA O GUIA, sem recarregar (25/09/2026). O mesmo fluxo
@@ -5881,6 +5914,14 @@ void app_atualizar(float dt, Uint32 agora) {
     nomeParaFolha(); stream_folha_abrir();
   }
 
+  // Filmes/episódios IPTV ficam na área do provedor; fluxo direto sem
+  // refazer addons, sem adicionar itens nas fileiras da Home.
+  { StreamMaxVodPedido v;
+    if (streammax_iptv_pediu(&v)) {
+      tocarIptvVod(&v);
+      memset(&v, 0, sizeof v); // URL de credenciais nao sobrevive no stack
+    }
+  }
   // CANAL ESCOLHIDO NO GUIA — tela cheia ou faixa, mesma acao: toca direto.
   { CatItem it;
     if (aguardandoFonte != 2 && guia_pediu_canal(&it)) tocarCanal(&it); }
