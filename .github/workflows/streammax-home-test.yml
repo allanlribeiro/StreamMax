@@ -32,11 +32,15 @@ jobs:
           gradle-version: "8.10.2"
 
       - name: Android SDK 35
-        # O runner ubuntu-latest ja contem command-line tools; setup-android@v3
-        # tenta instalar o pacote obsoleto "tools" e falha em 2026.
+        # No ubuntu-latest o sdkmanager fica em cmdline-tools/16.0/bin,
+        # mas nao necessariamente no PATH do shell.
         run: |
-          command -v sdkmanager
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          set -euo pipefail
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_DIR/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "Android SDK: $SDK_DIR; sdkmanager: $SDKMANAGER"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Compilar APK experimental
         working-directory: streammax-home
