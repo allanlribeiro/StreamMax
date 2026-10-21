@@ -16,6 +16,7 @@ on:
       - streammax/abertura-etapas-startup-105-1020
       - streammax/107-legacy-home-4k # teste 1.0.7 na base Legacy, sem publicacao OTA
       - fix/streammax-108-home-rename-keyboard # correção da renomeação, sem publicação automática
+      - streammax/next-core-20261021 # proxima versao: abertura, pt-BR/pt-PT e estabilidade
 
 permissions:
   contents: read
@@ -43,6 +44,13 @@ jobs:
             grep -Fq 'gfx_furo_raio(pv, raio);' legacy-source/src/guia.c
           fi
           echo "Origem verificada: codigo Legacy, commit $(git rev-parse --short HEAD)"
+      - name: Testar separacao regional de legendas
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=c11 -Wall -Wextra -I legacy-source/src             legacy-source/src/linguas.c legacy-source/tests/test_streammax_subtitle_regions.c             -o /tmp/test_streammax_subtitle_regions
+          /tmp/test_streammax_subtitle_regions
+
       - name: Conferir o player Media3 e escolha manual desta revisao
         shell: bash
         run: |
