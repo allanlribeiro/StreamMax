@@ -23,7 +23,7 @@ assert "return homeCinematicaTV() ? 48.0f : NV_LEGACY_ROW_HEAD_H;" in home
 assert "if (homeCinematicaTV()) return 24.0f;" in home
 assert "if (homeCinematicaTV()) return 36.0f;" in home
 assert "if (t == FILEIRA_CONTINUE || t == FILEIRA_RETORNO) e *= 0.76f;" in home
-assert "else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.70f;" in home
+assert "else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.78f;" in home  # 1.0.7: +11.4%
 assert "homeCabecalhoH()" in home
 menu = Path("src/menu.c").read_text(encoding="utf-8")
 assert "static int cinemaRail(void)" in menu
@@ -41,6 +41,6 @@ assert 'return ajustes_borda_foco() ? 0.02f : 0.045f;' in home
 assert 'gfx_borda_foco_atual = ajustes_borda_foco() ? 0.55f : 0.0f;' in home
 assert "anim_mola(animFoco[r][c], alvo, dt" in home
 assert "ajustes_raio_poster_px()" in home
-assert '#define SM_UPDATE_VERSION "1.0.5"' in up
-print("OK: Home StreamMax 1.0.5: menu e fileiras da 1.0.4 preservados")
+assert '#define SM_UPDATE_VERSION "1.0.7"' in up
+print("OK: Home StreamMax 1.0.7: menu e fileiras da 1.0.4 preservados")
 PY

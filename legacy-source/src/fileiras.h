@@ -372,6 +372,9 @@ void fil_gravar_registro(void);
 int         fil_n(void);
 const char *fil_chave(int i);
 const char *fil_titulo(int i);
+// Change only the displayed name of an addon/collection catalog row (local to profile).
+// Empty label restores the original catalog title. Returns 0 for unknown/system rows.
+int         fil_definir_apelido(const char *chave, const char *nome);
 int         fil_linha_oculta(int i);
 int         fil_linha_tipo(int i);
 int         fil_linha_tam(int i);

@@ -6,6 +6,7 @@
 // StreamMax 1.0.3 publicada: Android 2.0.10 (20010).
 // StreamMax 1.0.4 publicada: Android 2.0.11 (20011).
 // Candidato experimental StreamMax 1.0.5: Android 2.0.12 (20012), inicio informado e startup rapido.
+// Candidato StreamMax 1.0.7: Android 2.0.14 (20014), Home + menu Fontes 4K.
 // Alterar AMBAS as versoes a cada release: este define a versao que a
 // interface compara; deploy/app/appinfo.json define o versionCode do Android.
 #ifndef SM_UPDATE_H
@@ -14,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SM_UPDATE_VERSION "1.0.5"
+#define SM_UPDATE_VERSION "1.0.7"
 #define SM_UPDATE_API  "https://api.github.com/repos/allanlribeiro/StreamMax/releases/latest"
 #define SM_UPDATE_PAGE "https://github.com/allanlribeiro/StreamMax/releases"
 #define SM_UPDATE_DOWNLOAD "https://github.com/allanlribeiro/StreamMax/releases/download/"
