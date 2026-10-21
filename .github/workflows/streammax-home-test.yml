@@ -31,11 +31,12 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Instalar Android SDK 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Android SDK 35
+        # O runner ubuntu-latest ja contem command-line tools; setup-android@v3
+        # tenta instalar o pacote obsoleto "tools" e falha em 2026.
+        run: |
+          command -v sdkmanager
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Compilar APK experimental
         working-directory: streammax-home
