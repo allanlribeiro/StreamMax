@@ -131,6 +131,24 @@ jobs:
           if (-not (Test-Path $setup)) { throw "Instalador nao encontrado: $setup" }
           Write-Host "Instalador criado: $((Get-Item $setup).Length) bytes"
 
+      - name: Testar instalacao real do StreamMax-Setup.exe
+        shell: pwsh
+        working-directory: legacy-source
+        run: |
+          # Teste silencioso apenas no runner: simula a instalacao normal do wizard.
+          $setup = (Resolve-Path "build/windows/installer/StreamMax-Setup-Windows-x64.exe").Path
+          $dest = Join-Path $env:RUNNER_TEMP "StreamMax-Setup-Teste"
+          $arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dest")
+          $p = Start-Process -FilePath $setup -ArgumentList $arguments -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Instalador retornou $($p.ExitCode)" }
+          foreach ($file in @("StreamMax.exe", "SDL2.dll", "libGLESv2.dll", "libdl.dll")) {
+            if (-not (Test-Path (Join-Path $dest $file))) { throw "Instalacao incompleta: $file" }
+          }
+          if (-not (Test-Path (Join-Path $dest "art"))) { throw "Instalacao sem pasta art" }
+          if (-not (Get-ChildItem $dest -Filter "unins*.exe" -ErrorAction SilentlyContinue)) {
+            throw "Desinstalador nao foi criado"
+          }
+          Write-Host "OK: instalador executado, app/DLLs/art e desinstalador presentes."
       - name: Publicar instalador StreamMax Windows
         uses: actions/upload-artifact@v4
         with:
