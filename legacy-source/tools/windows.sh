@@ -24,7 +24,7 @@ fi
 ENVF="$(mktemp)"
 trap 'rm -f "$ENVF"' EXIT
 bash tools/env.sh --env-file "$ENVF"
-DEFINES=(-DNV_WINDOWS_DESKTOP)
+DEFINES=(-DNV_WINDOWS_DESKTOP -Iwindows-compat -include windows_compat.h)
 while IFS='=' read -r name value; do
   value=${value//\\/\\\\}
   value=${value//\"/\\\"}
