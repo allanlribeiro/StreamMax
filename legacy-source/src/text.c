@@ -1280,6 +1280,16 @@ int txt_iniciar(const char *dirRecursos, float escala) {
     snprintf(caminhoPeso[TXT_FAMILIA_DROID][p], 512, "%s",
              access("/system/fonts/DroidSans.ttf", R_OK) == 0 ? "/system/fonts/DroidSans.ttf"
                                                               : "/system/fonts/Roboto-Regular.ttf");
+#elif defined(NV_WINDOWS_DESKTOP)
+  // O Windows nao tem /usr/share/fonts. Usar o Roboto distribuido no
+  // instalador como substituto da LG e como reserva latina do Droid.
+  const char *pesosWin[3] = { "Regular", "Medium", "Bold" };
+  for (int p = 0; p < 3; p++) {
+    snprintf(caminhoPeso[TXT_FAMILIA_LG][p], 512,
+             "%sfonts/Roboto-%s.ttf", base, pesosWin[p]);
+    snprintf(caminhoPeso[TXT_FAMILIA_DROID][p], 512,
+             "%sfonts/Roboto-%s.ttf", base, pesosWin[p]);
+  }
 #else
   snprintf(caminhoPeso[TXT_FAMILIA_LG][0], 512, "%s", "/usr/share/fonts/LG_Display-Light.ttf");
   snprintf(caminhoPeso[TXT_FAMILIA_LG][1], 512, "%s", "/usr/share/fonts/LG_Display-Regular.ttf");
