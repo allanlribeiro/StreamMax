@@ -375,6 +375,9 @@ const char *fil_titulo(int i);
 // Change only the displayed name of an addon/collection catalog row (local to profile).
 // Empty label restores the original catalog title. Returns 0 for unknown/system rows.
 int         fil_definir_apelido(const char *chave, const char *nome);
+// Copy an explicitly customized display title (0 if no alias). Caller
+// retains source catalog title when no alias exists.
+int         fil_copiar_apelido(const char *chave, char *dst, int tam);
 int         fil_linha_oculta(int i);
 int         fil_linha_tipo(int i);
 int         fil_linha_tam(int i);
