@@ -104,7 +104,24 @@ jobs:
             $proc.Kill(); $proc.WaitForExit()
             throw "Smoke-test reprovado: o processo abriu, mas nao exibiu uma janela StreamMax em 15 segundos."
           }
-          Write-Host "OK: StreamMax abriu uma janela no Windows com PATH limpo."
+          # Exigir um quadro renderizado, nao apenas o handle da janela.
+          $diagnostico = Join-Path $env:LOCALAPPDATA "StreamMax\diagnostico-inicio.txt"
+          $quadro = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Milliseconds 500
+            $proc.Refresh()
+            if ($proc.HasExited) { throw "StreamMax saiu antes do primeiro quadro: $($proc.ExitCode)" }
+            if ((Test-Path $diagnostico) -and (Select-String -Path $diagnostico -Pattern "quadro-1" -SimpleMatch -Quiet)) {
+              $quadro = $true
+              break
+            }
+          }
+          if (-not $quadro) {
+            if (Test-Path $diagnostico) { Get-Content $diagnostico -Tail 25 }
+            $proc.Kill(); $proc.WaitForExit()
+            throw "Smoke-test reprovado: janela abriu, mas nenhum quadro real foi renderizado em 30 segundos."
+          }
+          Write-Host "OK: janela StreamMax visivel e primeiro quadro renderizado com PATH limpo."
           $proc.Kill()
           $proc.WaitForExit()
           $proc.Dispose()
