@@ -140,6 +140,10 @@ $resultado = foreach ($linha in $linhasPacotes) {
         $p -match '^com\.android\.providers\.' -or
         $p -match '(?i)(webview|keyboard|inputmethod|bluetooth|tvinput|firmware|updater|ota|update|setup|provision|systemui|remote|tuner|hdmi|cast)') {
         $classe = 'TV precisa (essencial/protegido)'
+    } elseif ($p -match '^com\.tcl\.' -or $p -match '^com\.thomson\.' -or
+              $p -match '^com\.oem\.') {
+        # Regra expressa: nao desligar nenhum servico do fabricante.
+        $classe = 'TV precisa (fabricante/protegido)'
     } elseif ($doUsuario.ContainsKey($p)) {
         $classe = 'Apps que voce usa (preservar)'
     } elseif ($candidato.ContainsKey($p)) {
