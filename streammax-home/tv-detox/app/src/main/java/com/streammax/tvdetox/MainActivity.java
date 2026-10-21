@@ -1040,9 +1040,10 @@ public class MainActivity extends Activity {
 
     // Saves the top row as the app list, so it no longer follows apps.txt.
     private void saveRow() {
-        List<String> saved = new ArrayList<>(rowApps);
-        saved.remove(TV_ABERTA);
-        getSharedPreferences(PREFS, 0).edit().putString("apps", android.text.TextUtils.join(",", saved)).apply();
+        // Somente aplicativos compoem a fileira. Atalhos de sistema nunca
+        // entram na lista salva, mesmo ao reordenar a faixa pelo controle.
+        getSharedPreferences(PREFS, 0).edit().putString("apps",
+                android.text.TextUtils.join(",", rowApps)).apply();
     }
 
     // Where app number i sits in the grid.
@@ -1077,7 +1078,7 @@ public class MainActivity extends Activity {
                 : code == KeyEvent.KEYCODE_DPAD_UP ? -PER_ROW : code == KeyEvent.KEYCODE_DPAD_DOWN ? PER_ROW : 0;
         if (step != 0) {
             int from = rowApps.indexOf(key), to = from + step;
-            if (down && to > 0 && to < rowApps.size()) {
+            if (down && to >= 0 && to < rowApps.size()) {
                 // Slide the tiles into their new places: no rebuild, so it stays quick on slow TVs.
                 rowApps.add(to, rowApps.remove(from));
                 for (int i = Math.min(from, to); i <= Math.max(from, to); i++) {
