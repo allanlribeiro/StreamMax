@@ -16,7 +16,7 @@ DefaultGroupName=StreamMax
 PrivilegesRequired=lowest
 AllowNoIcons=yes
 UsePreviousAppDir=yes
-OutputDir=build\windows\installer
+OutputDir=..\build\windows\installer
 OutputBaseFilename=StreamMax-Setup-Windows-x64
 Compression=lzma
 SolidCompression=yes
@@ -38,7 +38,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 Name: "desktopicon"; Description: "Criar atalho na area de trabalho"; GroupDescription: "Atalhos:"; Flags: unchecked
 
 [Files]
-Source: "build\windows\package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\build\windows\package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\StreamMax"; Filename: "{app}\StreamMax.exe"; WorkingDir: "{app}"
