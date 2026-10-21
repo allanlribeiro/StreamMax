@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #ifndef PATH_MAX
 #define PATH_MAX MAX_PATH
@@ -41,6 +43,14 @@ static inline int nv_fsync(int fd) { return _commit(fd); }
 
 static inline int nv_fchmod(int fd, int mode) { (void)fd; (void)mode; return 0; }
 #define fchmod nv_fchmod
+
+static inline int nv_lstat(const char *path, struct stat *st) { return stat(path, st); }
+#define lstat nv_lstat
+
+static inline ssize_t nv_readlink(const char *path, char *buf, size_t size) {
+  (void)path; (void)buf; (void)size; errno = ENOSYS; return -1;
+}
+#define readlink nv_readlink
 
 static inline unsigned nv_rand_r(unsigned *seed) {
   *seed = *seed * 1103515245u + 12345u;
