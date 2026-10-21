@@ -4,37 +4,52 @@ import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
-/** Opt-in launcher redirection; no system app is disabled. */
+/** Opt-in HOME interception experiment and fallback launcher redirection. */
 public final class HomeRedirectService extends AccessibilityService {
     private static final String TAG = "StreamMaxHomeRedirect";
     private static final String GOOGLE_HOME = "com.google.android.apps.tv.launcherx";
     private long lastRedirect;
 
+    private boolean enabled() {
+        return getSharedPreferences("home", MODE_PRIVATE).getBoolean("override", false);
+    }
+
     @Override public void onServiceConnected() {
         super.onServiceConnected();
-        Log.i(TAG, "Accessibility service connected");
+        Log.i(TAG, "Accessibility service connected; testing HOME key filtering");
+    }
+
+    @Override protected boolean onKeyEvent(KeyEvent event) {
+        if (!enabled() || event.getKeyCode() != KeyEvent.KEYCODE_HOME) return false;
+        Log.i(TAG, "HOME key seen action=" + event.getAction());
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+            redirect("key");
+        }
+        return true;
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
-        String sourcePackage = event.getPackageName() == null ? "" : event.getPackageName().toString();
-        boolean enabled = getSharedPreferences("home", MODE_PRIVATE).getBoolean("override", false);
-        Log.d(TAG, "window=" + sourcePackage + " enabled=" + enabled);
-        if (!GOOGLE_HOME.equals(sourcePackage) || !enabled) return;
+        String pkg = event.getPackageName() == null ? "" : event.getPackageName().toString();
+        boolean requested = enabled();
+        Log.d(TAG, "window=" + pkg + " enabled=" + requested);
+        if (GOOGLE_HOME.equals(pkg) && requested) redirect("window-fallback");
+    }
 
+    private void redirect(String trigger) {
         long now = SystemClock.elapsedRealtime();
-        if (now - lastRedirect < 3000) return;
+        if (now - lastRedirect < 2500) return;
         lastRedirect = now;
-
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         try {
             startActivity(intent);
-            Log.i(TAG, "Redirect requested from Google TV to StreamMax Home");
+            Log.i(TAG, "Redirect requested trigger=" + trigger);
         } catch (RuntimeException ex) {
-            Log.e(TAG, "Redirect failed", ex);
+            Log.e(TAG, "Redirect failed trigger=" + trigger, ex);
         }
     }
 
