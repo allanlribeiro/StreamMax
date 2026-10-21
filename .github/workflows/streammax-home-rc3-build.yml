@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     defaults:
@@ -21,7 +21,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - name: Check preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          ls -la "${ANDROID_HOME}/platforms" || true
+          ls -la "${ANDROID_HOME}/build-tools" || true
+          test -d "${ANDROID_HOME}/platforms/android-35"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -29,6 +34,7 @@ jobs:
         run: gradle :app:assembleDebug --stacktrace
       - name: Upload RC3 debug APK
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: StreamMax-Home-RC3-debug
           path: streammax-home-rc3/standalone/app/build/outputs/apk/debug/app-debug.apk
