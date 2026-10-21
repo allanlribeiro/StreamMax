@@ -351,8 +351,8 @@ void streammax_iptv_desenhar(float a, int focoAba) {
         : 0;
     const float largura = (itemW - 36.0f) / colunas;
     const float altura = 218.0f;
-    // Limpa a protecao temporaria das capas IPTV a cada quadro: apenas a
-    // janela visivel deve permanecer marcada em uso no cache global.
+    // So solicita texturas da janela visivel; a politica de despejo
+    // das imagens antigas pertence ao cache global de texturas.
     for (int j = 0; j < colunas * linhas; j++) {
       int i = primeiraLinha * colunas + j;
       int coluna = j % colunas, linha = j / colunas;
