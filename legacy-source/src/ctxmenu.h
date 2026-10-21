@@ -26,6 +26,9 @@ void ctx_abrir(int indice);
 // despachadas continuam nos seus proprios workers, com o dono original.
 void ctx_abrir_sessao(void);
 int  ctx_aberto(void);
+// Keyboard started by the Home's "Renomear fileira". It is a top-level modal:
+// app.c must send all D-pad events and draw it above the closed context menu.
+int  ctx_renomear_ativo(void);
 void ctx_evento(const SDL_Event *e);
 void ctx_atualizar(float dt, Uint32 agora);
 void ctx_desenhar(Uint32 agora);

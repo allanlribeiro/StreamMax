@@ -267,6 +267,11 @@ static char filChave[192], filTitulo[96];
 // so changing profile before pressing Concluir cannot write to another profile.
 static char renomearPendente[192];
 static NvPerfilSessao renomearSessao;
+// The Home owns this keyboard, not the Settings screen. app.c uses this
+// explicit owner check for D-pad routing and top-level modal drawing.
+int ctx_renomear_ativo(void) {
+  return renomearPendente[0] && teclado_aberto();
+}
 static void renomearLerTeclado(void) {
   int resultado;
   if (!renomearPendente[0]) return;
@@ -1222,9 +1227,11 @@ void ctx_evento(const SDL_Event *e) {
 }
 
 void ctx_atualizar(float dt, Uint32 agora) {
-  int i;
+  int i, atual;
+  // Unlike Settings, Home does not update the keyboard itself. Without this
+  // the Android IME never opens and neither system-text nor D-pad input works.
+  if (ctx_renomear_ativo()) teclado_atualizar(dt, agora);
   renomearLerTeclado();
-  int atual;
   if (!holdObservador) {
     SDL_AddEventWatch(observarHold, NULL);
     holdObservador = 1;

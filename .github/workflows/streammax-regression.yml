@@ -17,3 +17,5 @@ jobs:
         run: bash legacy-source/tests/streammax-source-ptbr.sh
       - name: Hero trailer static regression
         run: bash legacy-source/tests/streammax-hero-trailer.sh
+      - name: Home row rename keyboard and alias regression
+        run: bash legacy-source/tests/streammax-home-rename-keyboard.sh
