@@ -1,0 +1,37 @@
+name: StreamMax next - idiomas e IPTV
+
+on:
+  push:
+    branches:
+      - streammax/next-pt-regional-iptv-20261020
+  pull_request:
+    branches:
+      - release/streammax-1.0.8-ota-keyboard
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linguas-e-xtream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar separacao regional de legendas
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Ilegacy-source/src \
+            legacy-source/src/linguas.c \
+            legacy-source/tests/test_streammax_subtitle_regions.c \
+            -o /tmp/streammax-subtitle-regions
+          /tmp/streammax-subtitle-regions
+      - name: Conferir sintaxe do backend Xtream VOD
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -pthread -fsyntax-only -Ilegacy-source/src \
+            legacy-source/src/xtream.c
+      - name: Revisar fluxo leve de inicializacao
+        run: |
+          set -euo pipefail
+          bash legacy-source/tests/streammax-startup-stage.sh
