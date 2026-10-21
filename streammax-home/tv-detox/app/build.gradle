@@ -5,11 +5,11 @@ android {
     namespace 'com.streammax.tvdetox'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.streammax.tvdetox.teste5'
+        applicationId 'com.streammax.tvdetox.visual10'
         minSdk 26
         targetSdk 34
         versionCode 1
-        versionName '0.1.1-teste5'
+        versionName '0.2.0-visual'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
