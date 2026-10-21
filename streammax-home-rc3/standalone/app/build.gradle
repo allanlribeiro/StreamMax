@@ -46,4 +46,4 @@ tasks.register('verifyStableSigning') {
         }
     }
 }
-tasks.named('preReleaseBuild').configure { dependsOn 'verifyStableSigning' }
+tasks.matching { it.name == 'assembleRelease' }.configureEach { dependsOn 'verifyStableSigning' }
