@@ -1,0 +1,27 @@
+name: Verify StreamMax Home RC4
+on:
+  push:
+    branches: [feature/streammax-home-rc4-stable-signing]
+    paths:
+      - 'streammax-home-rc3/standalone/**'
+      - '.github/workflows/streammax-home-rc4-verify.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: streammax-home-rc3/standalone
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compile debug without distribution
+        run: gradle :app:assembleDebug --no-daemon
