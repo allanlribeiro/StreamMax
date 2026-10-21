@@ -881,10 +881,15 @@ static void tituloAtual(char *dst, unsigned tam) {
 }
 // Etiqueta que nao e idioma ("(null)" da LG antes da sonda, "und") vira vazio:
 // ela nao diz o que a pessoa quer no proximo titulo.
-static void idiomaLembravel(const char *raw, char *dst, unsigned tam) {
-  const char *c;
-  ling_normalizar(raw, dst, tam);
-  if (!strcasecmp(dst, "und") || !strcasecmp(dst, "none")) { dst[0] = 0; return; }
+static void idiomaLembravel(const char *raw, const char *nome, const char *extra,
+                             char *dst, unsigned tam) {
+  const char *c, *regional;
+  char normal[16];
+  ling_normalizar(raw, normal, sizeof normal);
+  if (!strcasecmp(normal, "und") || !strcasecmp(normal, "none")) { dst[0] = 0; return; }
+  regional = ling_legenda_chave(normal, nome);
+  regional = ling_legenda_chave(regional, extra);
+  snprintf(dst, tam, "%s", regional ? regional : "");
   for (c = dst; *c; c++)
     if (!((*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') || *c == '-')) { dst[0] = 0; return; }
 }
@@ -902,7 +907,7 @@ static void lembrarAddon(const Legenda *l) {
   tituloAtual(e.titulo, sizeof e.titulo);
   e.tipo = 'a';
   legendasui_id_addon(l, e.id);
-  idiomaLembravel(l->idioma, e.idioma, sizeof e.idioma);
+  idiomaLembravel(l->idioma, l->rotulo, l->arquivo, e.idioma, sizeof e.idioma);
   snprintf(e.nome, sizeof e.nome, "%s", l->provedor[0] ? l->provedor : l->rotulo);
   lembrarEscolha(&e);
 }
@@ -921,7 +926,7 @@ static void lembrarManual(int i) {
     // #383: inteira explicita; id vazio de builds antigos e tipo desconhecido.
     e.id[0] = (f->tipoLeg == LING_LEG_FORCADA || f->tipoLeg == LING_LEG_LETREIROS || f->letreiro) ? 'f' :
               (f->tipoLeg == LING_LEG_COMPLETA || f->tipoLeg == LING_LEG_SDH) ? 'c' : 0;
-    idiomaLembravel(f->idioma, e.idioma, sizeof e.idioma);
+    idiomaLembravel(f->idioma, f->nome, f->rotulo, e.idioma, sizeof e.idioma);
     snprintf(e.nome, sizeof e.nome, "%s", f->rotulo);
   } else { lembrarAddon(addons_legenda(i - emb)); return; }
   lembrarEscolha(&e);
