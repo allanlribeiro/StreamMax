@@ -2209,6 +2209,37 @@ int cat_mesclar_listas(const CatItem *v, int qtd) {
   return novos;
 }
 
+// Um unico slot reutilizavel para Xtream VOD, nao uma entrada nova por
+// titulo assistido. O catalogo pode conter milhares de CatItem grandes na TV;
+// alocar/copiar esse vetor a cada episodio aumenta RAM e stutter.
+int cat_iptv_reusar_slot(const CatItem *item) {
+  int i, j;
+  if (!item || !item->imdb[0] || strcmp(item->tipo, "movie") ||
+      (strncmp(item->imdb, "xtvod:", 6) &&
+       strncmp(item->imdb, "xtepisode:", 10))) return -1;
+  CAT_TESTE_ANTES_TRAVA();
+  catTravar();
+  for (i = 0; itens && i < n; i++) {
+    int fileira = 0;
+    if (strncmp(itens[i].imdb, "xtvod:", 6) &&
+        strncmp(itens[i].imdb, "xtepisode:", 10)) continue;
+    // Nunca sobrescrever um item referenciado por uma fileira. Os itens do
+    // IPTV sao anexados fora das fileiras, e so estes podem ser reciclados.
+    for (j = 0; j < nFils; j++)
+      if (i >= fils[j].ini && i < fils[j].ini + fils[j].n) {
+        fileira = 1; break;
+      }
+    if (fileira) continue;
+    itens[i] = *item;
+    mudou();
+    pthread_mutex_unlock(&pubTrava);
+    return i;
+  }
+  pthread_mutex_unlock(&pubTrava);
+  // Primeira visita: um unico append. O proximo filme reaproveita o slot.
+  return cat_acrescentar(item);
+}
+
 int cat_acrescentar(const CatItem *item) {
   CatItem *novo;
   int novoN;
