@@ -455,6 +455,10 @@ int xtream_canais(XtreamCanal *saida, int max) {
 }
 
 // --- biblioteca IPTV: filmes e series, fora dos canais e do catalogo comum ---
+static int vodUltimaFalha = XT_OK, vodUltimoHttp;
+int xtream_vod_ultima_falha(void) { return vodUltimaFalha; }
+int xtream_vod_ultimo_http(void) { return vodUltimoHttp; }
+
 // Rede executada apenas no worker da futura tela IPTV. O mesmo chamarSt
 // serializa pedidos, protege a sessao ativa e NUNCA imprime as credenciais.
 // Limitamos a memoria entregue ao chamador; o JSON e liberado ao sair.
@@ -463,10 +467,18 @@ int xtream_vod_categorias(int series, XtreamCategoriaVod *saida, int cap) {
   const char *p;
   int st = 0, n = 0;
   NvPerfilSessao sessao = nv_perfil_sessao_ler();
+  vodUltimaFalha = XT_OK; vodUltimoHttp = 0;
   if (!saida || cap < 1 || !xtream_configurado()) return 0;
   corpo = chamarSt(series ? "get_series_categories" : "get_vod_categories",
                    XT_PRAZO_LISTA_S, &st, sessao);
-  if (!corpo || st < 200 || st >= 400 || !nv_perfil_sessao_atual(sessao)) {
+  vodUltimoHttp = st;
+  if (!corpo || st == 0) { vodUltimaFalha = XT_SEM_RESPOSTA; free(corpo); return 0; }
+  if (st < 200 || st >= 400) { vodUltimaFalha = XT_HTTP; free(corpo); return 0; }
+  if (!nv_perfil_sessao_atual(sessao)) { free(corpo); return 0; }
+  if (*pulaBom(corpo) != '[') {
+    vodUltimaFalha = strstr(corpo, "\"auth\":0") ? XT_RECUSOU
+                    : (strstr(corpo, "<html") || strstr(corpo, "<!DOCTYPE")) ? XT_PAGINA
+                    : XT_HTTP;
     free(corpo); return 0;
   }
   p = js_raiz_array(pulaBom(corpo));
