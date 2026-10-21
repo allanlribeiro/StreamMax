@@ -625,8 +625,9 @@ public class MainActivity extends Activity {
 
         List<String> apps = appList(pm);
         // One row only: preserve 4-across card size, scroll sideways for additional apps.
-        int launchable = 1; // Todos os apps at the end
-        for (String pkg : apps) if (launchIntent(pm, pkg) != null) launchable++;
+        // appList already validates each launcher once. Avoid querying the package
+        // manager again for every icon just to count the horizontal dock slots.
+        int launchable = apps.size() + 1; // Todos os apps at the end
         gridTop = px(ROW1_TOP);
         int trackCount = Math.max(PER_ROW, launchable);
         int trackWidth = 2 * px(DOCK_PADDING) + trackCount * w + (trackCount - 1) * g;
@@ -1444,6 +1445,11 @@ public class MainActivity extends Activity {
         try {
             Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             int iw = d.getIntrinsicWidth(), ih = d.getIntrinsicHeight();
+            if (iw == w && ih == h && d instanceof BitmapDrawable) {
+                // Package already supplies the exact-size bitmap; don't allocate/copy it.
+                b.recycle();
+                return d;
+            }
             if (iw <= 0 || ih <= 0) { iw = w; ih = h; }
             float s = Math.max((float) w / iw, (float) h / ih);
             int dw = Math.round(iw * s), dh = Math.round(ih * s);
