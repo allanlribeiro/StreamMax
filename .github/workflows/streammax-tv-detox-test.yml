@@ -1,0 +1,61 @@
+name: StreamMax Home TV Detox — Teste TCL
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - streammax/home-tcl-p7k-experimental
+    paths:
+      - 'streammax-home/tv-detox/app/**'
+      - 'streammax-home/tv-detox/build.gradle'
+      - 'streammax-home/tv-detox/settings.gradle'
+      - '.github/workflows/streammax-tv-detox-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Instalar Android SDK 35
+        run: |
+          set -euo pipefail
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_DIR/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - name: Compilar fonte adaptado do TV Detox
+        working-directory: streammax-home/tv-detox
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Auditar APK experimental (sem HOME e sem internet)
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="streammax-home/tv-detox/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > /tmp/tvdetox-badging
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" > /tmp/tvdetox-perms
+          grep -q "package: name='com.streammax.tvdetox.teste'" /tmp/tvdetox-badging
+          ! grep -q 'android.permission.INTERNET' /tmp/tvdetox-perms
+          ! grep -q 'android.permission.REQUEST_DELETE_PACKAGES' /tmp/tvdetox-perms
+          ! grep -q 'android.intent.category.HOME' streammax-home/tv-detox/app/src/main/AndroidManifest.xml
+          ! grep -Rq 'Intent.ACTION_DELETE' streammax-home/tv-detox/app/src/main/java
+          mkdir -p dist
+          cp "$APK" dist/StreamMax-Home-TVDetox-Teste.apk
+          echo "APK auditado: sem ROOT, sem desinstalar, sem tomar HOME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Home-TVDetox-Teste-${{ github.run_number }}
+          path: dist/StreamMax-Home-TVDetox-Teste.apk
+          if-no-files-found: error
+          retention-days: 30
