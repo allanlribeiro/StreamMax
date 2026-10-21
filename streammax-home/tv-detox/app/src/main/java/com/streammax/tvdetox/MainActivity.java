@@ -2,6 +2,18 @@ package com.streammax.tvdetox;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.app.AlertDialog;
+import android.text.InputType;
+import android.widget.EditText;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -59,8 +71,8 @@ public class MainActivity extends Activity {
     //  1. a list saved at install time:  am start -n com.ansub.tvhome/.MainActivity --es apps "pkg1,pkg2"
     //     (--es apps auto  goes back to 2; add --es stamp <unique> so it's applied only once, see saveConfig)
     //  2. apps.txt (built in as Apps.LIST), topped up with other TV apps installed on this TV.
-    // Missing apps are skipped. Topping up stops at six apps, but a chosen list can be any length:
-    // apps wrap into rows of six, like Apple TV, and the page scrolls down once they don't all fit.
+    // Missing apps are skipped. Topping up stops at four apps, but a chosen list can be any length:
+    // apps wrap into rows of four, like Apple TV, and the page scrolls down once they don't all fit.
     // On the TV, hold OK on an app (or press Menu) to move or remove it, or add another; that saves list 1.
     // A network tile always sits at the top right, level with the clock. Settings shortcuts can join
     // it there, off until picked the same way:
@@ -69,7 +81,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "config";
     private static final List<String> NOT_APPS = Arrays.asList("com.android.vending", "com.android.tv.settings",
             "com.android.tv", "com.google.android.tvlauncher", "com.google.android.apps.tv.launcherx",
-            "com.google.android.leanbacklauncher", "com.streammax.tvdetox.teste", "com.streammax.tvdetox.teste5");
+            "com.google.android.leanbacklauncher", "com.streammax.tvdetox.teste", "com.streammax.tvdetox.teste5", "com.streammax.tvdetox.visual10");
     private static final String PLAY_STORE = "com.android.vending";
     private static final String SETTINGS = "settings";
     private static final String ADD = "add";
@@ -77,7 +89,7 @@ public class MainActivity extends Activity {
     private static final String INPUTS_MENU = "streammax:inputs-menu";
     private static final String[] EDIT_ITEMS = {"Move", "Replace", "Remove from home", "App info"};
     private static final String[] EDIT_ITEMS_SYSTEM = {"Move", "Replace", "Remove from home", "App info"};
-    private static final int PER_ROW = 6, MAX_INPUTS = 4;
+    private static final int PER_ROW = 4, MAX_INPUTS = 4;
 
     // Settings shortcuts: name, label, icon. Tile keys are QUICK + name.
     private static final String QUICK = "quick:";
@@ -90,13 +102,13 @@ public class MainActivity extends Activity {
     private static final String TCL_SHOW_WINDOW = "com.tcl.settings.SHOW_WINDOW";
 
     // Layout is designed at 1920x1080 and scaled to the TV's real UI size by px().
-    private static final int MARGIN = 96, GAP = 36, RADIUS = 22;
-    private static final int ROW1_TOP = 604, ROW_STEP = 224;
-    private static final int GRID_MIN_TOP = 400; // more rows push the grid up, but not into the clock
+    private static final int MARGIN = 104, GAP = 40, RADIUS = 22;
+    private static final int ROW1_TOP = 658, ROW_STEP = 282;
+    private static final int GRID_MIN_TOP = 478; // keep the top row clear of the clock/weather strip
     private static final int ICON_TOP = 76, ICON_BUTTON = 72, ICON_SIZE = 40, ICON_GAP = 12; // level with the date
 
     // The Settings tile opens a small menu: the home screen's own settings, then the TV's.
-    private static final String[] SETTINGS_ITEMS = {"Wallpaper", "Brightness", "TV settings"};
+    private static final String[] SETTINGS_ITEMS = {"Wallpaper", "Brightness", "Clima / cidade", "TV settings"};
     // Android TV 11 and later (Google TV too) has no Display page, but its "Display & Sound" page holds Picture.
     private static final String[] TV_DISPLAY_SOUND = {"com.android.tv.settings",
             "com.android.tv.settings.device.displaysound.DisplaySoundActivity"};
@@ -137,6 +149,10 @@ public class MainActivity extends Activity {
     private final List<String> rowApps = new ArrayList<>(); // the top row as shown, in order
     private String movingKey;   // the app being moved with left/right, if any
     private TextView moveHint;  // shown above the apps while moving
+    private TextView weatherLine;
+    private final ExecutorService weatherWorker = Executors.newSingleThreadExecutor();
+    private long weatherLastFetched = 0L;
+    private String weatherLastCity = "";
     private boolean longPressed; // OK was held: swallow the key-up so the app doesn't open
     // The tile OK went down on. An app that closes on OK's key-down (Netflix's "Exit") hands the matching
     // key-up to the tile still focused here, so a key-up only opens the app it went down on (#30).
@@ -196,6 +212,21 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-2, -2);
         tp.topMargin = px(-20); // pull the big digits up under the date
         clock.addView(time, tp);
+        // Compact weather line: opt-in city, no GPS, no animations.
+        weatherLine = text(px(25), 0xDAFFFFFF, regular);
+        weatherLine.setSingleLine(true);
+        weatherLine.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        weatherLine.setMaxWidth(px(770));
+        weatherLine.setText("☁  Configurar clima");
+        weatherLine.setFocusable(true);
+        weatherLine.setPadding(px(7), px(4), px(7), px(4));
+        weatherLine.setOnFocusChangeListener((v, has) ->
+                weatherLine.setBackgroundColor(has ? 0x603080AA : Color.TRANSPARENT));
+        weatherLine.setOnClickListener(v -> promptWeatherCity());
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(-2, -2);
+        wp.topMargin = px(4);
+        wp.leftMargin = px(-7);
+        clock.addView(weatherLine, wp);
         root.addView(clock, at(px(MARGIN), px(92), -2, -2));
 
         moveHint = text(px(24), 0xA8FFFFFF, regular);
@@ -225,6 +256,7 @@ public class MainActivity extends Activity {
         unregisterReceiver(packagesChanged);
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm != null) try { cm.unregisterNetworkCallback(networkChanged); } catch (Exception ignored) {}
+        weatherWorker.shutdownNow();
         super.onDestroy();
     }
 
@@ -233,6 +265,152 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         if (saveConfig(intent)) buildTiles();
+    }
+
+
+    // The user explicitly chooses a city; only the city name goes to Open-Meteo.
+    // No GPS, no ACCESS_FINE_LOCATION, no background service.
+    private void promptWeatherCity() {
+        EditText editor = new EditText(this);
+        editor.setSingleLine(true);
+        editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        editor.setHint("Ex.: Serra, ES");
+        editor.setText(getSharedPreferences(PREFS, 0).getString("weather_city", ""));
+        editor.setSelectAllOnFocus(true);
+        FrameLayout container = new FrameLayout(this);
+        container.setPadding(px(30), px(8), px(30), px(8));
+        container.addView(editor, new FrameLayout.LayoutParams(-1, -2));
+        new AlertDialog.Builder(this)
+                .setTitle("Clima abaixo do relógio")
+                .setMessage("Digite sua cidade para consultar a temperatura. A cidade será enviada ao serviço Open-Meteo. O GPS não será usado.")
+                .setView(container)
+                .setPositiveButton("Salvar", (dialog, which) -> {
+                    String city = editor.getText().toString().trim();
+                    if (city.length() > 80) city = city.substring(0, 80);
+                    SharedPreferences.Editor e = getSharedPreferences(PREFS, 0).edit();
+                    if (city.isEmpty()) {
+                        e.remove("weather_city").remove("weather_summary").remove("weather_cached_city")
+                                .remove("weather_cached_at").apply();
+                        weatherLine.setText("☁  Configurar clima");
+                    } else {
+                        e.putString("weather_city", city).remove("weather_summary")
+                                .remove("weather_cached_city").remove("weather_cached_at").apply();
+                        weatherLine.setText("☁  Consultando clima...");
+                        refreshWeather(true);
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void refreshWeather(boolean force) {
+        if (weatherLine == null) return;
+        SharedPreferences prefs = getSharedPreferences(PREFS, 0);
+        String city = prefs.getString("weather_city", "").trim();
+        if (city.isEmpty()) {
+            weatherLine.setText("☁  Configurar clima");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        String cachedCity = prefs.getString("weather_cached_city", "");
+        String cachedSummary = prefs.getString("weather_summary", "");
+        long cachedAt = prefs.getLong("weather_cached_at", 0L);
+        boolean cacheFresh = now >= cachedAt && now - cachedAt < 60L * 60L * 1000L;
+        if (city.equals(cachedCity) && !cachedSummary.isEmpty()) {
+            weatherLine.setText(cacheFresh ? cachedSummary : cachedSummary + " · anterior");
+            if (cacheFresh && !force) return;
+        } else {
+            weatherLine.setText("☁  " + city + " · Consultando...");
+        }
+        if (city.equals(weatherLastCity) && now - weatherLastFetched < 45000L) return;
+        weatherLastCity = city;
+        weatherLastFetched = now;
+        final String requestedCity = city;
+        try {
+            weatherWorker.execute(() -> {
+                String result = null;
+                try {
+                    String search = "https://geocoding-api.open-meteo.com/v1/search?name="
+                            + URLEncoder.encode(requestedCity, "UTF-8")
+                            + "&count=1&language=pt&format=json";
+                    JSONObject geo = new JSONObject(readWeatherJson(search));
+                    JSONArray matches = geo.optJSONArray("results");
+                    if (matches == null || matches.length() == 0) throw new Exception("Cidade nao encontrada");
+                    JSONObject place = matches.getJSONObject(0);
+                    double lat = place.getDouble("latitude");
+                    double lon = place.getDouble("longitude");
+                    String forecast = "https://api.open-meteo.com/v1/forecast?latitude=" + lat
+                            + "&longitude=" + lon + "&current=temperature_2m,weather_code&timezone=auto";
+                    JSONObject current = new JSONObject(readWeatherJson(forecast)).getJSONObject("current");
+                    int temperature = (int) Math.round(current.getDouble("temperature_2m"));
+                    int code = current.optInt("weather_code", -1);
+                    String name = place.optString("name", requestedCity);
+                    result = weatherSymbol(code) + "  " + name + " · " + temperature
+                            + "°C · " + weatherCondition(code);
+                } catch (Exception ignored) { }
+                final String summary = result;
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed() || weatherLine == null) return;
+                    if (!requestedCity.equals(getSharedPreferences(PREFS, 0).getString("weather_city", ""))) return;
+                    if (summary == null) {
+                        String previous = getSharedPreferences(PREFS, 0).getString("weather_summary", "");
+                        weatherLine.setText(previous.isEmpty()
+                                ? "☁  " + requestedCity + " · Clima indisponível"
+                                : previous + " · anterior");
+                    } else {
+                        getSharedPreferences(PREFS, 0).edit()
+                                .putString("weather_cached_city", requestedCity)
+                                .putString("weather_summary", summary)
+                                .putLong("weather_cached_at", System.currentTimeMillis()).apply();
+                        weatherLine.setText(summary);
+                    }
+                });
+            });
+        } catch (Exception ignored) { }
+    }
+
+    private static String readWeatherJson(String url) throws Exception {
+        HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+        con.setConnectTimeout(4500);
+        con.setReadTimeout(4500);
+        con.setRequestProperty("Accept", "application/json");
+        try {
+            if (con.getResponseCode() != 200) throw new Exception("HTTP " + con.getResponseCode());
+            StringBuilder sb = new StringBuilder(1024);
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                    con.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                    if (sb.length() > 65536) throw new Exception("Resposta muito grande");
+                }
+            }
+            return sb.toString();
+        } finally {
+            con.disconnect();
+        }
+    }
+
+    private static String weatherSymbol(int c) {
+        if (c == 0) return "☀";
+        if (c <= 2) return "⛅";
+        if (c == 3 || c == 45 || c == 48) return "☁";
+        if (c >= 95) return "⚡";
+        if (c >= 71 && c <= 77) return "❄";
+        if (c >= 51 && c <= 86) return "☂";
+        return "☁";
+    }
+
+    private static String weatherCondition(int c) {
+        if (c == 0) return "Ensolarado";
+        if (c == 1 || c == 2) return "Parcialmente nublado";
+        if (c == 3) return "Nublado";
+        if (c == 45 || c == 48) return "Neblina";
+        if (c >= 95) return "Trovoadas";
+        if (c >= 71 && c <= 77 || c == 85 || c == 86) return "Neve";
+        if (c >= 51 && c <= 57) return "Garoa";
+        if (c >= 61 && c <= 67 || c >= 80 && c <= 82) return "Chuva";
+        return "Tempo variável";
     }
 
     // Saves an app list passed with --es apps "..." and shortcuts passed with --es quick "...".
@@ -293,6 +471,7 @@ public class MainActivity extends Activity {
             buildTiles();
         }
         refreshNetwork();
+        refreshWeather(false);
         View f = getCurrentFocus();
         if (f == null && !tiles.isEmpty()) tiles.get(0).requestFocus();
     }
@@ -412,7 +591,7 @@ public class MainActivity extends Activity {
         tileH = h;
 
         List<String> apps = appList(pm);
-        // Apps fill rows of six. With more rows the grid starts higher, so up to two rows of apps and
+        // Apps fill rows of four. With more rows the grid starts higher, so up to two rows of apps and
         // the bottom row still fit on screen; past that the page scrolls.
         int launchable = 1; // Todos os apps (last); TV Aberta is a top-right shortcut
         for (String pkg : apps) if (launchIntent(pm, pkg) != null) launchable++;
@@ -631,6 +810,7 @@ public class MainActivity extends Activity {
             dropdown(tile(SETTINGS), SETTINGS_ITEMS, which -> {
                 if (which == 0) showWallpapers();
                 else if (which == 1) openBrightness();
+                else if (which == 2) promptWeatherCity();
                 else openTvSettings();
             });
             return;
