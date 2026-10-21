@@ -12,7 +12,6 @@
 #include <io.h>
 #include <direct.h>
 #include <time.h>
-#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,9 +42,6 @@ static inline int nv_fsync(int fd) { return _commit(fd); }
 static inline int nv_fchmod(int fd, int mode) { (void)fd; (void)mode; return 0; }
 #define fchmod nv_fchmod
 
-static inline int nv_lstat(const char *path, struct stat *st) { return stat(path, st); }
-#define lstat nv_lstat
-
 static inline unsigned nv_rand_r(unsigned *seed) {
   *seed = *seed * 1103515245u + 12345u;
   return (*seed / 65536u) % 32768u;
@@ -54,6 +50,25 @@ static inline unsigned nv_rand_r(unsigned *seed) {
 
 static inline time_t nv_timegm(struct tm *t) { return _mkgmtime(t); }
 #define timegm nv_timegm
+
+static inline FILE *nv_fmemopen(void *buf, size_t size, const char *mode) {
+  FILE *f;
+  (void)mode;
+  f = tmpfile();
+  if (!f) return NULL;
+  if (size && fwrite(buf, 1, size, f) != size) { fclose(f); return NULL; }
+  rewind(f);
+  return f;
+}
+#define fmemopen nv_fmemopen
+
+#ifndef ATOMIC_VAR_INIT
+#define ATOMIC_VAR_INIT(value) (value)
+#endif
+
+#ifndef strtok_r
+#define strtok_r strtok_s
+#endif
 
 #ifndef strcasecmp
 #define strcasecmp _stricmp
