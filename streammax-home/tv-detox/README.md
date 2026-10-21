@@ -15,6 +15,10 @@ Este diretório é uma **adaptação independente do fluxo de diagnóstico** do 
 - `Comparar-Memoria.ps1`: leitura após a reinicialização para comparação de `MemAvailable`, sem afirmar que todo ganho decorre das alterações.
 - Nenhum comando da TV é executado no GitHub: os scripts precisam ser rodados localmente, após autorização na TCL.
 
+## Assinatura das compilacoes experimentais
+
+A versão Teste 4 foi instalada com a assinatura de depuração temporária do GitHub Actions. A compilação seguinte usou outra chave, então o Android recusou a atualização com `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Para respeitar a regra de não desinstalar, Teste 5 usa o identificador `com.streammax.tvdetox.teste5` e pode ser instalada ao lado da Teste 4 (`com.streammax.tvdetox.teste`). Esta é uma solução TEMPORÁRIA apenas para testes. Antes de lançar atualizações normais do mesmo pacote, é necessário gerar uma chave de assinatura estável, guardar a chave privada fora do repositório e configurar o GitHub Actions para assiná-las consistentemente. Não incluir keystore ou senha no código-fonte.
+
 ## Sequência recomendada na sua casa
 
 1. Ativar depuração e autorizar o PC na TCL; instalar o Platform Tools (ADB) no Windows.
