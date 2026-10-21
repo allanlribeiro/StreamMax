@@ -330,13 +330,24 @@ public class MainActivity extends Activity {
             weatherWorker.execute(() -> {
                 String result = null;
                 try {
+                    // The optional state in "Serra, ES" is a user hint, not part of the geocoder name.
+                    String queryCity = requestedCity.split(",", 2)[0].trim();
+                    if (queryCity.length() < 2) throw new Exception("Cidade invalida");
                     String search = "https://geocoding-api.open-meteo.com/v1/search?name="
-                            + URLEncoder.encode(requestedCity, "UTF-8")
-                            + "&count=1&language=pt&format=json";
+                            + URLEncoder.encode(queryCity, "UTF-8")
+                            + "&count=10&language=pt&format=json";
                     JSONObject geo = new JSONObject(readWeatherJson(search));
                     JSONArray matches = geo.optJSONArray("results");
                     if (matches == null || matches.length() == 0) throw new Exception("Cidade nao encontrada");
                     JSONObject place = matches.getJSONObject(0);
+                    // Prefer a Brazilian match for this TCL setup, without using the device location.
+                    for (int m = 0; m < matches.length(); m++) {
+                        JSONObject candidate = matches.getJSONObject(m);
+                        if ("BR".equalsIgnoreCase(candidate.optString("country_code"))) {
+                            place = candidate;
+                            break;
+                        }
+                    }
                     double lat = place.getDouble("latitude");
                     double lon = place.getDouble("longitude");
                     String forecast = "https://api.open-meteo.com/v1/forecast?latitude=" + lat
