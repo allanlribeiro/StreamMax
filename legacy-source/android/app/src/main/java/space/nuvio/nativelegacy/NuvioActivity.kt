@@ -203,9 +203,13 @@ class NuvioActivity : SDLActivity() {
         mSurface.holder.setFormat(PixelFormat.TRANSLUCENT)
         NvPlayer.iniciar(this, camada)
         NvPlayer.interfaceModo(interfaceMobile)
-        // 1 vez por criacao, somente em TV, depois de montar o plano SDL.
-        // Nenhuma dependência extra e nenhum player Media3 adicional.
-        if (!mBrokenLibraries && !interfaceMobile && savedInstanceState == null) {
+        // A vinheta pertence ao arranque do PROCESSO (jaCriada impede uma
+        // segunda Activity no mesmo processo), inclusive quando o Android
+        // restaura um savedInstanceState ou a interface foi configurada como
+        // mobile numa Google TV. Antes ela era pulada silenciosamente nesses
+        // cenarios embora o MP4 estivesse presente no APK.
+        if (!mBrokenLibraries) {
+            Log.i("StreamMaxAbertura", "iniciando video de abertura: mobile=$interfaceMobile, restaurado=${savedInstanceState != null}")
             aberturaStreamMax = StreamMaxAberturaVideo(this, mLayout).also { it.iniciar() }
         }
     }
