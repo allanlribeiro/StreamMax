@@ -35,7 +35,7 @@ read -r -a DEP_CFLAGS <<< "$(pkg-config --cflags "${DEPS[@]}")"
 read -r -a DEP_LIBS <<< "$(pkg-config --libs "${DEPS[@]}")"
 
 mkdir -p build/windows
-"$CC" src/*.c src/dts/*.c -Isrc -o build/windows/StreamMax.exe -O1 -g   "${DEFINES[@]}" "${DEP_CFLAGS[@]}" "${DEP_LIBS[@]}"   -lws2_32 -lole32 -lshell32 -pthread -lm
+"$CC" src/*.c src/dts/*.c -Isrc -o build/windows/StreamMax.exe -O1 -g   "${DEFINES[@]}" "${DEP_CFLAGS[@]}" "${DEP_LIBS[@]}"   -ldl -lws2_32 -lole32 -lshell32 -pthread -lm
 
 echo "Windows UI build: $PWD/build/windows/StreamMax.exe"
 if [ "$BUILD_ONLY" = 1 ]; then exit 0; fi
