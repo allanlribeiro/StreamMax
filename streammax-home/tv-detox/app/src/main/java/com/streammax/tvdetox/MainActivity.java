@@ -109,7 +109,7 @@ public class MainActivity extends Activity {
     private static final int ICON_TOP = 76, ICON_BUTTON = 72, ICON_SIZE = 40, ICON_GAP = 12; // level with the date
 
     // The Settings tile opens a small menu: the home screen's own settings, then the TV's.
-    private static final String[] SETTINGS_ITEMS = {"Wallpaper", "Brightness", "Clima / cidade", "TV settings"};
+    private static final String[] SETTINGS_ITEMS = {"Wallpaper", "Brightness", "Clima / cidade", "Tela inicial padrão", "TV settings"};
     // Android TV 11 and later (Google TV too) has no Display page, but its "Display & Sound" page holds Picture.
     private static final String[] TV_DISPLAY_SOUND = {"com.android.tv.settings",
             "com.android.tv.settings.device.displaysound.DisplaySoundActivity"};
@@ -289,6 +289,23 @@ public class MainActivity extends Activity {
         if (saveConfig(intent)) buildTiles();
     }
 
+
+    // This only opens Android's preferred-home settings; never changes launcher silently.
+    // TCL/Google TV may not provide this page; use ADB recovery instead if absent.
+    private void openHomeSelection() {
+        try {
+            Intent chooser = new Intent(Settings.ACTION_HOME_SETTINGS);
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(chooser);
+        } catch (Exception ignored) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Tela inicial padrão")
+                    .setMessage("Esta TCL não disponibiliza o seletor de HOME nas configurações. " +
+                            "A mudança pode ser feita via ADB depois de salvar o launcher original. " +
+                            "Nenhum serviço do Google TV foi alterado.")
+                    .setPositiveButton("OK", null).show();
+        }
+    }
 
     // The user explicitly chooses a city; only the city name goes to Open-Meteo.
     // No GPS, no ACCESS_FINE_LOCATION, no background service.
@@ -864,6 +881,7 @@ public class MainActivity extends Activity {
                 if (which == 0) showWallpapers();
                 else if (which == 1) openBrightness();
                 else if (which == 2) promptWeatherCity();
+                else if (which == 3) openHomeSelection();
                 else openTvSettings();
             });
             return;
