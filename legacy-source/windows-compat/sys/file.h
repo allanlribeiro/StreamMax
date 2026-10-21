@@ -1,0 +1,1 @@
+#ifndef STREAMMAX_WIN_SYS_FILE_H\n#define STREAMMAX_WIN_SYS_FILE_H\n#include \"../windows_compat.h\"\n#endif\n
