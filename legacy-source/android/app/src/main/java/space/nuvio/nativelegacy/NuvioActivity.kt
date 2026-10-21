@@ -68,6 +68,7 @@ class NuvioActivity : SDLActivity() {
     override fun getLibraries(): Array<String> = arrayOf("SDL2", "main")
 
     private var camadaVideo: FrameLayout? = null
+    private var aberturaStreamMax: StreamMaxAberturaVideo? = null
     private var touchInsetLeft = 0
     private var touchInsetTop = 0
     private var touchInsetRight = 0
@@ -202,6 +203,11 @@ class NuvioActivity : SDLActivity() {
         mSurface.holder.setFormat(PixelFormat.TRANSLUCENT)
         NvPlayer.iniciar(this, camada)
         NvPlayer.interfaceModo(interfaceMobile)
+        // 1 vez por criacao, somente em TV, depois de montar o plano SDL.
+        // Nenhuma dependência extra e nenhum player Media3 adicional.
+        if (!mBrokenLibraries && !interfaceMobile && savedInstanceState == null) {
+            aberturaStreamMax = StreamMaxAberturaVideo(this, mLayout).also { it.iniciar() }
+        }
     }
 
     // SDL and video fill the window, including the camera cutout edges. Keeping
@@ -649,6 +655,8 @@ class NuvioActivity : SDLActivity() {
     // do ciclo de vida (ANR ao apertar a tecla de ajustes da TV tocando, TCL,
     // 2.0.3). Direto no logcat: o printf do C passa por um pipe e pode esperar.
     override fun onPause() {
+        // Nunca deixar o video da vinheta rodando em background.
+        aberturaStreamMax?.encerrar("background")
         val ini = SystemClock.elapsedRealtime()
         vigia?.frente(false)
         NvPlayer.pausarPeloSistema()
@@ -658,6 +666,8 @@ class NuvioActivity : SDLActivity() {
     }
 
     override fun onDestroy() {
+        aberturaStreamMax?.encerrar("destroy")
+        aberturaStreamMax = null
         registroDownload.fechar()
         vigia?.parar()
         fecharRede()
