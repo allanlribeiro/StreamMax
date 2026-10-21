@@ -16,6 +16,7 @@ on:
       - streammax/abertura-etapas-startup-105-1020
       - streammax/107-legacy-home-4k # teste 1.0.7 na base Legacy, sem publicacao OTA
       - fix/streammax-108-home-rename-keyboard # correção da renomeação, sem publicação automática
+      - streammax/next-pt-regional-iptv-20261020 # APK experimental IPTV VOD e legendas, sem OTA
 
 permissions:
   contents: read
