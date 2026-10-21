@@ -335,8 +335,10 @@ void streammax_iptv_desenhar(float a, int focoAba) {
     snprintf(info,sizeof info,"%s",i18n("Escolha uma categoria e pressione OK."));
   else if (!visivel || !visivel->nItens)
     snprintf(info,sizeof info,"%s",i18n("Nenhum título nesta categoria."));
-  else snprintf(info,sizeof info,"%d título(s) neste resultado · até %d por consulta",
-                visivel->nItens,VOD_ITEM_CAP);
+  else if (visivel->nItens >= VOD_ITEM_CAP)
+    snprintf(info,sizeof info,"%d títulos exibidos · pode haver mais no provedor",
+             visivel->nItens);
+  else snprintf(info,sizeof info,"%d título(s) neste resultado",visivel->nItens);
   TxtLinha status=txt_linha_corta(TXT_DET_META2,info,148,186,225,255,detW-40);
   txt_desenhar_alpha(status,detX+18,ry+7,a);
   if(visivel&&focoItem<visivel->nItens) {
