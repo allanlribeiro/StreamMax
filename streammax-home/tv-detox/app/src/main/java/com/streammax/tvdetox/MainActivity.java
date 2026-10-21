@@ -535,6 +535,8 @@ public class MainActivity extends Activity {
             if (has) focusedKey = key;
             if (glass) bg.setColor(has ? 0x34B6E9FF : 0x13FFFFFF);
             v.setForeground(has ? focusOutline : null);
+            // Raise the whole app slot so the enlarged card draws above its neighbors.
+            ((View) v.getParent()).setTranslationZ(has ? px(24) : 0);
             v.animate().cancel();
             // Navigation highlight: 16% larger, elevated and slightly lifted, GPU only.
             v.animate().scaleX(has ? 1.16f : 1f).scaleY(has ? 1.16f : 1f)
