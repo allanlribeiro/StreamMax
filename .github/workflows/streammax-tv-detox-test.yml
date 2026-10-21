@@ -66,7 +66,7 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > /tmp/tvdetox-badging
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" > /tmp/tvdetox-perms
-          grep -q "package: name='com.streammax.tvdetox.visual11'" /tmp/tvdetox-badging
+          grep -q "package: name='com.streammax.tvdetox.visual12'" /tmp/tvdetox-badging
           grep -q 'android.permission.INTERNET' /tmp/tvdetox-perms
           ! grep -Eq 'android.permission.(ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|ACCESS_BACKGROUND_LOCATION)' /tmp/tvdetox-perms
           unzip -l "$APK" | grep -q 'res/.*\.jpg'
