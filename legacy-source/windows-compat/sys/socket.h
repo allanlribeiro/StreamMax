@@ -1,1 +1,5 @@
-#ifndef STREAMMAX_WIN_SYS_SOCKET_H\n#define STREAMMAX_WIN_SYS_SOCKET_H\n#include <winsock2.h>\n#include <ws2tcpip.h>\n#endif\n
+#ifndef STREAMMAX_WIN_SYS_SOCKET_H
+#define STREAMMAX_WIN_SYS_SOCKET_H
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
