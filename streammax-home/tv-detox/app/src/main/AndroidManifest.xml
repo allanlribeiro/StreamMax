@@ -15,7 +15,7 @@
         <package android:name="com.tcl.tv" />
         <package android:name="com.google.android.tv.inputplayer" />
     </queries>
-    <application android:label="StreamMax Home 1.0 RC"
+    <application android:label="StreamMax Home 1.0 RC2"
         android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
         android:allowBackup="false">
         <activity android:name="com.streammax.tvdetox.MainActivity"
