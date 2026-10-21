@@ -97,6 +97,7 @@
         <activity-alias
             android:name=".Icone_original"
             android:targetActivity=".NuvioActivity"
+            android:label="StreamMax Teste"
             android:enabled="true"
             android:exported="true"
             android:icon="@drawable/streammax_icon"
