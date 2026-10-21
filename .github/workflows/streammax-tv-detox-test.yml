@@ -58,7 +58,7 @@ jobs:
       - name: Compilar fonte adaptado do TV Detox
         working-directory: streammax-home/tv-detox
         run: gradle --no-daemon :app:assembleDebug
-      - name: Auditar APK experimental (sem HOME e sem internet)
+      - name: Auditar APK experimental (sem HOME e sem GPS)
         shell: bash
         run: |
           set -euo pipefail
@@ -66,15 +66,16 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > /tmp/tvdetox-badging
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" > /tmp/tvdetox-perms
-          grep -q "package: name='com.streammax.tvdetox.visual10'" /tmp/tvdetox-badging
-          ! grep -q 'android.permission.INTERNET' /tmp/tvdetox-perms
+          grep -q "package: name='com.streammax.tvdetox.visual11'" /tmp/tvdetox-badging
+          grep -q 'android.permission.INTERNET' /tmp/tvdetox-perms
+          ! grep -Eq 'android.permission.(ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|ACCESS_BACKGROUND_LOCATION)' /tmp/tvdetox-perms
           unzip -l "$APK" | grep -q 'res/.*\.jpg'
           ! grep -q 'android.permission.REQUEST_DELETE_PACKAGES' /tmp/tvdetox-perms
           ! grep -q 'android.intent.category.HOME' streammax-home/tv-detox/app/src/main/AndroidManifest.xml
           ! grep -Rq 'Intent.ACTION_DELETE' streammax-home/tv-detox/app/src/main/java
           mkdir -p dist
           cp "$APK" dist/StreamMax-Home-TVDetox-Teste.apk
-          echo "APK auditado: sem ROOT, sem desinstalar, sem tomar HOME"
+          echo "APK auditado: internet somente para clima opt-in; sem GPS, ROOT, desinstalar ou tomar HOME"
       - uses: actions/upload-artifact@v4
         with:
           name: StreamMax-Home-TVDetox-Teste-${{ github.run_number }}
