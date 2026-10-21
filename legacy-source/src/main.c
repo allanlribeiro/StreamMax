@@ -1041,9 +1041,13 @@ int main(int argc, char **argv) {
   sm_win_mark("SDL_Init");
 #endif
 #ifdef NV_WINDOWS_DESKTOP
-  // GLES2 via ANGLE: preferir EGL ao WGL/OpenGL nativo do Windows.
-  // O SDL consulta esta dica antes de carregar o backend OpenGL.
-  SDL_SetHint("SDL_VIDEO_FORCE_EGL", "1");
+  // O print real do Windows mostrou "Could not create GL context" (WGL),
+  // embora libEGL/libGLESv2 estivessem instaladas. O hint FORCE_EGL sozinho
+  // nao garante no SDL2 que o WGL/ES sera evitado. Este e o hint documentado
+  // para carregar explicitamente libGLESv2 do ANGLE.
+  SDL_SetHint(SDL_HINT_OPENGL_ES_DRIVER, "1");
+  SDL_SetHint(SDL_HINT_VIDEO_FORCE_EGL, "1");
+  sm_win_mark("ANGLE: SDL_OPENGL_ES_DRIVER=1; SDL_VIDEO_FORCE_EGL=1");
 #endif
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     printf("SDL_Init: %s\n", SDL_GetError());
@@ -1069,8 +1073,16 @@ int main(int argc, char **argv) {
 #else
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-#ifdef NV_LINUX_DESKTOP
+#if defined(NV_LINUX_DESKTOP) || defined(NV_WINDOWS_DESKTOP)
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#endif
+#ifdef NV_WINDOWS_DESKTOP
+  // Nao exigir profundidade/stencil/MSAA para uma UI 2D: alguns drivers
+  // recusam a config RGBA8888 + depth padrao, sem definir erro de Win32.
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
+  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
 #endif
   // Canal alpha no framebuffer. Sem ele a superficie nao tem como ficar
   // transparente, e o plano de video do aparelho — que fica ATRAS da janela e
@@ -1356,7 +1368,7 @@ int main(int argc, char **argv) {
   NV_ETAPA("SDL_GL_CreateContext");
   arranque_etapa("SDL_GL_CreateContext");
 #ifdef NV_WINDOWS_DESKTOP
-  sm_win_mark("SDL_GL_CreateContext");
+  sm_win_mark("SDL_GL_CreateContext (ANGLE GLES2)");
 #endif
   SDL_GLContext ctx = SDL_GL_CreateContext(win);
 #if NV_ARRANQUE_REDE
@@ -1432,6 +1444,18 @@ int main(int argc, char **argv) {
   // Video scale reads the virtual canvas; establish the saved mode's physical
   // aspect ratio before positioning the first native video plane.
   layout_tela_definir(dw, dh);
+#endif
+#ifdef NV_WINDOWS_DESKTOP
+  // O EXE linka libGLESv2, logo e preciso um contexto OpenGL ES verdadeiro.
+  // Uma janela criada por WGL pode ter handle valido sem ser compativel com
+  // a renderizacao GLES2 do aplicativo.
+  { const char *versaoGL = (const char *)glGetString(GL_VERSION);
+    if (!versaoGL || strncmp(versaoGL, "OpenGL ES", 9) != 0) {
+      sm_win_fatal("Driver grafico incompatível", versaoGL ? versaoGL : "Sem contexto OpenGL ES");
+      SDL_Quit(); return 2;
+    }
+    sm_win_mark("OpenGL ES confirmado");
+  }
 #endif
   printf("GPU: %s | %s\n", glGetString(GL_RENDERER), glGetString(GL_VERSION));
   printf("janela=%dx%d drawable=%dx%d\n", jw, jh, dw, dh);
