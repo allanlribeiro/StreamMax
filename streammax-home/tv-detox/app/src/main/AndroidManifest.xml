@@ -14,7 +14,7 @@
         <package android:name="com.tcl.tv" />
         <package android:name="com.google.android.tv.inputplayer" />
     </queries>
-    <application android:label="StreamMax Home Detox Teste"
+    <application android:label="StreamMax Home Detox Teste 5"
         android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
         android:allowBackup="false">
         <activity android:name="com.streammax.tvdetox.MainActivity"
