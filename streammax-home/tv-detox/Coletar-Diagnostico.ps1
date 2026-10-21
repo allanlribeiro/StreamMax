@@ -94,6 +94,15 @@ foreach ($linha in ($dump -split "\r?\n")) {
         $persistent[$atual] = $true
     }
 }
+# Alguns apps de entretenimento sao preinstalados de fabrica e nao aparecem
+# no 'pm list packages -3'. Preservar como apps que o usuario ja mencionou.
+$appConhecido = @{}
+foreach ($p in @(
+    'com.google.android.youtube.tv','com.netflix.ninja',
+    'com.amazon.amazonvideo.livingroom','com.disney.disneyplus',
+    'com.streammax.tv','com.streammax.tv.experimental','com.streammax.home.teste',
+    'com.streammax.tvdetox.teste'
+)) { $appConhecido[$p] = $true }
 $doUsuario = @{}
 foreach ($linha in ($usuario -split "\r?\n")) {
     if ($linha -match '^package:(.+)$') { $doUsuario[$Matches[1]] = $true }
@@ -144,7 +153,7 @@ $resultado = foreach ($linha in $linhasPacotes) {
               $p -match '^com\.oem\.') {
         # Regra expressa: nao desligar nenhum servico do fabricante.
         $classe = 'TV precisa (fabricante/protegido)'
-    } elseif ($doUsuario.ContainsKey($p)) {
+    } elseif ($doUsuario.ContainsKey($p) -or $appConhecido.ContainsKey($p)) {
         $classe = 'Apps que voce usa (preservar)'
     } elseif ($candidato.ContainsKey($p)) {
         $classe = 'Candidatos: publicidade/telemetria (revisar)'
