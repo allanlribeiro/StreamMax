@@ -194,7 +194,9 @@ int legmem_exata(const LegMem *m,
     for (i = 0; i < nEmb; i++) {
       const char *idi = idiomas && idiomas[i] ? idiomas[i] : "";
       if (!numeros || numeros[i] != m->numero) continue;
-      if (m->idioma[0] && idi[0] && ling_casa(idi, m->idioma)) return i;
+      if (m->idioma[0] && idi[0] &&
+          ling_legenda_mesma_regiao(ling_legenda_chave(idi, nomes ? nomes[i] : NULL), m->idioma))
+        return i;
       if (!m->idioma[0] && !idi[0] && nomes && nomes[i] && !strcmp(nomes[i], m->nome)) return i;
     }
   } else if (m->tipo == 'a' && m->id[0]) {
