@@ -117,6 +117,18 @@ typedef struct {
 // Baixam apenas o tipo pedido. Nao misturam canais, filmes e series.
 // Resultado = numero de itens copiados (ate cap), 0 quando vazio/falha.
 int xtream_vod_categorias(int series, XtreamCategoriaVod *saida, int cap);
+// ID opcional, so digitos e no maximo 23 caracteres; NULL/vazio = todas.
+// Cabecalho puro para validar antes de qualquer requisicao ou alocacao.
+static inline int xtream_vod_categoria_valida(const char *id) {
+  unsigned n = 0;
+  if (!id) return 1;
+  for (; *id; id++, n++) {
+    if (n >= 23 || *id < '0' || *id > '9') return 0;
+  }
+  return 1;
+}
+int xtream_vod_listar_categoria(int series, const char *categoriaId,
+                                XtreamMidia *saida, int cap);
 int xtream_vod_listar(int series, XtreamMidia *saida, int cap);
 // URL de um filme; no Xtream, episodios usam /series/ e precisam de endpoint
 // get_series_info (sera tratado na integracao da tela de temporadas).
