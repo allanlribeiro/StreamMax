@@ -49,3 +49,21 @@ jobs:
         run: |
           set -euo pipefail
           bash legacy-source/tests/streammax-startup-stage.sh
+
+  interface-vod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar cabeçalhos SDL e GLES para validar a interface nativa
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libgles2-mesa-dev
+      - name: Compilar sintaxe da tela VOD, guia e integracao do player
+        run: |
+          set -euo pipefail
+          for origem in streammax_iptv_vod.c guia.c app.c player.c; do
+            cc -std=gnu11 -Wall -Wextra -pthread -fsyntax-only \
+              -D NV_ANDROID -D NV_TOUCH_UI -Ilegacy-source/src \
+              "legacy-source/src/$origem"
+          done
