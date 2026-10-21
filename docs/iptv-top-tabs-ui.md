@@ -41,3 +41,8 @@ Este documento registra a escolha de UX; não afirma que a implementação ou os
 - Execuções GitHub Actions `39579537506` e `39579530894` (IPTV/idiomas) e `39579537331` (regressão) concluídas com sucesso. Isso **não** substitui teste real de foco, reprodução e memória na TCL.
 - O `PR Template Check` da PR #32 ainda falha (`39579537538`): a descrição referencia aprovação em conversa, mas a política para mudança maior exige issue vinculada; issues estão desabilitadas conforme a própria PR. Não mascarar a falha nem mudar a categoria da alteração só para passar no CI. Resolver a exigência de governança antes do merge.
 - Abertura de filmes, episódios e retorno ao guia, consumo de memória e fluidez com catálogos grandes permanecem **não verificados no dispositivo**.
+
+## Limite identificado em catálogos grandes (revisão de código)
+A implementação atual de `streammax_iptv_vod.c` aloca no máximo **48 categorias, 96 itens e 96 episódios** por consulta (`VOD_CAT_CAP`, `VOD_ITEM_CAP`, `VOD_EP_CAP`). A primeira entrada busca apenas categorias; a escolha da categoria inicia consulta em worker. Isso limita memória, **mas não equivale a paginação**: se o provedor tiver mais títulos do que o limite, os excedentes podem não aparecer. Não anunciar suporte completo a listas enormes antes de verificar a API e implementar navegação por páginas/lotes, se viável.
+
+A troca de aba invalida a geração dos resultados antigos, evitando exibir resposta desatualizada. Contudo, o worker ativo ainda pode ocupar a única vaga de consulta até terminar; medir a latência de troca de abas com rede lenta. Nenhum teste em dispositivo ou correção de paginação foi realizado nesta revisão.
