@@ -6,9 +6,6 @@
 #define _WIN32_WINNT 0x0601
 #endif
 
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h>
 #include <io.h>
 #include <direct.h>
 #include <time.h>
@@ -20,7 +17,7 @@
 #include <sys/stat.h>
 
 #ifndef PATH_MAX
-#define PATH_MAX MAX_PATH
+#define PATH_MAX 4096
 #endif
 
 static inline struct tm *nv_localtime_r(const time_t *t, struct tm *out) {
@@ -46,11 +43,21 @@ static inline int nv_fchmod(int fd, int mode) { (void)fd; (void)mode; return 0; 
 
 static inline int nv_lstat(const char *path, struct stat *st) { return stat(path, st); }
 #define lstat nv_lstat
+/* Approximation sufficient for desktop cache accounting during W0. */
+#define st_blocks st_size
+#ifndef S_ISLNK
+#define S_ISLNK(mode) 0
+#endif
 
 static inline ssize_t nv_readlink(const char *path, char *buf, size_t size) {
   (void)path; (void)buf; (void)size; errno = ENOSYS; return -1;
 }
 #define readlink nv_readlink
+
+static inline char *nv_realpath(const char *path, char *resolved) {
+  return _fullpath(resolved, path, PATH_MAX);
+}
+#define realpath nv_realpath
 
 static inline unsigned nv_rand_r(unsigned *seed) {
   *seed = *seed * 1103515245u + 12345u;
