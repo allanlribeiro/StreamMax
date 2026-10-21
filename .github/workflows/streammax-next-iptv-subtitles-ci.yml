@@ -33,6 +33,13 @@ jobs:
             legacy-source/tests/test_streammax_livetv_stall.c \
             -o /tmp/streammax-livetv-stall
           /tmp/streammax-livetv-stall
+      - name: Testar IDs de categoria do Xtream VOD
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Werror \
+            legacy-source/tests/test_streammax_xtream_vod.c \
+            -o /tmp/streammax-vod
+          /tmp/streammax-vod
       - name: Conferir sintaxe do backend Xtream VOD
         run: |
           set -euo pipefail
