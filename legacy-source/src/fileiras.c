@@ -1572,6 +1572,23 @@ int fil_n(void) { int v; pthread_mutex_lock(&trava); garantir(); v = nLinhas; pt
 const char *fil_chave(int i) {
   return (i >= 0 && i < nLinhas) ? linhas[i].chave : "";
 }
+// Returns only a user-supplied alias. Copies while holding the registry
+// mutex, so the Home never keeps a pointer that may change on profile switch.
+int fil_copiar_apelido(const char *chave, char *dst, int tam) {
+  int i, ok = 0;
+  if (!dst || tam <= 0) return 0;
+  dst[0] = 0;
+  if (!chave || !chave[0]) return 0;
+  pthread_mutex_lock(&trava);
+  garantir();
+  i = achar(chave);
+  if (i >= 0 && linhas[i].apelido[0]) {
+    snprintf(dst, (size_t)tam, "%s", linhas[i].apelido);
+    ok = 1;
+  }
+  pthread_mutex_unlock(&trava);
+  return ok;
+}
 const char *fil_titulo(int i) {
   // Sem titulo conhecido a tela mostra a CHAVE, que e feia mas verdadeira.
   // Inventar "Fileira 3" esconderia qual catalogo esta sendo desligado.
