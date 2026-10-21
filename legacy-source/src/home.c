@@ -3288,6 +3288,15 @@ static void sincronizarFileiras(void) {
     // inteira em vez de mover uma fileira — ver fil_espelhar_ordem. O titulo
     // vai junto para a chave resgatada de tabela cheia nao mostrar a si mesma.
     fil_espelhar_ordem(ch, ti, destino);
+    // Overlay only the per-profile DISPLAY alias after registering the true
+    // catalog title. The original identity/title used by addons, filters,
+    // ordering and discovery must remain unchanged.
+    for (int ix = 0; ix < destino; ix++) {
+      char apelido[FIL_TITULO];
+      if (fileiras[ix].chave[0] &&
+          fil_copiar_apelido(fileiras[ix].chave, apelido, sizeof apelido))
+        snprintf(fileiras[ix].titulo, sizeof fileiras[ix].titulo, "%s", apelido);
+    }
     // #392: fil_unir projeta apenas as chaves presentes. Sem reservar as
     // anteriores, CW sobe na Home parcial e desce a cada resposta da rede.
     // Reusa a fileira vazia (titulo, zero colunas), sem dados nem GET novos.
