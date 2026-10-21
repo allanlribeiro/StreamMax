@@ -1646,9 +1646,17 @@ static void opcoesComuns(void *c, unsigned long prazoMs) {
   // conhece; o pacote de CAs dele e de fabrica e nao se atualiza. Verificar
   // recusaria fontes legitimas do dono. O conteudo e midia publica e a escolha
   // esta escrita aqui de proposito.
+#ifdef NV_WINDOWS_DESKTOP
+  // Login e outros dados pessoais no PC DEVEM validar a identidade do host
+  // por TLS; o bundle Mozilla embarcado e configurado por main.c.
+  curl_setopt(c, OPT_SSL_VERIFYPEER, (long)1);
+  curl_setopt(c, OPT_SSL_VERIFYHOST, (long)2);
+  curl_setopt(c, OPT_USERAGENT, "StreamMax/0.1 (Windows)");
+#else
   curl_setopt(c, OPT_SSL_VERIFYPEER, (long)0);
   curl_setopt(c, OPT_SSL_VERIFYHOST, (long)0);
   curl_setopt(c, OPT_USERAGENT, "Nuvio/1.0 (webOS)");
+#endif
   // Bundle embarcado como fallback: a verificacao esta desligada acima, mas se
   // um dia ligar (ou a lib ignorar o VERIFYPEER) nao ha "sem CA" no Android.
   if (discordCa[0]) curl_setopt(c, OPT_CAINFO, discordCa);
@@ -1948,6 +1956,15 @@ static int abrirReal(void) {
             snprintf(m, sizeof m, "fail libcurl-dlopen %s", e ? e : "sem mensagem");
             nv_tpk40_etapa(m); }
 #else
+#ifdef NV_WINDOWS_DESKTOP
+  // Windows UCRT64: a libcurl e distribuida em libcurl-4.dll ao lado do EXE.
+  // O codigo antigo tentava somente .so e .dylib: o login retornava
+  // [transport; curl 2] sem efetuar uma unica requisicao.
+  h = dlopen("libcurl-4.dll", RTLD_NOW);
+  if (!h) h = dlopen("libcurl.dll", RTLD_NOW);
+  printf("[rede] Windows libcurl DLL: %s\n", h ? "carregada" : "nao encontrada");
+  fflush(stdout);
+#else
 #ifdef NV_ANDROID
   // Android: o sistema nao oferece libcurl a apps; ela vai no APK (jniLibs) com
   // o nome "libcurl.so", e o dlopen por nome acha na pasta nativa do app.
@@ -1964,6 +1981,7 @@ static int abrirReal(void) {
   h = dlopen("libcurl.so.5", RTLD_NOW);
   if (!h) h = dlopen("libcurl.so.4", RTLD_NOW);
 #endif
+#endif  // !NV_WINDOWS_DESKTOP
   if (!h) h = dlopen("libcurl.4.dylib", RTLD_NOW);   // Mac
   if (!h) h = dlopen("libcurl.dylib", RTLD_NOW);
   if (!h) { printf("[rede] sem libcurl: %s\n", dlerror());
