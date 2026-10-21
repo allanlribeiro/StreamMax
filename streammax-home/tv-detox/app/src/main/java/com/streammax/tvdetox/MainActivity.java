@@ -272,7 +272,7 @@ public class MainActivity extends Activity {
             // Top up with other TV apps people installed (or updated), skipping launchers and system tools.
             Intent q = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
             for (ResolveInfo ri : pm.queryIntentActivities(q, 0)) {
-                if (out.size() >= PER_ROW - 2) break;
+                if (out.size() >= PER_ROW - 1) break;
                 String p = ri.activityInfo.packageName;
                 int flags = ri.activityInfo.applicationInfo.flags;
                 boolean stockSystem = (flags & ApplicationInfo.FLAG_SYSTEM) != 0
@@ -404,7 +404,7 @@ public class MainActivity extends Activity {
         List<String> apps = appList(pm);
         // Apps fill rows of six. With more rows the grid starts higher, so up to two rows of apps and
         // the bottom row still fit on screen; past that the page scrolls.
-        int launchable = 2; // TV Aberta (first) + Todos os apps (last)
+        int launchable = 1; // Todos os apps (last); TV Aberta is a top-right shortcut
         for (String pkg : apps) if (launchIntent(pm, pkg) != null) launchable++;
         int rows = Math.max(1, (launchable + PER_ROW - 1) / PER_ROW);
         gridTop = Math.max(px(GRID_MIN_TOP), px(ROW1_TOP) - (rows - 1) * px(ROW_STEP));
@@ -412,11 +412,8 @@ public class MainActivity extends Activity {
         ((FrameLayout.LayoutParams) moveHint.getLayoutParams()).topMargin = gridTop - px(64);
         root.setMinimumHeight(bottomTop + h + px(MARGIN));
 
-        // A permanent first tile, deliberately excluded from the editable app list.
-        rowApps.add(TV_ABERTA);
-        addTile(root, TV_ABERTA, "TV Aberta", null, LineIcon.TV, null,
-                gridX(0), gridY(0), w, h);
-
+        // Bottom dock contains ONLY apps plus the all-apps selector.
+        // TV Aberta is a top-right system shortcut alongside HDMI and Settings.
         for (String pkg : apps) {
             Intent li = launchIntent(pm, pkg);
             if (li == null) continue;
@@ -447,7 +444,9 @@ public class MainActivity extends Activity {
         int ib = px(ICON_BUTTON), ig = px(ICON_GAP);
         // The last icon's right edge lines up with the apps' (its focus circle sticks out past them).
         int qx = getResources().getDisplayMetrics().widthPixels - m + (ib - px(ICON_SIZE)) / 2
-                - (quick.size() + 3) * ib - (quick.size() + 2) * ig;
+                - (quick.size() + 4) * ib - (quick.size() + 3) * ig;
+        addIcon(TV_ABERTA, "TV Aberta (antena)", new LineIcon(LineIcon.TV), qx);
+        qx += ib + ig;
         addIcon(INPUTS_MENU, "Entradas", new LineIcon(LineIcon.HDMI), qx);
         qx += ib + ig;
         addIcon(SETTINGS, "Configurações", new LineIcon(LineIcon.SETTINGS), qx);
@@ -523,7 +522,7 @@ public class MainActivity extends Activity {
                     .setDuration(90).start();
             if (caption != null) caption.setVisibility(has ? View.VISIBLE : View.INVISIBLE);
         });
-        final boolean editable = rowApps.contains(key) && !TV_ABERTA.equals(key);
+        final boolean editable = rowApps.contains(key);
         card.setOnClickListener(v -> open(key));
         if (editable) card.setOnLongClickListener(v -> { showEditMenu(key); return true; });
         card.setOnKeyListener((v, code, ev) -> {
@@ -584,7 +583,7 @@ public class MainActivity extends Activity {
         card.setOnFocusChangeListener((v, has) -> {
             if (has) focusedKey = key;
             bg.setColor(has ? 0x38FFFFFF : Color.TRANSPARENT);
-            v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(140).withLayer().start();
+            v.animate().scaleX(has ? 1.045f : 1f).scaleY(has ? 1.045f : 1f).setDuration(90).start();
         });
         card.setOnClickListener(v -> open(key));
         FrameLayout wrap = new FrameLayout(this);
