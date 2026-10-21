@@ -62,6 +62,26 @@ Guardar-Leitura 'informacoes-modelo.txt' @('shell','getprop') | Out-Null
 $mem = Guardar-Leitura 'memoria-proc.txt' @('shell','cat','/proc/meminfo')
 Guardar-Leitura 'memoria-processos.txt' @('shell','dumpsys','meminfo') | Out-Null
 Guardar-Leitura 'home-atual.txt' @('shell','cmd','package','resolve-activity','--brief','-a','android.intent.action.MAIN','-c','android.intent.category.HOME') | Out-Null
+# Descobrir TODAS as activities HOME antes de sequer considerar trocar launcher.
+Guardar-Leitura 'home-candidatos.txt' @('shell','cmd','package','query-activities','--brief','-a','android.intent.action.MAIN','-c','android.intent.category.HOME') $false | Out-Null
+# Identificar os inputs da antena/HDMI, sem alternar de entrada.
+Guardar-Leitura 'tv-inputs.txt' @('shell','dumpsys','tv_input') $false | Out-Null
+# Registrar os valores exatos a restaurar (inclusive ausencia = null).
+$valores = @(
+    @('global','window_animation_scale'),
+    @('global','transition_animation_scale'),
+    @('global','animator_duration_scale'),
+    @('secure','screensaver_enabled'),
+    @('secure','screensaver_activate_on_sleep'),
+    @('secure','screensaver_activate_on_dock')
+)
+$estadoConfiguracoes = foreach ($par in $valores) {
+    $ns = $par[0]; $chave = $par[1]
+    $valor = (& adb -s $Dispositivo shell settings get $ns $chave | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { throw "Nao foi possivel ler $ns/$chave. Nada foi modificado." }
+    [pscustomobject]@{ Namespace = $ns; Chave = $chave; Valor = $valor }
+}
+$estadoConfiguracoes | Export-Csv -LiteralPath (Join-Path $pasta 'valores-para-restaurar.csv') -NoTypeInformation -Encoding UTF8
 Guardar-Leitura 'teclado-atual.txt' @('shell','settings','get','secure','default_input_method') | Out-Null
 $dump = Guardar-Leitura 'pacotes-flags.txt' @('shell','dumpsys','package')
 
@@ -94,7 +114,7 @@ $essenciais = @(
     'com.tcl.inputmethod.international','com.tcl.tvinput','com.tcl.suspension',
     'com.tcl.tv','com.tcl.providers.config','com.tcl.useragreement',
     'com.tcl.settings','com.tcl.dashboard','com.tcl.partnercustomizer',
-    'com.tcl.tcl_bt_rcu_service','com.google.android.tv.remote.service',
+        'com.tcl.tcl_bt_rcu_service','com.google.android.tv.remote.service',
     'com.google.android.apps.mediashell','com.google.android.webview',
     'com.tcl.android.webview','com.android.packageinstaller',
     'com.google.android.packageinstaller','com.dolby.android.audio.service',
@@ -115,15 +135,15 @@ foreach ($p in $candidatos) { $candidato[$p] = $true }
 $linhasPacotes = @($instalados -split "\r?\n" | Where-Object { $_ -match '^package:' })
 $resultado = foreach ($linha in $linhasPacotes) {
     $p = $linha.Substring(8).Trim()
-    $classe = 'Revisar / preservar ate identificar'
+    $classe = 'TV precisa / desconhecido (preservar)'
     if ($essencial.ContainsKey($p) -or $persistent.ContainsKey($p) -or
         $p -match '^com\.android\.providers\.' -or
         $p -match '(?i)(webview|keyboard|inputmethod|bluetooth|tvinput|firmware|updater|ota|update|setup|provision|systemui|remote|tuner|hdmi|cast)') {
-        $classe = 'Essencial - nao desligar'
+        $classe = 'TV precisa (essencial/protegido)'
     } elseif ($doUsuario.ContainsKey($p)) {
-        $classe = 'Aplicativo instalado pelo usuario - preservar'
+        $classe = 'Apps que voce usa (preservar)'
     } elseif ($candidato.ContainsKey($p)) {
-        $classe = 'Publicidade/telemetria - revisar antes de aprovar'
+        $classe = 'Candidatos: publicidade/telemetria (revisar)'
     }
     [pscustomobject]@{
         Grupo = $classe
@@ -145,7 +165,9 @@ $resumo = @(
     "Pacotes detectados: $($resultado.Count)"
     "MemAvailable (estimativa, MB): $memDisponivel"
     'Nenhum app foi desativado, desinstalado ou configurado.'
-    'Grupo "Publicidade/telemetria" e apenas sugestao para revisao manual.'
+    'Tres grupos: candidatos, TV precisa (inclui desconhecidos), apps do usuario.'
+    'NENHUMA classificacao autoriza uma desativacao automatica.'
+    'Antes de aplicar, pedir aprovacao por grupo e por pacote.'
     'Nao compartilhar settings-*.txt ou pacotes-flags.txt publicamente.'
     'Passo seguinte: revisar classificacao-para-revisao.csv e pedir aprovacao.'
 )
