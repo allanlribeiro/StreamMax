@@ -49,6 +49,7 @@ internal class StreamMaxAberturaVideo(
             setZOrderOnTop(true) // acima do SDL SurfaceView e da camada Media3
         }
         surface = video
+        Log.i(tag, "asset presente; aguardando superficie de video")
         video.holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
                 if (encerrado || surface !== video) return
@@ -56,7 +57,13 @@ internal class StreamMaxAberturaVideo(
                     val mp = MediaPlayer()
                     player = mp
                     mp.setOnPreparedListener {
+                        Log.i(tag, "video preparado: ${it.videoWidth}x${it.videoHeight}")
                         if (!encerrado) it.start()
+                    }
+                    mp.setOnInfoListener { _, what, _ ->
+                        if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START)
+                            Log.i(tag, "primeiro quadro do MP4 exibido")
+                        false
                     }
                     mp.setOnCompletionListener { encerrar("concluido") }
                     mp.setOnErrorListener { _, what, extra ->
