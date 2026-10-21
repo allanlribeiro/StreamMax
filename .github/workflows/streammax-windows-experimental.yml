@@ -62,6 +62,11 @@ jobs:
           cp /ucrt64/bin/libdl.dll build/windows/package/ || true
           cp /ucrt64/bin/libgcc_s_seh-1.dll build/windows/package/ || true
           cp /ucrt64/bin/libwinpthread-1.dll build/windows/package/ || true
+          cp /ucrt64/bin/zlib1.dll build/windows/package/
+          # Dependencias transitivas frequentes do SDL_image/SDL_ttf.
+          for dll in libpng16-16.dll libjpeg-8.dll libwebp-7.dll libfreetype-6.dll                      libharfbuzz-0.dll libbz2-1.dll libbrotlidec.dll libbrotlicommon.dll; do
+            [ -f "/ucrt64/bin/$dll" ] && cp "/ucrt64/bin/$dll" build/windows/package/ || true
+          done
           cp -r deploy/app/art build/windows/package/art
 
       - name: Publicar pacote Windows
