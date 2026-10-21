@@ -27,3 +27,16 @@ Registrar uma única linha por tentativa/sessão, inclusive erro/cancelamento, s
 
 ## Separação de escopo
 As quatro prioridades da próxima versão (vídeo de abertura, Xtream ao vivo, VOD IPTV separado e legendas pt-BR/pt-PT) seguem independentes deste diagnóstico. Não duplicar implementações existentes; verificar antes de modificar.
+
+## Verificação de integração (21/10/2026)
+Inspeção de `NvPlayer.kt` confirmou que o player principal **já registra** `loadMs` usando `SystemClock.elapsedRealtime() - abriuEm` em `onPlaybackStateChanged`, `onRenderedFirstFrame` e `onPlayerError`. Há também contadores de rebuffer. Portanto, **não adicionar logs equivalentes nem outro cronômetro total em paralelo**. O coletor `PlayerStartupTiming.kt` e os testes são preparatórios; ainda não estão conectados ao player.
+
+Pontos de ligação possíveis, condicionados a conferir ciclo de vida e geração de sessão:
+- `SELECTED`: momento em que a abertura da sessão define `abriuEm`; reutilizar o mesmo instante monotônico, não iniciar um segundo relógio divergente.
+- `RESOLVED`: somente quando houver callback efetivo de resolução da URL; não confundir `setMediaItem` com resolução de addon.
+- `FIRST_BYTE`: distinguir resposta HTTP de primeiro byte de corpo; `Estat.primeiroByteMs` em `ParaleloDataSource.kt` mede até `responseCode` por conexão/redirecionamento e **não** representa necessariamente primeiro byte de mídia ou o tempo da sessão inteira.
+- `PREPARED`: primeira transição `STATE_READY` da sessão; não contar rebuffer posterior.
+- `FIRST_FRAME`: `onRenderedFirstFrame` da sessão ativa, evitando eventos atrasados após troca de fonte.
+- `ERROR/CANCELLED`: finalizar uma única vez e não registrar identificadores/URLs.
+
+Antes de instrumentar, verificar se o `loadMs` existente já satisfaz a medição total; priorizar apenas as lacunas verificadas. Para HLS/DASH, fases indisponíveis devem permanecer nulas, sem inventar durações. Nenhum ganho de desempenho foi demonstrado nesta revisão.
