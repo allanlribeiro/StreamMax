@@ -307,7 +307,7 @@ static inline void video_stats_vazio(VideoStats *s) {
   s->host[0] = 0;
 }
 void video_estatisticas(VideoStats *s);
-#if defined(__APPLE__) || defined(NV_LINUX_DESKTOP)
+#if defined(__APPLE__) || defined(NV_LINUX_DESKTOP) || defined(NV_WINDOWS_DESKTOP)
 void video_simular_estatisticas(const VideoStats *s);   // capturas; NULL zera
 #endif
 
@@ -510,7 +510,7 @@ void video_encerrar(void);
 // que estiver aqui — faixas, tamanho, HDR, Atmos, buffer — para as telas do
 // player serem desenhadas com dados de um video "de verdade". Zerado (o padrao)
 // e o mesmo coto mudo de sempre. Nos alvos de TV a funcao nao existe.
-#if defined(__APPLE__) || defined(NV_LINUX_DESKTOP)
+#if defined(__APPLE__) || defined(NV_LINUX_DESKTOP) || defined(NV_WINDOWS_DESKTOP)
 typedef struct {
   int nAudio, nLeg, audioAtual, legAtual;
   VideoFaixa audio[8], leg[8];
