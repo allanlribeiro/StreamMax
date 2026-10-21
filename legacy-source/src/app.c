@@ -3581,6 +3581,9 @@ void app_evento(const SDL_Event *e) {
   if (e->type == SDL_KEYDOWN || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEWHEEL)
     ilhacart_tecla(SDL_GetTicks());
   if (relogioFocoEvento(e)) return;
+  // "Renomear fileira" closes the context menu BEFORE opening the keyboard.
+  // Route to that modal first or the Home eats its arrows and OK/Back.
+  if (ctx_renomear_ativo()) { teclado_evento(e); return; }
 
   // A explicacao de primeira abertura bloqueia o restante da interface ate
   // ser reconhecida ou fechada. Ela aparece na Home, mas pertence ao fluxo de
@@ -6745,6 +6748,12 @@ void app_desenhar(Uint32 agora) {
     if (layout_modo_mobile()) CAMADA_SE(central_aberta() || ilha_modal_aberto());
 #endif
     ilha_desenhar(agora);
+  }
+  // The rename editor lives on Home (not Settings). Draw the keyboard on top
+  // after all normal screens/overlays, like Settings draws its own keyboard.
+  if (ctx_renomear_ativo()) {
+    CAMADA_SE(1);
+    teclado_desenhar(agora);
   }
   // AS DICAS DO CONTROLE por ultimo, por cima de tudo: a dica abre o
   // componente DE VERDADE pelo caminho normal (spainel, Spotlight, Central
