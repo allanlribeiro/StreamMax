@@ -45,6 +45,15 @@ jobs:
             grep -Fq 'gfx_furo_raio(pv, raio);' legacy-source/src/guia.c
           fi
           echo "Origem verificada: codigo Legacy, commit $(git rev-parse --short HEAD)"
+      - name: Verificar integracao visual das tres correcoes da TCL
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'if (temBR && temPT) mais = 1;' legacy-source/src/legendasui.c
+          grep -Fq 'melhorFolha = automaticoDaFolhaModo();' legacy-source/src/streams.c
+          grep -Fq 'primeiro quadro do MP4 exibido' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/StreamMaxAberturaVideo.kt
+          test -s legacy-source/art/marcas/streammax_abertura.mp4
+          echo "OK: abertura, lista regional e otimização de fontes integradas."
       - name: Testar separacao regional de legendas
         shell: bash
         run: |
@@ -232,12 +241,14 @@ jobs:
             printf 'GitHub Actions run: %s\n' "$GITHUB_RUN_ID"
             printf 'Android package: com.streammax.tv.experimental\n'
             printf 'Instalacao: lado a lado (NAO atualiza com.streammax.tv)\n'
-            if [ -s legacy-source/art/marcas/streammax_abertura.mp4 ]; then
-              unzip -Z1 "${apk[0]}" | grep -Fxq 'assets/streammax_abertura.mp4' || { echo '::error::MP4 ausente no APK'; exit 1; }
-              printf 'Video de abertura: incluído\n'
-            else
-              printf 'Video de abertura: pendente de upload do MP4 aprovado\n'
-            fi
+            # Agora o MP4 e obrigatorio, com igualdade dos bytes do asset.
+            # "Arquivo no ZIP" sozinho nao detecta video errado/corrompido.
+            test -s legacy-source/art/marcas/streammax_abertura.mp4 || { echo '::error::MP4 aprovado nao encontrado'; exit 1; }
+            unzip -Z1 "${apk[0]}" | grep -Fxq 'assets/streammax_abertura.mp4' || { echo '::error::MP4 ausente no APK'; exit 1; }
+            origem="$(sha256sum legacy-source/art/marcas/streammax_abertura.mp4 | cut -d ' ' -f1)"
+            empacotado="$(unzip -p "${apk[0]}" assets/streammax_abertura.mp4 | sha256sum | cut -d ' ' -f1)"
+            test "$origem" = "$empacotado" || { echo '::error::MP4 do APK difere do MP4 aprovado'; exit 1; }
+            printf 'Video de abertura: incluido (SHA-256 conferido)\n'
             printf 'Base: legacy-source (Android C/SDL e Media3)\n'
             printf 'RC1 assinada. Compatibilidade Philips ainda nao validada em aparelho real.\n'
           } > legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
