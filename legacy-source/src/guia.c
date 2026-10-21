@@ -5009,6 +5009,18 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   sub = txt_linha(TXT_PG_ROTULO, i18n("Agora na TV"), 52, 171, 255, 255);
   txt_desenhar_alpha(sub, infX + 20.0f, y + 14.0f, a);
 
+  // Uma carga sem canais nao deve parecer um painel quebrado. A contagem
+  // zero e real; mostrar o estado do guia sem expor URLs ou credenciais.
+  if (nCanais == 0) {
+    const char *aviso = estado == G_BAIXANDO
+        ? "Carregando canais do provedor..."
+        : estado == G_FALHOU
+          ? "Falha ao carregar canais. Feche e abra a TV ao vivo para tentar novamente."
+          : "Nenhum canal disponivel. Verifique a lista IPTV cadastrada.";
+    TxtLinha msg = txt_linha_corta(TXT_PG_ROTULO, aviso,
+                                  183, 202, 230, 255, canW - 36.0f);
+    txt_desenhar_alpha(msg, canX + 18.0f, catLinY + 32.0f, a);
+  }
   // Indicadores animados ANTES do texto: o retangulo viaja em mola e a
   // lista nunca muda a logica da seta, OK, zapping ou pedido de preview.
   if (nCat > 0) {
