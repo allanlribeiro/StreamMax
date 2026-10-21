@@ -83,18 +83,61 @@ jobs:
           } catch {
             throw "EXE nao inicia num Windows sem MSYS2 no PATH: $($_.Exception.Message)"
           }
-          Start-Sleep -Seconds 7
-          if ($proc.HasExited) {
-            $exit = $proc.ExitCode
-            Write-Host "O StreamMax encerrou imediatamente: exit code $exit"
-            # 0xC0000135 = DLL nao encontrada; 0xC000007B = binario incompativel;
-            # 0xC0000142 = erro de inicializacao de DLL.
-            throw "Smoke-test reprovado: StreamMax nao permaneceu executando (codigo $exit)."
+          # O teste anterior apenas conferia o PID, mesmo com tela preta.
+          # Agora exige uma janela visivel de verdade com titulo StreamMax.
+          $janelaPronta = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Milliseconds 500
+            $proc.Refresh()
+            if ($proc.HasExited) {
+              throw "StreamMax encerrou antes de abrir a janela (exit code $($proc.ExitCode))"
+            }
+            $titulo = $proc.MainWindowTitle
+            $handle = $proc.MainWindowHandle
+            if ($handle -ne [IntPtr]::Zero -and $titulo -like "StreamMax*") {
+              Write-Host "Janela detectada: $titulo / HWND=$handle"
+              $janelaPronta = $true
+              break
+            }
           }
-          Write-Host "OK: processo StreamMax.exe abriu e permaneceu ativo com PATH limpo."
+          if (-not $janelaPronta) {
+            $proc.Kill(); $proc.WaitForExit()
+            throw "Smoke-test reprovado: o processo abriu, mas nao exibiu uma janela StreamMax em 15 segundos."
+          }
+          Write-Host "OK: StreamMax abriu uma janela no Windows com PATH limpo."
           $proc.Kill()
           $proc.WaitForExit()
           $proc.Dispose()
+      - name: Preparar Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Compilador Inno Setup 6 indisponivel"
+          }
+          Write-Host "ISCC: $iscc"
+
+      - name: Gerar StreamMax-Setup.exe
+        shell: pwsh
+        working-directory: legacy-source
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc "installer\streammax-windows.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Falha ao compilar o instalador Inno Setup" }
+          $setup = "build\windows\installer\StreamMax-Setup-Windows-x64.exe"
+          if (-not (Test-Path $setup)) { throw "Instalador nao encontrado: $setup" }
+          Write-Host "Instalador criado: $((Get-Item $setup).Length) bytes"
+
+      - name: Publicar instalador StreamMax Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Instalador-Windows-${{ github.run_number }}
+          path: legacy-source/build/windows/installer/StreamMax-Setup-Windows-x64.exe
+          if-no-files-found: error
+          retention-days: 30
       - name: Publicar pacote Windows
         uses: actions/upload-artifact@v4
         with:
