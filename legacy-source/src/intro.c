@@ -351,7 +351,7 @@ static int (*buscar)(const char *,char **,int *)=buscarPadrao;
 void intro_definir_buscador(int (*f)(const char *,char **,int *)){buscar=f?f:buscarPadrao;}
 static int buscarInterno(const char *url,char **corpo,int *status){return buscar(url,corpo,status);}
 
-enum{INTRO_INTRO_R_OK,INTRO_INTRO_R_VAZIO,INTRO_INTRO_R_FALHA};
+enum{INTRO_R_OK,INTRO_R_VAZIO,INTRO_R_FALHA};
 // Chave do cache de "nao conhece": o id que foi perguntado.
 static void chave404(char *k,size_t n,const Pedido *p){
   if(p->tmdb>0)snprintf(k,n,"tmdb:%ld",p->tmdb);else snprintf(k,n,"%s",p->id);
@@ -359,14 +359,14 @@ static void chave404(char *k,size_t n,const Pedido *p){
 static int pedirEp(const Pedido *p,int t,int e,double dur,char **json){
   char url[320],k[32],*j=NULL;int st=0;long agora=(long)time(NULL);
   *json=NULL;chave404(k,sizeof k,p);
-  if(t>=0&&e>0&&cred_404_visto(k,t,e,agora))return INTRO_INTRO_R_VAZIO;
+  if(t>=0&&e>0&&cred_404_visto(k,t,e,agora))return INTRO_R_VAZIO;
   intro_montar_url(url,sizeof url,p->id,p->tmdb,t,e,dur);
   buscar(url,&j,&st);
-  if(st==204||st==404){free(j);if(t>=0&&e>0)cred_404_marcar(k,t,e,agora);return INTRO_INTRO_R_VAZIO;}
+  if(st==204||st==404){free(j);if(t>=0&&e>0)cred_404_marcar(k,t,e,agora);return INTRO_R_VAZIO;}
   if(st<200||st>299||!j){
     free(j);
     printf("[intro] %s S%02dE%02d: resposta %d, tenta de novo depois\n",k,t,e,st);fflush(stdout);
-    return INTRO_INTRO_R_FALHA;
+    return INTRO_R_FALHA;
   }
   // OUTRO EPISODIO NA RESPOSTA (intro_resposta_confere): descarta como 404.
   if(!intro_resposta_confere(j,t,e)){
@@ -374,9 +374,9 @@ static int pedirEp(const Pedido *p,int t,int e,double dur,char **json){
     fflush(stdout);
     free(j);
     cred_404_marcar(k,t,e,agora);
-    return INTRO_INTRO_R_VAZIO;
+    return INTRO_R_VAZIO;
   }
-  *json=j;return INTRO_INTRO_R_OK;
+  *json=j;return INTRO_R_OK;
 }
 
 static int geracaoVale(unsigned g){int v;pthread_mutex_lock(&trava);v=(g==geracao);pthread_mutex_unlock(&trava);return v;}
@@ -474,7 +474,7 @@ static void *baixar(void *u){
     nw=j?intro_extrair(j,w,8):0;
     nl=j&&!temCred?creditosjson_extrair(j,limitados,8):0;
     n=intro_completar(v,n<0?0:n,w,nw,8);
-    r=rj==INTRO_INTRO_R_FALHA?INTRO_R_FALHA:n>0?INTRO_R_OK:rj;
+    r=rj==INTRO_R_FALHA?INTRO_R_FALHA:n>0?INTRO_R_OK:rj;
   }
   else if(n<=0&&falhaAni)r=INTRO_R_FALHA;
   else if(n>0)r=INTRO_R_OK;
@@ -487,7 +487,7 @@ static void *baixar(void *u){
   pthread_mutex_lock(&trava);
   vale=p->g==geracao;
   if(vale){
-    falhou=r==INTRO_INTRO_R_FALHA;
+    falhou=r==INTRO_R_FALHA;
     if(falhou)falhouEm=(long)time(NULL);
     if(!falhou||n>0){
       memcpy(trechos,v,(size_t)n*sizeof *v);nTrechos=n;
@@ -496,7 +496,7 @@ static void *baixar(void *u){
     fundirCapitulos();caps=nCapTr;total=nTrechos;
   }
   pthread_mutex_unlock(&trava);
-  if(vale&&r!=INTRO_INTRO_R_FALHA){
+  if(vale&&r!=INTRO_R_FALHA){
     printf("[intro] %s S%02dE%02d: fonte=%s%s, %d marcadores, dur %.0fs\n",p->id,p->t,p->e,
            caps?"capitulos":deAni?"AniSkip":n>0?"TheIntroDB":"nenhuma",
            caps&&n>0?(deAni?" + AniSkip":" + TheIntroDB"):"",total,p->dur);fflush(stdout);
