@@ -14,6 +14,7 @@ on:
       - streammax/home-cinematica-trailer-103-1020
       - streammax/home-listas-premium-104-1020
       - streammax/abertura-etapas-startup-105-1020
+      - streammax/107-legacy-home-4k # teste 1.0.7 na base Legacy, sem publicacao OTA
 
 permissions:
   contents: read
