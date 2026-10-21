@@ -396,6 +396,7 @@ static int tvTresColunas = 1;
 static int tvTresColunas;
 #endif
 static int tvColunaFoco = SM_TV_COL_CATEGORIAS;
+static int iptvTopoFoco, iptvTopoAba; // D-pad: esquerda na categoria -> abas
 static void streammaxTvAnimar(float dt);  // visual: mola de foco da TCL
 
 static void modoLer(void) {
@@ -1674,6 +1675,7 @@ void guia_abrir(void) {
   aberta = 1; querSair = 0; entrada = 0.0f;
   // Uma nova visita ao guia comeca em TV ao vivo. VOD apenas se escolhido.
   streammax_iptv_mudar(0);
+  iptvTopoFoco = 0; iptvTopoAba = 0;
   focoTopo = 0; painel = 0;
   // Abrir ja com o foco no primeiro canal da categoria: assim o preview
   // aparece depois do descanso do foco, sem obrigar apertar OK.
@@ -2238,6 +2240,7 @@ void guia_evento(const SDL_Event *e) {
 
   if (k == SDLK_AC_BACK || k == SDLK_ESCAPE || k == SDLK_BACKSPACE ||
       k == SDLK_DELETE || e->key.keysym.scancode == NV_SCANCODE_BACK) {
+    if (iptvTopoFoco) { iptvTopoFoco = 0; return; }
     if (!overlay && streammax_iptv_modo()) {
       streammax_iptv_mudar(0); return;
     }
@@ -2275,6 +2278,27 @@ void guia_evento(const SDL_Event *e) {
     return;
   }
 
+  // Tabs do IPTV sao elementos de foco reais na TV: ESQUERDA a partir
+  // da coluna de categorias, depois ESQUERDA/DIREITA e OK. Nao exigir tecla
+  // colorida (alguns controles TCL nao possuem).
+  if (tvTresColunas && !gRetrato() && !overlay && iptvTopoFoco) {
+    if (k == SDLK_LEFT || k == SDLK_RIGHT) {
+      iptvTopoAba = (iptvTopoAba + (k == SDLK_RIGHT ? 1 : 2)) % 3;
+    } else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) {
+      if (iptvTopoAba) previewParar();
+      streammax_iptv_mudar(iptvTopoAba);
+      iptvTopoFoco = 0; okDesde = okLongo = 0;
+    } else if (k == SDLK_DOWN) iptvTopoFoco = 0;
+    return;
+  }
+  if (tvTresColunas && !gRetrato() && !overlay &&
+      ((streammax_iptv_modo() && streammax_iptv_categoria_focada()) ||
+       (!streammax_iptv_modo() && tvColunaFoco == SM_TV_COL_CATEGORIAS)) &&
+      k == SDLK_LEFT) {
+    iptvTopoFoco = 1;
+    iptvTopoAba = streammax_iptv_modo();
+    return;
+  }
   // Azul alterna as tres areas dentro da mesma sessao IPTV, sem fazer
   // downloads ate a pessoa abrir Filmes ou Series.
   if (tvTresColunas && !gRetrato() && !overlay &&
@@ -2282,6 +2306,7 @@ void guia_evento(const SDL_Event *e) {
     int proximo = (streammax_iptv_modo() + 1) % 3;
     if (proximo) previewParar();
     streammax_iptv_mudar(proximo);
+    iptvTopoFoco = 0; iptvTopoAba = proximo;
     okDesde = okLongo = 0;
     return;
   }
@@ -4972,7 +4997,7 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   }
 
   // Areas IPTV ficam visiveis no topo sem ocupar uma quarta coluna.
-  streammax_iptv_abas(a, 0);
+  streammax_iptv_abas(a, iptvTopoFoco ? iptvTopoAba : -1);
   // Colunas preservadas: categorias | canais | preview e EPG.
   smTvPainel((GfxRect){catX, y, catW, painelH}, a);
   smTvPainel((GfxRect){canX, y, canW, painelH}, a);
@@ -5127,7 +5152,7 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   }
   // Barra de atalhos REAL (sem desenhar botoes sem acao).
   sub=txt_linha(TXT_DET_META2,
-        i18n("Setas: categorias e canais  ·  OK: assistir  ·  Azul: Filmes / Séries IPTV  ·  Amarelo: guia clássico"),
+        i18n("← nas categorias: abas IPTV  ·  OK: assistir  ·  Azul: alternar áreas  ·  Amarelo: guia clássico"),
         133,164,202,255);
   txt_desenhar_alpha(sub,x,NV_TELA_H-48.0f,a);
 }
@@ -5143,7 +5168,7 @@ void guia_desenhar(Uint32 agora) {
   if (a < 0.01f || !guia_visivel()) return;
   if (overlay) { desenharBanda(a, agora); return; }
   if (tvTresColunas && !gRetrato() && streammax_iptv_modo()) {
-    streammax_iptv_desenhar(a);
+    streammax_iptv_desenhar(a, iptvTopoFoco ? iptvTopoAba : -1);
     return;
   }
   if (tvTresColunas && !gRetrato()) {
@@ -5526,6 +5551,7 @@ int guia_canal_campos(int i, const char **id, const char **nome, const char **lo
 
 void guia_abrir_sessao(void) {
   streammax_iptv_sessao();
+  iptvTopoFoco = iptvTopoAba = 0;
   // Nunca tocar no staging de um fio vivo. Ele sai no proximo limite de
   // pedido e o desenho descarta o resultado pela geracao da abertura.
   cargaCancelada = 1;
