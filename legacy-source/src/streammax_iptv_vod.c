@@ -4,6 +4,7 @@
 #include "perfisessao.h"
 #include "streammax_livetv_columns.h"
 #include "gfx.h"
+#include "tex_cache.h"
 #include "text.h"
 #include "layout.h"
 #include "logoapp.h"
@@ -358,6 +359,17 @@ void streammax_iptv_desenhar(float a, int focoAba) {
       card = (GfxRect){itemX + 9 + coluna * largura, ry + linha * (altura + 10.0f),
                        largura - 7.0f, altura};
       faixa(card, i == focoItem && focoCol == 1, a);
+      // O cache global ja faz download/decode fora da thread de desenho.
+      // Pedimos SOMENTE as capas das tres fileiras visiveis.
+      // A textura usa a largura real do poster, evitando decodificar em 960px.
+      if (visivel->itens[i].poster[0]) {
+        GLuint capa = tex_obter_larg(visivel->itens[i].poster, card.w - 12.0f);
+        if (capa) {
+          GfxRect areaCapa = {card.x + 6.0f, card.y + 6.0f,
+                              card.w - 12.0f, 141.0f};
+          gfx_textura(areaCapa, capa);
+        }
+      }
       rotulo(visivel->itens[i].nome, card.x + 9, card.y + 150,
              card.w - 18, i == focoItem, a);
       if (visivel->itens[i].ano > 0) {
