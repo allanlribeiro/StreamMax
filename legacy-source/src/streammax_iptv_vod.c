@@ -31,7 +31,7 @@ typedef struct {
 typedef struct {
   unsigned geracao;
   NvPerfilSessao sessao;
-  int tipo, modo;
+  int tipo, modo, listarTodos;
   char categoria[24], serie[80];
 } VodTrabalho;
 
@@ -42,6 +42,7 @@ static VodResultado *pendente;       // entregue pelo worker, lido no desenho
 static VodResultado *visivel;        // somente fio de desenho
 static int modo, carregando, erro, atualizarPendente;
 static int focoCol, focoCategoria, focoItem, focoEp, serieAberta;
+static int categoriaEscolhida; // zero = so a lista de categorias foi consultada
 static StreamMaxVodPedido pedido;
 static int pediu;
 
@@ -60,9 +61,12 @@ static void *buscar(void *p) {
       // A lista do provedor nunca entra no catalogo dos addons/TMDB.
       if (!t->categoria[0])
         novo->nCategorias = xtream_vod_categorias(t->modo == 2, novo->categorias, VOD_CAT_CAP);
-      novo->nItens = xtream_vod_listar_categoria(t->modo == 2,
-                                 t->categoria[0] ? t->categoria : NULL,
-                                 novo->itens, VOD_ITEM_CAP);
+      // A primeira abertura baixa SOMENTE as categorias: pedir todos os
+      // filmes do provedor aqui criaria um JSON gigante antes de clicar.
+      if (t->categoria[0] || t->listarTodos)
+        novo->nItens = xtream_vod_listar_categoria(t->modo == 2,
+                                  t->categoria[0] ? t->categoria : NULL,
+                                  novo->itens, VOD_ITEM_CAP);
     } else {
       novo->nEpisodios = xtream_series_episodios(t->serie, novo->episodios, VOD_EP_CAP);
     }
@@ -91,6 +95,7 @@ static void solicitar(int tipo) {
   t->geracao = atomic_load_explicit(&geracao, memory_order_acquire);
   t->sessao = nv_perfil_sessao_ler();
   t->tipo = tipo; t->modo = modo;
+  t->listarTodos = tipo == 1 && categoriaEscolhida && focoCategoria == 0;
   if (tipo == 1 && focoCategoria > 0 && visivel &&
       focoCategoria - 1 < visivel->nCategorias)
     snprintf(t->categoria, sizeof t->categoria, "%s",
@@ -117,6 +122,7 @@ void streammax_iptv_sessao(void) {
   free(visivel); visivel = NULL;
   modo = carregando = erro = atualizarPendente = 0;
   focoCol = focoCategoria = focoItem = focoEp = serieAberta = 0;
+  categoriaEscolhida = 0;
   pediu = 0; memset(&pedido, 0, sizeof pedido);
 }
 
@@ -130,6 +136,7 @@ void streammax_iptv_mudar(int novo) {
   modo = novo;
   carregando = erro = serieAberta = 0;
   focoCol = focoCategoria = focoItem = focoEp = 0;
+  categoriaEscolhida = 0;
   atualizarPendente = novo != 0;
   pediu = 0; memset(&pedido, 0, sizeof pedido);
 }
@@ -165,6 +172,7 @@ void streammax_iptv_atualizar(void) {
 }
 
 static void carregarCategoria(void) {
+  categoriaEscolhida = 1;
   atomic_fetch_add_explicit(&geracao, 1, memory_order_acq_rel);
   atualizarPendente = 1; carregando = 1;
   focoItem = focoEp = serieAberta = 0;
@@ -323,7 +331,10 @@ void streammax_iptv_desenhar(float a, int focoAba) {
     snprintf(info,sizeof info,"%s",i18n("Carregando conteúdo do provedor…"));
   } else if (erro==2) snprintf(info,sizeof info,"%s",i18n("Configure uma lista Xtream em Ajustes."));
   else if(erro) snprintf(info,sizeof info,"%s",i18n("Não foi possível consultar o provedor."));
-  else if (!visivel || !visivel->nItens) snprintf(info,sizeof info,"%s",i18n("Nenhum título nesta categoria."));
+  else if (!categoriaEscolhida)
+    snprintf(info,sizeof info,"%s",i18n("Escolha uma categoria e pressione OK."));
+  else if (!visivel || !visivel->nItens)
+    snprintf(info,sizeof info,"%s",i18n("Nenhum título nesta categoria."));
   else snprintf(info,sizeof info,"%d título(s) neste resultado · até %d por consulta",
                 visivel->nItens,VOD_ITEM_CAP);
   TxtLinha status=txt_linha_corta(TXT_DET_META2,info,148,186,225,255,detW-40);
