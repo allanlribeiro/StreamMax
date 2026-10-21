@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- No INTERNET, no REQUEST_DELETE_PACKAGES, no privileges. -->
+    <!-- Weather can request only INTERNET after opt-in city; no location, delete, or HOME privileges. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -14,7 +15,7 @@
         <package android:name="com.tcl.tv" />
         <package android:name="com.google.android.tv.inputplayer" />
     </queries>
-    <application android:label="StreamMax Home Visual Teste"
+    <application android:label="StreamMax Home Clima Teste"
         android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
         android:allowBackup="false">
         <activity android:name="com.streammax.tvdetox.MainActivity"
