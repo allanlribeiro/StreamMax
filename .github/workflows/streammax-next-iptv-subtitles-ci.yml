@@ -40,6 +40,10 @@ jobs:
             legacy-source/tests/test_streammax_xtream_vod.c \
             -o /tmp/streammax-vod
           /tmp/streammax-vod
+      - name: Conferir limites e carregamento sob demanda do IPTV VOD
+        run: |
+          set -euo pipefail
+          python3 legacy-source/tests/check_streammax_iptv_vod_bounds.py
       - name: Conferir sintaxe do backend Xtream VOD
         run: |
           set -euo pipefail
