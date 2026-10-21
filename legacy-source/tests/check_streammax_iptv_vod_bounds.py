@@ -43,8 +43,8 @@ require("if (d > 0 && proximo >= itensNaCategoria()" in ui,
         "Navegacao deve alcancar a ultima fileira incompleta")
 guia = (root / "src/guia.c").read_text(encoding="utf-8")
 worker = guia.split("static void *fioGuia(void *u) {", 1)[1].split("static void empacotar(void)", 1)[0]
-require(worker.index("xtream_canais_sessao(") < worker.index("sondaManifestos();"),
-        "Canais Xtream devem ser consultados antes das sondas de addons")
+require(worker.index("xtream_canais_sessao(") > worker.index("sondaManifestos();"),
+        "A ordem comprovada da 1.0.8 deve ser preservada: Xtream depois das sondas de addons")
 require("if (nCanais == 0)" in guia and "Carregando canais do provedor" in guia,
         "Painel de TV ao vivo nao pode ficar vazio sem estado de carga")
 require("streammax_iptv_modo()" in guia and "streammax_iptv_desenhar(" in guia,
