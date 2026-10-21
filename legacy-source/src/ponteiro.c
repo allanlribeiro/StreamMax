@@ -1006,9 +1006,9 @@ void ponteiro_borda_ativar(void) {
 void ponteiro_desenhar(void) {
   float g, d, sobre;
   if (!visivel) { fecharQuadro(); return; }
-#ifdef NV_PONT_WEBOS
-  // A seta no webOS e a do sistema (main.c deixa SDL_ShowCursor ligado: sem
-  // ele o SDL da LG nao entrega movimento). Desenhar outra seria cursor duplo.
+#if defined(NV_PONT_WEBOS) || defined(NV_WINDOWS_DESKTOP)
+  // No webOS e no Windows o cursor do sistema fica habilitado.
+  // Evitar desenhar um segundo ponteiro por cima dos controles.
   fecharQuadro();
   return;
 #endif
