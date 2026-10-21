@@ -42,11 +42,11 @@ static VodResultado *pendente;       // entregue pelo worker, lido no desenho
 static VodResultado *visivel;        // somente fio de desenho
 static int modo, carregando, erro, atualizarPendente;
 static int focoCol, focoCategoria, focoItem, focoEp, serieAberta;
-static int focoAba;                 // tab escolhida mas sem atividade no ar
 static StreamMaxVodPedido pedido;
 static int pediu;
 
 int streammax_iptv_modo(void) { return modo; }
+int streammax_iptv_categoria_focada(void) { return focoCol == 0; }
 
 static int itensNaCategoria(void) { return visivel ? visivel->nItens : 0; }
 
@@ -116,7 +116,7 @@ void streammax_iptv_sessao(void) {
   pthread_mutex_unlock(&trava);
   free(visivel); visivel = NULL;
   modo = carregando = erro = atualizarPendente = 0;
-  focoCol = focoCategoria = focoItem = focoEp = serieAberta = focoAba = 0;
+  focoCol = focoCategoria = focoItem = focoEp = serieAberta = 0;
   pediu = 0; memset(&pedido, 0, sizeof pedido);
 }
 
@@ -273,12 +273,12 @@ void streammax_iptv_abas(float a, int foco) {
   for (int j = 0; j < 3; j++) {
     GfxRect r = {x+j*(w+gap),y,w,32.0f};
     int sel = j == modo;
-    faixa(r, sel || (foco && j == focoAba), a);
+    faixa(r, sel || (foco == j), a);
     rotulo(tit[j],r.x+13.0f,r.y+5.0f,r.w-26.0f,sel,a);
   }
 }
 
-void streammax_iptv_desenhar(float a) {
+void streammax_iptv_desenhar(float a, int focoAba) {
   const float x = NV_MARGEM_X, y = 173.0f, gap = 18.0f;
   const float catW = 300.0f, itemW = 624.0f;
   const float itemX = x + catW + gap, detX = itemX + itemW + gap;
@@ -286,14 +286,14 @@ void streammax_iptv_desenhar(float a) {
   const float ry = y + 55.0f, rh = VOD_LINHA_H - 6.0f;
   const int firstCat = streammax_tv_primeira(focoCategoria,VOD_LINHAS,visivel ? visivel->nCategorias+1 : 1);
   const int firstItem = streammax_tv_primeira(focoItem,VOD_LINHAS,visivel ? visivel->nItens : 0);
-  const int firstEp = streammax_tv_primeira(focoEp,VOD_LINHAS,visivel ? visivel->nEpisodios : 0);
+  const int firstEp = streammax_tv_primeira(focoEp,6,visivel ? visivel->nEpisodios : 0);
   GfxRect full = {0,0,NV_TELA_W,NV_TELA_H};
   char titulo[200], info[220];
   gfx_cor(full,0,0.007f,0.018f,0.039f,a);
   gfx_cor((GfxRect){0,0,NV_TELA_W,156.0f},0,0.012f,0.034f,0.079f,a);
   logoapp_streammax_wordmark((GfxRect){x+18,36,246,44},a);
   rotulo(modo==1 ? "FILMES IPTV" : "SÉRIES IPTV",x+358,40,440,1,a);
-  streammax_iptv_abas(a, 0);
+  streammax_iptv_abas(a, focoAba);
   painel((GfxRect){x,y,catW,823},a);
   painel((GfxRect){itemX,y,itemW,823},a);
   painel((GfxRect){detX,y,detW,823},a);
