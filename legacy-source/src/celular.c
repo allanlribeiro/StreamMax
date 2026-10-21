@@ -3,7 +3,7 @@
 #include "posterprov.h"
 #include <string.h>
 
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || defined(NV_WINDOWS_DESKTOP)
 int  celular_disponivel(void) { return 0; }
 int  celular_abrir(const char *t) { (void)t; return 0; }
 void celular_fechar(void) {}
