@@ -1,0 +1,15 @@
+<!-- Integrate inside the StreamMax Home application's <application> element.
+     Replace class/package names to match the actual RC2 project.
+     Accessibility must be enabled manually by the TV owner. -->
+<service
+    android:name=".HomeRedirectAccessibilityService"
+    android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+    android:exported="true"
+    android:label="@string/home_redirect_accessibility_label">
+    <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService" />
+    </intent-filter>
+    <meta-data
+        android:name="android.accessibilityservice"
+        android:resource="@xml/home_redirect_accessibility" />
+</service>
