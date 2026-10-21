@@ -10,11 +10,17 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (-not (Get-Command adb -ErrorAction SilentlyContinue)) {
-    throw 'adb.exe nao encontrado. Instale o Android SDK Platform Tools e configure o PATH.'
+# Execute diretamente da pasta platform-tools sem exigir PATH permanente.
+$adb = Join-Path (Get-Location).Path 'adb.exe'
+if (-not (Test-Path -LiteralPath $adb -PathType Leaf)) {
+    $cmd = Get-Command adb.exe -ErrorAction SilentlyContinue
+    if ($null -eq $cmd) {
+        throw 'adb.exe nao encontrado. Abra o PowerShell dentro da pasta platform-tools.'
+    }
+    $adb = $cmd.Source
 }
 
-$linhas = @(& adb devices)
+$linhas = @(& $adb devices)
 $disponiveis = @($linhas | ForEach-Object {
     if ($_ -match '^([^\s]+)\s+device\s*$') { $Matches[1] }
 })
@@ -27,7 +33,7 @@ if (-not $Dispositivo) {
 if ($Dispositivo -notmatch '^[A-Za-z0-9.:_\-]+$') {
     throw 'Serial do dispositivo invalido.'
 }
-$estado = (& adb -s $Dispositivo get-state 2>&1 | Out-String).Trim()
+$estado = (& $adb -s $Dispositivo get-state 2>&1 | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or $estado -ne 'device') {
     throw "TV nao autorizada/conectada ($Dispositivo). Verifique a depuracao e o aceite na tela."
 }
@@ -39,7 +45,7 @@ Write-Host "Backup local: $pasta"
 
 function Guardar-Leitura {
     param([string]$Nome, [string[]]$Argumentos, [bool]$Obrigatorio = $true)
-    $conteudo = @(& adb -s $Dispositivo @Argumentos 2>&1)
+    $conteudo = @(& $adb -s $Dispositivo @Argumentos 2>&1)
     $codigo = $LASTEXITCODE
     $texto = ($conteudo | Out-String).TrimEnd()
     Set-Content -LiteralPath (Join-Path $pasta $Nome) -Value $texto -Encoding UTF8
@@ -68,16 +74,16 @@ Guardar-Leitura 'home-candidatos.txt' @('shell','cmd','package','query-activitie
 Guardar-Leitura 'tv-inputs.txt' @('shell','dumpsys','tv_input') $false | Out-Null
 # Registrar os valores exatos a restaurar (inclusive ausencia = null).
 $valores = @(
-    @('global','window_animation_scale'),
-    @('global','transition_animation_scale'),
-    @('global','animator_duration_scale'),
-    @('secure','screensaver_enabled'),
-    @('secure','screensaver_activate_on_sleep'),
-    @('secure','screensaver_activate_on_dock')
+    [pscustomobject]@{Ns='global'; Chave='window_animation_scale'},
+    [pscustomobject]@{Ns='global'; Chave='transition_animation_scale'},
+    [pscustomobject]@{Ns='global'; Chave='animator_duration_scale'},
+    [pscustomobject]@{Ns='secure'; Chave='screensaver_enabled'},
+    [pscustomobject]@{Ns='secure'; Chave='screensaver_activate_on_sleep'},
+    [pscustomobject]@{Ns='secure'; Chave='screensaver_activate_on_dock'}
 )
 $estadoConfiguracoes = foreach ($par in $valores) {
-    $ns = $par[0]; $chave = $par[1]
-    $valor = (& adb -s $Dispositivo shell settings get $ns $chave | Out-String).Trim()
+    $ns = $par.Ns; $chave = $par.Chave
+    $valor = (& $adb -s $Dispositivo shell settings get $ns $chave | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) { throw "Nao foi possivel ler $ns/$chave. Nada foi modificado." }
     [pscustomobject]@{ Namespace = $ns; Chave = $chave; Valor = $valor }
 }
