@@ -110,6 +110,9 @@
 #include "idiomaauto.h"
 #include "abertura.h"
 #include "logoapp.h"
+#ifdef NV_WINDOWS_DESKTOP
+#include "winstartup.h"
+#endif
 // O idioma AUTOMATICO da interface mudou depois do arranque (a conta chegou, ou
 // a TV respondeu o locale). Titulos e generos das fileiras saem no idioma novo,
 // e a pessoa fica sabendo por que a tela trocou sozinha — uma vez por idioma
@@ -909,6 +912,9 @@ static EM_BOOL cicloWgt(int tipo, const EmscriptenVisibilityChangeEvent *e, void
 #endif
 
 int main(int argc, char **argv) {
+#ifdef NV_WINDOWS_DESKTOP
+  sm_win_startup();
+#endif
   // NUMERO COM PONTO, SEMPRE. O host .NET do .tpk poe o processo no locale do
   // idioma da TV, e em alemao/portugues/russo o printf("%.2f") sai "0,50" e o
   // strtod para na virgula. Os registros 9866-9920 (Tizen 9, "FPS=51,2")
@@ -957,6 +963,8 @@ int main(int argc, char **argv) {
     // vazias — os restos dos textos sobrescritos.
     if (log) {
 #if defined(NV_TPK) || defined(NV_ANDROID)
+      const char *anterior = getenv("NUVIO_LOG_ANTERIOR");
+#elif defined(NV_WINDOWS_DESKTOP)
       const char *anterior = getenv("NUVIO_LOG_ANTERIOR");
 #elif defined(NV_DTS_DEBUG)
       const char *anterior = "/tmp/" NV_APP_ID "-anterior.log";
@@ -1030,11 +1038,20 @@ int main(int argc, char **argv) {
   NV_ETAPA("SDL_Init");
   arranque_etapa("SDL_Init");
 #ifdef NV_WINDOWS_DESKTOP
+  sm_win_mark("SDL_Init");
+#endif
+#ifdef NV_WINDOWS_DESKTOP
   // GLES2 via ANGLE: preferir EGL ao WGL/OpenGL nativo do Windows.
   // O SDL consulta esta dica antes de carregar o backend OpenGL.
   SDL_SetHint("SDL_VIDEO_FORCE_EGL", "1");
 #endif
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) { printf("SDL_Init: %s\n", SDL_GetError()); return 1; }
+  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    printf("SDL_Init: %s\n", SDL_GetError());
+#ifdef NV_WINDOWS_DESKTOP
+    sm_win_fatal("SDL_Init falhou", SDL_GetError());
+#endif
+    return 1;
+  }
 #ifdef __EMSCRIPTEN__
   emscripten_set_visibilitychange_callback(NULL, EM_TRUE, cicloWgt);
 #endif
@@ -1224,6 +1241,9 @@ int main(int argc, char **argv) {
 #endif
   NV_ETAPA("SDL_CreateWindow");
   arranque_etapa("SDL_CreateWindow");
+#ifdef NV_WINDOWS_DESKTOP
+  sm_win_mark("SDL_CreateWindow");
+#endif
   win = SDL_CreateWindow(windowTitle, SDL_WINDOWPOS_CENTERED,
                                      SDL_WINDOWPOS_CENTERED,
                                      pedeW, pedeH, flags);
@@ -1265,6 +1285,9 @@ int main(int argc, char **argv) {
   if (!win) {
     printf("janela: %s\n", SDL_GetError()); fflush(stdout);
     arranque_etapa("FALHA: sem janela SDL");
+#ifdef NV_WINDOWS_DESKTOP
+    sm_win_fatal("SDL_CreateWindow falhou", SDL_GetError());
+#endif
     SDL_Quit();
     return 1;
   }
@@ -1332,6 +1355,9 @@ int main(int argc, char **argv) {
 #endif
   NV_ETAPA("SDL_GL_CreateContext");
   arranque_etapa("SDL_GL_CreateContext");
+#ifdef NV_WINDOWS_DESKTOP
+  sm_win_mark("SDL_GL_CreateContext");
+#endif
   SDL_GLContext ctx = SDL_GL_CreateContext(win);
 #if NV_ARRANQUE_REDE
   if (!ctx) {
@@ -1340,12 +1366,18 @@ int main(int argc, char **argv) {
     if (!ctx) {
       printf("[arranque] sem contexto GL em nenhuma config: %s\n", SDL_GetError()); fflush(stdout);
       arranque_etapa("FALHA: sem contexto GL");
+#ifdef NV_WINDOWS_DESKTOP
+      sm_win_fatal("Contexto GLES2/ANGLE falhou", SDL_GetError());
+#endif
       if (win) SDL_DestroyWindow(win);
       SDL_Quit();
       return 2;
     }
   }
   nv_log_egl();
+#ifdef NV_WINDOWS_DESKTOP
+  sm_win_mark("GLES2/ANGLE criado");
+#endif
 #endif
 #ifdef NV_LINUX_DESKTOP
   if (!ctx) {
@@ -1528,7 +1560,16 @@ int main(int argc, char **argv) {
   marco("gfx_iniciar");
   NV_ETAPA("gfx_iniciar (shaders)");
   arranque_etapa("gfx_iniciar");
-  if (!gfx_iniciar()) { printf("[arranque] gfx_iniciar FALHOU\n"); fflush(stdout); return 1; }
+#ifdef NV_WINDOWS_DESKTOP
+  sm_win_mark("gfx_iniciar");
+#endif
+  if (!gfx_iniciar()) {
+    printf("[arranque] gfx_iniciar FALHOU\n"); fflush(stdout);
+#ifdef NV_WINDOWS_DESKTOP
+    sm_win_fatal("Shaders da interface falharam", "O driver grafico nao compilou os shaders GLES2. Consulte nuvio.log.");
+#endif
+    return 1;
+  }
   printf("[arranque] gfx_iniciar ok\n"); fflush(stdout);
   // A marca da abertura (#213), ANTES do primeiro quadro: ele ja nasce com ela,
   // no lugar em que o splash do sistema a deixou.
@@ -1607,7 +1648,15 @@ int main(int argc, char **argv) {
   simklauth_carregar_perfil(perfis_ativo());
   NV_ETAPA("app_iniciar");
   arranque_etapa("app_iniciar");
-  if (!app_iniciar(dirArte)) return 1;
+#ifdef NV_WINDOWS_DESKTOP
+  sm_win_mark("app_iniciar");
+#endif
+  if (!app_iniciar(dirArte)) {
+#ifdef NV_WINDOWS_DESKTOP
+    sm_win_fatal("app_iniciar falhou", "A inicializacao da interface nao terminou. Consulte nuvio.log.");
+#endif
+    return 1;
+  }
   arranque_etapa("app_iniciar ok");
   NV_ETAPA("addons/catalogo");
   // Cor viva: a paleta da ultima cena volta ANTES do primeiro quadro, entao
@@ -2203,7 +2252,11 @@ int main(int argc, char **argv) {
     // Bandeira PROPRIA e nao `if (!quadros)`: `quadros` zera a cada relatorio
     // de 3 s, entao aquilo carimbaria "primeiro quadro" tres vezes por minuto.
     { static int jaCarimbou;
-      if (!jaCarimbou) { jaCarimbou = 1; nvPrimeiroQuadroFeito = 1; arranque_etapa("quadro-1"); marco("primeiro quadro na tela");
+      if (!jaCarimbou) { jaCarimbou = 1; nvPrimeiroQuadroFeito = 1; arranque_etapa("quadro-1");
+#ifdef NV_WINDOWS_DESKTOP
+        sm_win_mark("quadro-1");
+#endif
+        marco("primeiro quadro na tela");
         NV_ETAPA("pronto");
 #ifdef __EMSCRIPTEN__
         // Chegou: zera o contador de arranques falhados (tizen-shell.html).
