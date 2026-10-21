@@ -22,7 +22,7 @@
         android:label="StreamMax Home Teste"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:banner="@drawable/home_banner"
-        android:icon="@android:drawable/ic_menu_view"
+        android:icon="@drawable/home_banner"
         android:supportsRtl="true">
         <activity
             android:name=".HomeActivity"
