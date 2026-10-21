@@ -6,7 +6,6 @@ final class Apps {
         "com.streammax.tv",
         "com.google.android.youtube.tv",
         "com.netflix.ninja",
-        "com.amazon.amazonvideo.livingroom",
-        "com.disney.disneyplus"
+        "com.amazon.amazonvideo.livingroom"
     };
 }
