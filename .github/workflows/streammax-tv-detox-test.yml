@@ -45,7 +45,7 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > /tmp/tvdetox-badging
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" > /tmp/tvdetox-perms
-          grep -q "package: name='com.streammax.tvdetox.teste'" /tmp/tvdetox-badging
+          grep -q "package: name='com.streammax.tvdetox.teste5'" /tmp/tvdetox-badging
           ! grep -q 'android.permission.INTERNET' /tmp/tvdetox-perms
           ! grep -q 'android.permission.REQUEST_DELETE_PACKAGES' /tmp/tvdetox-perms
           ! grep -q 'android.intent.category.HOME' streammax-home/tv-detox/app/src/main/AndroidManifest.xml
