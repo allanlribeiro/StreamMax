@@ -239,6 +239,10 @@ int streammax_iptv_evento(const SDL_Event *e) {
     if (focoCol == 1 && !serieAberta && focoItem % 4 != 3 &&
         focoItem + 1 < itensNaCategoria()) {
       focoItem++;
+    } else if (focoCol == 1 && !serieAberta && modo == 2) {
+      // A coluna de episodios so existe depois de abrir uma serie.
+      // Evita foco invisivel ao pressionar direita na ultima coluna.
+      return 1;
     } else if (focoCol < (modo == 2 && serieAberta ? 2 : 1)) focoCol++;
     return 1;
   }
