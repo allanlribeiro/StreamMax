@@ -58,8 +58,14 @@ jobs:
           # Impede builds verdes com ZIP que nao abre por falta de bibliotecas.
           bash tools/windows-bundle-dlls.sh build/windows/package
           cp -r deploy/app/art build/windows/package/art
+          # Sem as fontes o layout abre, mas o teclado e o login ficam SEM
+          # letras (reproduzido pelo relato do Windows).
+          cp -r deploy/app/fonts build/windows/package/fonts
           test -s build/windows/package/StreamMax.exe
           test -d build/windows/package/art
+          for fonte in InterDisplay-Regular.ttf InterDisplay-Bold.ttf Roboto-Regular.ttf Montserrat-Regular.ttf; do
+            test -s "build/windows/package/fonts/$fonte" || { echo "::error::Fonte do teclado faltando: $fonte"; exit 1; }
+          done
           printf 'StreamMax para Windows (experimental W0)\nExtraia todo o ZIP antes de executar StreamMax.exe.\nNao mova o EXE para fora desta pasta.\nO player de video ainda nao esta implementado nesta fase.\n' > build/windows/package/LEIA-ME.txt
 
 
@@ -162,6 +168,9 @@ jobs:
             if (-not (Test-Path (Join-Path $dest $file))) { throw "Instalacao incompleta: $file" }
           }
           if (-not (Test-Path (Join-Path $dest "art"))) { throw "Instalacao sem pasta art" }
+          foreach ($font in @("InterDisplay-Regular.ttf", "InterDisplay-Bold.ttf", "Roboto-Regular.ttf", "Montserrat-Regular.ttf")) {
+            if (-not (Test-Path (Join-Path $dest "fonts\$font"))) { throw "Instalador perdeu a fonte: $font" }
+          }
           if (-not (Get-ChildItem $dest -Filter "unins*.exe" -ErrorAction SilentlyContinue)) {
             throw "Desinstalador nao foi criado"
           }
