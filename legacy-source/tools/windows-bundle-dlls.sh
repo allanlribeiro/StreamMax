@@ -7,6 +7,20 @@ UCRT_BIN="${2:-/ucrt64/bin}"
 test -s "$PACKAGE/StreamMax.exe" || { echo "EXE ausente no pacote" >&2; exit 1; }
 command -v objdump >/dev/null || { echo "objdump nao encontrado" >&2; exit 1; }
 
+# Algumas bibliotecas sao carregadas por dlopen/LoadLibrary em tempo de execucao
+# e NAO aparecem nos imports de StreamMax.exe.
+# Evita erros de sistema com SDL2.dll, libGLESv2.dll e libdl.dll.
+required=(SDL2.dll SDL2_image.dll SDL2_ttf.dll libEGL.dll libGLESv2.dll libdl.dll)
+for dll in "${required[@]}"; do
+  found="$(find "$UCRT_BIN" -maxdepth 1 -type f -iname "$dll" -print -quit)"
+  [ -n "$found" ] || {
+    echo "ERRO: biblioteca essencial $dll nao encontrada em $UCRT_BIN" >&2
+    exit 1
+  }
+  cp "$found" "$PACKAGE/"
+  echo "Incluida DLL essencial: $dll"
+done
+
 changed=1
 while [ "$changed" = 1 ]; do
   changed=0
@@ -35,5 +49,12 @@ while [ "$changed" = 1 ]; do
     done <<< "$imports"
   done < <(find "$PACKAGE" -maxdepth 1 -type f \( -iname '*.exe' -o -iname '*.dll' \))
 done
-echo "OK: todas as dependencias UCRT64 diretas e transitivas estao no pacote"
+# Guardas finais: SDL, ANGLE, libdl, zlib e fechamento de imports.
+for dll in "${required[@]}" zlib1.dll; do
+  test -s "$PACKAGE/$dll" || {
+    echo "ERRO: pacote sem DLL obrigatoria $dll" >&2
+    exit 1
+  }
+done
+echo "OK: DLLs essenciais e fechamento recursivo de dependencias presentes"
 find "$PACKAGE" -maxdepth 1 -type f -iname '*.dll' -printf '%f\n' | sort
