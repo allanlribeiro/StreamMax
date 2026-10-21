@@ -35,6 +35,7 @@ jobs:
             mingw-w64-ucrt-x86_64-angleproject
             mingw-w64-ucrt-x86_64-zlib
             mingw-w64-ucrt-x86_64-dlfcn
+            mingw-w64-ucrt-x86_64-curl
 
       - name: Criar configuracao publica temporaria
         run: |
@@ -63,11 +64,45 @@ jobs:
           cp -r deploy/app/fonts build/windows/package/fonts
           test -s build/windows/package/StreamMax.exe
           test -d build/windows/package/art
+          test -s build/windows/package/art/discord-ca.pem || { echo "::error::Bundle de certificados TLS ausente"; exit 1; }
+          test -s build/windows/package/libcurl-4.dll || { echo "::error::libcurl nao incluida no instalador"; exit 1; }
           for fonte in InterDisplay-Regular.ttf InterDisplay-Bold.ttf Roboto-Regular.ttf Montserrat-Regular.ttf; do
             test -s "build/windows/package/fonts/$fonte" || { echo "::error::Fonte do teclado faltando: $fonte"; exit 1; }
           done
           printf 'StreamMax para Windows (experimental W0)\nExtraia todo o ZIP antes de executar StreamMax.exe.\nNao mova o EXE para fora desta pasta.\nO player de video ainda nao esta implementado nesta fase.\n' > build/windows/package/LEIA-ME.txt
 
+
+      - name: Testar HTTPS com libcurl empacotada e PATH limpo
+        shell: pwsh
+        working-directory: legacy-source
+        run: |
+          # Sem email, senha nem tokens: GET publico verifica libcurl,
+          # cadeia de certificados e transporte HTTPS no pacote distribuivel.
+          $folder = (Resolve-Path "build/windows/package").Path
+          $exe = Join-Path $folder "StreamMax.exe"
+          $psi = [System.Diagnostics.ProcessStartInfo]::new()
+          $psi.FileName = $exe
+          $psi.Arguments = "--network-self-test"
+          $psi.WorkingDirectory = $folder
+          $psi.UseShellExecute = $false
+          $psi.Environment["PATH"] = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem"
+          $p = [System.Diagnostics.Process]::new()
+          $p.StartInfo = $psi
+          try {
+            if (-not $p.Start()) { throw "Nao foi possivel iniciar teste HTTPS" }
+            if (-not $p.WaitForExit(40000)) {
+              $p.Kill()
+              $p.WaitForExit()
+              throw "Teste HTTPS excedeu 40 segundos"
+            }
+            if ($p.ExitCode -ne 0) {
+              $log = Join-Path $env:LOCALAPPDATA "StreamMax\nuvio.log"
+              if (Test-Path $log) { Get-Content $log -Tail 30 }
+              throw "Teste HTTPS reprovado: codigo $($p.ExitCode). Corrija libcurl/certificados antes de publicar."
+            }
+            Write-Host "OK: HTTPS validado no StreamMax.exe isolado do MSYS2."
+          }
+          finally { $p.Dispose() }
 
       - name: Testar abertura do EXE com PATH limpo
         shell: pwsh
@@ -164,7 +199,7 @@ jobs:
           $arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dest")
           $p = Start-Process -FilePath $setup -ArgumentList $arguments -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "Instalador retornou $($p.ExitCode)" }
-          foreach ($file in @("StreamMax.exe", "SDL2.dll", "libGLESv2.dll", "libdl.dll")) {
+          foreach ($file in @("StreamMax.exe", "SDL2.dll", "libGLESv2.dll", "libdl.dll", "libcurl-4.dll", "art\discord-ca.pem")) {
             if (-not (Test-Path (Join-Path $dest $file))) { throw "Instalacao incompleta: $file" }
           }
           if (-not (Test-Path (Join-Path $dest "art"))) { throw "Instalacao sem pasta art" }
