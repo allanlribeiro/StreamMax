@@ -51,6 +51,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -71,8 +72,8 @@ public class MainActivity extends Activity {
     //  1. a list saved at install time:  am start -n com.ansub.tvhome/.MainActivity --es apps "pkg1,pkg2"
     //     (--es apps auto  goes back to 2; add --es stamp <unique> so it's applied only once, see saveConfig)
     //  2. apps.txt (built in as Apps.LIST), topped up with other TV apps installed on this TV.
-    // Missing apps are skipped. Topping up stops at four apps, but a chosen list can be any length:
-    // apps wrap into rows of four, like Apple TV, and the page scrolls down once they don't all fit.
+    // Missing apps are skipped. Additional installed apps can be added from the on-TV menu.
+    // Every chosen app stays in a single horizontal row, with four large cards visible at once.
     // On the TV, hold OK on an app (or press Menu) to move or remove it, or add another; that saves list 1.
     // A network tile always sits at the top right, level with the clock. Settings shortcuts can join
     // it there, off until picked the same way:
@@ -81,7 +82,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "config";
     private static final List<String> NOT_APPS = Arrays.asList("com.android.vending", "com.android.tv.settings",
             "com.android.tv", "com.google.android.tvlauncher", "com.google.android.apps.tv.launcherx",
-            "com.google.android.leanbacklauncher", "com.streammax.tvdetox.teste", "com.streammax.tvdetox.teste5", "com.streammax.tvdetox.visual10");
+            "com.google.android.leanbacklauncher", "com.streammax.tvdetox.teste", "com.streammax.tvdetox.teste5", "com.streammax.tvdetox.visual10", "com.streammax.tvdetox.visual11");
     private static final String PLAY_STORE = "com.android.vending";
     private static final String SETTINGS = "settings";
     private static final String ADD = "add";
@@ -103,8 +104,8 @@ public class MainActivity extends Activity {
 
     // Layout is designed at 1920x1080 and scaled to the TV's real UI size by px().
     private static final int MARGIN = 104, GAP = 40, RADIUS = 22;
-    private static final int ROW1_TOP = 658, ROW_STEP = 282;
-    private static final int GRID_MIN_TOP = 478; // keep the top row clear of the clock/weather strip
+    private static final int ROW1_TOP = 658;
+    private static final int DOCK_PADDING = 48, DOCK_VERTICAL_PADDING = 48; // room for 16-percent zoom without crop
     private static final int ICON_TOP = 76, ICON_BUTTON = 72, ICON_SIZE = 40, ICON_GAP = 12; // level with the date
 
     // The Settings tile opens a small menu: the home screen's own settings, then the TV's.
@@ -141,7 +142,9 @@ public class MainActivity extends Activity {
     private static Typeface regular, semibold;
 
     private FrameLayout root; // the page, inside a vertical scroller
-    private int tileW, tileH, gridTop; // app grid geometry, set by buildTiles
+    private HorizontalScrollView dockScroll;
+    private FrameLayout dockTrack;
+    private int tileW, tileH, gridTop; // horizontal strip geometry, set by buildTiles
     private final List<View> tiles = new ArrayList<>();
     private boolean dirty = true;
     private java.util.Locale shownLocale; // the TV's language (and region) when the page was built
@@ -196,6 +199,25 @@ public class MainActivity extends Activity {
         root = new FrameLayout(this);
         root.setClipChildren(false);
         scroller.addView(root, new FrameLayout.LayoutParams(-1, -2));
+
+        // Single horizontal row: four large cards visible, more apps revealed with left/right.
+        // Nested horizontal scrolling avoids extra rows and preserves lightweight GPU focus zoom.
+        dockScroll = new HorizontalScrollView(this);
+        dockScroll.setHorizontalScrollBarEnabled(false);
+        dockScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        dockScroll.setSmoothScrollingEnabled(true);
+        dockScroll.setFillViewport(false);
+        dockScroll.setFocusable(false);
+        dockScroll.setClipToPadding(false);
+        dockScroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        dockTrack = new FrameLayout(this);
+        dockTrack.setClipChildren(false);
+        dockTrack.setClipToPadding(false);
+        dockScroll.addView(dockTrack, new FrameLayout.LayoutParams(-2, -1));
+        root.addView(dockScroll, at(px(MARGIN - DOCK_PADDING),
+                px(ROW1_TOP - DOCK_VERTICAL_PADDING),
+                getResources().getDisplayMetrics().widthPixels - 2 * px(MARGIN - DOCK_PADDING),
+                px(430)));
 
         LinearLayout clock = new LinearLayout(this);
         clock.setOrientation(LinearLayout.VERTICAL);
@@ -602,15 +624,19 @@ public class MainActivity extends Activity {
         tileH = h;
 
         List<String> apps = appList(pm);
-        // Apps fill rows of four. With more rows the grid starts higher, so up to two rows of apps and
-        // the bottom row still fit on screen; past that the page scrolls.
-        int launchable = 1; // Todos os apps (last); TV Aberta is a top-right shortcut
+        // One row only: preserve 4-across card size, scroll sideways for additional apps.
+        int launchable = 1; // Todos os apps at the end
         for (String pkg : apps) if (launchIntent(pm, pkg) != null) launchable++;
-        int rows = Math.max(1, (launchable + PER_ROW - 1) / PER_ROW);
-        gridTop = Math.max(px(GRID_MIN_TOP), px(ROW1_TOP) - (rows - 1) * px(ROW_STEP));
-        int bottomTop = gridTop + rows * px(ROW_STEP);
-        ((FrameLayout.LayoutParams) moveHint.getLayoutParams()).topMargin = gridTop - px(64);
-        root.setMinimumHeight(bottomTop + h + px(MARGIN));
+        gridTop = px(ROW1_TOP);
+        int trackCount = Math.max(PER_ROW, launchable);
+        int trackWidth = 2 * px(DOCK_PADDING) + trackCount * w + (trackCount - 1) * g;
+        int stripHeight = h + 2 * px(DOCK_VERTICAL_PADDING) + px(64);
+        dockTrack.setLayoutParams(new FrameLayout.LayoutParams(trackWidth, stripHeight));
+        FrameLayout.LayoutParams stripLp = (FrameLayout.LayoutParams) dockScroll.getLayoutParams();
+        stripLp.height = stripHeight;
+        dockScroll.setLayoutParams(stripLp);
+        ((FrameLayout.LayoutParams) moveHint.getLayoutParams()).topMargin = gridTop - px(78);
+        root.setMinimumHeight(Math.max(px(1080), gridTop + h + px(140)));
 
         // Bottom dock contains ONLY apps plus the all-apps selector.
         // TV Aberta is a top-right system shortcut alongside HDMI and Settings.
@@ -629,12 +655,12 @@ public class MainActivity extends Activity {
             if (banner == null) try { icon = pm.getApplicationIcon(pkg); } catch (Exception ignored) {}
             int i = rowApps.size();
             rowApps.add(pkg);
-            addTile(root, pkg, label, banner, null, icon, gridX(i), gridY(i), w, h);
+            addTile(dockTrack, pkg, label, banner, null, icon, gridX(i), gridY(i), w, h);
         }
 
         // A single "Todos os apps" tile, never settings/HDMI in the app dock.
         int allAt = rowApps.size();
-        addTile(root, ADD, "Todos os apps", null, LineIcon.PLUS, null,
+        addTile(dockTrack, ADD, "Todos os apps", null, LineIcon.PLUS, null,
                 gridX(allAt), gridY(allAt), w, h);
 
         // Top-right icons for system functions; never in the app dock.
@@ -666,6 +692,7 @@ public class MainActivity extends Activity {
         View restore = null;
         for (View t : tiles) if (t.getTag().equals(want)) restore = t;
         if (restore != null) restore.requestFocus();
+        else dockScroll.scrollTo(0, 0);
     }
 
     private void addTile(ViewGroup parent, final String key, String label, Drawable banner, int[] lineIcon, Drawable appIcon,
@@ -727,6 +754,20 @@ public class MainActivity extends Activity {
             v.setForeground(has ? focusOutline : null);
             // Raise the whole app slot so the enlarged card draws above its neighbors.
             ((View) v.getParent()).setTranslationZ(has ? px(24) : 0);
+            if (has && (v.getParent() instanceof View) && dockScroll != null) {
+                // Shift only as needed; all four visible cards remain stable until a fifth is focused.
+                View slot = (View) v.getParent();
+                slot.post(() -> {
+                    int current = dockScroll.getScrollX();
+                    int left = slot.getLeft() - px(40);
+                    int right = slot.getRight() + px(40);
+                    int target = current;
+                    if (left < current) target = left;
+                    else if (right > current + dockScroll.getWidth())
+                        target = right - dockScroll.getWidth();
+                    if (target != current) dockScroll.smoothScrollTo(Math.max(0, target), 0);
+                });
+            }
             v.animate().cancel();
             // Navigation highlight: 16% larger, elevated and slightly lifted, GPU only.
             v.animate().scaleX(has ? 1.16f : 1f).scaleY(has ? 1.16f : 1f)
@@ -1280,13 +1321,13 @@ public class MainActivity extends Activity {
                 android.text.TextUtils.join(",", rowApps)).apply();
     }
 
-    // Where app number i sits in the grid.
+    // Absolute position within the horizontally scrolling dock track.
     private int gridX(int i) {
-        return px(MARGIN) + (i % PER_ROW) * (tileW + px(GAP));
+        return px(DOCK_PADDING) + i * (tileW + px(GAP));
     }
 
     private int gridY(int i) {
-        return gridTop + (i / PER_ROW) * px(ROW_STEP);
+        return px(DOCK_VERTICAL_PADDING);
     }
 
     private View tile(String key) {
@@ -1308,8 +1349,8 @@ public class MainActivity extends Activity {
     }
 
     private boolean moveKey(String key, int code, boolean ok, boolean down) {
-        int step = code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1
-                : code == KeyEvent.KEYCODE_DPAD_UP ? -PER_ROW : code == KeyEvent.KEYCODE_DPAD_DOWN ? PER_ROW : 0;
+        int step = code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : code == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : 0;
+        if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) return true;
         if (step != 0) {
             int from = rowApps.indexOf(key), to = from + step;
             if (down && to >= 0 && to < rowApps.size()) {
