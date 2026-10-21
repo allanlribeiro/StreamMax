@@ -1,0 +1,72 @@
+name: StreamMax Windows experimental
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - streammax/windows-desktop
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            make
+            pkgconf
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2_image
+            mingw-w64-ucrt-x86_64-SDL2_ttf
+            mingw-w64-ucrt-x86_64-angleproject
+            mingw-w64-ucrt-x86_64-zlib
+            mingw-w64-ucrt-x86_64-dlfcn
+
+      - name: Criar configuracao publica temporaria
+        run: |
+          cat > legacy-source/local.properties <<'EOF'
+          NUVIO_SUPABASE_URL=https://api.nuvio.tv
+          NUVIO_SUPABASE_ANON_KEY=sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+          TV_LOGIN_WEB_BASE_URL=https://nuvio.tv/tv-login
+          EOF
+
+      - name: Compilar StreamMax.exe
+        working-directory: legacy-source
+        run: bash tools/windows.sh --build
+
+      - name: Montar pacote portatil
+        working-directory: legacy-source
+        run: |
+          set -euo pipefail
+          mkdir -p build/windows/package
+          cp build/windows/StreamMax.exe build/windows/package/
+          cp /ucrt64/bin/SDL2.dll build/windows/package/
+          cp /ucrt64/bin/SDL2_image.dll build/windows/package/
+          cp /ucrt64/bin/SDL2_ttf.dll build/windows/package/
+          cp /ucrt64/bin/libEGL.dll build/windows/package/
+          cp /ucrt64/bin/libGLESv2.dll build/windows/package/
+          cp /ucrt64/bin/libdl.dll build/windows/package/
+          cp /ucrt64/bin/libgcc_s_seh-1.dll build/windows/package/ || true
+          cp /ucrt64/bin/libwinpthread-1.dll build/windows/package/ || true
+          cp -r deploy/app/art build/windows/package/art
+
+      - name: Publicar pacote Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Windows-x64-W0
+          path: legacy-source/build/windows/package
+          if-no-files-found: error
