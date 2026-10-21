@@ -368,15 +368,15 @@ void streammax_iptv_desenhar(float a, int focoAba) {
         GLuint capa = tex_obter_larg(visivel->itens[i].poster, card.w - 12.0f);
         if (capa) {
           GfxRect areaCapa = {card.x + 6.0f, card.y + 6.0f,
-                              card.w - 12.0f, 141.0f};
+                              card.w - 12.0f, 170.0f};
           gfx_textura(areaCapa, capa);
         }
       }
-      rotulo(visivel->itens[i].nome, card.x + 9, card.y + 150,
+      rotulo(visivel->itens[i].nome, card.x + 9, card.y + 177,
              card.w - 18, i == focoItem, a);
       if (visivel->itens[i].ano > 0) {
         snprintf(info, sizeof info, "%d · IPTV", visivel->itens[i].ano);
-        rotulo(info, card.x + 9, card.y + 181, card.w - 18, 0, a);
+        rotulo(info, card.x + 9, card.y + 198, card.w - 18, 0, a);
       }
     }
   }
