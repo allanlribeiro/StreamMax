@@ -80,7 +80,7 @@ android {
     // lib/<abi>/ ja extraidas (extractNativeLibs), nao dentro do APK.
     packaging { jniLibs { useLegacyPackaging = true } }
     // Arte e fontes ja vem comprimidas/pequenas; sem recompressao de png/ttf.
-    androidResources { noCompress += listOf("png", "jpg", "webp", "ttf", "json") }
+    androidResources { noCompress += listOf("png", "jpg", "webp", "ttf", "json", "mp4") }
 
     sourceSets["main"].apply {
         java.srcDir("build/sdl-java")                 // classes org.libsdl.app copiadas do SDL

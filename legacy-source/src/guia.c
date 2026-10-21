@@ -59,6 +59,7 @@
 #include "descoberta.h"  /* desc_repetir: addon novo so entra com ciclo novo */
 #include "stalker.h"
 #include "xtream.h"
+#include "streammax_iptv_vod.h"
 #include "guiacorte.h"   /* tetos e o aviso "Mostrando N de M" */
 #include "xtepg.h"     /* grade curta por canal do Xtream (#158) */
 #include "dados.h"
@@ -395,6 +396,7 @@ static int tvTresColunas = 1;
 static int tvTresColunas;
 #endif
 static int tvColunaFoco = SM_TV_COL_CATEGORIAS;
+static int iptvTopoFoco, iptvTopoAba; // D-pad: esquerda na categoria -> abas
 static void streammaxTvAnimar(float dt);  // visual: mola de foco da TCL
 
 static void modoLer(void) {
@@ -1671,6 +1673,9 @@ void guia_abrir(void) {
   guia_carregar();
   if (!previewLido) previewLer();
   aberta = 1; querSair = 0; entrada = 0.0f;
+  // Uma nova visita ao guia comeca em TV ao vivo. VOD apenas se escolhido.
+  streammax_iptv_mudar(0);
+  iptvTopoFoco = 0; iptvTopoAba = 0;
   focoTopo = 0; painel = 0;
   // Abrir ja com o foco no primeiro canal da categoria: assim o preview
   // aparece depois do descanso do foco, sem obrigar apertar OK.
@@ -2235,6 +2240,10 @@ void guia_evento(const SDL_Event *e) {
 
   if (k == SDLK_AC_BACK || k == SDLK_ESCAPE || k == SDLK_BACKSPACE ||
       k == SDLK_DELETE || e->key.keysym.scancode == NV_SCANCODE_BACK) {
+    if (iptvTopoFoco) { iptvTopoFoco = 0; return; }
+    if (!overlay && streammax_iptv_modo()) {
+      streammax_iptv_mudar(0); return;
+    }
     sair(); return;
   }
   // NA FAIXA, AZUL ABRE O GUIA COMPLETO (o canal no ar encolhe para o
@@ -2269,6 +2278,41 @@ void guia_evento(const SDL_Event *e) {
     return;
   }
 
+  // Tabs do IPTV sao elementos de foco reais na TV: ESQUERDA a partir
+  // da coluna de categorias, depois ESQUERDA/DIREITA e OK. Nao exigir tecla
+  // colorida (alguns controles TCL nao possuem).
+  if (tvTresColunas && !gRetrato() && !overlay && iptvTopoFoco) {
+    if (k == SDLK_LEFT || k == SDLK_RIGHT) {
+      iptvTopoAba = (iptvTopoAba + (k == SDLK_RIGHT ? 1 : 2)) % 3;
+    } else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) {
+      if (iptvTopoAba) previewParar();
+      streammax_iptv_mudar(iptvTopoAba);
+      iptvTopoFoco = 0; okDesde = okLongo = 0;
+    } else if (k == SDLK_DOWN) iptvTopoFoco = 0;
+    return;
+  }
+  if (tvTresColunas && !gRetrato() && !overlay &&
+      ((streammax_iptv_modo() && streammax_iptv_categoria_focada()) ||
+       (!streammax_iptv_modo() && tvColunaFoco == SM_TV_COL_CATEGORIAS)) &&
+      k == SDLK_LEFT) {
+    iptvTopoFoco = 1;
+    iptvTopoAba = streammax_iptv_modo();
+    return;
+  }
+  // Azul alterna as tres areas dentro da mesma sessao IPTV, sem fazer
+  // downloads ate a pessoa abrir Filmes ou Series.
+  if (tvTresColunas && !gRetrato() && !overlay &&
+      (k == SDLK_s || e->key.keysym.scancode == NV_SCANCODE_BLUE)) {
+    int proximo = (streammax_iptv_modo() + 1) % 3;
+    if (proximo) previewParar();
+    streammax_iptv_mudar(proximo);
+    iptvTopoFoco = 0; iptvTopoAba = proximo;
+    okDesde = okLongo = 0;
+    return;
+  }
+  if (tvTresColunas && !gRetrato() && streammax_iptv_modo()) {
+    if (streammax_iptv_evento(e)) return;
+  }
   // A tela StreamMax usa as duas colunas de selecao (categoria e canal);
   // a terceira mostra somente dados reais da EPG. Foco nunca dispara video
   // sozinho. OK no canal usa a MESMA acao do guia classico.
@@ -2658,6 +2702,7 @@ static void drenarCarga(void) {
 }
 
 void guia_atualizar(float dt, Uint32 agora) {
+  streammax_iptv_atualizar();
 #ifdef NV_TOUCH_UI
   if (!telefoneui_ativo()) toqueLimpar();
 #endif
@@ -2683,7 +2728,7 @@ void guia_atualizar(float dt, Uint32 agora) {
   // So o APP abre as fontes; este bloco agenda o pedido depois de repousar
   // 500ms na TCL (600ms no guia classico), nunca durante a navegacao rapida.
   { const Uint32 espera = tvTresColunas ? SM_TV_PREVIEW_FOCO_MS : G_PREVIEW_ESPERA_MS;
-    if (aberta && !overlay && (previewLigado || tvTresColunas) &&
+    if (aberta && !overlay && !streammax_iptv_modo() && (previewLigado || tvTresColunas) &&
         streammax_tv_preview_segue_foco(tvTresColunas, tvColunaFoco, previewPreso) &&
         !player_aberto() &&
         nCanais > 0 && (estado == G_PRONTO || estado == G_BAIXANDO) &&
@@ -4951,6 +4996,8 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
     txt_desenhar_alpha(sub, G_AREA_DIR - (float)sub.w, 45.0f, a);
   }
 
+  // Areas IPTV ficam visiveis no topo sem ocupar uma quarta coluna.
+  streammax_iptv_abas(a, iptvTopoFoco ? iptvTopoAba : -1);
   // Colunas preservadas: categorias | canais | preview e EPG.
   smTvPainel((GfxRect){catX, y, catW, painelH}, a);
   smTvPainel((GfxRect){canX, y, canW, painelH}, a);
@@ -4962,6 +5009,35 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   sub = txt_linha(TXT_PG_ROTULO, i18n("Agora na TV"), 52, 171, 255, 255);
   txt_desenhar_alpha(sub, infX + 20.0f, y + 14.0f, a);
 
+  // Uma carga sem canais nao deve parecer um painel quebrado. A contagem
+  // zero e real; mostrar o estado do guia sem expor URLs ou credenciais.
+  if (nCanais == 0) {
+    char diagnostico[192];
+    const char *aviso = diagnostico;
+    if (estado == G_BAIXANDO) {
+      snprintf(diagnostico, sizeof diagnostico, "Carregando canais do provedor...");
+    } else if (!xtream_configurado()) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream nao configurado neste perfil. Confira Ajustes > TV ao vivo.");
+    } else if (xtFalha == XT_SEM_RESPOSTA) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream sem resposta (HTTP %d). Confira a conexao.", xtHttp);
+    } else if (xtFalha == XT_RECUSOU) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream recusou a consulta (HTTP %d).", xtHttp);
+    } else if (xtFalha == XT_HTTP) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream retornou erro HTTP %d.", xtHttp);
+    } else if (estado == G_FALHOU) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Nenhum canal recebido. Reabra a TV ao vivo para tentar novamente.");
+    } else {
+      snprintf(diagnostico, sizeof diagnostico, "Nenhum canal disponivel.");
+    }
+    TxtLinha msg = txt_linha_corta(TXT_PG_ROTULO, aviso,
+                                  183, 202, 230, 255, canW - 36.0f);
+    txt_desenhar_alpha(msg, canX + 18.0f, catLinY + 32.0f, a);
+  }
   // Indicadores animados ANTES do texto: o retangulo viaja em mola e a
   // lista nunca muda a logica da seta, OK, zapping ou pedido de preview.
   if (nCat > 0) {
@@ -5105,7 +5181,7 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   }
   // Barra de atalhos REAL (sem desenhar botoes sem acao).
   sub=txt_linha(TXT_DET_META2,
-        i18n("Setas: categorias e canais  ·  OK: assistir  ·  Amarelo: guia clássico"),
+        i18n("← nas categorias: abas IPTV  ·  OK: assistir  ·  Azul: alternar áreas  ·  Amarelo: guia clássico"),
         133,164,202,255);
   txt_desenhar_alpha(sub,x,NV_TELA_H-48.0f,a);
 }
@@ -5120,6 +5196,10 @@ void guia_desenhar(Uint32 agora) {
   int l, i, temLinhas;
   if (a < 0.01f || !guia_visivel()) return;
   if (overlay) { desenharBanda(a, agora); return; }
+  if (tvTresColunas && !gRetrato() && streammax_iptv_modo()) {
+    streammax_iptv_desenhar(a, iptvTopoFoco ? iptvTopoAba : -1);
+    return;
+  }
   if (tvTresColunas && !gRetrato()) {
     streammaxTvDesenhar(a, agoraT);
     return;
@@ -5499,6 +5579,8 @@ int guia_canal_campos(int i, const char **id, const char **nome, const char **lo
 }
 
 void guia_abrir_sessao(void) {
+  streammax_iptv_sessao();
+  iptvTopoFoco = iptvTopoAba = 0;
   // Nunca tocar no staging de um fio vivo. Ele sai no proximo limite de
   // pedido e o desenho descarta o resultado pela geracao da abertura.
   cargaCancelada = 1;

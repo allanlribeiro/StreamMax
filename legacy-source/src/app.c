@@ -148,6 +148,7 @@
 #include "vazao.h"
 #include "stalker.h"
 #include "xtream.h"
+#include "streammax_iptv_vod.h"
 #include "rede.h"
 #include "ts_sonda.h"
 #include <unistd.h>
@@ -2883,6 +2884,39 @@ static void tocarCanal(const CatItem *it) {
   marco("guia: buscando fontes do canal");
 }
 
+// Xtream VOD tem fonte PRONTA no provedor, nao consulta Torrentio nem addons.
+// A ficha e efemera: item sintético para o player nativo, nunca publicado
+// como catalogo de TMDB nem catalogo da Home.
+static void tocarIptvVod(const StreamMaxVodPedido *v) {
+  CatItem it = {0};
+  int ni;
+  if (!v || !v->url[0] || !v->id[0] ||
+      (strncmp(v->id, "xtvod:", 6) && strncmp(v->id, "xtepisode:", 10)))
+    return;
+  snprintf(it.imdb, sizeof it.imdb, "%s", v->id);
+  snprintf(it.tipo, sizeof it.tipo, "%s", "movie");
+  snprintf(it.titulo, sizeof it.titulo, "%s", v->nome);
+  snprintf(it.poster, sizeof it.poster, "%s", v->poster);
+  snprintf(it.meta, sizeof it.meta, "%s",
+           v->episodio > 0 ? "Episódio IPTV" : "Filme IPTV");
+  it.temporada = v->temporada;
+  it.episodio = v->episodio;
+  // Encerrar ANTES de reutilizar o slot: a sessao anterior ainda pode
+  // precisar da sua identidade original para sair corretamente.
+  if (player_aberto() || player_retido() || player_mini_ativo()) player_encerrar();
+  ni = cat_iptv_reusar_slot(&it);
+  if (ni < 0) return;
+  diagnostico_cancelar_vazao();
+  limparFonteVOD();
+  novaGeracaoFonte();
+  limparFontePendente();
+  aguardandoFonte = 0; fonteEscolhida = -1;
+  canalFonteIdx = -1; canalViaProxy = 0;
+  stream_definir_lista(NULL, 0);
+  // A URL contém usuário e senha Xtream: passar direto ao player, sem printf.
+  player_abrir(ni, v->url);
+}
+
 // O CANAL NO AR VAI PARA O GUIA, sem recarregar (25/09/2026). O mesmo fluxo
 // muda so de retangulo: da tela cheia (ou do PiP de canto) para o preview
 // 800x450, com a janela andando em degraus (player_minimizar_para_guia). O
@@ -5552,6 +5586,19 @@ void app_atualizar(float dt, Uint32 agora) {
       if (morta) {
         nv_ls_zerar(&liveStall);
       } else if (ls == NV_LS_AGENDOU) {
+        // Diagnostico pontual: so em uma queda real, sem URL do provedor nem
+        // credenciais. Diferencia EOF, decoder parado, buffer e fonte seca.
+        if (xt) {
+          const char *motivo = video_terminou() ? "eof" :
+            video_bufferando_ms() >= NV_LS_PARADO_MS ? "rebuffer" :
+            liveStall.fonteSeca ? "fonte-seca" : "posicao-parada";
+          double frente = video_buffer_fim() - video_pos();
+          printf("[xtream-stall] evento=agendar motivo=%s fonte=%d buffer_frente=%.1fs "
+                 "pos=%.1fs retries=%d/%d\\n", motivo, canalFonteIdx,
+                 frente > 0.0 ? frente : 0.0, video_pos(),
+                 liveStall.tentativa, NV_LS_MAX);
+          fflush(stdout);
+        }
         printf("[canal] parou de tocar (fim de fluxo=%d, posicao %.1fs, buffering %u ms): "
                "reabrindo a fonte %d, tentativa %d/%d em %u ms\n", video_terminou(),
                video_pos(), video_bufferando_ms(), canalFonteIdx, liveStall.tentativa,
@@ -5559,6 +5606,11 @@ void app_atualizar(float dt, Uint32 agora) {
         fflush(stdout);
         player_toast_ex(i18n("Conexão caiu, reconectando…"), 4000, "aj_wifi-off", 1);
       } else if (ls == NV_LS_REABRIR) {
+        if (xt) {
+          printf("[xtream-stall] evento=reabrir fonte=%d tentativa=%d/%d\\n",
+                 canalFonteIdx, liveStall.tentativa, NV_LS_MAX);
+          fflush(stdout);
+        }
         const Stream *mesma = stream_item(canalFonteIdx);
         if (mesma) {
           static char viaProxy[4200];
@@ -5863,6 +5915,14 @@ void app_atualizar(float dt, Uint32 agora) {
     nomeParaFolha(); stream_folha_abrir();
   }
 
+  // Filmes/episódios IPTV ficam na área do provedor; fluxo direto sem
+  // refazer addons, sem adicionar itens nas fileiras da Home.
+  { StreamMaxVodPedido v;
+    if (streammax_iptv_pediu(&v)) {
+      tocarIptvVod(&v);
+      memset(&v, 0, sizeof v); // URL de credenciais nao sobrevive no stack
+    }
+  }
   // CANAL ESCOLHIDO NO GUIA — tela cheia ou faixa, mesma acao: toca direto.
   { CatItem it;
     if (aguardandoFonte != 2 && guia_pediu_canal(&it)) tocarCanal(&it); }

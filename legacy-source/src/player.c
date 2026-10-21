@@ -81,6 +81,7 @@ static void avisarCascaAberto(int v) { (void)v; tex_pressao_reproducao(v); }
 #include "simkl.h"
 #include "traktscrobble.h"
 #include "watchstate_envio.h"
+
 #include "perfisessao.h"
 #include "sync.h"
 #include "parental.h"
@@ -145,6 +146,12 @@ static void avisarCascaAberto(int v) { (void)v; tex_pressao_reproducao(v); }
 #include "atividade.h"
 #include "reacao.h"
 #include "bidi.h"
+
+// Xtream VOD pertence ao provedor, nao a um IMDb. Nao enviar seu ID para
+// Trakt, Simkl, amigos, Continuar Assistindo ou sincronizacao do catalogo.
+static int playerIptvId(const char *id) {
+  return id && (!strncmp(id, "xtvod:", 6) || !strncmp(id, "xtepisode:", 10));
+}
 
 // Quanto tempo os controles ficam de pe sem receber tecla. Medido a olho no
 // aparelho: perto de 4s. Menos que isso e o usuario perde a barra no meio de
@@ -1646,7 +1653,9 @@ void player_abrir(int indiceCatalogo, const char *url) {
   idxVivo = idx;
   // Serie aberta pela ilha ou pelo player sem passar pelo detalhe: sem a lista
   // nao ha cards de episodios nem "Up next". Idempotente com o roteador de app.c.
-  desc_episodios_garantir(idx);
+  { const CatItem *c = cat_item(idx);
+    if (!c || !playerIptvId(c->imdb)) desc_episodios_garantir(idx);
+  }
   fonteAcaoInvalidar();
   aberto = 1; saindo = 0; pediuSair = 0; barraFoco = 0;
   // Titulo novo: um avanco em curso do anterior mandaria a posicao velha ao
@@ -1684,7 +1693,8 @@ void player_abrir(int indiceCatalogo, const char *url) {
     // interativa e o pior caso do #415 — o comentario antigo prometia e o
     // `aberto=0` da miniatura desligava (rev #415).
     avisarCascaAberto(aberto || mini || comVideo);
-    if (ci && ci->imdb[0] && !canalSessao && ajustes_classif_player()) parental_pedir(ci->imdb);
+    if (ci && ci->imdb[0] && !canalSessao && !playerIptvId(ci->imdb) &&
+        ajustes_classif_player()) parental_pedir(ci->imdb);
     // A grade EPG comeca a baixar ja: o banner "agora/a seguir" do OSD e o
     // overlay do guia dependem dela. Idempotente.
     if (canalSessao) { guia_carregar(); epg_iniciar(); } }
@@ -2375,7 +2385,7 @@ static void fecharSessao(int manter) {
   // Sem ela a posicao REAL continua gravada (barra, Continuar assistindo,
   // conta): so o arredondamento para 100% e o visto ficam de fora.
   if (identidadeValida() && !duracaoErrada && !jaRetido && prova && video_pronto() && duracaoSeg >= 120.0f &&
-      !ehCanal()) {
+      !ehCanal() && item() && !playerIptvId(item()->imdb)) {
     // CANAL nao grava progresso: uma transmissao ao vivo nao tem "onde parou" —
     // guardar posSeg contra a duracao reserva colocaria "Globo 68%" em
     // Continuar assistindo, que e justamente o que nao pode acontecer.
@@ -2593,7 +2603,8 @@ static void gravarProgressoParcial(int conta, const char *porque) {
   const CatItem *ci = item();
   double base;
   int chegou, ia;
-  if (!identidadeValida() || !ci || !ci->imdb[0] || jfid_e(ci->imdb) || !comVideo || !fontePrincipal() || !duracaoReal ||
+  if (!identidadeValida() || !ci || !ci->imdb[0] ||
+      jfid_e(ci->imdb) || playerIptvId(ci->imdb) || !comVideo || !fontePrincipal() || !duracaoReal ||
       !video_pronto() || esperandoFonte || erroFonte || video_falhou() || ehCanal() || scrubbing ||
       !isfinite(posSeg) || !isfinite(duracaoSeg) || duracaoSeg < 120.0f || posSeg < 1.0f ||
       assistidoSeg < PLR_PROVA_MIN_S ||
@@ -4279,7 +4290,7 @@ void player_atualizar(float dt, Uint32 agora) {
     static float tocouS, parcialRelogio, parcialSeek;
     static int scrubAnterior;
     const CatItem *cs = item();
-    if (cs && (jfid_e(cs->imdb) || !identidadeValida())) cs = NULL;
+    if (cs && (jfid_e(cs->imdb) || playerIptvId(cs->imdb) || !identidadeValida())) cs = NULL;
     if (ok && cs && cs->imdb[0]) {
       char id[64];
       if (epT >= 0 && epE > 0) snprintf(id, sizeof id, "%.*s:%d:%d", (int)strcspn(cs->imdb,":"), cs->imdb, epT, epE);

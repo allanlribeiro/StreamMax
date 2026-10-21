@@ -318,6 +318,9 @@ int cat_indice_vivo(int indice, const char *imdb);
 // Acrescenta um titulo ao FIM e devolve o indice, ou -1. Para o titulo que veio
 // de fora do catalogo (filmografia de ator, "Mais como este"). Ver a nota sobre
 // a troca de bloco em catalogo.c.
+// Slot efemero do player Xtream, nunca numa fileira. Reaproveita o mesmo
+// CatItem a cada filme/episodio em vez de acumular um item por reproduçao.
+int cat_iptv_reusar_slot(const CatItem *item);
 int cat_acrescentar(const CatItem *item);
 
 // Acrescenta `qtd` itens numa UNICA troca de bloco e escreve os indices em

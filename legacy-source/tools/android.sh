@@ -60,6 +60,12 @@ install -Dm644 "$RAIZ/art/marcas/streammax_splash.jpg" \
   "$EST/assets/art/marcas/streammax_splash.jpg"
 # Garante que a abertura aprovada foi realmente copiada para o pacote Android.
 # Verificar apenas a presenca na arvore fonte nao impede uma APK sem a arte.
+# MP4 do dono: asset opcional, leve, sem extração em disco no primeiro boot.
+# Ausente na origem => Kotlin cai automaticamente no splash estático.
+if [ -s "$RAIZ/art/marcas/streammax_abertura.mp4" ]; then
+  install -Dm644 "$RAIZ/art/marcas/streammax_abertura.mp4" \
+    "$EST/assets/streammax_abertura.mp4"
+fi
 test -s "$EST/assets/art/marcas/streammax_splash.jpg" || {
   echo "android.sh: abertura cinematografica StreamMax nao entrou no estagio Android" >&2
   exit 1

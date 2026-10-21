@@ -61,6 +61,10 @@ const char *ling_do_nome(const char *nome);
 // pedir "pt" aceita "por", "pob", "pt-BR", "ptb". Preferencia vazia casa com
 // TUDO — e o modo sem filtro.
 int ling_casa(const char *codigo, const char *pref);
+// Usar somente na UI/seleção de LEGENDAS: PT-BR, PT-PT e portugues
+// sem regiao conhecida sao grupos distintos. Audio mantem ling_casa.
+const char *ling_legenda_chave(const char *codigo, const char *nome);
+int ling_legenda_mesma_regiao(const char *a, const char *b);
 void ling_normalizar(const char *raw, char *out, unsigned tam);
 const char *ling_selo(const char *cod);
 int ling_afinidade(const char *cod, const char *pref);

@@ -1,0 +1,73 @@
+name: StreamMax next - idiomas e IPTV
+
+on:
+  push:
+    branches:
+      - streammax/next-pt-regional-iptv-20261020
+  pull_request:
+    branches:
+      - release/streammax-1.0.8-ota-keyboard
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linguas-e-xtream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar separacao regional de legendas
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Ilegacy-source/src \
+            legacy-source/src/linguas.c \
+            legacy-source/tests/test_streammax_subtitle_regions.c \
+            -o /tmp/streammax-subtitle-regions
+          /tmp/streammax-subtitle-regions
+      - name: Testar reconexao de canais sem travar player
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Werror \
+            legacy-source/tests/test_streammax_livetv_stall.c \
+            -o /tmp/streammax-livetv-stall
+          /tmp/streammax-livetv-stall
+      - name: Testar IDs de categoria do Xtream VOD
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Werror \
+            legacy-source/tests/test_streammax_xtream_vod.c \
+            -o /tmp/streammax-vod
+          /tmp/streammax-vod
+      - name: Conferir limites e carregamento sob demanda do IPTV VOD
+        run: |
+          set -euo pipefail
+          python3 legacy-source/tests/check_streammax_iptv_vod_bounds.py
+      - name: Conferir sintaxe do backend Xtream VOD
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -pthread -fsyntax-only -Ilegacy-source/src \
+            legacy-source/src/xtream.c
+      - name: Revisar fluxo leve de inicializacao
+        run: |
+          set -euo pipefail
+          bash legacy-source/tests/streammax-startup-stage.sh
+
+  interface-vod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar cabeçalhos SDL e GLES para validar a interface nativa
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libgles2-mesa-dev
+      - name: Compilar sintaxe da tela VOD, guia e integracao do player
+        run: |
+          set -euo pipefail
+          for origem in streammax_iptv_vod.c guia.c app.c player.c; do
+            cc -std=gnu11 -Wall -Wextra -pthread -fsyntax-only \
+              -D NV_ANDROID -D NV_TOUCH_UI -Ilegacy-source/src \
+              "legacy-source/src/$origem"
+          done

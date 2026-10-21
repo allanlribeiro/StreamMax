@@ -2271,7 +2271,34 @@ char *rede_baixar_st(const char *url, int segundos, const char *const *cab,
 }
 char *rede_baixar_st_retry(const char *url, int segundos, const char *const *cab,
                            int *status, int *retryAfter) {
+#ifdef NV_ANDROID
+  char *r;
+  int st = 0;
+  if (retryAfter) *retryAfter = 0;
+  if (!url || !*url) { if (status) *status = 0; return NULL; }
+
+  // Xtream usa esta variante para ler Retry-After. Antes ela pulava a reserva
+  // HttpURLConnection que rede_baixar_st ja usa no Android. Resultado: quando
+  // a libcurl nativa nao estava pronta/falhava no transporte, todo o app podia
+  // continuar com rede pelo Android, mas o Xtream sozinho terminava em HTTP 0.
+  if (androidPrimeiro()) {
+    r = viaAndroid("GET", url, segundos, cab, NULL, &st, NULL,
+                   "libcurl fora (retry)");
+    if (status) *status = st;
+    return r;
+  }
+
+  r = rede_baixar_interno3(url, segundos, NULL, cab, &st, NULL, 0, retryAfter);
+  if (status) *status = st;
+  if (!r && st == 0) {
+    r = androidDepois("GET", url, segundos, cab, NULL, &st);
+    if (status) *status = st;
+    if (r && retryAfter) *retryAfter = 0;
+  }
+  return r;
+#else
   return rede_baixar_interno3(url, segundos, NULL, cab, status, NULL, 0, retryAfter);
+#endif
 }
 
 char *rede_baixar_etag(const char *url, int segundos, const char *const *cab,
