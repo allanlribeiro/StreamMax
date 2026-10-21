@@ -1,2 +1,49 @@
 plugins { id 'com.android.application' }
-android { namespace 'com.streammax.tvdetox'; compileSdk 35; defaultConfig { applicationId 'com.streammax.home.rc3'; minSdk 23; targetSdk 32; versionCode 3; versionName '1.0.0-RC3' } }
+
+def signingEnvironment = [
+    keystore: System.getenv('STREAMMAX_KEYSTORE_PATH'),
+    password: System.getenv('STREAMMAX_KEYSTORE_PASSWORD'),
+    alias: System.getenv('STREAMMAX_KEY_ALIAS'),
+    keyPassword: System.getenv('STREAMMAX_KEY_PASSWORD')
+]
+def signingConfigured = signingEnvironment.values().every { it != null && !it.isEmpty() }
+
+android {
+    namespace 'com.streammax.tvdetox'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.streammax.home.rc3'
+        minSdk 23
+        targetSdk 32
+        versionCode 4
+        versionName '1.0.0-RC4-test'
+    }
+    signingConfigs {
+        if (signingConfigured) {
+            stableRelease {
+                storeFile file(signingEnvironment.keystore)
+                storePassword signingEnvironment.password
+                keyAlias signingEnvironment.alias
+                keyPassword signingEnvironment.keyPassword
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (signingConfigured) signingConfig signingConfigs.stableRelease
+        }
+    }
+}
+
+tasks.register('verifyStableSigning') {
+    doLast {
+        if (!signingConfigured) {
+            throw new GradleException('Stable signing secrets missing. Refusing to produce a release APK.')
+        }
+        if (!file(signingEnvironment.keystore).isFile()) {
+            throw new GradleException('Stable signing keystore file is missing.')
+        }
+    }
+}
+tasks.named('preReleaseBuild').configure { dependsOn 'verifyStableSigning' }
