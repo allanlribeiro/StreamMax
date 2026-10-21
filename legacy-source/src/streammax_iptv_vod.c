@@ -336,13 +336,18 @@ void streammax_iptv_desenhar(float a, int focoAba) {
     rotulo(ci==0?"Todas as categorias":visivel->categorias[ci-1].nome,
            r.x+13,r.y+22,r.w-25,ci==focoCategoria,a);
   }
-  // Grade leve: somente os 12 cards da pagina visivel sao desenhados.
+  // Grade leve: somente os 12 cards da janela visivel sao desenhados.
   // A renderizacao das capas sera integrada separadamente com cache limitado.
   if (visivel) {
     const int colunas = 4, linhas = 3;
     // Janela deslizante: a cada linha do D-pad a grade avanca sem paginas.
     // Nenhum card fora das tres linhas visiveis e desenhado.
-    const int primeiraLinha = focoItem / colunas > 1 ? focoItem / colunas - 1 : 0;
+    const int totalLinhas = (visivel->nItens + colunas - 1) / colunas;
+    const int maxPrimeiraLinha = totalLinhas > linhas ? totalLinhas - linhas : 0;
+    const int linhaFoco = focoItem / colunas;
+    const int primeiraLinha = linhaFoco > 1
+        ? (linhaFoco - 1 < maxPrimeiraLinha ? linhaFoco - 1 : maxPrimeiraLinha)
+        : 0;
     const float largura = (itemW - 36.0f) / colunas;
     const float altura = 218.0f;
     for (int j = 0; j < colunas * linhas; j++) {
