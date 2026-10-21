@@ -100,7 +100,9 @@ int legendasui_montar(const VideoFaixa *const *emb, int nEmb,
       // #287: the kind from the track; a forced/signs flag without kind (a
       // platform that only knows the flag) reads as signs, as before.
       c->tipo = f->tipoLeg ? f->tipoLeg : f->letreiro ? LING_LEG_LETREIROS : LING_LEG_COMUM;
-      snprintf(c->idioma, sizeof c->idioma, "%s", f->idioma);
+      { const char *idioma = ling_legenda_chave(f->idioma, f->nome);
+        idioma = ling_legenda_chave(idioma, f->rotulo);
+        snprintf(c->idioma, sizeof c->idioma, "%s", idioma); }
       snprintf(c->rotulo, sizeof c->rotulo, "%s", f->rotulo);
       snprintf(c->nome, sizeof c->nome, "%s", f->nome);
       snprintf(c->codec, sizeof c->codec, "%s", f->codec);
@@ -112,7 +114,9 @@ int legendasui_montar(const VideoFaixa *const *emb, int nEmb,
     c->leg = add[i];
     legendasui_id_addon(&add[i], c->id);
     c->indice = i;
-    snprintf(c->idioma, sizeof c->idioma, "%s", add[i].idioma);
+    { const char *idioma = ling_legenda_chave(add[i].idioma, add[i].rotulo);
+      idioma = ling_legenda_chave(idioma, add[i].arquivo);
+      snprintf(c->idioma, sizeof c->idioma, "%s", idioma); }
     snprintf(c->rotulo, sizeof c->rotulo, "%s", add[i].rotulo);
     snprintf(c->origem, sizeof c->origem, "%s", add[i].provedor);
     snprintf(c->arquivo, sizeof c->arquivo, "%s", add[i].arquivo);
@@ -126,7 +130,7 @@ int legendasui_montar(const VideoFaixa *const *emb, int nEmb,
       if (!out[a].embutida || out[a].tipo != LING_LEG_COMUM) continue;
       for (b = 0; b < n; b++)
         if (out[b].embutida && (out[b].tipo == LING_LEG_FORCADA || out[b].tipo == LING_LEG_LETREIROS) &&
-            out[a].idioma[0] && ling_casa(out[b].idioma, out[a].idioma) && ling_casa(out[a].idioma, out[b].idioma))
+            out[a].idioma[0] && ling_legenda_mesma_regiao(out[b].idioma, out[a].idioma) && ling_legenda_mesma_regiao(out[a].idioma, out[b].idioma))
           out[a].completaPar = 1;
     }
   }
@@ -365,15 +369,15 @@ static void montarLinhas(void) {
         if (prim[0] && !strcmp(prim, cand[i].id) && cand[i].idioma[0]) { pref[0] = cand[i].idioma; break; }
       for (g = 0; g < 3; g++)
         for (i = 0; i < nCand; i++) {
-          if (usado[i] || (g < 2 && !ling_casa(cand[i].idioma, pref[g]))) continue;
+          if (usado[i] || (g < 2 && !ling_legenda_mesma_regiao(cand[i].idioma, pref[g]))) continue;
           for (j = i; j < nCand; j++)
-            if (!usado[j] && (cand[i].idioma[0] ? cand[j].idioma[0] && ling_casa(cand[j].idioma, cand[i].idioma)
+            if (!usado[j] && (cand[i].idioma[0] ? cand[j].idioma[0] && ling_legenda_mesma_regiao(cand[j].idioma, cand[i].idioma)
                                                 : !cand[j].idioma[0])) { usado[j] = 1; ordem[n++] = j; }
         }
       for (j = 0; j < n && nLinhasV < LUI_MAX_LINHAS; j++) {
         char k[96];
         i = ordem[j];
-        if (ver && !ling_casa(cand[i].idioma, verIdioma)) continue;
+        if (ver && !ling_legenda_mesma_regiao(cand[i].idioma, verIdioma)) continue;
         snprintf(k, sizeof k, "m|%s", cand[i].id);
         linhaCandidata(i, alvo, k);
       } }
@@ -409,7 +413,7 @@ static void atualizarIdiomas(void) {
     const char *c = cand[i].idioma;
     if (!c[0]) continue;
     for (j = 0; j < nIdiomas; j++)
-      if (ling_casa(c, idiomas[j]) && ling_casa(idiomas[j], c)) break;
+      if (ling_legenda_mesma_regiao(c, idiomas[j]) && ling_legenda_mesma_regiao(idiomas[j], c)) break;
     if (j == nIdiomas)
       snprintf(idiomas[nIdiomas++], sizeof idiomas[0], "%s", c);
   }
@@ -420,7 +424,7 @@ static void focarIdiomaAtual(void) {
   atualizarIdiomas();
   focoIdioma = 0;
   if (ver) for (int i = 0; i < nIdiomas; i++)
-    if (ling_casa(verIdioma, idiomas[i])) { focoIdioma = i + 1; break; }
+    if (ling_legenda_mesma_regiao(verIdioma, idiomas[i])) { focoIdioma = i + 1; break; }
   rolagemIdioma = focoIdioma >= LU_IDIOMAS_VIS ? focoIdioma - LU_IDIOMAS_VIS + 1 : 0;
 }
 // O OK na primeira coluna so muda a lista visivel; reproduzir uma legenda
@@ -857,7 +861,7 @@ int legendasui_titulo(const LegUiCand *cs, int n, int i, char *out, size_t sz) {
   corteLimpo(out, sz, nomeado ? nome : c->idioma[0] ? nomeIdioma(c->idioma) : c->rotulo);
   for (j = 0; j < n; j++) {
     const char *on = cs[j].embutida ? (cs[j].nome[0] ? cs[j].nome : strstr(cs[j].rotulo, LU_SEP)) : cs[j].arquivo;
-    if (j == i || cs[j].embutida != c->embutida || cs[j].tipo != c->tipo || !ling_casa(cs[j].idioma, c->idioma) || !ling_casa(c->idioma, cs[j].idioma)) continue;
+    if (j == i || cs[j].embutida != c->embutida || cs[j].tipo != c->tipo || !ling_legenda_mesma_regiao(cs[j].idioma, c->idioma) || !ling_legenda_mesma_regiao(c->idioma, cs[j].idioma)) continue;
     if (cs[j].embutida && !cs[j].nome[0] && on) on += strlen(LU_SEP);
     corteLimpo(outro, sizeof outro, on && !nomeInutil(&cs[j], on) ? on : nomeIdioma(cs[j].idioma));
     if (strcmp(outro, out)) continue;
@@ -1158,7 +1162,7 @@ static void desenharIdiomas(float x, float y, float w, float a) {
     TxtLinha linha;
     if (i > nIdiomas) break;
     rot = i == 0 ? i18n("Todos os idiomas") : i18n(ling_nome(idiomas[i - 1]));
-    escolhido = i == 0 ? !ver : ver && ling_casa(verIdioma, idiomas[i - 1]);
+    escolhido = i == 0 ? !ver : ver && ling_legenda_mesma_regiao(verIdioma, idiomas[i - 1]);
     focado = emIdiomas && i == focoIdioma;
     row = (GfxRect){ x, yy, w, LU_IDIOMA_LINHA - 6.0f };
     if (focado) plrui_linha_foco(row, 18.0f, a);
