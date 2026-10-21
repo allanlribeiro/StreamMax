@@ -15,7 +15,7 @@
         <package android:name="com.tcl.tv" />
         <package android:name="com.google.android.tv.inputplayer" />
     </queries>
-    <application android:label="StreamMax Home Fila Única Teste"
+    <application android:label="StreamMax Home 1.0 RC"
         android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
         android:allowBackup="false">
         <activity android:name="com.streammax.tvdetox.MainActivity"
@@ -23,7 +23,12 @@
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|locale">
-            <!-- Teste nao declara HOME. A home original permanece intacta. -->
+            <!-- Home candidata apenas: Android/usuario decide a padrao; jamais desabilitar a original. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
