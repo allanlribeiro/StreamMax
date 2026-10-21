@@ -2901,10 +2901,11 @@ static void tocarIptvVod(const StreamMaxVodPedido *v) {
            v->episodio > 0 ? "Episódio IPTV" : "Filme IPTV");
   it.temporada = v->temporada;
   it.episodio = v->episodio;
-  ni = cat_indice_por_imdb_tipo(it.imdb, it.tipo);
-  if (ni < 0) ni = cat_acrescentar(&it);
-  if (ni < 0) return;
+  // Encerrar ANTES de reutilizar o slot: a sessao anterior ainda pode
+  // precisar da sua identidade original para sair corretamente.
   if (player_aberto() || player_retido() || player_mini_ativo()) player_encerrar();
+  ni = cat_iptv_reusar_slot(&it);
+  if (ni < 0) return;
   diagnostico_cancelar_vazao();
   limparFonteVOD();
   novaGeracaoFonte();
