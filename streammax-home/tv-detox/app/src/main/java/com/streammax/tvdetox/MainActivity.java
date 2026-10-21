@@ -69,7 +69,7 @@ public class MainActivity extends Activity {
     private static final String PREFS = "config";
     private static final List<String> NOT_APPS = Arrays.asList("com.android.vending", "com.android.tv.settings",
             "com.android.tv", "com.google.android.tvlauncher", "com.google.android.apps.tv.launcherx",
-            "com.google.android.leanbacklauncher", "com.streammax.tvdetox.teste");
+            "com.google.android.leanbacklauncher", "com.streammax.tvdetox.teste", "com.streammax.tvdetox.teste5");
     private static final String PLAY_STORE = "com.android.vending";
     private static final String SETTINGS = "settings";
     private static final String ADD = "add";
@@ -340,7 +340,17 @@ public class MainActivity extends Activity {
     }
 
     private void showWallpaper(int i) {
-        getWindow().setBackgroundDrawable(background(WALLPAPERS[i]));
+        if (i == 0) {
+            // Pre-rendered blue metal ribbons: a static PNG bundled in the APK.
+            // No WebView, no GIF/video, no runtime blur or wallpaper decoding in focus callbacks.
+            android.graphics.drawable.BitmapDrawable art =
+                    (android.graphics.drawable.BitmapDrawable) getResources().getDrawable(
+                            R.drawable.streammax_metal_waves, getTheme());
+            art.setGravity(Gravity.FILL);
+            getWindow().setBackgroundDrawable(art);
+        } else {
+            getWindow().setBackgroundDrawable(background(WALLPAPERS[i]));
+        }
     }
 
     // The wallpapers, each with a small dot of its colours. Moving through the list shows each one
@@ -503,6 +513,12 @@ public class MainActivity extends Activity {
         }
         card.setBackground(bg);
         card.setClipToOutline(true);
+        card.setElevation(px(3));
+        // Luminous cyan outline visible over both app banners and glass cards.
+        final GradientDrawable focusOutline = new GradientDrawable();
+        focusOutline.setColor(Color.TRANSPARENT);
+        focusOutline.setCornerRadius(px(RADIUS));
+        focusOutline.setStroke(px(3), 0xFF49CEFF);
         card.setFocusable(true);
         card.setTag(key);
 
@@ -517,9 +533,13 @@ public class MainActivity extends Activity {
         final boolean glass = banner == null;
         card.setOnFocusChangeListener((v, has) -> {
             if (has) focusedKey = key;
-            if (glass) bg.setColor(has ? 0x38FFFFFF : 0x13FFFFFF);
-            v.animate().scaleX(has ? 1.045f : 1f).scaleY(has ? 1.045f : 1f).translationZ(has ? px(12) : 0)
-                    .setDuration(90).start();
+            if (glass) bg.setColor(has ? 0x34B6E9FF : 0x13FFFFFF);
+            v.setForeground(has ? focusOutline : null);
+            v.animate().cancel();
+            // Navigation highlight: 16% larger, elevated and slightly lifted, GPU only.
+            v.animate().scaleX(has ? 1.16f : 1f).scaleY(has ? 1.16f : 1f)
+                    .translationY(has ? -px(6) : 0).translationZ(has ? px(23) : 0)
+                    .setDuration(110).start();
             if (caption != null) caption.setVisibility(has ? View.VISIBLE : View.INVISIBLE);
         });
         final boolean editable = rowApps.contains(key);
