@@ -1029,6 +1029,11 @@ int main(int argc, char **argv) {
 #endif
   NV_ETAPA("SDL_Init");
   arranque_etapa("SDL_Init");
+#ifdef NV_WINDOWS_DESKTOP
+  // GLES2 via ANGLE: preferir EGL ao WGL/OpenGL nativo do Windows.
+  // O SDL consulta esta dica antes de carregar o backend OpenGL.
+  SDL_SetHint("SDL_VIDEO_FORCE_EGL", "1");
+#endif
   if (SDL_Init(SDL_INIT_VIDEO) != 0) { printf("SDL_Init: %s\n", SDL_GetError()); return 1; }
 #ifdef __EMSCRIPTEN__
   emscripten_set_visibilitychange_callback(NULL, EM_TRUE, cicloWgt);
@@ -1061,11 +1066,16 @@ int main(int argc, char **argv) {
   SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-#if defined(__EMSCRIPTEN__) || defined(NV_LINUX_DESKTOP)
+#if defined(__EMSCRIPTEN__) || defined(NV_LINUX_DESKTOP) || defined(NV_WINDOWS_DESKTOP)
   // Desktop preview is windowed; browser fullscreen requires a user gesture.
   // O navegador da TV ja entrega a pagina em tela cheia; pedir FULLSCREEN
   // aqui exigiria um gesto do usuario e falharia em silencio.
   Uint32 flags = SDL_WINDOW_OPENGL;
+#ifdef NV_WINDOWS_DESKTOP
+  // A versao Windows deve iniciar em janela: fullscreen causava piscadas
+  // e ocultava erros de contexto SDL/ANGLE no primeiro teste real.
+  flags |= SDL_WINDOW_RESIZABLE;
+#endif
 #else
   Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN;
 #endif
@@ -1194,6 +1204,12 @@ int main(int argc, char **argv) {
     if (quer4k) { printf("[4k] pedindo %dx%d — a linha `janela=` abaixo diz o "
                          "que a TV concedeu\n", pedeW, pedeH); fflush(stdout); } }
   SDL_Window *win;
+#ifdef NV_WINDOWS_DESKTOP
+  // Preview nativo em janela menor que o desktop comum de notebooks.
+  // A coordenada logica da UI continua em 1920x1080.
+  pedeW = 1280;
+  pedeH = 720;
+#endif
 #ifdef NV_ANDROID
   // No Android a janela do SDL tem o tamanho da SUPERFICIE: pedir 3840x2160 ao
   // SDL_CreateWindow nao muda nada. Ver android_pedir_superficie.
@@ -1202,6 +1218,9 @@ int main(int argc, char **argv) {
   const char *windowTitle = "Nuvio";
 #ifdef NV_LINUX_DESKTOP
   windowTitle = "Nuvio - Linux UI preview";
+#endif
+#ifdef NV_WINDOWS_DESKTOP
+  windowTitle = "StreamMax - Windows (experimental)";
 #endif
   NV_ETAPA("SDL_CreateWindow");
   arranque_etapa("SDL_CreateWindow");
