@@ -4474,6 +4474,12 @@ void stream_folha_atualizar(float dt, Uint32 agora) {
       focoFixoY = foco >= 0 && foco < nOrdem ? linhaY[foco] : 0;
     } }
   atualizarProvedores();
+  // Evitar remontar toda a lista duas vezes por quadro na TCL.
+  // Antes este caminho executava montar(), recalculava a melhor fonte
+  // e executava montar() NOVAMENTE: cada montagem percorre grupos,
+  // ordena fontes e consulta metadados. O resultado final ja dependia
+  // da segunda montagem; calcular o destaque primeiro preserva a UI.
+  melhorFolha = automaticoDaFolhaModo();
   montar(automaticaDaFolha());
   nf=nOrdem;
   if(grupo==1 && foco>=nf) foco=nf>0?nf-1:0;
@@ -4485,8 +4491,6 @@ void stream_folha_atualizar(float dt, Uint32 agora) {
   }
   abreFoco = anim_mola(abreFoco, 1, dt, NV_MOLA_TELA);
   abreAnt  = anim_mola(abreAnt, 0, dt, NV_MOLA_TELA);
-  melhorFolha = automaticoDaFolhaModo();
-  montar(automaticaDaFolha());
   if (focoFixo >= 0) {
     int r = grupo == 1 ? linhaDe(focoFixo) : -1;
     if (r >= 0) {
