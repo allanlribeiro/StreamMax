@@ -63,6 +63,38 @@ jobs:
           printf 'StreamMax para Windows (experimental W0)\nExtraia todo o ZIP antes de executar StreamMax.exe.\nNao mova o EXE para fora desta pasta.\nO player de video ainda nao esta implementado nesta fase.\n' > build/windows/package/LEIA-ME.txt
 
 
+      - name: Testar abertura do EXE com PATH limpo
+        shell: pwsh
+        working-directory: legacy-source
+        run: |
+          # Exercita o carregador real do Windows, sem DLLs vindas do PATH do MSYS2.
+          # Sucesso na compilacao e presenca das DLLs nao provam que o EXE abre.
+          $folder = (Resolve-Path "build/windows/package").Path
+          $exe = Join-Path $folder "StreamMax.exe"
+          $info = [System.Diagnostics.ProcessStartInfo]::new()
+          $info.FileName = $exe
+          $info.WorkingDirectory = $folder
+          $info.UseShellExecute = $false
+          $info.Environment["PATH"] = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem"
+          $proc = [System.Diagnostics.Process]::new()
+          $proc.StartInfo = $info
+          try {
+            if (-not $proc.Start()) { throw "CreateProcess retornou false" }
+          } catch {
+            throw "EXE nao inicia num Windows sem MSYS2 no PATH: $($_.Exception.Message)"
+          }
+          Start-Sleep -Seconds 7
+          if ($proc.HasExited) {
+            $exit = $proc.ExitCode
+            Write-Host "O StreamMax encerrou imediatamente: exit code $exit"
+            # 0xC0000135 = DLL nao encontrada; 0xC000007B = binario incompativel;
+            # 0xC0000142 = erro de inicializacao de DLL.
+            throw "Smoke-test reprovado: StreamMax nao permaneceu executando (codigo $exit)."
+          }
+          Write-Host "OK: processo StreamMax.exe abriu e permaneceu ativo com PATH limpo."
+          $proc.Kill()
+          $proc.WaitForExit()
+          $proc.Dispose()
       - name: Publicar pacote Windows
         uses: actions/upload-artifact@v4
         with:
