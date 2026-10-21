@@ -998,7 +998,7 @@ int main(int argc, char **argv) {
     if (base) SDL_free(base);
     cert = fopen(ca, "rb");
     if (!cert) {
-      printf("[rede-teste] CA bundle ausente na pasta art (nao testar com TLS inseguro)\\n");
+      printf("[rede-teste] CA bundle ausente na pasta art (nao testar com TLS inseguro)\n");
       fflush(stdout);
       return 71;
     }
@@ -1006,11 +1006,12 @@ int main(int argc, char **argv) {
     rede_discord_ca(ca);
     rede_preparar();
     resposta = rede_baixar_st("https://example.com/", 15, NULL, &st);
-    printf("[rede-teste] HTTPS sem login: HTTP %d, %s\\n",
+    printf("[rede-teste] HTTPS sem login: HTTP %d, %s\n",
            st, resposta && st == 200 ? "OK" : "FALHOU");
     fflush(stdout);
+    int passou = resposta && st == 200;
     free(resposta);
-    return st == 200 ? 0 : 72;
+    return passou ? 0 : 72;
   }
 #endif
 #ifdef NV_DTS_DEBUG
