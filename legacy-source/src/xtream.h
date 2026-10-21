@@ -117,6 +117,9 @@ typedef struct {
 // Baixam apenas o tipo pedido. Nao misturam canais, filmes e series.
 // Resultado = numero de itens copiados (ate cap), 0 quando vazio/falha.
 int xtream_vod_categorias(int series, XtreamCategoriaVod *saida, int cap);
+// Diagnostico seguro da ultima consulta VOD: nunca inclui URL, usuario ou senha.
+int xtream_vod_ultima_falha(void);
+int xtream_vod_ultimo_http(void);
 // ID opcional, so digitos e no maximo 23 caracteres; NULL/vazio = todas.
 // Cabecalho puro para validar antes de qualquer requisicao ou alocacao.
 static inline int xtream_vod_categoria_valida(const char *id) {
