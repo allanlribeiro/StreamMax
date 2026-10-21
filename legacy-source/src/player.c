@@ -82,11 +82,6 @@ static void avisarCascaAberto(int v) { (void)v; tex_pressao_reproducao(v); }
 #include "traktscrobble.h"
 #include "watchstate_envio.h"
 
-// Xtream VOD pertence ao provedor, nao a um IMDb. Nao enviar seu ID para
-// Trakt, Simkl, amigos, Continuar Assistindo ou sincronizacao do catalogo.
-static int playerIptvId(const char *id) {
-  return id && (!strncmp(id, "xtvod:", 6) || !strncmp(id, "xtepisode:", 10));
-}
 #include "perfisessao.h"
 #include "sync.h"
 #include "parental.h"
@@ -151,6 +146,12 @@ static int playerIptvId(const char *id) {
 #include "atividade.h"
 #include "reacao.h"
 #include "bidi.h"
+
+// Xtream VOD pertence ao provedor, nao a um IMDb. Nao enviar seu ID para
+// Trakt, Simkl, amigos, Continuar Assistindo ou sincronizacao do catalogo.
+static int playerIptvId(const char *id) {
+  return id && (!strncmp(id, "xtvod:", 6) || !strncmp(id, "xtepisode:", 10));
+}
 
 // Quanto tempo os controles ficam de pe sem receber tecla. Medido a olho no
 // aparelho: perto de 4s. Menos que isso e o usuario perde a barra no meio de
