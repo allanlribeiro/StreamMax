@@ -1,0 +1,1 @@
+#ifndef STREAMMAX_WIN_SYS_SELECT_H\n#define STREAMMAX_WIN_SYS_SELECT_H\n#include <winsock2.h>\n#endif\n
