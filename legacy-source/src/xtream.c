@@ -483,14 +483,23 @@ int xtream_vod_categorias(int series, XtreamCategoriaVod *saida, int cap) {
   return nv_perfil_sessao_atual(sessao) ? n : 0;
 }
 
-int xtream_vod_listar(int series, XtreamMidia *saida, int cap) {
+// Uma categoria por pedido. Em vez de carregar milhares de itens para
+// depois filtrar no Android, deixa o proprio painel entregar so a categoria
+// aberta pelo usuario. O ID de terceiros nunca pode entrar na URL sem validação.
+int xtream_vod_listar_categoria(int series, const char *categoriaId,
+                                XtreamMidia *saida, int cap) {
+  char acao[120];
   char *corpo;
   const char *p;
   int st = 0, n = 0;
   NvPerfilSessao sessao = nv_perfil_sessao_ler();
-  if (!saida || cap < 1 || !xtream_configurado()) return 0;
-  corpo = chamarSt(series ? "get_series" : "get_vod_streams",
-                   XT_PRAZO_LISTA_S, &st, sessao);
+  if (!saida || cap < 1 || !xtream_configurado() ||
+      !xtream_vod_categoria_valida(categoriaId)) return 0;
+  snprintf(acao, sizeof acao, "%s", series ? "get_series" : "get_vod_streams");
+  if (categoriaId && categoriaId[0])
+    snprintf(acao + strlen(acao), sizeof acao - strlen(acao),
+             "&category_id=%s", categoriaId);
+  corpo = chamarSt(acao, XT_PRAZO_LISTA_S, &st, sessao);
   if (!corpo || st < 200 || st >= 400 || !nv_perfil_sessao_atual(sessao)) {
     free(corpo); return 0;
   }
@@ -521,6 +530,10 @@ int xtream_vod_listar(int series, XtreamMidia *saida, int cap) {
   }
   free(corpo);
   return nv_perfil_sessao_atual(sessao) ? n : 0;
+}
+
+int xtream_vod_listar(int series, XtreamMidia *saida, int cap) {
+  return xtream_vod_listar_categoria(series, NULL, saida, cap);
 }
 
 // Os IDs e a extensao vem de JSON de terceiros: validar antes de montar a
