@@ -362,6 +362,9 @@ static int serve(const char *candidato) {
 
 void dados_iniciar(const char *dirArte) {
   char lar[512], envLar[512], arteLar[512];
+#ifdef NV_WINDOWS_DESKTOP
+  char winLar[512];
+#endif
   int isolado = strcmp(NV_APP_ID, NV_APP_ID_PRODUCTION) != 0;
   const char *env = getenv("NUVIO_DADOS");
   const char *home = getenv("HOME");
@@ -402,6 +405,17 @@ void dados_iniciar(const char *dirArte) {
       if (size > 0 && size < (int)sizeof envLar) candidatos[n++] = envLar;
     }
   }
+#ifdef NV_WINDOWS_DESKTOP
+  // Ao abrir pelo atalho do instalador, windows.sh nao define NUVIO_DADOS.
+  // Persistir perfil, login e configuracoes no AppData do usuario, nunca
+  // em Program Files (mesmo quando o instalador estiver em modo per-user).
+  { const char *appdata = getenv("LOCALAPPDATA");
+    if (appdata && *appdata) {
+      int size = snprintf(winLar, sizeof winLar, "%s/StreamMax", appdata);
+      if (size > 0 && size < (int)sizeof winLar) candidatos[n++] = winLar;
+    }
+  }
+#endif
   if (home && *home) {
     int size = snprintf(lar, sizeof lar, isolado ? "%s/.%s" : "%s/.nuvio", home, NV_APP_ID);
     if (size > 0 && size < (int)sizeof lar) candidatos[n++] = lar;
