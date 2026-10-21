@@ -12,6 +12,9 @@ import android.graphics.drawable.Drawable;
 // Each icon is a list of ops: 0=moveTo x y, 1=lineTo x y, 2=close, 3=circle cx cy r,
 // 4=arc cx cy r startDegrees sweepDegrees (0 degrees is 3 o'clock, going clockwise).
 final class LineIcon extends Drawable {
+    // Simple antenna television icon: no raster asset and no extra memory.
+    static final int[] TV = {0, 35, 75, 1, 205, 75, 1, 205, 180, 1, 35, 180, 2,
+            0, 120, 75, 1, 65, 25, 0, 120, 75, 1, 175, 25, 0, 85, 195, 1, 155, 195};
     static final int[] PLAY = {0, 60, 45, 1, 60, 195, 1, 190, 120, 2};
     static final int[] HDMI = {0, 30, 90, 1, 210, 90, 1, 210, 130, 1, 185, 160, 1, 55, 160, 1, 30, 130, 2,
             0, 80, 120, 1, 160, 120};
