@@ -23,7 +23,7 @@ assert "return homeCinematicaTV() ? 48.0f : NV_LEGACY_ROW_HEAD_H;" in home
 assert "if (homeCinematicaTV()) return 24.0f;" in home
 assert "if (homeCinematicaTV()) return 36.0f;" in home
 assert "if (t == FILEIRA_CONTINUE || t == FILEIRA_RETORNO) e *= 0.76f;" in home
-assert "else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.70f;" in home
+assert "else if (t == FILEIRA_NORMAL || t == FILEIRA_TOP10_NUM) e *= 0.78f;" in home  # 1.0.7: +11.4%
 assert "homeCabecalhoH()" in home
 menu = Path("src/menu.c").read_text(encoding="utf-8")
 assert "static int cinemaRail(void)" in menu
