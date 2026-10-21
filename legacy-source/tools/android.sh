@@ -64,6 +64,15 @@ test -s "$EST/assets/art/marcas/streammax_splash.jpg" || {
   echo "android.sh: abertura cinematografica StreamMax nao entrou no estagio Android" >&2
   exit 1
 }
+# Video de abertura opcional, sem conversao nem buffer extra no aplicativo.
+# O arquivo aprovado deve vir como art/marcas/streammax_abertura.mp4.
+if [ -s "$RAIZ/art/marcas/streammax_abertura.mp4" ]; then
+  install -Dm644 "$RAIZ/art/marcas/streammax_abertura.mp4" \
+    "$EST/assets/streammax_abertura.mp4"
+  echo "  abertura StreamMax: MP4 incluido nos assets"
+else
+  echo "  aviso: MP4 da abertura ausente; fallback estatico preservado"
+fi
 mkdir -p "$EST/assets/fonts"
 cp deploy/app/fonts/* "$EST/assets/fonts/"
 mkdir -p "$EST/assets/licencas"
