@@ -4,6 +4,30 @@ Referência: [Ansub/tv-detox](https://github.com/Ansub/tv-detox) (Ansub Khan, li
 
 Este diretório é uma **adaptação independente do fluxo de diagnóstico** do TV Detox para o StreamMax Home. Não contém a interface original nem executa o instalador/limpeza do projeto de terceiros. **A primeira etapa só coleta informações; não modifica a TV.**
 
+## Implementado nesta branch (21/10/2026)
+
+- Código-fonte da home do [Ansub/tv-detox](https://github.com/Ansub/tv-detox), revisão `b937fa5ce43bff13279f014a0ad37b459f49319d` (MIT, licença preservada), adaptado como APK de **teste** com pacote próprio `com.streammax.tvdetox.teste`.
+- Tela sem anúncios, fontes nativas, degradê azul metálico estático, sem `INTERNET`, sem launcher HOME e sem interface de desinstalação.
+- Bloco **TV Aberta** fixo em primeira posição; YouTube, Netflix, Prime e demais apps instalados; Entradas e Configurações apenas no topo.
+- O bloco TV Aberta só tenta um **canal real de `TYPE_TUNER`**, não a última entrada de TV. Se a TCL não expuser canais pela API padrão, ele informa que falta mapear a antena por ADB; **não muda para HDMI por engano**. A promessa "sempre na antena" depende do teste no dispositivo.
+- `Coletar-Diagnostico.ps1`: backup integral do inventário e de settings global/system/secure, memória, HOME atual, candidatos HOME e entradas TV, e CSV de três grupos.
+- `Aplicar-Mudancas-Aprovadas.ps1`: solicita confirmação separada para cada grupo e cada pacote elegível, aplica somente `pm disable-user --user 0` numa lista fechada sem TCL/fabricante, e pode zerar animações e desligar o protetor após aprovação. Cria log e scripts `desfazer-tudo.sh` e `desfazer-tudo.ps1` ANTES de modificar.
+- `Comparar-Memoria.ps1`: leitura após a reinicialização para comparação de `MemAvailable`, sem afirmar que todo ganho decorre das alterações.
+- Nenhum comando da TV é executado no GitHub: os scripts precisam ser rodados localmente, após autorização na TCL.
+
+## Sequência recomendada na sua casa
+
+1. Ativar depuração e autorizar o PC na TCL; instalar o Platform Tools (ADB) no Windows.
+2. Rodar `Coletar-Diagnostico.ps1 -Dispositivo "IP:PORTA"`; guardar a pasta de backups **no PC**.
+3. Abrir `home-candidatos.txt`, `tv-inputs.txt` e `classificacao-para-revisao.csv`. Validar com o usuário cada grupo e a entrada real de antena.
+4. Se aprovado, executar `Aplicar-Mudancas-Aprovadas.ps1 -BackupPasta "PASTA" -Dispositivo "IP:PORTA" -ZerarAnimacoes -DesligarProtetor`. A confirmação interativa é obrigatória; não haverá desativações automáticas nem de apps TCL.
+5. Após o backup, instalar **somente** o APK de teste compilado pelo workflow `StreamMax Home TV Detox — Teste TCL`. Ele não assume HOME. Testar foco, atalhos, entradas e bloco de antena.
+6. Analisar os aplicativos HOME disponíveis e somente depois discutir mudança de home padrão por meio suportado, mantendo a Google TV original habilitada.
+7. Reiniciar pelo menu da TV (não tirar da tomada), reconectar ADB e executar `Comparar-Memoria.ps1 -BackupPasta "PASTA" -Dispositivo "IP:PORTA"`. Testar novamente TV, HDMI, controle, casting, Play Store e StreamMax.
+8. Para restaurar, no Git Bash: `sh desfazer-tudo.sh IP:PORTA`; ou no PowerShell: `.\desfazer-tudo.ps1 -Dispositivo "IP:PORTA"`. Se foi apenas instalada a home teste, use a tela de aplicativos da TV para removê-la quando quiser, sem tocar no launcher original. Depois desative a depuração.
+
+Os scripts de backup são **somente locais**. Não envie publicamente as configurações completas (`settings-*.txt`, `pacotes-flags.txt` etc.).
+
 ## Objetivo
 
 Unir duas frentes independentes:
@@ -60,7 +84,7 @@ Os arquivos podem conter identificadores e configurações privadas: **não os e
 
 ## Etapa 2 — depois da análise com o usuário
 
-Não implementada nem autorizada por este script:
+O script interativo de aplicação já está preparado, mas **não está autorizado e não foi executado** na TV. Ele deve ser revisado e usado apenas após confirmar backup e compatibilidade:
 
 1. Conferir manualmente os três grupos, inclusive os pacotes não classificados.
 2. Pedir aprovação antes de cada grupo e de cada mudança, preservando tudo que afeta HDMI, remoto, TV, atualizações e os aplicativos usados.
