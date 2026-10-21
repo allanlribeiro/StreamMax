@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef NV_WINDOWS_DESKTOP
+#include <ctype.h>
+#endif
 
 // StreamMax: autenticacao direta por e-mail e senha, sem fluxo QR na TV.
 #define LG_BLOCO_W      lgBlocoW()
@@ -50,7 +53,85 @@ static const char *ALFA_SENHA =
 
 static void apagarTexto(char *p, size_t n) { volatile char *v = p; while (n--) *v++ = 0; }
 
+#ifdef NV_WINDOWS_DESKTOP
+// No desktop usamos o IME do SDL2 diretamente (layout ABNT2, acentos, AltGr,
+// colar). Nunca registrar texto nem senha em logs. Foco, cursor e edicao no
+// final do campo; Ctrl+A seleciona todo o conteudo do campo atual.
+static int winTudoSelecionado;
+static int winTextoLigado;
+
+static char *winCampo(void) {
+  return foco == LE_SENHA ? senha : foco == LE_EMAIL ? email : NULL;
+}
+static size_t winCapacidade(void) { return foco == LE_EMAIL ? 120u : 128u; }
+static void winProximo(int reverso) {
+  if (reverso) foco = foco == LE_EMAIL ? LE_ENTRAR : foco - 1;
+  else foco = foco == LE_ENTRAR ? LE_EMAIL : foco + 1;
+  winTudoSelecionado = 0;
+}
+static void winApagar(void) {
+  char *dst = winCampo();
+  size_t n;
+  if (!dst) return;
+  n = strlen(dst);
+  if (winTudoSelecionado) { apagarTexto(dst, n); winTudoSelecionado = 0; return; }
+  if (!n) return;
+  // A ultima letra pode ocupar ate quatro bytes UTF-8.
+  do { n--; } while (n && ((unsigned char)dst[n] & 0xc0) == 0x80);
+  apagarTexto(dst + n, strlen(dst + n));
+}
+static void winInserir(const char *src) {
+  char *dst = winCampo();
+  size_t n, cap;
+  if (!dst || !src) return;
+  if (winTudoSelecionado) {
+    apagarTexto(dst, strlen(dst));
+    winTudoSelecionado = 0;
+  }
+  n = strlen(dst);
+  cap = winCapacidade();
+  while (*src && n < cap) {
+    unsigned char ch = (unsigned char)*src;
+    if (ch < 32 || ch == 127) { src++; continue; }
+    if (ch < 128) {
+      char c = (char)ch;
+      if (foco == LE_EMAIL) {
+        c = (char)tolower((unsigned char)c);
+        if (!strchr(ALFA_EMAIL, c)) { src++; continue; }
+      }
+      if (foco == LE_SENHA && !strchr(ALFA_SENHA, c)) { src++; continue; }
+      dst[n++] = c;
+      src++;
+    } else {
+      // E-mail segue ASCII; a senha aceita texto Unicode válido vindo do IME.
+      int len = ch >= 0xF0 && ch <= 0xF4 ? 4 :
+                ch >= 0xE0 && ch <= 0xEF ? 3 :
+                ch >= 0xC2 && ch <= 0xDF ? 2 : 0;
+      int i, valido = len > 0;
+      if (foco != LE_SENHA || !len) { src++; continue; }
+      for (i = 1; i < len; i++) {
+        if (!src[i] || ((unsigned char)src[i] & 0xc0) != 0x80) { valido = 0; break; }
+      }
+      if (!valido) { src++; continue; }
+      if (n + (size_t)len > cap) break;
+      memcpy(dst + n, src, (size_t)len);
+      n += (size_t)len; src += len;
+    }
+  }
+  dst[n] = 0;
+  aviso[0] = 0;
+}
+#endif
+
 static void abrirCampo(int c) {
+#ifdef NV_WINDOWS_DESKTOP
+  // Campos do login no PC sao editaveis na propria tela, sem abrir a grade.
+  foco = c;
+  campoAberto = -1;
+  winTudoSelecionado = 0;
+  if (!winTextoLigado) { SDL_StartTextInput(); winTextoLigado = 1; }
+  return;
+#endif
   campoAberto = c;
   if (c == LE_EMAIL) {
     teclado_abrir_com("E-mail", "O e-mail da sua conta StreamMax.", 120, ALFA_EMAIL, email);
@@ -86,7 +167,13 @@ static void okEmail(void) {
 }
 
 // Ponteiro e dedo: posiciona o foco no campo ou botao.
-static void ptFocoEmail(int i, int b) { (void)b; foco = i; }
+static void ptFocoEmail(int i, int b) {
+  (void)b;
+  foco = i;
+#ifdef NV_WINDOWS_DESKTOP
+  winTudoSelecionado = 0;
+#endif
+}
 
 // FUNDO (1.7.2): a arte das listras, a mesma familia do splash. A abertura
 // dissolve o logo por cima dela (abertura_fundo_fica), entao a tela de login
@@ -142,6 +229,10 @@ void login_iniciar(void) {
   esperando = 0;
   senhaVisivel = 0;
   apagarTexto(senha, sizeof senha);
+#ifdef NV_WINDOWS_DESKTOP
+  winTudoSelecionado = 0;
+  if (!winTextoLigado) { SDL_StartTextInput(); winTextoLigado = 1; }
+#endif
   // O login por e-mail nao necessita de sessao anonima ou codigo QR.
   // O usuario inicia a requisicao apenas ao escolher Entrar.
 }
@@ -149,6 +240,43 @@ void login_iniciar(void) {
 void login_evento(const SDL_Event *e) {
   SDL_Keycode k;
   int ok, voltar;
+#ifdef NV_WINDOWS_DESKTOP
+  if (sessao_estado() == SES_EMAIL) return;
+  if (e->type == SDL_TEXTINPUT) {
+    winInserir(e->text.text);
+    return;
+  }
+  if (e->type != SDL_KEYDOWN) return;
+  k = e->key.keysym.sym;
+  if (k == SDLK_TAB && !e->key.repeat) {
+    winProximo((e->key.keysym.mod & KMOD_SHIFT) != 0);
+    return;
+  }
+  if ((e->key.keysym.mod & KMOD_CTRL) && k == SDLK_a) {
+    if (winCampo()) winTudoSelecionado = 1;
+    return;
+  }
+  if ((e->key.keysym.mod & KMOD_CTRL) && k == SDLK_v) {
+    char *colado = SDL_GetClipboardText();
+    if (colado) { winInserir(colado); SDL_free(colado); }
+    return;
+  }
+  if (k == SDLK_BACKSPACE && !e->key.repeat) { winApagar(); return; }
+  if (k == SDLK_DELETE && winTudoSelecionado) { winApagar(); return; }
+  if ((k == SDLK_RETURN || k == SDLK_KP_ENTER) && !e->key.repeat) {
+    if (foco == LE_EMAIL) foco = LE_SENHA;
+    else if (foco == LE_SENHA) enviar();
+    else okEmail();
+    winTudoSelecionado = 0;
+    return;
+  }
+  if (k == SDLK_UP) { foco = LE_EMAIL; winTudoSelecionado = 0; }
+  if (k == SDLK_DOWN) { foco = LE_SENHA; winTudoSelecionado = 0; }
+  if (k == SDLK_LEFT && foco == LE_MOSTRAR) foco = LE_SENHA;
+  if (k == SDLK_RIGHT && foco == LE_SENHA) foco = LE_MOSTRAR;
+  if (k == SDLK_SPACE && foco >= LE_MOSTRAR && !e->key.repeat) okEmail();
+  return;
+#endif
   if (teclado_aberto()) { teclado_evento(e); return; }
   if (e->type != SDL_KEYDOWN) return;
   k = e->key.keysym.sym;
@@ -167,6 +295,12 @@ void login_evento(const SDL_Event *e) {
 void login_atualizar(float dt, Uint32 agora) {
   int i, r;
   sessao_passo((unsigned)agora);
+#ifdef NV_WINDOWS_DESKTOP
+  if (sessao_logada() && winTextoLigado) {
+    SDL_StopTextInput();
+    winTextoLigado = 0;
+  }
+#endif
   teclado_atualizar(dt, agora);
   r = teclado_resultado();
   if (r != TECLADO_NADA && campoAberto >= 0) {
