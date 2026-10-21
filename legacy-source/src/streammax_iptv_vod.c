@@ -386,7 +386,19 @@ void streammax_iptv_desenhar(float a, int focoAba) {
   if (carregando || atualizarPendente) {
     snprintf(info,sizeof info,"%s",i18n("Carregando conteúdo do provedor…"));
   } else if (erro==2) snprintf(info,sizeof info,"%s",i18n("Configure uma lista Xtream em Ajustes."));
-  else if(erro) snprintf(info,sizeof info,"%s",i18n("Não foi possível consultar o provedor."));
+  else if (erro) {
+    int falha = xtream_vod_ultima_falha(), http = xtream_vod_ultimo_http();
+    if (falha == XT_SEM_RESPOSTA)
+      snprintf(info,sizeof info,"Xtream sem resposta (HTTP %d).",http);
+    else if (falha == XT_RECUSOU)
+      snprintf(info,sizeof info,"Xtream recusou a consulta (HTTP %d).",http);
+    else if (falha == XT_PAGINA)
+      snprintf(info,sizeof info,"%s",i18n("O provedor respondeu com uma página em vez de JSON."));
+    else if (falha == XT_HTTP)
+      snprintf(info,sizeof info,"Erro HTTP %d ao consultar o Xtream.",http);
+    else
+      snprintf(info,sizeof info,"%s",i18n("Não foi possível consultar o provedor."));
+  }
   else if (!categoriaEscolhida)
     snprintf(info,sizeof info,"%s",i18n("Escolha uma categoria e pressione OK."));
   else if (!visivel || !visivel->nItens)
