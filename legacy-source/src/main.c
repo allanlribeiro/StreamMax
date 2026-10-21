@@ -1046,7 +1046,7 @@ int main(int argc, char **argv) {
   // nao garante no SDL2 que o WGL/ES sera evitado. Este e o hint documentado
   // para carregar explicitamente libGLESv2 do ANGLE.
   SDL_SetHint(SDL_HINT_OPENGL_ES_DRIVER, "1");
-  SDL_SetHint(SDL_HINT_VIDEO_FORCE_EGL, "1");
+  SDL_SetHint("SDL_VIDEO_FORCE_EGL", "1");
   sm_win_mark("ANGLE: SDL_OPENGL_ES_DRIVER=1; SDL_VIDEO_FORCE_EGL=1");
 #endif
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
