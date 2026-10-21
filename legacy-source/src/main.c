@@ -983,6 +983,36 @@ int main(int argc, char **argv) {
   setvbuf(stdout, NULL, _IOLBF, 0);
   arranque_etapa("main");
   arranque_relatar();
+#ifdef NV_WINDOWS_DESKTOP
+  // Exercicio offline do login: antes de abrir a interface, verificar se o
+  // pacote consegue carregar libcurl e concluir HTTPS com certificado valido.
+  // Sem credenciais, sem POST e sem tocar na configuracao do usuario.
+  // CI chama este modo com PATH restrito (sem DLLs do MSYS2 no sistema).
+  if (argc > 1 && !strcmp(argv[1], "--network-self-test")) {
+    char ca[4096];
+    char *base = SDL_GetBasePath();
+    FILE *cert;
+    int st = 0;
+    char *resposta;
+    snprintf(ca, sizeof ca, "%sart/discord-ca.pem", base ? base : "./");
+    if (base) SDL_free(base);
+    cert = fopen(ca, "rb");
+    if (!cert) {
+      printf("[rede-teste] CA bundle ausente na pasta art (nao testar com TLS inseguro)\\n");
+      fflush(stdout);
+      return 71;
+    }
+    fclose(cert);
+    rede_discord_ca(ca);
+    rede_preparar();
+    resposta = rede_baixar_st("https://example.com/", 15, NULL, &st);
+    printf("[rede-teste] HTTPS sem login: HTTP %d, %s\\n",
+           st, resposta && st == 200 ? "OK" : "FALHOU");
+    fflush(stdout);
+    free(resposta);
+    return st == 200 ? 0 : 72;
+  }
+#endif
 #ifdef NV_DTS_DEBUG
   printf("[dts-debug] appId=%s engine=%d nativeAdapter=%d; diagnostic build, TV validation pending\n",
          NV_APP_ID, dts_engine_available(), dts_pipeline_available(0));
