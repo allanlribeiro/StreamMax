@@ -5552,6 +5552,19 @@ void app_atualizar(float dt, Uint32 agora) {
       if (morta) {
         nv_ls_zerar(&liveStall);
       } else if (ls == NV_LS_AGENDOU) {
+        // Diagnostico pontual: so em uma queda real, sem URL do provedor nem
+        // credenciais. Diferencia EOF, decoder parado, buffer e fonte seca.
+        if (xt) {
+          const char *motivo = video_terminou() ? "eof" :
+            video_bufferando_ms() >= NV_LS_PARADO_MS ? "rebuffer" :
+            liveStall.fonteSeca ? "fonte-seca" : "posicao-parada";
+          double frente = video_buffer_fim() - video_pos();
+          printf("[xtream-stall] evento=agendar motivo=%s fonte=%d buffer_frente=%.1fs "
+                 "pos=%.1fs retries=%d/%d\\n", motivo, canalFonteIdx,
+                 frente > 0.0 ? frente : 0.0, video_pos(),
+                 liveStall.tentativa, NV_LS_MAX);
+          fflush(stdout);
+        }
         printf("[canal] parou de tocar (fim de fluxo=%d, posicao %.1fs, buffering %u ms): "
                "reabrindo a fonte %d, tentativa %d/%d em %u ms\n", video_terminou(),
                video_pos(), video_bufferando_ms(), canalFonteIdx, liveStall.tentativa,
@@ -5559,6 +5572,11 @@ void app_atualizar(float dt, Uint32 agora) {
         fflush(stdout);
         player_toast_ex(i18n("Conexão caiu, reconectando…"), 4000, "aj_wifi-off", 1);
       } else if (ls == NV_LS_REABRIR) {
+        if (xt) {
+          printf("[xtream-stall] evento=reabrir fonte=%d tentativa=%d/%d\\n",
+                 canalFonteIdx, liveStall.tentativa, NV_LS_MAX);
+          fflush(stdout);
+        }
         const Stream *mesma = stream_item(canalFonteIdx);
         if (mesma) {
           static char viaProxy[4200];
