@@ -518,6 +518,7 @@ int teclado_teste_camada(int cam, int cx) {
 void teclado_aceitar_utf8(int liga) { aceitaUtf8 = liga != 0; }
 
 #ifdef NV_WINDOWS_DESKTOP
+static int utf8Tam(const unsigned char *s);
 // A grade continua disponivel, mas qualquer modal pode receber texto do
 // teclado fisico, inclusive layouts PT-BR/ABNT2 e colagem Ctrl+V.
 static int winTecladoTudo;
