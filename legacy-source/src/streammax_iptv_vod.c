@@ -329,7 +329,9 @@ void streammax_iptv_desenhar(float a, int focoAba) {
   // A renderizacao das capas sera integrada separadamente com cache limitado.
   if (visivel) {
     const int colunas = 4, linhas = 3;
-    const int primeiraLinha = (focoItem / colunas / linhas) * linhas;
+    // Janela deslizante: a cada linha do D-pad a grade avanca sem paginas.
+    // Nenhum card fora das tres linhas visiveis e desenhado.
+    const int primeiraLinha = focoItem / colunas > 1 ? focoItem / colunas - 1 : 0;
     const float largura = (itemW - 36.0f) / colunas;
     const float altura = 218.0f;
     for (int j = 0; j < colunas * linhas; j++) {
