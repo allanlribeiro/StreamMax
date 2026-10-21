@@ -35,7 +35,16 @@ checks = {
     "stock VOD forwards retention setting to load control": "CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs)" in source,
     "back buffer telemetry present": '"inicio=${inicioMs}ms rebuffer=${recuoBufferMs}ms backBuffer=${backBufferMs}ms "' in source,
 
-    "startup threshold from stock Media3": "DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500" in source,
+    "progressive direct VOD starts at 1.5s on automatic preset": (
+        "val inicioMs = if (inicioOriginal)\n            if (adaptativoInicial) DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 1_500\n        else 2_500" in source
+    ),
+    "HLS and DASH retain stock initial threshold": (
+        'baixaInicial.contains(".m3u8")' in source
+        and 'baixaInicial.contains("m3u8?")' in source
+        and 'baixaInicial.contains(".mpd")' in source
+        and "if (adaptativoInicial) DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 1_500" in source
+    ),
+    "manual buffer preset keeps 2.5s initial threshold": "else 2_500\n        val recuoBufferMs" in source,
     "rebuffer threshold from stock Media3": "DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else 5_000" in source,
     "prepared stream retains its old threshold": "else parameters.bufferedDurationUs >= 2_500_000L" in source,
     "original ExoPlayer video engine retained": "ExoPlayer.Builder(act, r.renderizadores)" in source,
