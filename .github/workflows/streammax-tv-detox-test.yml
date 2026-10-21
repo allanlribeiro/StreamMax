@@ -7,6 +7,7 @@ on:
       - streammax/home-tcl-p7k-experimental
     paths:
       - 'streammax-home/tv-detox/app/**'
+      - 'streammax-home/tv-detox/art/**'
       - 'streammax-home/tv-detox/build.gradle'
       - 'streammax-home/tv-detox/settings.gradle'
       - '.github/workflows/streammax-tv-detox-test.yml'
@@ -34,6 +35,26 @@ jobs:
           SDKMANAGER="$(find "$SDK_DIR/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -1)"
           test -n "$SDKMANAGER"
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - name: Gerar imagem estática azul metálica otimizada (offline)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --user 'CairoSVG==2.7.1' 'Pillow==11.3.0'
+          python3 - <<'PY'
+          import io
+          from pathlib import Path
+          import cairosvg
+          from PIL import Image
+          root = Path("streammax-home/tv-detox")
+          src = root / "art" / "streammax-metal-waves.svg"
+          out = root / "app/src/main/res/drawable-nodpi/streammax_metal_waves.jpg"
+          out.parent.mkdir(parents=True, exist_ok=True)
+          png = cairosvg.svg2png(url=str(src), output_width=1600, output_height=900)
+          with Image.open(io.BytesIO(png)) as art:
+              art.convert("RGB").save(out, "JPEG", quality=86, optimize=True, progressive=True, subsampling=0)
+          print(f"Wallpaper art: {out} ({out.stat().st_size} bytes)")
+          assert out.stat().st_size < 1_500_000, "Background exceeds 1.5 MB limit"
+          PY
       - name: Compilar fonte adaptado do TV Detox
         working-directory: streammax-home/tv-detox
         run: gradle --no-daemon :app:assembleDebug
@@ -45,8 +66,9 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > /tmp/tvdetox-badging
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" > /tmp/tvdetox-perms
-          grep -q "package: name='com.streammax.tvdetox.teste5'" /tmp/tvdetox-badging
+          grep -q "package: name='com.streammax.tvdetox.visual10'" /tmp/tvdetox-badging
           ! grep -q 'android.permission.INTERNET' /tmp/tvdetox-perms
+          unzip -l "$APK" | grep -q 'res/.*\.jpg'
           ! grep -q 'android.permission.REQUEST_DELETE_PACKAGES' /tmp/tvdetox-perms
           ! grep -q 'android.intent.category.HOME' streammax-home/tv-detox/app/src/main/AndroidManifest.xml
           ! grep -Rq 'Intent.ACTION_DELETE' streammax-home/tv-detox/app/src/main/java
