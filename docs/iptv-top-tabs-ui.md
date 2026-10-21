@@ -34,3 +34,10 @@ Decisão provisória, sujeita a ajustes após teste na TCL P7K. Não criar uma n
 - Validar visualmente e medir memória/fluidez na TCL P7K antes de promover para release.
 
 Este documento registra a escolha de UX; não afirma que a implementação ou os testes foram concluídos.
+
+## Revisão do código e CI — 21/10/2026
+- O caminho de foco está implementado em `legacy-source/src/guia.c`: ESQUERDA da coluna de categorias entra no cabeçalho; ESQUERDA/DIREITA alternam a aba focada; OK ativa; BAIXO retorna ao conteúdo. A tecla azul é atalho opcional, não requisito para controles TCL.
+- A interface de abas e o desenho do VOD estão em `legacy-source/src/streammax_iptv_vod.c`; não reconstruir esses componentes.
+- Execuções GitHub Actions `39579537506` e `39579530894` (IPTV/idiomas) e `39579537331` (regressão) concluídas com sucesso. Isso **não** substitui teste real de foco, reprodução e memória na TCL.
+- O `PR Template Check` da PR #32 ainda falha (`39579537538`): a descrição referencia aprovação em conversa, mas a política para mudança maior exige issue vinculada; issues estão desabilitadas conforme a própria PR. Não mascarar a falha nem mudar a categoria da alteração só para passar no CI. Resolver a exigência de governança antes do merge.
+- Abertura de filmes, episódios e retorno ao guia, consumo de memória e fluidez com catálogos grandes permanecem **não verificados no dispositivo**.
