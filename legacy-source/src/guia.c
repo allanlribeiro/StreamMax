@@ -5014,11 +5014,28 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   // Uma carga sem canais nao deve parecer um painel quebrado. A contagem
   // zero e real; mostrar o estado do guia sem expor URLs ou credenciais.
   if (nCanais == 0) {
-    const char *aviso = estado == G_BAIXANDO
-        ? "Carregando canais do provedor..."
-        : estado == G_FALHOU
-          ? "Falha ao carregar canais. Feche e abra a TV ao vivo para tentar novamente."
-          : "Nenhum canal disponivel. Verifique a lista IPTV cadastrada.";
+    char diagnostico[192];
+    const char *aviso = diagnostico;
+    if (estado == G_BAIXANDO) {
+      snprintf(diagnostico, sizeof diagnostico, "Carregando canais do provedor...");
+    } else if (!xtream_configurado()) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream nao configurado neste perfil. Confira Ajustes > TV ao vivo.");
+    } else if (xtFalha == XT_SEM_RESPOSTA) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream sem resposta (HTTP %d). Confira a conexao.", xtHttp);
+    } else if (xtFalha == XT_RECUSOU) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream recusou a consulta (HTTP %d).", xtHttp);
+    } else if (xtFalha == XT_HTTP) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Xtream retornou erro HTTP %d.", xtHttp);
+    } else if (estado == G_FALHOU) {
+      snprintf(diagnostico, sizeof diagnostico,
+               "Nenhum canal recebido. Reabra a TV ao vivo para tentar novamente.");
+    } else {
+      snprintf(diagnostico, sizeof diagnostico, "Nenhum canal disponivel.");
+    }
     TxtLinha msg = txt_linha_corta(TXT_PG_ROTULO, aviso,
                                   183, 202, 230, 255, canW - 36.0f);
     txt_desenhar_alpha(msg, canX + 18.0f, catLinY + 32.0f, a);
