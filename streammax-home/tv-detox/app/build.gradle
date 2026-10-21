@@ -1,3 +1,7 @@
+plugins {
+    id 'com.android.application'
+}
+
 // HOME_RC is debug-only; production releases require a stable, user-owned signing key.
 // Never commit a keystore, credentials or base64 secret into this repository.
 def production = System.getenv('STREAMMAX_HOME_PRODUCTION') == 'true'
@@ -7,9 +11,6 @@ def homeKeyAlias = System.getenv('STREAMMAX_HOME_KEY_ALIAS')
 def homeKeyPassword = System.getenv('STREAMMAX_HOME_KEY_PASSWORD')
 if (production && (![homeStoreFile, homeStorePassword, homeKeyAlias, homeKeyPassword].every { it != null && it.trim() })) {
     throw new GradleException('Signed production HOME build requires all four STREAMMAX_HOME signing variables')
-}
-plugins {
-    id 'com.android.application'
 }
 android {
     namespace 'com.streammax.tvdetox'
