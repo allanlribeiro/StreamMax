@@ -9,8 +9,13 @@
 // etiqueta quase sempre com os de tres. Estava dentro de video.c, privada;
 // addons.c mantinha uma versao propria com tres idiomas. Uma so agora.
 static const struct { const char *cod, *nome; } NOMES[] = {
-  { "pt", "Português" },  { "pob", "Português (BR)" }, { "por", "Português" },
-  { "pt-br", "Português (BR)" }, { "ptb", "Português (BR)" }, { "br", "Português (BR)" },
+  { "pt", "Português" }, { "por", "Português" },
+  { "pob", "Português (Brasil)" }, { "pt-br", "Português (Brasil)" },
+  { "pt_br", "Português (Brasil)" }, { "ptbr", "Português (Brasil)" },
+  { "ptb", "Português (Brasil)" }, { "br", "Português (Brasil)" },
+  { "pb", "Português (Brasil)" },
+  { "pt-pt", "Português (Portugal)" }, { "pt_pt", "Português (Portugal)" },
+  { "ptpt", "Português (Portugal)" },
   { "en", "Inglês" },     { "eng", "Inglês" },
   { "es", "Espanhol" },   { "spa", "Espanhol" }, { "esp", "Espanhol" },
   { "fr", "Francês" },    { "fre", "Francês" },  { "fra", "Francês" },
@@ -165,6 +170,73 @@ int ling_casa(const char *codigo, const char *pref) {
   return ling_casa_forca(codigo, pref) >= 0;
 }
 
+// Mantem variantes de legenda distintas SEM alterar ling_casa, que tambem
+// serve o audio e o fallback generico de idiomas do aplicativo.
+static int ptBrasil(const char *c) {
+  return c && (!strcasecmp(c, "pob") || !strcasecmp(c, "pt-br") ||
+    !strcasecmp(c, "pt_br") || !strcasecmp(c, "ptbr") ||
+    !strcasecmp(c, "ptb") || !strcasecmp(c, "pb") || !strcasecmp(c, "br"));
+}
+static int ptPortugal(const char *c) {
+  return c && (!strcasecmp(c, "pt-pt") || !strcasecmp(c, "pt_pt") ||
+               !strcasecmp(c, "ptpt"));
+}
+static int contemAscii(const char *texto, const char *busca) {
+  size_t n;
+  if (!texto || !busca || !*busca) return 0;
+  n = strlen(busca);
+  for (; *texto; texto++)
+    if (!strncasecmp(texto, busca, n)) return 1;
+  return 0;
+}
+const char *ling_legenda_chave(const char *codigo, const char *nome) {
+  char fam[8];
+  if (ptBrasil(codigo)) return "pt-br";
+  if (ptPortugal(codigo)) return "pt-pt";
+  // Nunca deduzir portugues de um nome solto quando o metadata informa
+  // outro idioma. Somente um codigo portugues generico pode ser refinado.
+  if (!codigo || strcmp(familia(codigo, fam), "pt")) return codigo ? codigo : "";
+  if (contemAscii(nome, "pt-br") || contemAscii(nome, "pt_br") ||
+      contemAscii(nome, "brazilian portuguese") ||
+      contemAscii(nome, "portuguese (brazil)") ||
+      contemAscii(nome, "portuguese (brasil)") ||
+      contemAscii(nome, "português (brasil)") ||
+      contemAscii(nome, "portugues (brasil)") ||
+      contemAscii(nome, "português brasileiro") ||
+      contemAscii(nome, "portugues brasileiro"))
+    return "pt-br";
+  if (contemAscii(nome, "pt-pt") || contemAscii(nome, "pt_pt") ||
+      contemAscii(nome, "european portuguese") ||
+      contemAscii(nome, "portuguese (portugal)") ||
+      contemAscii(nome, "português (portugal)") ||
+      contemAscii(nome, "portugues (portugal)") ||
+      contemAscii(nome, "português europeu") ||
+      contemAscii(nome, "portugues europeu"))
+    return "pt-pt";
+  return "pt"; // sem regiao comprovada: nao assumir Brasil
+}
+int ling_legenda_mesma_regiao(const char *a, const char *b) {
+  char fa[8], fb[8];
+  if (!a || !b || !*a || !*b) return a && b && !strcmp(a, b);
+  if (!strcmp(familia(a, fa), "pt") && !strcmp(familia(b, fb), "pt"))
+    return !strcmp(ling_legenda_chave(a, NULL), ling_legenda_chave(b, NULL));
+  return ling_casa(a, b) && ling_casa(b, a);
+}
+// Para a selecao automatica: codigo explicito BR nao escolhe PT-PT nem
+// vice-versa; portugues sem regiao continua um fallback permitido.
+static int ling_legenda_casa_forca(const char *codigo, const char *pref) {
+  int base = ling_casa_forca(codigo, pref);
+  char fam[8];
+  const char *alvo, *faixa;
+  if (base < 0 || !pref || !codigo || strcmp(familia(pref, fam), "pt")) return base;
+  alvo = ling_legenda_chave(pref, NULL);
+  faixa = ling_legenda_chave(codigo, NULL);
+  if (strcmp(alvo, "pt-br") && strcmp(alvo, "pt-pt")) return base;
+  if (!strcmp(alvo, faixa)) return 1;
+  if (!strcmp(faixa, "pt")) return 0;
+  return -1;
+}
+
 // NORMALIZA a etiqueta de idioma que o addon manda. Um addon (AIOStreams)
 // manda "PORTUGUESE"/"Portuguese (Brazil)" em vez de codigo; Legenda.idioma
 // tem 8 bytes e o nome saia cortado ("PORTUGU", selo "PO") e, pior, nao casava
@@ -203,9 +275,8 @@ const char *ling_selo(const char *cod) {
   const char *f;
   size_t k;
   if (!cod || !*cod) { d[0] = '?'; d[1] = 0; return d; }
-  if (!strcasecmp(cod, "pob") || !strcasecmp(cod, "pt-br") || !strcasecmp(cod, "pt_br") ||
-      !strcasecmp(cod, "ptb") || !strcasecmp(cod, "br") || !strcasecmp(cod, "pb") ||
-      !strcasecmp(cod, "ptbr")) return "PT-BR";
+  if (ptBrasil(cod)) return "PT-BR";
+  if (ptPortugal(cod)) return "PT-PT";
   f = familia(cod, fam);
   for (k = 0; f[k] && k < 2; k++) d[k] = (char)(f[k] >= 'a' && f[k] <= 'z' ? f[k] - 32 : f[k]);
   d[k] = 0;
@@ -218,7 +289,13 @@ int ling_afinidade(const char *cod, const char *pref) {
   if (!pref || !*pref) return 1;
   if (!cod || !*cod || !ling_casa(cod, pref)) return 0;
   { char fam[8];
-    if (!strcmp(familia(pref, fam), "pt")) return !strcmp(ling_selo(cod), "PT-BR") ? 3 : 2; }
+    if (!strcmp(familia(pref, fam), "pt")) {
+      const char *alvo = ling_legenda_chave(pref, NULL);
+      const char *faixa = ling_legenda_chave(cod, NULL);
+      if (!strcmp(alvo, "pt-br") || !strcmp(alvo, "pt-pt"))
+        return !strcmp(alvo, faixa) ? 3 : !strcmp(faixa, "pt") ? 2 : 1;
+      return !strcmp(faixa, "pt-br") ? 3 : 2;
+    } }
   return !strcasecmp(cod, pref) ? 3 : 2;
 }
 
@@ -500,6 +577,10 @@ const char *ling_do_nome(const char *nome) {
   const char *achado = NULL;
   size_t i;
   if (!nome || !*nome) return NULL;
+  // Nao perder a variante europeia no radical generico "portugu".
+  if ((contemAscii(nome, "portuguese") || contemAscii(nome, "portugu")) &&
+      (contemAscii(nome, "portugal") || contemAscii(nome, "european") ||
+       contemAscii(nome, "europeu"))) return "pt-pt";
   for (i = 0; i < sizeof NOME_IDIOMA / sizeof *NOME_IDIOMA; i++) {
     const char *c = NOME_IDIOMA[i].cod;
     if (!temRadical(nome, NOME_IDIOMA[i].radical)) continue;
@@ -533,14 +614,14 @@ int ling_legenda_auto(const char *pref,
   { int forca;
     for (forca = 1; forca >= 0; forca--)
       for (i = 0; i < nEmb; i++)
-        if (emb[i] && emb[i][0] && ling_casa_forca(emb[i], pref) == forca) return i; }
+        if (emb[i] && emb[i][0] && ling_legenda_casa_forca(emb[i], pref) == forca) return i; }
   // Os idiomas embutidos ainda podem chegar (a sonda do MKV nao voltou): pular
   // para o addon agora trocaria a legenda certa do arquivo por uma de fora.
   if (!embFechado) return LING_AUTO_ESPERA;
   { int forca;
     for (forca = 1; forca >= 0; forca--)
       for (i = 0; i < nAdd; i++)
-        if (add[i] && add[i][0] && ling_casa_forca(add[i], pref) == forca) return nEmb + i; }
+        if (add[i] && add[i][0] && ling_legenda_casa_forca(add[i], pref) == forca) return nEmb + i; }
   return addFechado ? LING_AUTO_NADA : LING_AUTO_ESPERA;
 }
 
@@ -558,7 +639,7 @@ int ling_legenda_auto_tipo(const char *pref, const char *audio, int forcadaAuto,
         for (i = 0; i < nEmb; i++) {
           int t = tipoEmb ? tipoEmb[i] : LING_LEG_COMUM;
           if (t != (passo ? LING_LEG_LETREIROS : LING_LEG_FORCADA)) continue;
-          if (emb[i] && emb[i][0] && ling_casa_forca(emb[i], pref) == forca) return i;
+          if (emb[i] && emb[i][0] && ling_legenda_casa_forca(emb[i], pref) == forca) return i;
         }
     // A forcada pode estar numa faixa cujo tipo ainda nao chegou (sonda do MKV).
     return embFechado ? LING_AUTO_NADA : LING_AUTO_ESPERA;
@@ -571,11 +652,11 @@ int ling_legenda_auto_tipo(const char *pref, const char *audio, int forcadaAuto,
         int t = tipoEmb ? tipoEmb[i] : LING_LEG_COMUM;
         if (t == LING_LEG_FORCADA || t == LING_LEG_LETREIROS) continue;
         if ((t == LING_LEG_SDH) != passo) continue;
-        if (emb[i] && emb[i][0] && ling_casa_forca(emb[i], pref) == forca) return i;
+        if (emb[i] && emb[i][0] && ling_legenda_casa_forca(emb[i], pref) == forca) return i;
       }
   if (!embFechado) return LING_AUTO_ESPERA;
   for (forca = 1; forca >= 0; forca--)
     for (i = 0; i < nAdd; i++)
-      if (add[i] && add[i][0] && ling_casa_forca(add[i], pref) == forca) return nEmb + i;
+      if (add[i] && add[i][0] && ling_legenda_casa_forca(add[i], pref) == forca) return nEmb + i;
   return addFechado ? LING_AUTO_NADA : LING_AUTO_ESPERA;
 }
