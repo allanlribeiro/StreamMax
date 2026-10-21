@@ -9,8 +9,9 @@ command -v objdump >/dev/null || { echo "objdump nao encontrado" >&2; exit 1; }
 
 # Algumas bibliotecas sao carregadas por dlopen/LoadLibrary em tempo de execucao
 # e NAO aparecem nos imports de StreamMax.exe.
-# Evita erros de sistema com SDL2.dll, libGLESv2.dll e libdl.dll.
-required=(SDL2.dll SDL2_image.dll SDL2_ttf.dll libEGL.dll libGLESv2.dll libdl.dll)
+# DLLs de runtime carregadas por dlopen nao aparecem na tabela de imports.
+# libcurl-4.dll e indispensavel para o login e para as requisicoes HTTPS.
+required=(SDL2.dll SDL2_image.dll SDL2_ttf.dll libEGL.dll libGLESv2.dll libdl.dll libcurl-4.dll)
 for dll in "${required[@]}"; do
   found="$(find "$UCRT_BIN" -maxdepth 1 -type f -iname "$dll" -print -quit)"
   [ -n "$found" ] || {
