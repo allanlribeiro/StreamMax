@@ -1221,15 +1221,18 @@ object NvPlayer {
         // Nao ampliar o teto em bytes: a TCL P7K pode ser low-RAM.
         else Triple(15_000, 45_000, tetoBuffer)
 
-        // O VOD automatico deve continuar com os limiares stock Media3
-        // mesmo quando chega de um player preparado. CargaPlayer so usa
-        // 2,5 s durante o preparo invisivel (!adotada); promover() liga
-        // adotada=true e passa a usar super.shouldStartPlayback (stock).
-        // Presets manuais conservam os limiares Legacy. Nao mudar o teto
-        // de bytes: a TCL tem memoria limitada.
+        // Arranque mais rapido para VOD progressivo (links diretos/debrid):
+        // 1,5 s costuma bastar para o primeiro quadro e evita segurar a tela
+        // apenas para completar o limiar stock. HLS/DASH mantem o valor stock,
+        // porque segmentos maiores podem rebufferizar logo na largada.
+        // Rebuffer tambem continua stock: acelerar so o PRIMEIRO inicio.
         val inicioOriginal = preset == 0
+        val baixaInicial = url.lowercase()
+        val adaptativoInicial = baixaInicial.contains(".m3u8") ||
+            baixaInicial.contains("m3u8?") || baixaInicial.contains(".mpd")
         val inicioMs = if (inicioOriginal)
-            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 2_500
+            if (adaptativoInicial) DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS else 1_500
+        else 2_500
         val recuoBufferMs = if (inicioOriginal)
             DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS else 5_000
         // O Nuvio original conserva 1,5 s no stock Media3 para que um
