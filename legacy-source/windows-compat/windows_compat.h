@@ -19,6 +19,9 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
+#ifndef EDQUOT
+#define EDQUOT ENOSPC
+#endif
 
 static inline struct tm *nv_localtime_r(const time_t *t, struct tm *out) {
   return localtime_s(out, t) == 0 ? out : NULL;
