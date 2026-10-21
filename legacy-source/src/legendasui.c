@@ -452,6 +452,19 @@ void legendasui_abrir(void) {
   aberto = 1; mais = ajustes_legendas_todas() || !temPreferencia(); ver = 0; menu = okPendente = okLongo = 0; alvo = 0; rolagemZerar(); aviso[0] = 0;
   focoChave[0] = 0; foco = 0;
   emIdiomas = 0; focoIdioma = rolagemIdioma = 0;
+  // Se o arquivo/addon trouxe legendas de Portugal E do Brasil, nao abrir
+  // somente em "Recomendadas": aquela visao esconde uma das variantes.
+  // O modo completo preserva as faixas e exibe as duas no painel por nome,
+  // com a coluna de idiomas separando pt-BR, pt-PT e pt sem regiao.
+  if (!mais) {
+    int temBR = 0, temPT = 0;
+    capturar();
+    for (int k = 0; k < nCand; k++) {
+      temBR |= !strcmp(cand[k].idioma, "pt-br");
+      temPT |= !strcmp(cand[k].idioma, "pt-pt");
+    }
+    if (temBR && temPT) mais = 1;
+  }
   montarLinhas();
   // Open on the row of the active primary, else on the first row.
   idPrimario(prim);
