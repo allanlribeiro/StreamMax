@@ -979,31 +979,6 @@ static void *fioGuia(void *u) {
   // no painel elas ainda listam o catalogo dele — e sem esta guarda a recarga
   // "na hora" do painel trazia de volta exatamente o que a pessoa acabou de
   // tirar.
-  // Priorizar o provedor Xtream antes de sondas de addons potencialmente
-  // lentas: canais cadastrados nao devem esperar o manifesto de terceiros.
-  // XTREAM, pela mesma porta e pelas mesmas razoes (ver xtream.h). O epg_id
-  // que o servidor manda casa com o XMLTV do proprio provedor, que o EPG baixa
-  // como sexta fonte (#158, ver epg_fonte_extra); sem ele, o nome.
-  if (cargaAtual() && xtream_configurado()) {
-    XtreamCanal *xt = malloc(sizeof *xt * G_MAX_CANAL);
-    int n = xt ? xtream_canais_sessao(xt, G_MAX_CANAL, cargaSessao) : 0, i;
-    if (xt) { sXtFalha = xtream_ultima_falha(); sXtHttp = xtream_ultimo_http(); }
-    for (i = 0; i < n; i++) {
-      GCanal c;
-      if (sCanalPorId(xt[i].id) >= 0) continue;
-      memset(&c, 0, sizeof c);
-      c.epg = -1;
-      snprintf(c.id,   sizeof c.id,   "%s", xt[i].id);
-      snprintf(c.nome, sizeof c.nome, "%s", xt[i].nome);
-      snprintf(c.logo, sizeof c.logo, "%s", xt[i].logo);
-      snprintf(c.epgId, sizeof c.epgId, "%s", xt[i].epgId);
-      c.cat = sNCanais < G_MAX_CANAL ? sCatDe(xt[i].categoria[0] ? xt[i].categoria : "Outros") : 0;
-      if (guiacorte_entra(&sCorte, sNCanais, c.cat >= 0)) { sCanais[sNCanais++] = c; ok = 1; }
-    }
-    // O que o servidor tem alem do pedido (xtream_canais devolve ate `max`).
-    guiacorte_perdeu_canais(&sCorte, xtream_ultimo_total() - n);
-    free(xt);
-  }
   sondaManifestos();
   // COTA POR CATALOGO. O Pluto TV devolve 1.523 canais numa pagina so;
   // instalado, ele enchia os 900 lugares sozinho e o Meu Futebol (68 canais,
@@ -1055,6 +1030,29 @@ static void *fioGuia(void *u) {
       if (c.cat >= 0) { sCanais[sNCanais++] = c; ok = 1; }
     }
     free(st);
+  }
+  // XTREAM, pela mesma porta e pelas mesmas razoes (ver xtream.h). O epg_id
+  // que o servidor manda casa com o XMLTV do proprio provedor, que o EPG baixa
+  // como sexta fonte (#158, ver epg_fonte_extra); sem ele, o nome.
+  if (cargaAtual() && xtream_configurado()) {
+    XtreamCanal *xt = malloc(sizeof *xt * G_MAX_CANAL);
+    int n = xt ? xtream_canais_sessao(xt, G_MAX_CANAL, cargaSessao) : 0, i;
+    if (xt) { sXtFalha = xtream_ultima_falha(); sXtHttp = xtream_ultimo_http(); }
+    for (i = 0; i < n; i++) {
+      GCanal c;
+      if (sCanalPorId(xt[i].id) >= 0) continue;
+      memset(&c, 0, sizeof c);
+      c.epg = -1;
+      snprintf(c.id,   sizeof c.id,   "%s", xt[i].id);
+      snprintf(c.nome, sizeof c.nome, "%s", xt[i].nome);
+      snprintf(c.logo, sizeof c.logo, "%s", xt[i].logo);
+      snprintf(c.epgId, sizeof c.epgId, "%s", xt[i].epgId);
+      c.cat = sNCanais < G_MAX_CANAL ? sCatDe(xt[i].categoria[0] ? xt[i].categoria : "Outros") : 0;
+      if (guiacorte_entra(&sCorte, sNCanais, c.cat >= 0)) { sCanais[sNCanais++] = c; ok = 1; }
+    }
+    // O que o servidor tem alem do pedido (xtream_canais devolve ate `max`).
+    guiacorte_perdeu_canais(&sCorte, xtream_ultimo_total() - n);
+    free(xt);
   }
   // FONTE ACHADA E NENHUMA PAGINA RESPONDEU tambem e "nao respondeu", e nao
   // "nao existe": e o caso do catalogo de canais que estoura o prazo com o
