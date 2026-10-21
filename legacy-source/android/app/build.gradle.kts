@@ -71,6 +71,9 @@ android {
             versionNameSuffix = "-strictdebug"
         }
         release {
+            // Somente nesta branch de testes: instala em paralelo ao StreamMax principal.
+            applicationIdSuffix = ".experimental"
+            versionNameSuffix = "-experimental"
             isMinifyEnabled = false
             if (ks != null) signingConfig = signingConfigs.getByName("release")
         }
