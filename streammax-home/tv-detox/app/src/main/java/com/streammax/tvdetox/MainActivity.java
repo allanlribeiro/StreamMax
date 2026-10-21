@@ -629,13 +629,21 @@ public class MainActivity extends Activity {
         try { startActivity(i); } catch (Exception ignored) {}
     }
 
-    // Never fall back to "open last TV app": on TCL that may reopen HDMI.
-    // Only pass an actual ANTENNA CHANNEL URI to a handler. If tuner/channel
-    // cannot be read on this firmware, fail safely and request ADB mapping.
+    // Prefer an explicit antenna channel URI when the TV provider exposes one.
+    // TCL P7K exposes its tuner as com.tcl.tvinput/.TunerInputService/HW2, but the
+    // unprivileged home cannot query the channel provider on the tested firmware.
+    // ADB confirmed that opening com.tcl.tv/com.tcl.player.TVActivity from Google
+    // TV Home returns to antenna TV when a tuner channel was last active.
+    // IMPORTANT: reopening antenna after a previously selected HDMI is NOT verified.
+    // We do not synthesize unknown TCL intent extras or manipulate HDMI/system apps.
     private void openTvAberta() {
         TvInputManager tim = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+        boolean tclP7kTunerPresent = false;
         if (tim != null) {
             for (TvInputInfo in : tim.getTvInputList()) {
+                if ("com.tcl.tvinput/.TunerInputService/HW2".equals(in.getId())) {
+                    tclP7kTunerPresent = true;
+                }
                 if (in.getType() != TvInputInfo.TYPE_TUNER || in.isHidden(this)) continue;
                 try (android.database.Cursor channels = getContentResolver().query(
                         TvContract.buildChannelsUriForInput(in.getId()),
@@ -649,15 +657,28 @@ public class MainActivity extends Activity {
                         return;
                     }
                 } catch (Exception ignored) {
-                    // No EPG permission/provider, or no TV app to handle channel URI.
+                    // The TV provider may require privileges not available to this home.
                 }
+            }
+        }
+        if (tclP7kTunerPresent) {
+            // Device-specific, tested through ADB from the stock home.
+            // This may launch the last TCL TV input: HDMI-to-antenna behavior is
+            // still unverified and must be checked before calling it definitive.
+            try {
+                Intent tclTv = new Intent();
+                tclTv.setClassName("com.tcl.tv", "com.tcl.player.TVActivity");
+                tclTv.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(tclTv);
+                return;
+            } catch (Exception ignored) {
+                // Activity may not be exported to third-party apps on every build.
             }
         }
         new android.app.AlertDialog.Builder(this)
                 .setTitle("TV Aberta")
-                .setMessage("A entrada de antena ainda não foi identificada na TCL. " +
-                        "Vamos configurar esse botão após consultar os identificadores de TV pelo ADB. " +
-                        "Nenhuma entrada HDMI foi acionada.")
+                .setMessage("Nao foi possivel abrir a antena diretamente nesta TCL. " +
+                        "O launcher original e as entradas HDMI permanecem intactos.")
                 .setPositiveButton("OK", null).show();
     }
 
