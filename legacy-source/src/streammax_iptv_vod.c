@@ -250,8 +250,15 @@ int streammax_iptv_evento(const SDL_Event *e) {
     } else if (focoCol == 1) {
       // A grade de filmes e series navega por linhas, preservando a coluna.
       int proximo = focoItem + d * 4;
-      if (proximo >= 0 && proximo < itensNaCategoria()) focoItem = proximo;
-      serieAberta = 0; focoEp = 0;
+      // A ultima fileira pode ter menos de quatro cards. Ao descer,
+      // selecionar o ultimo card disponivel em vez de travar o foco.
+      if (d > 0 && proximo >= itensNaCategoria() &&
+          focoItem / 4 < (itensNaCategoria() - 1) / 4)
+        proximo = itensNaCategoria() - 1;
+      if (proximo >= 0 && proximo < itensNaCategoria()) {
+        focoItem = proximo;
+        serieAberta = 0; focoEp = 0;
+      }
     } else {
       focoEp = streammax_tv_limitar(focoEp + d, visivel ? visivel->nEpisodios : 0);
     }
