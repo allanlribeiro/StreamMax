@@ -1,0 +1,1 @@
+#ifndef STREAMMAX_WIN_NETINET_IN_H\n#define STREAMMAX_WIN_NETINET_IN_H\n#include <winsock2.h>\n#include <ws2tcpip.h>\n#endif\n
