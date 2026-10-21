@@ -1313,7 +1313,10 @@ int main(int argc, char **argv) {
   // e MOUSEBUTTONDOWN/UP botao 1 no clique. Por isso aqui ele fica ligado, e a
   // seta desenhada e a do proprio sistema (ponteiro.c nao desenha outra).
   // No Mac o cursor do sistema continua escondido e o app desenha o seu.
-#ifdef NV_SEM_WEBOS
+#ifdef NV_WINDOWS_DESKTOP
+  // A versao de PC usa mouse de verdade: mostrar o cursor do Windows.
+  SDL_ShowCursor(SDL_ENABLE);
+#elif defined(NV_SEM_WEBOS)
   SDL_ShowCursor(SDL_DISABLE);
 #else
   SDL_ShowCursor(SDL_ENABLE);
@@ -1616,6 +1619,13 @@ int main(int argc, char **argv) {
   char dirRec[512];
   snprintf(dirRec, sizeof dirRec, "%s", dirArte);
   char *barra = strrchr(dirRec, '/');
+#ifdef NV_WINDOWS_DESKTOP
+  // SDL_GetBasePath() no Windows pode devolver '\\', nao '/'.
+  // Se nao remover art do caminho, txt_iniciar procura art/fonts/ e
+  // a grade do teclado fica sem caracteres.
+  char *barraWin = strrchr(dirRec, '\\');
+  if (!barra || (barraWin && barraWin > barra)) barra = barraWin;
+#endif
   if (barra) *barra = 0;
   NV_ETAPA("txt_iniciar");
   txt_iniciar(dirRec, (float)dw / NV_TELA_W);
