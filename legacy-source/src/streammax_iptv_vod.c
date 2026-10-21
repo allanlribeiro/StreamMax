@@ -165,7 +165,10 @@ void streammax_iptv_atualizar(void) {
     }
     free(r);
     carregando = 0;
-    erro = visivel == NULL ? 1 : 0;
+    // Uma resposta vazia nao equivale a categorias carregadas com sucesso.
+    // Diferencie falha/ausencia de categorias da tela de selecao de categoria.
+    erro = (!visivel || (r == NULL && !categoriaEscolhida &&
+             visivel->nCategorias == 0)) ? 1 : 0;
   }
   if (atualizarPendente && !carregando &&
       !atomic_load_explicit(&fioAtivo, memory_order_acquire))
