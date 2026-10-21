@@ -66,7 +66,7 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > /tmp/tvdetox-badging
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" > /tmp/tvdetox-perms
-          grep -q "package: name='com.streammax.home.rc'" /tmp/tvdetox-badging
+          grep -q "package: name='com.streammax.home.rc2'" /tmp/tvdetox-badging
           grep -q 'android.permission.INTERNET' /tmp/tvdetox-perms
           ! grep -Eq 'android.permission.(ACCESS_FINE_LOCATION|ACCESS_COARSE_LOCATION|ACCESS_BACKGROUND_LOCATION)' /tmp/tvdetox-perms
           unzip -l "$APK" | grep -q 'res/.*\.jpg'
@@ -75,11 +75,11 @@ jobs:
           grep -q 'android.intent.category.DEFAULT' streammax-home/tv-detox/app/src/main/AndroidManifest.xml
           ! grep -Rq 'Intent.ACTION_DELETE' streammax-home/tv-detox/app/src/main/java
           mkdir -p dist
-          cp "$APK" dist/StreamMax-Home-1.0.0-RC1.apk
+          cp "$APK" dist/StreamMax-Home-1.0.0-RC2.apk
           echo "RC auditado: HOME apenas selecionável (não assume padrão automaticamente), sem GPS, ROOT ou permissão de desinstalação"
       - uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-Home-1.0.0-RC1-${{ github.run_number }}
-          path: dist/StreamMax-Home-1.0.0-RC1.apk
+          name: StreamMax-Home-1.0.0-RC2-${{ github.run_number }}
+          path: dist/StreamMax-Home-1.0.0-RC2.apk
           if-no-files-found: error
           retention-days: 30
