@@ -17,6 +17,7 @@ on:
       - streammax/107-legacy-home-4k # teste 1.0.7 na base Legacy, sem publicacao OTA
       - fix/streammax-108-home-rename-keyboard # correção da renomeação, sem publicação automática
       - streammax/next-core-20261021 # proxima versao: abertura, pt-BR/pt-PT e estabilidade
+      - streammax/next-core-isolado-20261021 # APK independente para testar sem atualizar a TCL
 
 permissions:
   contents: read
@@ -219,15 +220,24 @@ jobs:
           apk=(legacy-source/build/android/*-android.apk)
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$aapt"
-          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv'"
+          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv.experimental'"
           "$aapt" dump badging "${apk[0]}" | grep -Fq "application-label:'StreamMax'"
-          echo "OK: app StreamMax verificado por package name e rotulo visivel."
+          # O alias do launcher experimental tem nome StreamMax Teste.
+          grep -Fq 'android:label="StreamMax Teste"' legacy-source/android/app/src/main/AndroidManifest.xml
+          echo "OK: pacote experimental isolado de com.streammax.tv e launcher distinto."
           {
             printf 'Projeto: StreamMax Legacy - TCL\n'
             printf 'Branch: %s\n' "$GITHUB_REF_NAME"
             printf 'Commit: %s\n' "$GITHUB_SHA"
             printf 'GitHub Actions run: %s\n' "$GITHUB_RUN_ID"
-            printf 'Android package: com.streammax.tv\n'
+            printf 'Android package: com.streammax.tv.experimental\n'
+            printf 'Instalacao: lado a lado (NAO atualiza com.streammax.tv)\n'
+            if [ -s legacy-source/art/marcas/streammax_abertura.mp4 ]; then
+              unzip -Z1 "${apk[0]}" | grep -Fxq 'assets/streammax_abertura.mp4' || { echo '::error::MP4 ausente no APK'; exit 1; }
+              printf 'Video de abertura: incluído\n'
+            else
+              printf 'Video de abertura: pendente de upload do MP4 aprovado\n'
+            fi
             printf 'Base: legacy-source (Android C/SDL e Media3)\n'
             printf 'RC1 assinada. Compatibilidade Philips ainda nao validada em aparelho real.\n'
           } > legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
@@ -235,7 +245,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-RC1-Assinada-${{ github.run_number }}
+          name: StreamMax-RC1-Isolada-${{ github.run_number }}
           path: |
             legacy-source/build/android/*-android.apk
             legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
