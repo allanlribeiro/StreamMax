@@ -1443,13 +1443,12 @@ public class MainActivity extends Activity {
     // that Android 9 refuses to draw ("Canvas: trying to draw too large bitmap"); this also saves RAM.
     private Drawable fit(Drawable d, int w, int h) {
         try {
-            Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             int iw = d.getIntrinsicWidth(), ih = d.getIntrinsicHeight();
             if (iw == w && ih == h && d instanceof BitmapDrawable) {
                 // Package already supplies the exact-size bitmap; don't allocate/copy it.
-                b.recycle();
                 return d;
             }
+            Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             if (iw <= 0 || ih <= 0) { iw = w; ih = h; }
             float s = Math.max((float) w / iw, (float) h / ih);
             int dw = Math.round(iw * s), dh = Math.round(ih * s);
