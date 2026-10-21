@@ -23,7 +23,7 @@
 // o alvo Tizen (WASM) precisa pular exatamente os mesmos. Nomear a condicao
 // evita ter de lembrar de dois simbolos em cada ponto - sem isto o primeiro
 // build para o navegador ainda tentava abrir libwayland-client.so.0.
-#if defined(__APPLE__) || defined(NV_LINUX_DESKTOP) || defined(__EMSCRIPTEN__) || defined(NV_TPK) || defined(NV_ANDROID)
+#if defined(__APPLE__) || defined(NV_LINUX_DESKTOP) || defined(NV_WINDOWS_DESKTOP) || defined(__EMSCRIPTEN__) || defined(NV_TPK) || defined(NV_ANDROID)
 #define NV_SEM_WEBOS 1
 #endif
 #ifdef NV_ANDROID
@@ -37,7 +37,7 @@
 // SIGTERM tratado pelo app: webOS e desktop (Mac/Linux). No .tpk o host .NET e
 // dono do sinal, no Android o sistema mata sem SIGTERM util e no Tizen/WASM nao
 // ha sinal. Os desktops entram para o handler ser exercitavel por teste no Mac.
-#if !defined(__EMSCRIPTEN__) && !defined(NV_TPK) && !defined(NV_ANDROID)
+#if !defined(__EMSCRIPTEN__) && !defined(NV_TPK) && !defined(NV_ANDROID) && !defined(NV_WINDOWS_DESKTOP)
 #define NV_SINAL_TERMINAR 1
 #include <signal.h>
 #endif
@@ -223,7 +223,7 @@ static void aoSinalTerminar(int sig) {
 // processo ocupa de verdade na TV (a LG tem 2,2 GB e 860 MB livres). Zero
 // onde nao ha /proc (Emscripten tem o [mem] proprio).
 static double rssMB(void) {
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || defined(NV_WINDOWS_DESKTOP)
   return 0.0;
 #else
   FILE *f = fopen("/proc/self/statm", "r");
