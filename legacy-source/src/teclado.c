@@ -517,6 +517,59 @@ int teclado_teste_camada(int cam, int cx) {
 
 void teclado_aceitar_utf8(int liga) { aceitaUtf8 = liga != 0; }
 
+#ifdef NV_WINDOWS_DESKTOP
+// A grade continua disponivel, mas qualquer modal pode receber texto do
+// teclado fisico, inclusive layouts PT-BR/ABNT2 e colagem Ctrl+V.
+static int winTecladoTudo;
+static int winTecladoDigitou;
+static void winTecladoAnexar(const char *src) {
+  const char *permitidos = alfa();
+  if (!src) return;
+  if (winTecladoTudo) {
+    memset(texto, 0, (size_t)n);
+    n = 0;
+    winTecladoTudo = 0;
+  }
+  while (*src && n < maxN) {
+    unsigned char c = (unsigned char)*src;
+    if (c >= 32 && c < 127) {
+      char ch = (char)c;
+      if (!strchr(permitidos, ch)) {
+        if (isupper(c) && strchr(permitidos, tolower(c))) ch = (char)tolower(c);
+        else if (islower(c) && strchr(permitidos, toupper(c))) ch = (char)toupper(c);
+        else { src++; continue; }
+      }
+      texto[n++] = ch;
+      src++;
+    } else if (c >= 0x80 && aceitaUtf8) {
+      int tamanho = utf8Tam((const unsigned char *)src), i;
+      if (!tamanho || n + tamanho > maxN) { src++; continue; }
+      for (i = 1; i < tamanho; i++) {
+        if (!src[i] || ((unsigned char)src[i] & 0xc0) != 0x80) break;
+      }
+      if (i != tamanho) { src++; continue; }
+      memcpy(texto + n, src, (size_t)tamanho);
+      n += tamanho;
+      src += tamanho;
+    } else src++;
+  }
+  texto[n] = 0;
+  winTecladoDigitou = 1;
+}
+static void winTecladoApagar(void) {
+  if (winTecladoTudo) {
+    memset(texto, 0, (size_t)n);
+    n = 0;
+    winTecladoTudo = 0;
+  } else if (n) {
+    do { n--; } while (n && ((unsigned char)texto[n] & 0xc0) == 0x80);
+    memset(texto + n, 0, strlen(texto + n));
+  }
+  winTecladoDigitou = 1;
+  texto[n] = 0;
+}
+#endif
+
 // Tamanho da sequencia UTF-8 VALIDA que comeca em s (2 a 4), ou 0.
 static int utf8Tam(const unsigned char *s) {
   int l = s[0] >= 0xF0 && s[0] < 0xF5 ? 4 : s[0] >= 0xE0 ? 3 : s[0] >= 0xC2 && s[0] < 0xE0 ? 2 : 0, i;
@@ -555,6 +608,11 @@ void teclado_abrir_com(const char *titulo, const char *dica, int max,
   mascarar = 0; tipoIme = ST_IME_TEXTO; ehSenha = 0; semCel = 0; pendIme = 0; aceitaUtf8 = 0;
   teMontar(0);
   aberto = 1;
+#ifdef NV_WINDOWS_DESKTOP
+  winTecladoTudo = 0;
+  winTecladoDigitou = 0;
+  SDL_StartTextInput();
+#endif
   fileira = 0; coluna = 0; colunaAntes = 0;
   voltaF = voltaC = 0; barraAntes = -1;
   medido = 0;
@@ -619,6 +677,11 @@ static void definirDoSistema(const char *t) {
 
 static void fechar(int r) {
   aberto = 0;
+#ifdef NV_WINDOWS_DESKTOP
+  SDL_StopTextInput();
+  winTecladoTudo = 0;
+  winTecladoDigitou = 0;
+#endif
   pendIme = 0;
   celb_fechar_dono(CELB_TECLADO);
   resultado = r;
@@ -783,6 +846,33 @@ static void aplicar(void) {
 
 static void teclado_evento_(const SDL_Event *e) {
   SDL_Keycode k;
+#ifdef NV_WINDOWS_DESKTOP
+  if (aberto) {
+    if (e->type == SDL_TEXTINPUT) {
+      winTecladoAnexar(e->text.text);
+      return;
+    }
+    if (e->type == SDL_KEYDOWN) {
+      SDL_Keycode tecla = e->key.keysym.sym;
+      if ((e->key.keysym.mod & KMOD_CTRL) && tecla == SDLK_a) {
+        winTecladoTudo = 1;
+        winTecladoDigitou = 1;
+        return;
+      }
+      if ((e->key.keysym.mod & KMOD_CTRL) && tecla == SDLK_v) {
+        char *clip = SDL_GetClipboardText();
+        if (clip) { winTecladoAnexar(clip); SDL_free(clip); }
+        return;
+      }
+      if (tecla == SDLK_BACKSPACE) { winTecladoApagar(); return; }
+      if ((tecla == SDLK_RETURN || tecla == SDLK_KP_ENTER || tecla == SDLK_TAB)
+          && winTecladoDigitou && !e->key.repeat) {
+        if (n > 0 || abriuComValor || confirmarVazio) fechar(TECLADO_PRONTO);
+        return;
+      }
+    }
+  }
+#endif
   if (aberto && st_evento(e)) return;   // teclado da TV: valor inteiro por sistexto
   if (!aberto || e->type != SDL_KEYDOWN) return;
   k = e->key.keysym.sym;
