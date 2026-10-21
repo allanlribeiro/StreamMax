@@ -229,9 +229,17 @@ int streammax_iptv_evento(const SDL_Event *e) {
   int n = 0;
   if (!modo || e->type != SDL_KEYDOWN) return 0;
   k = e->key.keysym.sym;
-  if (k == SDLK_LEFT) { if (focoCol > 0) focoCol--; return 1; }
+  if (k == SDLK_LEFT) {
+    if (focoCol == 1 && focoItem % 4 != 0) {
+      focoItem--; serieAberta = 0; focoEp = 0;
+    } else if (focoCol > 0) focoCol--;
+    return 1;
+  }
   if (k == SDLK_RIGHT) {
-    if (focoCol < (modo == 2 && serieAberta ? 2 : 1)) focoCol++;
+    if (focoCol == 1 && !serieAberta && focoItem % 4 != 3 &&
+        focoItem + 1 < itensNaCategoria()) {
+      focoItem++;
+    } else if (focoCol < (modo == 2 && serieAberta ? 2 : 1)) focoCol++;
     return 1;
   }
   if (k == SDLK_UP || k == SDLK_DOWN) {
@@ -240,7 +248,9 @@ int streammax_iptv_evento(const SDL_Event *e) {
       n = 1 + (visivel ? visivel->nCategorias : 0);
       focoCategoria = streammax_tv_limitar(focoCategoria + d, n);
     } else if (focoCol == 1) {
-      focoItem = streammax_tv_limitar(focoItem + d, itensNaCategoria());
+      // A grade de filmes e series navega por linhas, preservando a coluna.
+      int proximo = focoItem + d * 4;
+      if (proximo >= 0 && proximo < itensNaCategoria()) focoItem = proximo;
       serieAberta = 0; focoEp = 0;
     } else {
       focoEp = streammax_tv_limitar(focoEp + d, visivel ? visivel->nEpisodios : 0);
@@ -293,7 +303,6 @@ void streammax_iptv_desenhar(float a, int focoAba) {
   const float detW = NV_TELA_W - NV_MARGEM_X - detX;
   const float ry = y + 55.0f, rh = VOD_LINHA_H - 6.0f;
   const int firstCat = streammax_tv_primeira(focoCategoria,VOD_LINHAS,visivel ? visivel->nCategorias+1 : 1);
-  const int firstItem = streammax_tv_primeira(focoItem,VOD_LINHAS,visivel ? visivel->nItens : 0);
   const int firstEp = streammax_tv_primeira(focoEp,6,visivel ? visivel->nEpisodios : 0);
   GfxRect full = {0,0,NV_TELA_W,NV_TELA_H};
   char titulo[200], info[220];
@@ -316,15 +325,27 @@ void streammax_iptv_desenhar(float a, int focoAba) {
     rotulo(ci==0?"Todas as categorias":visivel->categorias[ci-1].nome,
            r.x+13,r.y+22,r.w-25,ci==focoCategoria,a);
   }
-  if (visivel) for (int j=0;j<VOD_LINHAS && firstItem+j<visivel->nItens;j++) {
-    int i=firstItem+j;
-    GfxRect r={itemX+9,ry+j*VOD_LINHA_H,itemW-18,rh};
-    faixa(r,i==focoItem&&focoCol==1,a);
-    rotulo(visivel->itens[i].nome,r.x+18,r.y+16,r.w-32,i==focoItem,a);
-    if (visivel->itens[i].ano>0) {
-      snprintf(info,sizeof info,"%d · IPTV",visivel->itens[i].ano);
-      TxtLinha meta=txt_linha_corta(TXT_DET_META2,info,140,174,218,255,r.w-36);
-      txt_desenhar_alpha(meta,r.x+19,r.y+43,a);
+  // Grade leve: somente os 12 cards da pagina visivel sao desenhados.
+  // A renderizacao das capas sera integrada separadamente com cache limitado.
+  if (visivel) {
+    const int colunas = 4, linhas = 3;
+    const int primeiraLinha = (focoItem / colunas / linhas) * linhas;
+    const float largura = (itemW - 36.0f) / colunas;
+    const float altura = 218.0f;
+    for (int j = 0; j < colunas * linhas; j++) {
+      int i = primeiraLinha * colunas + j;
+      int coluna = j % colunas, linha = j / colunas;
+      GfxRect card;
+      if (i >= visivel->nItens) break;
+      card = (GfxRect){itemX + 9 + coluna * largura, ry + linha * (altura + 10.0f),
+                       largura - 7.0f, altura};
+      faixa(card, i == focoItem && focoCol == 1, a);
+      rotulo(visivel->itens[i].nome, card.x + 9, card.y + 150,
+             card.w - 18, i == focoItem, a);
+      if (visivel->itens[i].ano > 0) {
+        snprintf(info, sizeof info, "%d · IPTV", visivel->itens[i].ano);
+        rotulo(info, card.x + 9, card.y + 181, card.w - 18, 0, a);
+      }
     }
   }
   if (carregando || atualizarPendente) {
