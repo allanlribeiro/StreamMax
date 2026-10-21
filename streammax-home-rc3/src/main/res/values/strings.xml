@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_redirect_accessibility_label">StreamMax Home — tela inicial</string>
+    <string name="home_redirect_accessibility_description">Com sua autorização, abre o StreamMax Home quando o launcher do Google TV aparecer. Você pode desligar esse recurso a qualquer momento.</string>
+    <string name="home_redirect_toggle">Usar StreamMax como tela inicial</string>
+    <string name="home_redirect_accessibility_button">Autorizar nas configurações de acessibilidade</string>
+</resources>
