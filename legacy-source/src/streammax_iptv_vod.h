@@ -17,9 +17,10 @@ void streammax_iptv_sessao(void);
 int  streammax_iptv_modo(void);             // 0=ao vivo, 1=filmes, 2=series
 void streammax_iptv_mudar(int modo);
 int  streammax_iptv_evento(const SDL_Event *e); // so modo VOD
+int  streammax_iptv_categoria_focada(void);  // controle remoto acessa abas pela esquerda
 void streammax_iptv_atualizar(void);
-void streammax_iptv_desenhar(float alfa);
-void streammax_iptv_abas(float alfa, int foco);
+void streammax_iptv_desenhar(float alfa, int focoAba);
+void streammax_iptv_abas(float alfa, int focoAba); // -1=sem foco, 0..2=aba
 int  streammax_iptv_pediu(StreamMaxVodPedido *out);
 
 #endif
