@@ -31,4 +31,14 @@ require("pthread_mutex_lock(&travaRede)" in api,
         "Serialização de chamadas Xtream ausente")
 require("while (p && n < cap)" in api,
         "Parser Xtream perdeu o limite de cópia")
+require("tex_obter_larg(visivel->itens[i].poster, card.w - 12.0f)" in ui,
+        "Capas IPTV devem usar decode proporcional ao card no cache existente")
+require("for (int j = 0; j < colunas * linhas; j++)" in ui,
+        "Capas devem ser solicitadas apenas para a janela visivel")
+require("const int colunas = 4, linhas = 3;" in ui,
+        "Orcamento da janela visivel deve continuar em 12 cards")
+require("const int maxPrimeiraLinha = totalLinhas > linhas ? totalLinhas - linhas : 0;" in ui,
+        "Rolagem nao deve ultrapassar a ultima janela")
+require("if (d > 0 && proximo >= itensNaCategoria()" in ui,
+        "Navegacao deve alcancar a ultima fileira incompleta")
 print("OK: limites IPTV, aviso de truncamento, lazy loading e validação preservados")
