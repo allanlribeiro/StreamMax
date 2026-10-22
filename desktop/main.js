@@ -40,6 +40,8 @@ ipcMain.handle('streammax:open-video', async () => {
   return response.canceled ? null : pathToFileURL(response.filePaths[0]).href;
 });
 ipcMain.handle('streammax:auth-status',()=>authService.status());
+ipcMain.handle('streammax:auth-restore',()=>authService.restore());
+ipcMain.handle('streammax:auth-signout',()=>authService.signOut());
 ipcMain.handle('streammax:auth-start',()=>authService.start());
 ipcMain.handle('streammax:auth-poll',()=>authService.poll());
 ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
