@@ -21,7 +21,7 @@ Portar **a experiência do Android**, mantendo tela inicial, ordem dos catálogo
 - Fontes com URL direta HTTP(S) podem ser abertas em **janela externa do mpv**, usando uma conexão IPC Windows com nome aleatório. A URL assinada não aparece na linha de comando nem é devolvida ao JavaScript da interface.
 - Na tela de detalhes, selecione uma fonte direta e clique em **Reproduzir no mpv**. Na primeira utilização, escolha um `mpv.exe` confiável com **Configurar mpv.exe**. O caminho é salvo em `userData/mpv-settings.json`; não guardamos URL nem token nesse arquivo.
 - O mpv **não vem embutido** no instalador atual. Precisa ser instalado/obtido separadamente pelo usuário até que haja uma solução de empacotamento com licenças e dependências verificadas.
-- Funções iniciadas: pausa/retomada, salto de ±10s, alternância de faixa de áudio, legenda e visibilidade de legenda. A sessão continua em uma janela própria do mpv; a integração de progresso, legendas pt-BR/pt-PT, configurações de áudio e reprodução integrada ainda não está concluída.
+- Funções iniciadas: pausa/retomada, salto de ±10s, alternância de faixa de áudio, legenda e visibilidade de legenda. Metadados reais de faixas alimentam seletores separados de áudio e legenda; os idiomas pt-BR, pt-PT e português sem variante conhecida são diferenciados. A sessão continua em uma janela própria do mpv; a integração de progresso, legendas pt-BR/pt-PT, configurações de áudio e reprodução integrada ainda não está concluída.
 - Apenas streams com URL direta são aceitos nessa primeira etapa; fontes torrent/infoHash e protocolos não suportados são listados como indisponíveis para reprodução direta.
 
 ## O que ainda não está pronto
