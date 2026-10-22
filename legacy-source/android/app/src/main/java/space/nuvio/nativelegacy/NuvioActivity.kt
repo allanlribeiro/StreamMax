@@ -68,7 +68,6 @@ class NuvioActivity : SDLActivity() {
     override fun getLibraries(): Array<String> = arrayOf("SDL2", "main")
 
     private var camadaVideo: FrameLayout? = null
-    private var aberturaStreamMax: StreamMaxAberturaVideo? = null
     private var touchInsetLeft = 0
     private var touchInsetTop = 0
     private var touchInsetRight = 0
@@ -208,10 +207,6 @@ class NuvioActivity : SDLActivity() {
         // restaura um savedInstanceState ou a interface foi configurada como
         // mobile numa Google TV. Antes ela era pulada silenciosamente nesses
         // cenarios embora o MP4 estivesse presente no APK.
-        if (!mBrokenLibraries) {
-            Log.i("StreamMaxAbertura", "iniciando video de abertura: mobile=$interfaceMobile, restaurado=${savedInstanceState != null}")
-            aberturaStreamMax = StreamMaxAberturaVideo(this, mLayout).also { it.iniciar() }
-        }
     }
 
     // SDL and video fill the window, including the camera cutout edges. Keeping
@@ -700,8 +695,6 @@ class NuvioActivity : SDLActivity() {
     override fun onPause() {
         trimResumida = false
         checkpoint()
-        // Nunca deixar o video da vinheta rodando em background.
-        aberturaStreamMax?.encerrar("background")
         val ini = SystemClock.elapsedRealtime()
         vigia?.frente(false)
         NvPlayer.pausarPeloSistema()
@@ -711,8 +704,6 @@ class NuvioActivity : SDLActivity() {
     }
 
     override fun onDestroy() {
-        aberturaStreamMax?.encerrar("destroy")
-        aberturaStreamMax = null
         registroDownload.fechar()
         vigia?.parar()
         fecharRede()
