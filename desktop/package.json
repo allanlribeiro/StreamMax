@@ -38,7 +38,8 @@
       "watch-progress-store.js",
       "playback-coordinator.js",
       "remote-progress-client.js",
-      "server-config.js"
+      "server-config.js",
+      "mpv-discovery.js"
     ],
     "win": {
       "target": [
