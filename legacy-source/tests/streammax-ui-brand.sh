@@ -37,11 +37,12 @@ leg = Path("src/legendasui.c").read_text(encoding="utf-8")
 fontes = Path("src/streams.c").read_text(encoding="utf-8")
 faixas = Path("src/faixas.c").read_text(encoding="utf-8")
 assert 'if (c->painelEsquerdo) {' in ilha
-assert 'gfx_cor(R, raio, 0.015f, 0.022f, 0.038f, 0.78f * cenA);' in ilha
+assert 'gfx_cor(R, raio, 0.015f, 0.022f, 0.038f, 0.96f * cenA);' in ilha
 assert 'const int seletorLegendas = c->w > 1200.0f;' in ilha
-assert 'desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);' in leg
-assert 'desenharEstiloResumo(' in leg
-assert 'float sep1 = ' in leg and 'float sep2 = ' in leg
+assert 'if (emIdiomas) {' in leg
+assert 'desenharIdiomas(x0, y, w, a);' in leg
+assert 'desenharEstiloResumo(' not in leg
+assert 'float sep1 = ' not in leg and 'float sep2 = ' not in leg
 assert 'gfx_cor(corpo,FOLHA_RAIO_IL/corpo.h,.015f,.022f,.038f,.78f*anim);' in fontes
 assert 'player_aberto() ? 820.0f : NV_TELA_W * 0.60f' in fontes
 assert 'float x=NV_TELA_W-FOLHA_W-FOLHA_MARGEM' in fontes

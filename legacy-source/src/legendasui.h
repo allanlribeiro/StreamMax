@@ -42,6 +42,9 @@ void  legendasui_reiniciar(void);
 // Tests (#99 pointer): focused row index (-1 = panel closed), and the "Usar
 // como" slot (0 primary, 1 second) and the chosen AutoSync action.
 int   legendasui_teste_foco(int *alvo, int *syncAcao);
+int   legendasui_teste_pagina(int *idiomas);
+const char *legendasui_teste_chave(void);
+int   legendasui_teste_focar_chave(const char *chave);
 
 // --- second subtitle on screen, called by player.c -----------------------------
 // Geometry is passed explicitly by the player (real 1920x1080 coordinates).

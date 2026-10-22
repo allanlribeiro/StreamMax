@@ -1,8 +1,7 @@
 // Folha de AUDIO E LEGENDA, aberta pelos icones do player.
 //
-// Duas colunas num painel so, como no aparelho: a esquerda o audio, a direita
-// a legenda. Separar em duas telas obrigaria a sair e voltar para conferir o
-// par escolhido, que e justamente o que se quer comparar.
+// Paineis separados, cada um aberto pelo proprio botao do player.
+// Legendas abre somente as faixas; idioma, aparencia e sincronia sao sub-telas.
 //
 // A lista de legendas junta as EMBUTIDAS no arquivo (o pipeline as enxerga) com
 // as do OpenSubtitles (baixadas pelo addon). Sao coisas diferentes na origem e

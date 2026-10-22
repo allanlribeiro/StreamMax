@@ -1,0 +1,49 @@
+name: StreamMax separate audio and subtitle panel checks
+on:
+  push:
+    branches: [feature/streammax-audio-subtitle-panels]
+    paths:
+      - 'legacy-source/src/**'
+      - 'legacy-source/tests/**'
+      - '.github/workflows/streammax-track-panels-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libgles2-mesa-dev libegl1-mesa-dev zlib1g-dev xvfb xauth libgl1-mesa-dri libegl-mesa0 libgles2 python3-pil
+      - name: UI navigation integration test
+        run: bash legacy-source/tests/streammax-track-panels.sh
+      - name: Render the actual menus with simulated tracks
+        working-directory: legacy-source
+        run: |
+          mkdir -p /tmp/streammax-menu-preview
+          NUVIO_DADOS=/tmp/streammax-menu-preview STREAMMAX_PANEL_SCREENSHOTS=1 LIBGL_ALWAYS_SOFTWARE=1 SDL_VIDEO_X11_FORCE_EGL=1 xvfb-run -a -s "-screen 0 1920x1080x24" build/tests/track-panels
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          for path in Path('build/tests').glob('*.bmp'):
+              Image.open(path).save(path.with_suffix('.png'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-new-menus-preview
+          path: legacy-source/build/tests/*.png
+          if-no-files-found: error
+      - name: Preserve track regions and player behavior
+        run: |
+          bash legacy-source/tests/streammax-source-ptbr.sh
+          bash legacy-source/tests/streammax-ui-brand.sh
+          bash legacy-source/tests/streammax-updater.sh
+          python3 legacy-source/tests/streammax-111-image-preview-check.py
+          python3 migration/check-player-original-engine.py
+      - name: Full native compilation
+        working-directory: legacy-source
+        run: bash tools/linux.sh --build

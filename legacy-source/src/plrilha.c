@@ -307,8 +307,8 @@ static void cartaoCentro(Uint32 agora) {
     GfxRect R = { (NV_TELA_W - w) * 0.5f, (NV_TELA_H - h) * 0.5f, w, h };
     GfxRect F = { (NV_TELA_W - c->w) * 0.5f, (NV_TELA_H - c->h) * 0.5f, c->w, c->h };
     if (c->painelEsquerdo) {
-      // O seletor de legendas de tres colunas usa um overlay amplo e central,
-      // como o Nuvio original. A folha de audio (mais estreita) nao muda.
+      // Appearance is its own wide screen. Audio and subtitle track lists
+      // use independent, narrower side panels.
       const int seletorLegendas = c->w > 1200.0f;
       const float margemBaixo = seletorLegendas ? 30.0f : 76.0f;
       const float topoMin = 36.0f;
@@ -338,7 +338,7 @@ static void cartaoCentro(Uint32 agora) {
       // continua visível e os painéis mantêm a mesma identidade visual.
       gfx_sombra_sob((GfxRect){ R.x - 12.0f, R.y - 4.0f, R.w + 24.0f, R.h + 20.0f },
                      1.0f, 0, 0.5f, 0, 0, 0, 0.32f * cenA, R, raio * R.h, cenA);
-      gfx_cor(R, raio, 0.015f, 0.022f, 0.038f, 0.78f * cenA);
+      gfx_cor(R, raio, 0.015f, 0.022f, 0.038f, 0.96f * cenA);
     } else {
       plrui_material(R, raio, c->modal, cenA);
     }
