@@ -15,10 +15,23 @@ test('keeps nonce private and allows cancelling the login attempt', async () => 
   };
   const service=createAuthService({endpoint:'https://example.org',publicKey:'public',redirectUrl:'https://example.org/login',transport});
   const challenge=await service.start();
-  assert.deepEqual(challenge,{userCode:'DISPLAY',verificationUrl:'https://example.org/verify'});
+  assert.deepEqual(challenge,{userCode:'DISPLAY',verificationUrl:'https://example.org/verify',legacy:false});
   assert.equal(service.status().pending,true);
   assert.equal(Object.hasOwn(challenge,'deviceNonce'),false);
   assert.ok(calls[0].body.p_device_nonce);
   assert.equal(service.cancel().pending,false);
   await assert.rejects(service.poll(),/Nenhum login pendente/);
+});
+
+test('falls back to legacy TV login only for an unavailable device RPC',async()=>{
+ const calls=[];
+ const transport=async(url)=>{
+   calls.push(url);
+   if(url.endsWith('/start_device_login_session'))return {ok:false,status:404,text:async()=> 'Could not find the function start_device_login_session'};
+   return {ok:true,json:async()=>[{code:'LEGACY',web_url:'https://example.org/legacy'}]};
+ };
+ const service=createAuthService({endpoint:'https://example.org',publicKey:'public',redirectUrl:'https://example.org/login',transport});
+ const challenge=await service.start();
+ assert.deepEqual(challenge,{userCode:'LEGACY',verificationUrl:'https://example.org/legacy',legacy:true});
+ assert.equal(calls.length,2);
 });
