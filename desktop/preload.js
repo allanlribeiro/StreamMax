@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('streammaxDesktop', Object.freeze({
   selectMpv: () => ipcRenderer.invoke('streammax:player-select'),
   playSource: (id,metadata) => ipcRenderer.invoke('streammax:player-play',id,metadata),
   listWatchProgress: () => ipcRenderer.invoke('streammax:progress-list'),
+  listRemoteProgress: () => ipcRenderer.invoke('streammax:progress-remote'),
   playerProgress: () => ipcRenderer.invoke('streammax:player-progress'),
   playerCommand: command => ipcRenderer.invoke('streammax:player-command',command),
   playerTrack: (type,id) => ipcRenderer.invoke('streammax:player-track',type,id),
