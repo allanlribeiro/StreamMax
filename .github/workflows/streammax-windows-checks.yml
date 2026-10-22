@@ -27,7 +27,8 @@ jobs:
           node --check catalog-contract.js
           node --check auth-flow.js
           node --check auth-rpc.js
-          node --test tests/*.test.js
+          node --check auth-service.js
+          node --test
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
