@@ -1,0 +1,146 @@
+name: Publish StreamMax 1.0.11 OTA — TCL-approved static S
+
+# Reuse the EXACT signed APK tested in the TCL. Never rebuild it.
+# The same-version draft is replaced only after artifact, signature,
+# Android package, version and integrity checks have passed.
+on:
+  push:
+    branches:
+      - release/streammax-1.0.11-ota-static-s-approved
+    paths:
+      - '.github/workflows/publish-streammax-111-static-s.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: streammax-111-static-s-ota
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Validate approved TCL APK and publish OTA
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_SHA: 32fb4b56265953005fa1745aefc98eea24458a11
+      APPROVED_RUN: '39788708347'
+      APPROVED_ARTIFACT_ID: '12430896298'
+      ARTIFACT_NAME: StreamMax-1.0.11-static-S-test
+      EXPECTED_SHA256: a81751139d7c1f763bea26923f4cd8f37c76e103731913dba4c1ad107d4837d9
+      DRAFT_RELEASE_ID: '420608950'
+      OLD_DRAFT_SHA256: sha256:6d76caf13c56a922842c7ad22863c99df65797904f19968fc859818905a2f978
+      RELEASE_TAG: v1.0.11
+
+    steps:
+      - name: Checkout release metadata only
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard approved source, run, artifact and existing draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "allanlribeiro/StreamMax"
+          test "$GITHUB_REF_NAME" = "release/streammax-1.0.11-ota-static-s-approved"
+          test -s RELEASE-STREAMMAX-1.0.11-OTA.md
+          git cat-file -e "$APPROVED_SHA^{commit}"
+          test -z "$(git diff --name-only "$APPROVED_SHA" HEAD -- legacy-source migration desktop)"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$APPROVED_RUN" --jq '.head_sha')" = "$APPROVED_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$APPROVED_RUN" --jq '.conclusion')" = "success"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$APPROVED_RUN/artifacts" --jq '.artifacts[] | select(.name == "StreamMax-1.0.11-static-S-test" and .expired == false) | .id')" = "$APPROVED_ARTIFACT_ID"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')" = "v1.0.9"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" --jq '.draft')" = "true"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" --jq '.tag_name')" = "$RELEASE_TAG"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" --jq '.assets[] | select(.name == "StreamMax-1.0.11-android.apk") | .digest')" = "$OLD_DRAFT_SHA256"
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Version tag exists already; do not replace published releases."
+            exit 1
+          fi
+
+      - name: Download the exact successful signed Android artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/approved dist/baseline dist/release
+          gh run download "$APPROVED_RUN" --repo "$GITHUB_REPOSITORY" \
+            --name "$ARTIFACT_NAME" --dir dist/approved
+          test -s dist/approved/StreamMax-1.0.11-static-S-android.apk
+          test -s dist/approved/STREAMMAX-BUILD-INFO.txt
+          grep -Fqx "Commit: $APPROVED_SHA" dist/approved/STREAMMAX-BUILD-INFO.txt
+          grep -Fqx "GitHub Actions run: $APPROVED_RUN" dist/approved/STREAMMAX-BUILD-INFO.txt
+          grep -Fqx 'Abertura: S original estatico, sem MediaPlayer ou MP4' dist/approved/STREAMMAX-BUILD-INFO.txt
+          test "$(sha256sum dist/approved/StreamMax-1.0.11-static-S-android.apk | cut -d ' ' -f1)" = "$EXPECTED_SHA256"
+          unzip -tq dist/approved/StreamMax-1.0.11-static-S-android.apk >/dev/null
+          gh release download v1.0.9 --repo "$GITHUB_REPOSITORY" \
+            --pattern 'StreamMax-1.0.9-android.apk' --dir dist/baseline
+          gh release download v1.0.9 --repo "$GITHUB_REPOSITORY" \
+            --pattern 'StreamMax-1.0.9-SHA256.txt' --dir dist/baseline
+          (cd dist/baseline && sha256sum -c StreamMax-1.0.9-SHA256.txt)
+
+      - name: Verify APK identity, higher version and official signing certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          bt="$ANDROID_HOME/build-tools/35.0.0"
+          if [[ ! -x "$bt/aapt" || ! -x "$bt/apksigner" ]]; then
+            sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+            test -n "$sdkmanager"
+            mkdir -p "$ANDROID_HOME/licenses"
+            printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+            "$sdkmanager" --sdk_root="$ANDROID_HOME" --install 'build-tools;35.0.0'
+          fi
+          apk=dist/approved/StreamMax-1.0.11-static-S-android.apk
+          old=dist/baseline/StreamMax-1.0.9-android.apk
+          "$bt/aapt" dump badging "$apk" > dist/new-badging.txt
+          "$bt/aapt" dump badging "$old" > dist/old-badging.txt
+          grep -q "^package: name='com.streammax.tv'" dist/new-badging.txt
+          grep -Fq "versionCode='20018'" dist/new-badging.txt
+          grep -q "^package: name='com.streammax.tv'" dist/old-badging.txt
+          newCert="$("$bt/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+          oldCert="$("$bt/apksigner" verify --print-certs "$old" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+          test -n "$newCert" && test "$newCert" = "$oldCert"
+          cp "$apk" dist/release/StreamMax-1.0.11-android.apk
+          cmp "$apk" dist/release/StreamMax-1.0.11-android.apk
+          (cd dist/release && sha256sum StreamMax-1.0.11-android.apk > StreamMax-1.0.11-SHA256.txt)
+          cp dist/approved/STREAMMAX-BUILD-INFO.txt dist/release/STREAMMAX-BUILD-INFO.txt
+          test "$(sha256sum dist/release/StreamMax-1.0.11-android.apk | cut -d ' ' -f1)" = "$EXPECTED_SHA256"
+
+      - name: Replace UNPUBLISHED draft assets with the approved APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" --jq '.draft')" = "true"
+          gh release upload "$RELEASE_TAG" \
+            dist/release/StreamMax-1.0.11-android.apk \
+            dist/release/StreamMax-1.0.11-SHA256.txt \
+            dist/release/STREAMMAX-BUILD-INFO.txt \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          release="repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID"
+          test "$(gh api "$release" --jq '.draft')" = "true"
+          test "$(gh api "$release" --jq '.assets[] | select(.name == "StreamMax-1.0.11-android.apk") | .digest')" = "sha256:$EXPECTED_SHA256"
+          test "$(gh api "$release" --jq '[.assets[].name] | index("StreamMax-1.0.11-SHA256.txt") != null')" = "true"
+          test "$(gh api "$release" --jq '[.assets[].name] | index("STREAMMAX-BUILD-INFO.txt") != null')" = "true"
+
+      - name: Publish tested candidate as latest official OTA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" --jq '.draft')" = "true"
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --draft=false --prerelease=false --latest \
+            --target "$APPROVED_SHA" \
+            --title "StreamMax 1.0.11 — S estático aprovado na TCL" \
+            --notes-file RELEASE-STREAMMAX-1.0.11-OTA.md
+
+      - name: Confirm official updater sees the exact APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')" = "$RELEASE_TAG"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" --jq '.draft')" = "false"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" --jq '.assets[] | select(.name == "StreamMax-1.0.11-android.apk") | .digest')" = "sha256:$EXPECTED_SHA256"
+          echo "Published official OTA: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"
