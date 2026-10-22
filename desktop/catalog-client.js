@@ -85,12 +85,13 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
         const url=manifestUrl(item.url);
         // No Authorization or Supabase API key on addon requests.
         const m=await readJson(url,{headers:{Accept:'application/json'}},addonTransport);
-        if(!m||!Array.isArray(m.catalogs))throw new Error('Invalid addon manifest');
+        if(!m||typeof m!=='object')throw new Error('Invalid addon manifest');
+        const descriptors=Array.isArray(m.catalogs)?m.catalogs:[];
         entry.name=entry.name||String(m.name||'');
         const supportsStream=Array.isArray(m.resources)&&m.resources.some(r=>r==='stream'||(r&&typeof r==='object'&&r.name==='stream'));
         if(supportsStream)nextProviders.push({name:entry.name,baseUrl:item.url,enabled:true,supportsStream:true});
-        for(let j=0;j<m.catalogs.length;j++){
-          const desc=m.catalogs[j];
+        for(let j=0;j<descriptors.length;j++){
+          const desc=descriptors[j];
           if(!desc||typeof desc.id!=='string'||typeof desc.type!=='string')continue;
           if(desc.showInHome===false)continue;
           const key=identifier+'-catalog-'+j;
@@ -138,10 +139,12 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
     hasMore:item.supportsSkip&&body.metas.length>0,nextSkip:skip+body.metas.length};
  }
  async function meta(key,type,id){
+  const myGeneration=generation;
   const row=catalogs.get(key);
   if(!row)throw new Error('Unknown catalog');
   const url=metaUrl(row.baseUrl,type,id);
   const result=await readJson(url,{headers:{Accept:'application/json'}},addonTransport);
+  if(myGeneration!==generation)throw new Error('Metadata request cancelled');
   const m=result&&result.meta;
   if(!m||typeof m!=='object'||typeof m.id!=='string')throw new Error('Metadata unavailable');
   const videoList=Array.isArray(m.videos)?m.videos:[];
