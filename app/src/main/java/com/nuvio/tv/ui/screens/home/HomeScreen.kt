@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Divider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
@@ -50,6 +51,8 @@ import com.nuvio.tv.domain.model.LibraryListTab
 import com.nuvio.tv.domain.model.localizedMembershipTitle
 import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.domain.model.legacyKey
+import com.nuvio.tv.domain.model.stableKey
 import com.nuvio.tv.ui.components.ErrorState
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.LocalStartupLoadingState
@@ -69,7 +72,14 @@ import kotlin.math.roundToInt
 
 private data class HomePosterOptionsTarget(
     val item: MetaPreview,
-    val addonBaseUrl: String
+    val addonBaseUrl: String,
+    val catalogKey: String? = null,
+    val catalogTitle: String? = null
+)
+
+private data class HomeRowRenameTarget(
+    val catalogKey: String,
+    val catalogTitle: String
 )
 
 private const val HOME_STABLE_GATE_TIMEOUT_MS = 5_000L
@@ -132,6 +142,7 @@ fun HomeScreen(
     // Track that catalog loading has started at least once (isLoading went true→false).
     var catalogLoadingStarted by rememberSaveable { mutableStateOf(false) }
     var posterOptionsTarget by remember { mutableStateOf<HomePosterOptionsTarget?>(null) }
+    var renameHomeRowTarget by remember { mutableStateOf<HomeRowRenameTarget?>(null) }
 
     LaunchedEffect(uiState.homeLayout) {
         if (uiState.homeLayout != HomeLayout.MODERN) {
@@ -152,9 +163,24 @@ fun HomeScreen(
     val isCatalogItemWatched: (MetaPreview) -> Boolean = remember {
         { item: MetaPreview -> latestMovieWatchedStatus.value[homeItemStatusKey(item.id, item.apiType)] == true }
     }
-    val onCatalogItemLongPress: (MetaPreview, String) -> Unit = remember {
+    val latestHomeRows by androidx.compose.runtime.rememberUpdatedState(uiState.catalogRows)
+    val latestHomeLayout by androidx.compose.runtime.rememberUpdatedState(uiState.homeLayout)
+    val onCatalogItemLongPress: (MetaPreview, String) -> Unit = remember(viewModel) {
         { item, addonBaseUrl ->
-            posterOptionsTarget = HomePosterOptionsTarget(item, addonBaseUrl)
+            // Only editable catalog rows: never rename Continue Watching or system rows.
+            val focusedKey = viewModel.liveFocusedRowKey
+            val focusedCatalog = if (latestHomeLayout == HomeLayout.MODERN) {
+                latestHomeRows.firstOrNull { row ->
+                    row.stableKey() == focusedKey &&
+                        row.items.any { it.id == item.id && it.apiType == item.apiType }
+                }
+            } else null
+            posterOptionsTarget = HomePosterOptionsTarget(
+                item = item,
+                addonBaseUrl = addonBaseUrl,
+                catalogKey = focusedCatalog?.legacyKey(),
+                catalogTitle = focusedCatalog?.catalogName
+            )
             viewModel.refreshPosterLibraryStatus(item)
         }
     }
@@ -464,6 +490,12 @@ fun HomeScreen(
             isWatched = movieWatchedStatus[statusKey] == true,
             isWatchedPending = statusKey in uiState.movieWatchedPending,
             onDismiss = { posterOptionsTarget = null },
+            onRenameRow = selectedPoster.catalogKey?.let { key ->
+                {
+                    posterOptionsTarget = null
+                    renameHomeRowTarget = HomeRowRenameTarget(key, selectedPoster.catalogTitle.orEmpty())
+                }
+            },
             onDetails = {
                 onNavigateToDetail(item.id, item.apiType, selectedPoster.addonBaseUrl)
                 posterOptionsTarget = null
@@ -484,6 +516,18 @@ fun HomeScreen(
                 }
                 posterOptionsTarget = null
             }
+        )
+    }
+
+    val pendingRename = renameHomeRowTarget
+    if (pendingRename != null) {
+        HomeRenameCatalogRowDialog(
+            currentTitle = pendingRename.catalogTitle,
+            onSave = { newTitle ->
+                viewModel.renameHomeCatalog(pendingRename.catalogKey, newTitle)
+                renameHomeRowTarget = null
+            },
+            onDismiss = { renameHomeRowTarget = null }
         )
     }
 
@@ -723,6 +767,7 @@ private fun HomePosterOptionsDialog(
     isWatched: Boolean,
     isWatchedPending: Boolean,
     onDismiss: () -> Unit,
+    onRenameRow: (() -> Unit)? = null,
     onDetails: () -> Unit,
     onToggleLibrary: () -> Unit,
     onToggleWatched: () -> Unit
@@ -791,6 +836,54 @@ private fun HomePosterOptionsDialog(
                     }
                 )
             }
+        }
+        if (onRenameRow != null) {
+            Button(
+                onClick = onRenameRow,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioTheme.colors.BackgroundCard,
+                    contentColor = NuvioTheme.colors.TextPrimary
+                )
+            ) {
+                Text(stringResource(R.string.streammax_home_rename_row_action))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun HomeRenameCatalogRowDialog(
+    currentTitle: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var editedTitle by remember(currentTitle) { mutableStateOf(currentTitle) }
+    val trimmedTitle = editedTitle.trim()
+    NuvioDialog(
+        title = stringResource(R.string.streammax_home_rename_row_title),
+        onDismiss = onDismiss
+    ) {
+        OutlinedTextField(
+            value = editedTitle,
+            onValueChange = { editedTitle = it.take(80) },
+            label = { androidx.compose.material3.Text(stringResource(R.string.streammax_home_rename_row_field)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(
+            onClick = { onSave(trimmedTitle) },
+            enabled = trimmedTitle.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.streammax_home_rename_row_save))
+        }
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.streammax_home_rename_row_cancel))
         }
     }
 }

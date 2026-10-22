@@ -672,7 +672,9 @@ fun ModernHomeContent(
 
     val portraitBaseWidth = uiState.posterCardWidthDp.dp
     val portraitBaseHeight = uiState.posterCardHeightDp.dp
-    val portraitModernPosterScale = 1.08f
+    // StreamMax 1.0.7: enlarge Home portrait cards while preserving the 2:3 artwork ratio.
+    // Landscape cards and playback are intentionally untouched.
+    val portraitModernPosterScale = 1.20f
     val landscapeModernPosterScale = 1.34f
     val portraitCatalogCardWidth = portraitBaseWidth * 0.84f * portraitModernPosterScale
     val portraitCatalogCardHeight = portraitBaseHeight * 0.84f * portraitModernPosterScale
