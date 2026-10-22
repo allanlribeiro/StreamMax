@@ -15,7 +15,7 @@ test('keeps nonce private and allows cancelling the login attempt', async () => 
   };
   const service=createAuthService({endpoint:'https://example.org',publicKey:'public',redirectUrl:'https://example.org/login',transport});
   const challenge=await service.start();
-  assert.deepEqual(challenge,{userCode:'DISPLAY',verificationUrl:'https://example.org/verify',legacy:false});
+  assert.deepEqual(challenge,{userCode:'DISPLAY',verificationUrl:'https://example.org/verify',legacy:false,pollIntervalSeconds:5});
   assert.equal(service.status().pending,true);
   assert.equal(Object.hasOwn(challenge,'deviceNonce'),false);
   assert.ok(calls[0].body.p_device_nonce);
@@ -32,7 +32,7 @@ test('falls back to legacy TV login only for an unavailable device RPC',async()=
  };
  const service=createAuthService({endpoint:'https://example.org',publicKey:'public',redirectUrl:'https://example.org/login',transport});
  const challenge=await service.start();
- assert.deepEqual(challenge,{userCode:'LEGACY',verificationUrl:'https://example.org/legacy',legacy:true});
+ assert.deepEqual(challenge,{userCode:'LEGACY',verificationUrl:'https://example.org/legacy',legacy:true,pollIntervalSeconds:5});
  assert.equal(calls.length,2);
 });
 
