@@ -7,6 +7,7 @@ const net=require('node:net');
 const {spawn}=require('node:child_process');
 const {randomBytes}=require('node:crypto');
 const {EventEmitter}=require('node:events');
+const {safeTracks}=require('./track-language');
 
 function validateExecutable(value){
  if(typeof value!=='string'||!path.isAbsolute(value)||path.basename(value).toLowerCase()!=='mpv.exe')
@@ -56,6 +57,7 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
    else if(event.event==='start-file')publish('loading');
    else if(event.event==='end-file')publish('ended');
    else if(event.event==='property-change'){
+    if(event.name==='track-list')events.emit('tracks',{tracks:safeTracks(event.data)});
     if(event.name==='paused-for-cache'&&event.data===true)publish('buffering');
     else if(event.name==='pause'&&event.data===true)publish('paused');
     else if(event.name==='pause'&&event.data===false&&state!=='loading')publish('playing');
@@ -118,11 +120,20 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
     socket.on('close',()=>{if(id===activeId&&state!=='idle')publish('disconnected');});
     send(['observe_property',1,'pause']);
     send(['observe_property',2,'paused-for-cache']);
+    send(['observe_property',3,'track-list']);
     send(['loadfile',url,'replace']);
     publish('loading');
     return {started:true,engine:'mpv',state:'loading'};
    }catch(error){if(id===activeId){clearState();publish('error');}throw error;}
    finally{opening=false;}
+  },
+  onTracks(listener){events.on('tracks',listener);return ()=>events.off('tracks',listener);},
+  selectTrack(kind,id){
+   if(!['audio','sub'].includes(kind))throw new TypeError('Tipo de faixa inválido');
+   if(id!=='no'&&(!Number.isInteger(id)||id<0||id>1000000))
+    throw new TypeError('Faixa inválida');
+   send(['set_property',kind==='audio'?'aid':'sid',id]);
+   return {sent:true};
   },
   command(name){
    const choices={
