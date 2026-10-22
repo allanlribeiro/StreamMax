@@ -27,11 +27,13 @@ function createServerConfigStore({filePath,env=process.env}){
   throw new TypeError('Caminho de configuração inválido');
  function load(){
   if(env.STREAMMAX_SUPABASE_URL&&env.STREAMMAX_SUPABASE_PUBLIC_KEY&&env.STREAMMAX_LOGIN_REDIRECT_URL){
-   return {value:normalizeServerConfig({
-    endpoint:env.STREAMMAX_SUPABASE_URL,
-    publicKey:env.STREAMMAX_SUPABASE_PUBLIC_KEY,
-    redirectUrl:env.STREAMMAX_LOGIN_REDIRECT_URL
-   }),source:'environment'};
+   try{
+    return {value:normalizeServerConfig({
+     endpoint:env.STREAMMAX_SUPABASE_URL,
+     publicKey:env.STREAMMAX_SUPABASE_PUBLIC_KEY,
+     redirectUrl:env.STREAMMAX_LOGIN_REDIRECT_URL
+    }),source:'environment'};
+   }catch{return {value:null,source:'invalid_environment'};}
   }
   try{
    return {value:normalizeServerConfig(JSON.parse(fs.readFileSync(filePath,'utf8'))),source:'file'};
