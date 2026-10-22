@@ -4,9 +4,95 @@ const $=id=>document.getElementById(id);
 const auth=$('auth-panel'),home=$('home-panel'),account=$('account-panel');
 let activeSourceRequest=null;
 let requestSerial=0;
+let detailGeneration=0;
+let episodeSeasons=[];
+let visibleEpisodes=[];
+let detailsItem=null;
 function closeDetails(){
+ detailGeneration++;
  activeSourceRequest=null;
+ detailsItem=null;
+ episodeSeasons=[];
+ visibleEpisodes=[];
  $('detail-panel').hidden=true;
+}
+function isSeriesType(type){return type==='series'||type==='tv';}
+function renderEpisodeChoice(){
+ const season=episodeSeasons[Number($('season-select').value)];
+ visibleEpisodes=(detailsItem?.videos||[])
+  .filter(ep=>(ep.season??null)===(season??null))
+  .sort((a,b)=>(a.episode??0)-(b.episode??0));
+ const select=$('episode-select');
+ select.replaceChildren();
+ visibleEpisodes.forEach((ep,index)=>{
+   const opt=document.createElement('option');
+   opt.value=String(index);
+   opt.textContent='E'+String(ep.episode??(index+1)).padStart(2,'0')+(ep.title?' — '+ep.title:'');
+   select.append(opt);
+ });
+ renderEpisodeSummary();
+}
+function renderEpisodeSummary(){
+ const ep=visibleEpisodes[Number($('episode-select').value)];
+ $('episode-summary').textContent=ep?.overview||ep?.title||'';
+ $('episode-search').disabled=!ep;
+}
+async function showDetails(item){
+ const myGeneration=++detailGeneration;
+ activeSourceRequest=null;
+ episodeSeasons=[];
+ visibleEpisodes=[];
+ detailsItem=null;
+ $('detail-name').textContent=item.name;
+ $('detail-description').textContent=item.description||'';
+ $('detail-facts').textContent=item.releaseInfo||'';
+ $('detail-meta-status').textContent='Carregando informações do título…';
+ $('detail-episodes').hidden=true;
+ $('sources-list').replaceChildren();
+ $('sources-status').textContent='Preparando pesquisa de fontes…';
+ $('sources-progress').value=0;
+ $('sources-progress').max=1;
+ $('detail-panel').hidden=false;
+ $('detail-close').focus();
+ try{
+   if(!item.catalogKey)throw new Error('Catálogo de origem indisponível');
+   const loaded=await api.loadMetadata(item.catalogKey,item.type,item.id);
+   if(myGeneration!==detailGeneration||$('detail-panel').hidden)return;
+   const meta={...item,...loaded};
+   detailsItem=meta;
+   $('detail-name').textContent=meta.name||item.name;
+   $('detail-description').textContent=meta.description||item.description||'';
+   $('detail-facts').textContent=[meta.releaseInfo,meta.runtime,
+     Array.isArray(meta.genres)?meta.genres.join(', '):''].filter(Boolean).join(' · ');
+   $('detail-meta-status').textContent='';
+   if(isSeriesType(meta.type)){
+     if(!Array.isArray(meta.videos)||!meta.videos.length){
+       $('sources-status').textContent='Esta série não possui episódios publicados no addon de origem.';
+       return;
+     }
+     episodeSeasons=Array.from(new Set(meta.videos.map(ep=>ep.season??null)))
+       .sort((a,b)=>(a??-1)-(b??-1));
+     const seasonSelect=$('season-select');
+     seasonSelect.replaceChildren();
+     episodeSeasons.forEach((season,index)=>{
+       const opt=document.createElement('option');
+       opt.value=String(index);
+       opt.textContent=season===null?'Outros episódios':'Temporada '+season;
+       seasonSelect.append(opt);
+     });
+     $('detail-episodes').hidden=false;
+     renderEpisodeChoice();
+     $('sources-status').textContent='Selecione o episódio para encontrar fontes.';
+   }else{
+     openSources({type:meta.type,id:meta.id});
+   }
+ }catch(error){
+   if(myGeneration!==detailGeneration||$('detail-panel').hidden)return;
+   $('detail-meta-status').textContent='Informações completas indisponíveis; exibindo dados do catálogo.';
+   if(isSeriesType(item.type)){
+     $('sources-status').textContent='Não foi possível recuperar os episódios desta série.';
+   }else openSources(item);
+ }
 }
 function openSources(item){
  activeSourceRequest='sources-'+Date.now()+'-'+(++requestSerial);
@@ -51,13 +137,7 @@ api.onSourcesProgress(update=>{
 });
 const view=window.StreamMaxHomeView.createHomeView({
  root:$('home-viewport'),
- onOpenDetails(item){
-   $('detail-name').textContent=item.name;
-   $('detail-description').textContent=item.description||'';
-   $('detail-panel').hidden=false;
-   $('detail-close').focus();
-   openSources(item);
- }
+ onOpenDetails: showDetails
 });
 let authorized=false;
 let activePage='home';
@@ -187,6 +267,13 @@ $('login-open').addEventListener('click',async()=>{
  try{await api.openLoginPage();}catch(error){$('auth-message').textContent=String(error.message||error);}
 });
 $('load-more-rows').addEventListener('click',loadNextRows);
+$('season-select').addEventListener('change',renderEpisodeChoice);
+$('episode-select').addEventListener('change',renderEpisodeSummary);
+$('episode-search').addEventListener('click',()=>{
+ const episode=visibleEpisodes[Number($('episode-select').value)];
+ if(!episode)return;
+ openSources({type:'series',id:episode.id});
+});
 document.querySelectorAll('[data-page]').forEach(button=>button.addEventListener('click',()=>showPage(button.dataset.page)));
 $('signout').addEventListener('click',async()=>{
  stopPolling();
