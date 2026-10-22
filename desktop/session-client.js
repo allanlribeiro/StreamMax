@@ -57,6 +57,15 @@ function createSessionClient({endpoint,publicKey,store,transport=fetch}) {
     }
   }
   return {
+    async withAccessToken(callback){
+      if(typeof callback!=='function')throw new TypeError('Authorized operation required');
+      const state=await this.restore();
+      if(!state.authenticated)throw new Error('A valid account session is required');
+      const session=await store.load();
+      if(!session||!session.access_token)throw new Error('Session unavailable');
+      // Credential remains in the trusted main process, never in renderer IPC.
+      return callback(session.access_token);
+    },
     async restore(){
       if(!inFlight){
         const generation=sessionGeneration;
