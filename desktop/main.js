@@ -10,6 +10,7 @@ const {createSourceDiscovery}=require('./source-discovery');
 const {createMpvPlayer}=require('./mpv-player');
 const {createWatchProgressStore}=require('./watch-progress-store');
 const {createPlaybackCoordinator}=require('./playback-coordinator');
+const {createRemoteProgressClient}=require('./remote-progress-client');
 const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
 const sessionClient=(process.env.STREAMMAX_SUPABASE_URL&&process.env.STREAMMAX_SUPABASE_PUBLIC_KEY)
   ?createSessionClient({
@@ -29,6 +30,10 @@ const catalogClient=sessionClient?createCatalogClient({
   endpoint:process.env.STREAMMAX_SUPABASE_URL,
   publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
   profileId:1
+}):null;
+const remoteProgress=sessionClient?createRemoteProgressClient({
+ sessionClient,endpoint:process.env.STREAMMAX_SUPABASE_URL,
+ publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,profileId:1
 }):null;
 const sourceDiscovery=createSourceDiscovery();
 const mpvSettingsFile=path.join(app.getPath('userData'),'mpv-settings.json');
@@ -141,6 +146,10 @@ ipcMain.handle('streammax:player-play',(_event,sourceId,metadata)=>{
  return playback.play(sourceId,metadata);
 });
 ipcMain.handle('streammax:progress-list',()=>playback.list());
+ipcMain.handle('streammax:progress-remote',()=>{
+ if(!remoteProgress)throw new Error('Servidor da conta não configurado');
+ return remoteProgress.list();
+});
 ipcMain.handle('streammax:player-progress',()=>playback.currentProgress());
 ipcMain.handle('streammax:player-command',(_event,command)=>mpvPlayer.command(command));
 ipcMain.handle('streammax:player-track',(_event,type,id)=>mpvPlayer.selectTrack(type,id));
