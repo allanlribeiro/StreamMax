@@ -61,7 +61,7 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
    const line=buffer.slice(0,newline);buffer=buffer.slice(newline+1);
    let event;
    try{event=JSON.parse(line);}catch{continue;}
-   if(event.event==='file-loaded'){publish('playing');events.emit('progress',timeline());}
+   if(event.event==='file-loaded'){publish('playing');events.emit('loaded',{});events.emit('progress',timeline());}
    else if(event.event==='start-file')publish('loading');
    else if(event.event==='end-file'){
     events.emit('finished',{reason:String(event.reason||''),...timeline()});publish('ended');
@@ -156,6 +156,7 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
   onTracks(listener){events.on('tracks',listener);return ()=>events.off('tracks',listener);},
   onProgress(listener){events.on('progress',listener);return ()=>events.off('progress',listener);},
   onFinished(listener){events.on('finished',listener);return ()=>events.off('finished',listener);},
+  onLoaded(listener){events.on('loaded',listener);return ()=>events.off('loaded',listener);},
   progress(){return timeline();},
   seekTo(seconds){
    if(typeof seconds!=='number'||!Number.isFinite(seconds)||seconds<0||seconds>60*60*24)
