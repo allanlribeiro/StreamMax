@@ -28,7 +28,9 @@
       "auth-service.js",
       "session-store.js",
       "session-client.js",
-      "catalog-client.js"
+      "catalog-client.js",
+      "home-view.js",
+      "ui.css"
     ],
     "win": {
       "target": [
