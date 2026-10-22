@@ -5,6 +5,7 @@ const { pathToFileURL } = require('url');
 const {createAuthService}=require('./auth-service');
 const {createSessionStore}=require('./session-store');
 const {createSessionClient}=require('./session-client');
+const {createCatalogClient}=require('./catalog-client');
 const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
 const sessionClient=(process.env.STREAMMAX_SUPABASE_URL&&process.env.STREAMMAX_SUPABASE_PUBLIC_KEY)
   ?createSessionClient({
@@ -19,6 +20,12 @@ const authService=createAuthService({
  sessionStore,
  sessionClient
 });
+const catalogClient=sessionClient?createCatalogClient({
+  sessionClient,
+  endpoint:process.env.STREAMMAX_SUPABASE_URL,
+  publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
+  profileId:1
+}):null;
 app.setAppUserModelId('com.streammax.desktop');
 let window;
 function createWindow() {
@@ -53,5 +60,14 @@ ipcMain.handle('streammax:auth-signout',()=>authService.signOut());
 ipcMain.handle('streammax:auth-start',()=>authService.start());
 ipcMain.handle('streammax:auth-poll',()=>authService.poll());
 ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
+ipcMain.handle('streammax:catalogs-reload',()=>{
+  if(!catalogClient)throw new Error('Account service not configured');
+  return catalogClient.reload();
+});
+ipcMain.handle('streammax:catalog-page',(_event,key,skip=0,extras={})=>{
+  if(!catalogClient)throw new Error('Account service not configured');
+  if(typeof key!=='string'||key.length>128)throw new TypeError('Invalid catalog key');
+  return catalogClient.page(key,skip,extras);
+});
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
