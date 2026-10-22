@@ -33,6 +33,7 @@ jobs:
           node --check catalog-client.js
           node --check source-discovery.js
           node --check mpv-player.js
+          node --check track-language.js
           node --check home-view.js
           node --test
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
