@@ -65,7 +65,7 @@ private class MildSharpenShader(private val strength: Float) :
             }
             """.trimIndent(),
             """
-            precision mediump float;
+            precision highp float;  // 1080p texel offset must not quantize to zero.
             uniform sampler2D uTexSampler;
             uniform vec2 uPixel;
             uniform float uStrength;
