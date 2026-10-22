@@ -18,6 +18,7 @@ async function refreshPlayerStatus(){
    ?(PLAYER_LABELS[status.state]||'mpv detectado automaticamente')
    :'O reprodutor mpv não está instalado. Selecione um mpv.exe confiável.';
   $('player-controls').hidden=!status.available||status.state==='idle';
+  $('mpv-select').hidden=Boolean(status.available);
  }catch(error){
   $('mpv-status').textContent='Não foi possível verificar o mpv: '+String(error.message||error);
  }
