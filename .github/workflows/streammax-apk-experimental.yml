@@ -1,6 +1,7 @@
-name: StreamMax APK experimental
+name: StreamMax APK 1.0.9 release candidate
 
 # APK da base Legacy, contendo o player Media3 e as atualizacoes TCL.
+# NESTA BRANCH RC: assina pacote oficial, mas nao publica OTA nem GitHub Release.
 # Nao confundir com o APK Kotlin/fullDebug da branch feature/reproducao-idiomas-nuvio.
 # Mantem login por e-mail e bibliotecas nativas completas.
 on:
@@ -18,6 +19,7 @@ on:
       - fix/streammax-108-home-rename-keyboard # correção da renomeação, sem publicação automática
       - streammax/next-core-20261021 # proxima versao: abertura, pt-BR/pt-PT e estabilidade
       - streammax/next-core-isolado-20261021 # APK independente para testar sem atualizar a TCL
+      - release/streammax-1.0.9-candidate-20261021 # candidato assinado para atualizacao
 
 permissions:
   contents: read
@@ -229,18 +231,19 @@ jobs:
           apk=(legacy-source/build/android/*-android.apk)
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           test -x "$aapt"
-          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv.experimental'"
+          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv'"
           "$aapt" dump badging "${apk[0]}" | grep -Fq "application-label:'StreamMax'"
           # O alias do launcher experimental tem nome StreamMax Teste.
-          grep -Fq 'android:label="StreamMax Teste"' legacy-source/android/app/src/main/AndroidManifest.xml
-          echo "OK: pacote experimental isolado de com.streammax.tv e launcher distinto."
+          grep -Fq 'android:label="StreamMax"' legacy-source/android/app/src/main/AndroidManifest.xml
+          "$aapt" dump badging "${apk[0]}" | grep -q "versionCode='20016'"
+          echo "OK: pacote oficial com.streammax.tv versionCode=20016 e launcher StreamMax."
           {
             printf 'Projeto: StreamMax Legacy - TCL\n'
             printf 'Branch: %s\n' "$GITHUB_REF_NAME"
             printf 'Commit: %s\n' "$GITHUB_SHA"
             printf 'GitHub Actions run: %s\n' "$GITHUB_RUN_ID"
-            printf 'Android package: com.streammax.tv.experimental\n'
-            printf 'Instalacao: lado a lado (NAO atualiza com.streammax.tv)\n'
+            printf 'Android package: com.streammax.tv\n'
+            printf 'Instalacao: atualizacao do pacote oficial; sem publicacao automatica\n'
             # Agora o MP4 e obrigatorio, com igualdade dos bytes do asset.
             # "Arquivo no ZIP" sozinho nao detecta video errado/corrompido.
             test -s legacy-source/art/marcas/streammax_abertura.mp4 || { echo '::error::MP4 aprovado nao encontrado'; exit 1; }
@@ -250,13 +253,32 @@ jobs:
             test "$origem" = "$empacotado" || { echo '::error::MP4 do APK difere do MP4 aprovado'; exit 1; }
             printf 'Video de abertura: incluido (SHA-256 conferido)\n'
             printf 'Base: legacy-source (Android C/SDL e Media3)\n'
-            printf 'RC1 assinada. Compatibilidade Philips ainda nao validada em aparelho real.\n'
+            printf 'StreamMax 1.0.9 candidata assinada; aguarda validacao real na TCL P7K.\n'
           } > legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
-      - name: Disponibilizar RC1 assinada para testes externos
+      - name: Verificar assinatura comparada com StreamMax 1.0.8 oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=(legacy-source/build/android/*-android.apk)
+          test ${#apk[@]} -eq 1
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$signer"
+          base="$RUNNER_TEMP/StreamMax-1.0.8-android.apk"
+          curl -fLsS --retry 2 --connect-timeout 10 --max-time 180 \
+            "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.8/StreamMax-1.0.8-android.apk" \
+            -o "$base"
+          test -s "$base"
+          cert_base="$("$signer" verify --print-certs "$base" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+          cert_rc="$("$signer" verify --print-certs "${apk[0]}" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+          test -n "$cert_base" && test -n "$cert_rc"
+          test "$cert_base" = "$cert_rc" || { echo "::error::Assinatura incompativel com o APK 1.0.8 oficial"; exit 1; }
+          echo "OK: assinatura de atualizacao compativel com a versao publica 1.0.8."
+
+      - name: Disponibilizar RC assinada para validacao na TCL
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-RC1-Isolada-${{ github.run_number }}
+          name: StreamMax-1.0.9-RC-${{ github.run_number }}
           path: |
             legacy-source/build/android/*-android.apk
             legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
