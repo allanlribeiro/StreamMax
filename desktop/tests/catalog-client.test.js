@@ -63,3 +63,23 @@ test('removes prior profile catalogs when session signs out',async()=>{
  client.clear();
  await assert.rejects(client.page(list.catalogs[0].key),/Unknown catalog/);
 });
+
+test('enables only manifest-advertised stream providers and clears them on logout',async()=>{
+ const c=createCatalogClient({
+  endpoint:'https://backend.example',publicKey:'public',
+  sessionClient:{withAccessToken:fn=>fn('private')},
+  transport:async url=>({ok:true,json:async()=>url.includes('get_sync_owner')?'owner-id':[
+   {url:'https://video.example/addon',name:'Vídeos',enabled:true,sort_order:0},
+   {url:'https://metadata.example/addon',name:'Metadados',enabled:true,sort_order:1}
+  ]}),
+  addonTransport:async url=>({ok:true,json:async()=>({
+   id:'addon',name:'Addon',resources:url.includes('video.example')?['catalog','stream']:['catalog','meta'],
+   catalogs:[{id:'popular',type:'movie'}]
+  })})
+ });
+ await c.reload();
+ assert.equal(c.getSourceProviders().length,1);
+ assert.equal(c.getSourceProviders()[0].name,'Vídeos');
+ c.clear();
+ assert.deepEqual(c.getSourceProviders(),[]);
+});
