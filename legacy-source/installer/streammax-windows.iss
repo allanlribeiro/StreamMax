@@ -21,6 +21,7 @@ OutputBaseFilename=StreamMax-Setup-Windows-x64
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\build\windows\streammax.ico
 SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
