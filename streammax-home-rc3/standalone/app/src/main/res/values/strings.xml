@@ -1,1 +1,1 @@
-<resources><string name="redirect_explanation">Redireciona para StreamMax Home quando o Google TV aparece. Opcional e reversível.</string></resources>
+<resources><string name="redirect_explanation">Opcional: abre o StreamMax Home RC2 quando a tela inicial Oranth da TX6 aparecer. É reversível pela Acessibilidade; não desative o launcher original.</string></resources>
