@@ -8,6 +8,8 @@ const {createSessionClient}=require('./session-client');
 const {createCatalogClient}=require('./catalog-client');
 const {createSourceDiscovery}=require('./source-discovery');
 const {createMpvPlayer}=require('./mpv-player');
+const {createWatchProgressStore}=require('./watch-progress-store');
+const {createPlaybackCoordinator}=require('./playback-coordinator');
 const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
 const sessionClient=(process.env.STREAMMAX_SUPABASE_URL&&process.env.STREAMMAX_SUPABASE_PUBLIC_KEY)
   ?createSessionClient({
@@ -37,6 +39,18 @@ function savedMpvPath(){
  }catch{return null;}
 }
 const mpvPlayer=createMpvPlayer({executable:savedMpvPath()||process.env.STREAMMAX_MPV_PATH||null});
+const watchProgressStore=createWatchProgressStore({
+ safeStorage,filePath:path.join(app.getPath('userData'),'watch-progress.enc')
+});
+const playback=createPlaybackCoordinator({
+ player:mpvPlayer,sources:sourceDiscovery,store:watchProgressStore,
+ onProgress:position=>{
+  if(window&&!window.isDestroyed())window.webContents.send('streammax:player-progress',position);
+ },
+ onError:message=>{
+  if(window&&!window.isDestroyed())window.webContents.send('streammax:player-warning',{message});
+ }
+});
 mpvPlayer.onStatus(event=>{
  if(window&&!window.isDestroyed())window.webContents.send('streammax:player-status',event);
 });
@@ -73,7 +87,12 @@ ipcMain.handle('streammax:open-video', async () => {
 });
 ipcMain.handle('streammax:auth-status',()=>authService.status());
 ipcMain.handle('streammax:auth-restore',()=>authService.restore());
-ipcMain.handle('streammax:auth-signout',()=>{catalogClient?.clear();sourceDiscovery.reset();return authService.signOut();});
+ipcMain.handle('streammax:auth-signout',async()=>{
+ catalogClient?.clear();
+ sourceDiscovery.reset();
+ await playback.signOut();
+ return authService.signOut();
+});
 ipcMain.handle('streammax:auth-start',()=>authService.start());
 ipcMain.handle('streammax:auth-poll',()=>authService.poll());
 ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
@@ -116,16 +135,16 @@ ipcMain.handle('streammax:player-select',async()=>{
  }catch(error){try{fs.rmSync(tmp,{force:true});}catch{}throw error;}
  return changed;
 });
-ipcMain.handle('streammax:player-play',(_event,sourceId)=>{
+ipcMain.handle('streammax:player-play',(_event,sourceId,metadata)=>{
  if(typeof sourceId!=='string'||!/^[0-9a-f]{32}$/.test(sourceId))
   throw new TypeError('Identificador da fonte inválido');
- const url=sourceDiscovery.getPlayableUrl(sourceId);
- if(!url)throw new Error('A fonte expirou. Atualize a busca.');
- return mpvPlayer.play(url);
+ return playback.play(sourceId,metadata);
 });
+ipcMain.handle('streammax:progress-list',()=>playback.list());
+ipcMain.handle('streammax:player-progress',()=>playback.currentProgress());
 ipcMain.handle('streammax:player-command',(_event,command)=>mpvPlayer.command(command));
 ipcMain.handle('streammax:player-track',(_event,type,id)=>mpvPlayer.selectTrack(type,id));
-ipcMain.handle('streammax:player-stop',()=>mpvPlayer.stop());
+ipcMain.handle('streammax:player-stop',()=>playback.stop());
 ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
  if(!catalogClient)throw new Error('Catalog provider unavailable');
  if(typeof requestId!=='string'||requestId.length>72)throw new TypeError('Invalid request identifier');
@@ -137,4 +156,4 @@ ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
  });
 });
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
-app.on('window-all-closed',()=>{mpvPlayer.stop();if(process.platform!=='darwin')app.quit();});
+app.on('window-all-closed',()=>{void playback.stop();if(process.platform!=='darwin')app.quit();});
