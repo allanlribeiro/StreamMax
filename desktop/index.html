@@ -67,6 +67,10 @@
     </div>
     <section id="player-controls" class="player-controls" hidden aria-label="Controles do player externo">
       <h3>Reprodutor nativo</h3>
+      <div class="track-controls">
+        <label for="player-audio-track">Áudio<select id="player-audio-track"><option value="">Aguardando faixas…</option></select></label>
+        <label for="player-subtitle-track">Legenda<select id="player-subtitle-track"><option value="">Aguardando faixas…</option></select></label>
+      </div>
       <button type="button" data-player-command="pause" class="secondary">Pausar / Retomar</button>
       <button type="button" data-player-command="seekBack" class="secondary">−10s</button>
       <button type="button" data-player-command="seekForward" class="secondary">+10s</button>
