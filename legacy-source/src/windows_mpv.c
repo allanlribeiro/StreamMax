@@ -2,6 +2,7 @@
 // Compilado apenas no alvo NV_WINDOWS_DESKTOP. Nao afeta o APK Android.
 #ifdef NV_WINDOWS_DESKTOP
 #include "windows_mpv.h"
+#include "gfx.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengles2.h>
 #include <mpv/client.h>
@@ -220,7 +221,7 @@ static int smCompositor(void) {
   if(!v||!f){if(v)glDeleteShader(v);if(f)glDeleteShader(f);return 0;}
   smProgram=glCreateProgram();
   glAttachShader(smProgram,v);glAttachShader(smProgram,f);
-  glBindAttribLocation(smProgram,0,"aPos");glBindAttribLocation(smProgram,1,"aUV");
+  glBindAttribLocation(smProgram,1,"aPos");glBindAttribLocation(smProgram,2,"aUV");
   glLinkProgram(smProgram);glGetProgramiv(smProgram,GL_LINK_STATUS,&linked);
   glDeleteShader(v);glDeleteShader(f);
   if(!linked){glDeleteProgram(smProgram);smProgram=0;return 0;}
@@ -258,8 +259,13 @@ void sm_mpv_composite(void) {
   mpv_render_param args[]={{MPV_RENDER_PARAM_OPENGL_FBO,&target},
                             {MPV_RENDER_PARAM_FLIP_Y,&flip},
                             {MPV_RENDER_PARAM_INVALID,NULL}};
-  GLint prevProgram=0;
+  GLint prevProgram=0, oldArrayBuffer=0, gfxArrayBuffer=0;
+  GLint oldActiveTex=GL_TEXTURE0, oldFbo=0;
   glGetIntegerv(GL_CURRENT_PROGRAM,&prevProgram);
+  glGetIntegerv(GL_ARRAY_BUFFER_BINDING,&oldArrayBuffer);
+  glGetVertexAttribiv(0,GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING,&gfxArrayBuffer);
+  glGetIntegerv(GL_ACTIVE_TEXTURE,&oldActiveTex);
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING,&oldFbo);
   mpv_render_context_render(smRenderer,args);
   glBindFramebuffer(GL_FRAMEBUFFER,0);
   glViewport(0,0,smDisplayW,smDisplayH);
@@ -276,13 +282,25 @@ void sm_mpv_composite(void) {
   glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,smTexture);
   glUniform1i(glGetUniformLocation(smProgram,"uTex"),0);
   glBindBuffer(GL_ARRAY_BUFFER,0);
-  glEnableVertexAttribArray(0);glEnableVertexAttribArray(1);
-  glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,4*sizeof(GLfloat),v);
-  glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,4*sizeof(GLfloat),v+2);
+  // Indices 1/2: o gfx reserva o indice 0 e seu VBO para os quadros da UI.
+  glEnableVertexAttribArray(1);glEnableVertexAttribArray(2);
+  glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,4*sizeof(GLfloat),v);
+  glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,4*sizeof(GLfloat),v+2);
   glDrawArrays(GL_TRIANGLE_STRIP,0,4);
-  glDisableVertexAttribArray(0);glDisableVertexAttribArray(1);
+  glDisableVertexAttribArray(1);glDisableVertexAttribArray(2);
+  // mpv pode mexer nos bindings da GL. Restaurar o VBO/atributo fixo do gfx,
+  // ou a Home ficaria preta ao desenhar o primeiro quadro depois do video.
+  if(gfxArrayBuffer>0){
+    glBindBuffer(GL_ARRAY_BUFFER,(GLuint)gfxArrayBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,(const void *)0);
+  }
+  glBindBuffer(GL_ARRAY_BUFFER,(GLuint)oldArrayBuffer);
+  glActiveTexture((GLenum)oldActiveTex);
+  glBindFramebuffer(GL_FRAMEBUFFER,(GLuint)oldFbo);
   glBlendFuncSeparate(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA,GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
   glUseProgram((GLuint)prevProgram);
+  gfx_tex_esquecer(0);
 }
 void sm_mpv_report_swap(void) {
   if(smRenderer&&smReady)mpv_render_context_report_swap(smRenderer);
