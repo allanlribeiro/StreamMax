@@ -11,7 +11,7 @@ command -v objdump >/dev/null || { echo "objdump nao encontrado" >&2; exit 1; }
 # e NAO aparecem nos imports de StreamMax.exe.
 # DLLs de runtime carregadas por dlopen nao aparecem na tabela de imports.
 # libcurl-4.dll e indispensavel para o login e para as requisicoes HTTPS.
-required=(SDL2.dll SDL2_image.dll SDL2_ttf.dll libEGL.dll libGLESv2.dll libdl.dll libcurl-4.dll)
+required=(SDL2.dll SDL2_image.dll SDL2_ttf.dll libEGL.dll libGLESv2.dll libdl.dll libcurl-4.dll libmpv-2.dll)
 for dll in "${required[@]}"; do
   found="$(find "$UCRT_BIN" -maxdepth 1 -type f -iname "$dll" -print -quit)"
   [ -n "$found" ] || {
