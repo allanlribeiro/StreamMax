@@ -39,7 +39,23 @@
 <section id="detail-panel" class="detail" hidden role="dialog" aria-modal="true" aria-labelledby="detail-name">
  <div class="detail__body">
    <button id="detail-close" type="button" class="secondary detail__close" aria-label="Fechar">Fechar</button>
-   <h2 id="detail-name"></h2><p id="detail-description"></p>
+   <h2 id="detail-name"></h2>
+   <p id="detail-facts" class="detail__facts"></p>
+   <p id="detail-description"></p>
+   <p id="detail-meta-status" role="status"></p>
+   <section id="detail-episodes" class="detail__episodes" hidden aria-label="Selecionar episódio">
+     <h3>Episódios</h3>
+     <div class="episode-controls">
+       <label for="season-select">Temporada
+         <select id="season-select"></select>
+       </label>
+       <label for="episode-select">Episódio
+         <select id="episode-select"></select>
+       </label>
+       <button id="episode-search" type="button" class="primary">Buscar fontes do episódio</button>
+     </div>
+     <p id="episode-summary"></p>
+   </section>
    <section class="detail__sources" aria-label="Fontes de reprodução">
     <h3>Fontes disponíveis</h3>
     <p id="sources-status" role="status">Consultando addons…</p>
