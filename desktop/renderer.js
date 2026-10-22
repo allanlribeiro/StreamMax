@@ -4,6 +4,46 @@ const $=id=>document.getElementById(id);
 const auth=$('auth-panel'),home=$('home-panel'),account=$('account-panel');
 let activeSourceRequest=null;
 let requestSerial=0;
+const PLAYER_LABELS={
+ idle:'Player parado',starting:'Abrindo player…',loading:'Carregando vídeo…',
+ buffering:'Preparando buffer…',playing:'Reproduzindo',paused:'Pausado',
+ ended:'Reprodução encerrada',error:'Falha no player',
+ disconnected:'Player desconectado'
+};
+async function refreshPlayerStatus(){
+ try{
+  const status=await api.playerAvailability();
+  $('mpv-status').textContent=status.available
+   ?(PLAYER_LABELS[status.state]||'mpv disponível')
+   :'Selecione o mpv.exe para reproduzir.';
+  $('player-controls').hidden=!status.available||status.state==='idle';
+ }catch(error){
+  $('mpv-status').textContent='Não foi possível verificar o mpv: '+String(error.message||error);
+ }
+}
+api.onPlayerStatus(event=>{
+ if(!event||typeof event.state!=='string')return;
+ $('mpv-status').textContent=PLAYER_LABELS[event.state]||'Player iniciado';
+ $('player-controls').hidden=['idle','error','disconnected'].includes(event.state);
+});
+$('mpv-select').addEventListener('click',async()=>{
+ try{
+  const selected=await api.selectMpv();
+  $('mpv-status').textContent=selected.available
+   ?'mpv configurado. Selecione uma fonte direta para reproduzir.'
+   :'O mpv ainda não foi selecionado.';
+ }catch(error){$('mpv-status').textContent='Não foi possível configurar: '+String(error.message||error);}
+});
+$('player-stop').addEventListener('click',async()=>{
+ try{await api.stopPlayer();}catch(error){$('mpv-status').textContent=String(error.message||error);}
+});
+document.querySelectorAll('[data-player-command]').forEach(button=>{
+ button.addEventListener('click',async()=>{
+  try{await api.playerCommand(button.dataset.playerCommand);}
+  catch(error){$('mpv-status').textContent=String(error.message||error);}
+ });
+});
+refreshPlayerStatus();
 let detailGeneration=0;
 let episodeSeasons=[];
 let visibleEpisodes=[];
@@ -133,6 +173,28 @@ api.onSourcesProgress(update=>{
     const description=document.createElement('p');
     description.textContent=source.description;
     row.append(description);
+   }
+   if(source.playable){
+    const play=document.createElement('button');
+    play.type='button';
+    play.className='secondary source-play';
+    play.textContent='Reproduzir no mpv';
+    play.addEventListener('click',async()=>{
+     play.disabled=true;
+     try{
+      const capability=await api.playerAvailability();
+      if(!capability.available){
+       $('mpv-status').textContent='Selecione primeiro o mpv.exe no botão Configurar.';
+       $('mpv-select').focus();
+       return;
+      }
+      $('mpv-status').textContent='Iniciando o mpv…';
+      await api.playSource(source.id);
+     }catch(error){
+      $('mpv-status').textContent='Não foi possível iniciar a fonte: '+String(error.message||error);
+     }finally{play.disabled=false;}
+    });
+    row.append(play);
    }
    $('sources-list').append(row);
   }
