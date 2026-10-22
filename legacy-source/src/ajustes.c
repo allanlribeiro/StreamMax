@@ -641,6 +641,7 @@ typedef enum {
   AJ_FUNDO_DIN,        // #205: fundo da Dinamica, 0 = Cinza (padrao), 1 = Cor, 2 = Imersivo; local, append-only
   AJ_FUNDO_DIN_COR,    // #205: a cor do fundo "Cor" (indice de FUNDO_DIN_TEMA); local, append-only
   AJ_ESCALA_TEXTO,     // text and component scale (gfx.h): 85/90/100/110/120/130%, default 100%; local, append-only
+  AJ_IMAGE_UPSCALING, // StreamMax: local, append-only; 0 OFF, 1 automatic
   AJ_N
 } OpcaoId;
 _Static_assert(DEBRID_RD == 0 && DEBRID_TB == 1 && DEBRID_PM == 2 && DEBRID_AD == 3,
@@ -1237,6 +1238,7 @@ static const char *JF_ALFA_SENHA =
 
 static const char *V_MANTER_PRAZO[] = { "2 min", "5 min", "10 min", "30 min", "Sem limite" };
 static const char *V_AMIGOS_ESTILO[] = { "Feed de cartões", "Ao vivo em destaque", "Histórias com cartaz", "Faixa de presença", "Cartaz primeiro", "Rostos clássicos" };
+static const char *V_IMAGE_UPSCALING[] = { "Desativado", "Automático (experimental)" };
 static const Opcao OPCOES[AJ_N] = {
   ESC("Qualidade máxima",           V_QUALIDADE, 4),
   ESC("Dolby Vision",               V_LIGA, 2),
@@ -1679,6 +1681,7 @@ static const Opcao OPCOES[AJ_N] = {
   ESC("Fundo da Dinâmica", V_FUNDO_DIN, 3),                  // local: fundoDinamicaLocal
   ESC("Cor do fundo", V_FUNDO_DIN_COR, 17),                  // local: fundoDinamicaCorLocal
   ESC("Escala de texto e componentes", V_ESCALA_TEXTO, 6),   // local: escalaTextoLocal
+  ESC("Upscaling: melhoria de imagem HD", V_IMAGE_UPSCALING, 2),
 };
 
 // Nome de cada opcao no arquivo. O formato era POSICIONAL — uma linha por
@@ -1975,6 +1978,7 @@ static const char *CHAVE[] = {
   "fundoDinamicaLocal",
   "fundoDinamicaCorLocal",
   "escalaTextoLocal",
+  "streammaxImageUpscalingLocal",
 };
 // QUATRO VETORES PARALELOS indexados pelo mesmo enum AJ_*: OPCOES, CHAVE,
 // valor e as secoes. OPCOES ja e declarado [AJ_N], e `valor` aceita inicializacao
@@ -2810,6 +2814,7 @@ int ajustes_player_externo(int anime) {
 #endif
 }
 const char *ajustes_player_pacote(int anime) { return ppPkg[anime ? 1 : 0]; }
+int ajustes_image_upscaling(void) { return valor[AJ_IMAGE_UPSCALING] == 1; }
 int ajustes_buffer_preset(void) {
   int v = valor[AJ_BUFFER];
   return v >= 0 && v < 4 ? v : 0;
@@ -5430,6 +5435,7 @@ static int somenteDesteAparelho(int op) {
     case AJ_TRAILER_AUDIO:  /* o web nao tem */
     case AJ_TAMANHO_UI:     /* o tamanho e desta tela, e o web nao tem */
     case AJ_TAMANHO_AJUSTES:
+    case AJ_IMAGE_UPSCALING: /* GPU setting is local to this device */
     case AJ_ESCALA_TEXTO:   /* text/component scale is this screen's, the web has none */
     case AJ_LAYOUT_AJUSTES: /* #339: o arranjo dos Ajustes e desta TV */
     case AJ_INTERFACE_MODO: /* TV/Mobile follows this device, never the account */
@@ -5830,7 +5836,7 @@ static int foraDestaPlataforma(int op) {
   if (op == AJ_GPU_EFEITOS) return 1;
 #endif
 #ifndef NV_ANDROID
-  if (op == AJ_FONTE_PRECARREGAR || op == AJ_LEG_SYNC_AUDIO) return 1;
+  if (op == AJ_IMAGE_UPSCALING || op == AJ_FONTE_PRECARREGAR || op == AJ_LEG_SYNC_AUDIO) return 1;
 #endif
 #ifdef __EMSCRIPTEN__
   if (op == AJ_P2P_LIGADO || op == AJ_P2P_URL || op == AJ_P2P_TESTAR || op == AJ_P2P_LIMITE || op == AJ_P2P_DESTINO) return 1;
@@ -7031,6 +7037,7 @@ static const char *ajudaOpcaoBase(int op) {
     case AJ_PS_CONTINUAR: return "Ligado, cada perfil mostra na escolha de perfil o cartão com o que ele estava assistindo. Desligado, a tela mostra só os perfis.";
     case AJ_HIST_CONTA: return "Ligado (padrão): o que você assiste neste perfil sobe para a conta Nuvio, com o progresso e os vistos. Desligado: nada disso é enviado à conta; o Trakt e o Simkl vinculados a este perfil continuam recebendo. Vale só para este perfil.";
     case AJ_SOCIAL: return "Ligado (padrão): amigos, atividade deles e recomendações. Desligado: tudo isso some, com a fileira de amigos da Home, e o app para de falar com o serviço social. Salvos e Avisos continuam. Vale só para este perfil.";
+    case AJ_IMAGE_UPSCALING: return "Melhoria leve de nitidez para ajudar a ampliação de vídeos SDR 720p e 1080p, até 30 fps. Automático usa somente formatos identificados em uma tela maior. 4K, HDR, Dolby Vision e formatos desconhecidos seguem sem o filtro. Se perder fluidez ou aquecer, reabre na mesma posição sem o efeito. Experimental: compare na sua TV. Vale a partir do próximo vídeo.";
     case AJ_DV_MKV: return "Arquivos MKV em Dolby Vision perfil 5 ou 8 tocam com o Dolby Vision ligado, em vez de HDR10. O áudio Dolby Digital e Dolby Digital Plus vai direto para a TV. Se a conexão não acompanhar, o vídeo continua em HDR10. Só em TVs LG com webOS 4 ou mais novo.";
     case AJ_CW_RETIDO_TAMBEM: return "Quando o título está na ilha ou em Retomar agora, mostra também na fileira Continuar assistindo.";
     case AJ_EP_TAMANHO: return "Pequeno, Médio (padrão) ou Grande. Só vale no layout Moderno, na página de séries. Vale só nesta TV.";

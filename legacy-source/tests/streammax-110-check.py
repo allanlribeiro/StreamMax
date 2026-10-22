@@ -64,7 +64,7 @@ assert "checkpoint()" in activity
 assert "if (apk.name == protectedName) continue" in apks
 
 # The candidate is v1.0.10 on an isolated branch; no public GitHub release is created.
-assert '#define SM_UPDATE_VERSION "1.0.10"' in version
+assert any(f'#define SM_UPDATE_VERSION "{v}"' in version for v in ("1.0.10", "1.0.11"))
 assert "apkOficialParaAtualizar(arq)" in activity
 assert "oficiais.isNotEmpty() && oficiais == recebidos" in activity
 print("PASS: 1.0.10 Android trim, visible artwork, safe OTA cleanup and signed-updater contracts")

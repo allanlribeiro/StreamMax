@@ -1,9 +1,7 @@
 package space.nuvio.nativelegacy
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.opengl.GLES20
-import android.provider.Settings
 import androidx.media3.common.C
 import androidx.media3.common.VideoFrameProcessingException
 import androidx.media3.common.util.GlProgram
@@ -13,41 +11,80 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BaseGlShaderProgram
 import androidx.media3.effect.GlEffect
 import androidx.media3.effect.GlShaderProgram
-import androidx.media3.effect.PassthroughShaderProgram
 
-/**
- * 1.0.11 proof-of-concept only; NEVER enabled in a production build.
- *
- * Debug-only switch: adb shell settings put global streammax_image_preview 1
- * Undo: adb shell settings delete global streammax_image_preview
- * Not AI super-resolution. Single-pass edge-adaptive, very mild 5-tap unsharp mask
- * at the source resolution. Real 720p/1080p performance MUST be measured on TCL P7K.
+/** Lightweight source-resolution sharpening to assist the display's native upscaler.
+ * No AI, no invented detail, no 4K intermediate textures. Disabled by default.
+ * Format admission happens on the playback thread BEFORE renderer.enable creates a GL sink.
  */
 internal object StreamMaxImagePreview {
-    const val SETTING = "streammax_image_preview"
+    fun refusal(format: androidx.media3.common.Format): String? = refusal(
+        format.width, format.height, format.colorInfo?.colorTransfer ?: C.INDEX_UNSET,
+        format.frameRate, format.drmInitData != null, format.sampleMimeType, format.codecs,
+        format.colorInfo?.colorSpace ?: C.INDEX_UNSET, format.rotationDegrees,
+        format.pixelWidthHeightRatio
+    )
 
-    fun requested(context: Context): Boolean {
-        if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return false
-        return try { Settings.Global.getInt(context.contentResolver, SETTING, 0) == 1 }
-        catch (_: Exception) { false }
-    }
-
-    /** null means that this candidate has not been ruled out by metadata yet. */
-    fun refusal(width: Int, height: Int, transfer: Int, fps: Float, drm: Boolean): String? {
+    fun refusal(width: Int, height: Int, transfer: Int, fps: Float, drm: Boolean,
+                mime: String? = null, codecs: String? = null,
+                colorSpace: Int = C.INDEX_UNSET, rotation: Int = 0, pixelRatio: Float = 1f): String? {
         if (drm) return "drm"
-        if (width > 1920 || height > 1080) return "4k"
-        if (transfer == C.COLOR_TRANSFER_ST2084 || transfer == C.COLOR_TRANSFER_HLG) return "hdr"
-        if (fps > 30.5f) return "high_fps"
+        val codec = codecs.orEmpty().lowercase(java.util.Locale.ROOT)
+        if (mime == "video/dolby-vision" || listOf("dvhe", "dvh1", "dvav", "dva1").any { codec.contains(it) }) return "dolby_vision"
+        if (width > 1920 || height > 1080) return "4k_or_above_hd"
+        if (transfer != C.COLOR_TRANSFER_SDR || colorSpace == C.COLOR_SPACE_BT2020) return "hdr_or_unknown_color"
+        // Unknown metadata is NEVER permission to process; cropped widescreen HD is supported.
+        if (width !in 1280..1920 || height !in 480..1080) return "unknown_or_non_hd_size"
+        if (!fps.isFinite() || fps <= 0f || fps > 30.5f) return "unknown_or_high_fps"
+        if (rotation != 0 || pixelRatio != 1f) return "rotated_or_anamorphic"
+        if (mime !in setOf("video/avc", "video/hevc", "video/x-vnd.on2.vp9", "video/av01")) return "unknown_codec"
         return null
     }
 
+    fun shouldActivate(formats: Array<androidx.media3.common.Format>, requested: Boolean,
+                       displayWidth: Int, displayHeight: Int, tunneling: Boolean): Boolean =
+        requested && !tunneling && formats.isNotEmpty() && formats.all {
+            refusal(it) == null && displayWidth > it.width && displayHeight > it.height
+        }
+
+    fun thermalLimited(context: Context): Boolean = try {
+        val power = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+        power?.isPowerSaveMode == true || (android.os.Build.VERSION.SDK_INT >= 29 &&
+            power != null && power.currentThermalStatus >= android.os.PowerManager.THERMAL_STATUS_MODERATE)
+    } catch (_: Exception) { true }
+
     fun effect(): List<androidx.media3.common.Effect> = listOf(MildSharpenEffect(0.22f))
+}
+
+/** Session-local latch: no repeated automatic retries after a performance or GL failure. */
+internal class StreamMaxImageSession(val requested: Boolean) {
+    @Volatile var active = false
+    @Volatile var disabled = false
+    private var previousDrops: Long? = null
+    private var previousTime = 0L
+    private var badWindows = 0
+
+    fun sample(nowMs: Long, totalDrops: Long, playing: Boolean, thermalLimited: Boolean): Boolean {
+        if (!active || disabled) return false
+        if (thermalLimited) return true
+        val previous = previousDrops
+        val elapsed = nowMs - previousTime
+        previousDrops = totalDrops
+        previousTime = nowMs
+        if (!playing || previous == null || totalDrops < previous || elapsed !in 750..2500) {
+            badWindows = 0
+            return false
+        }
+        val drops = totalDrops - previous
+        badWindows = if (drops * 1000 >= 4 * elapsed) badWindows + 1 else 0
+        return badWindows >= 2
+    }
 }
 
 @UnstableApi
 private class MildSharpenEffect(private val strength: Float) : GlEffect {
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram =
-        if (useHdr) PassthroughShaderProgram() else MildSharpenShader(strength)
+        if (useHdr) throw VideoFrameProcessingException(IllegalStateException("HDR excluded from image enhancement"))
+        else MildSharpenShader(strength)
 }
 
 @UnstableApi

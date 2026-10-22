@@ -29,6 +29,7 @@
 #include "marco.h"
 #include "streams.h"
 #include "video.h"
+#include "ajustes.h"
 #include "capmkv.h"
 #include "audioinfo.h"
 #include "video_reconexao.h"
@@ -52,6 +53,7 @@
 #define NV_CLASSE "space/nuvio/nativelegacy/NvPlayer"
 
 static jclass    gCls;      // GlobalRef: FindClass de fio do SDL nao acha classe do app
+static jmethodID mImagemUpscaling;
 static jmethodID mAbrir, mParar, mPausar, mBuscar, mVolume, mJanela, mEscolher;
 static jmethodID mAbrirPosicao;
 // 2.0.3 (opcional): abrirRetomada(url, cab, inicioMs, fracao, geracao). So o
@@ -95,6 +97,8 @@ static int resolverMetodos(JNIEnv *env) {
   if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); mMorno = NULL; }
   mQuadro = (*env)->GetStaticMethodID(env, gCls, "quadro", "(I)I");
   if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); mQuadro = NULL; }
+  mImagemUpscaling = (*env)->GetStaticMethodID(env, gCls, "imagemUpscaling", "(I)V");
+  if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); mImagemUpscaling = NULL; }
   mBuffer = (*env)->GetStaticMethodID(env, gCls, "buffer", "(I)V");
   if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); mBuffer = NULL; }
   mGanho = (*env)->GetStaticMethodID(env, gCls, "ganho", "(I)V");
@@ -700,6 +704,10 @@ static int abrirSessao(int inicioMs, int fracao) {
   // crosses JNI when it changes. Posted before the open on the same main
   // thread queue, it is in place when the open runs.
   // #338: buffer MiB (0 = Auto), sticky in Kotlin like the cache limit.
+  if (mImagemUpscaling) {
+    (*env)->CallStaticVoidMethod(env, gCls, mImagemUpscaling, (jint)ajustes_image_upscaling());
+    fimChamada(env);
+  }
   if (mBuffer && bufferPreset != bufferEnviado) {
     (*env)->CallStaticVoidMethod(env, gCls, mBuffer, (jint)bufferPreset);
     fimChamada(env);

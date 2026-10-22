@@ -1,0 +1,55 @@
+name: Package verified StreamMax 1.0.11 APK
+on:
+  push:
+    branches: [release/streammax-1.0.11-upscaling]
+    paths: ['.github/workflows/streammax-111-package.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  package-verified-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Require the verified signed build and existing draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          run="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/39765201966)"
+          test "$(jq -r .conclusion <<< "$run")" = success
+          test "$(jq -r .head_sha <<< "$run")" = 32a0c610b97a0f99752d50ef6de3cb4c65f8d89c
+          draft="$(gh api repos/${GITHUB_REPOSITORY}/releases/420608950)"
+          test "$(jq -r .draft <<< "$draft")" = true
+          test "$(jq -r .target_commitish <<< "$draft")" = 32a0c610b97a0f99752d50ef6de3cb4c65f8d89c
+          test "$(jq '.assets | length' <<< "$draft")" = 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: StreamMax-1.0.11-RC
+          path: verified
+          run-id: 39765201966
+          github-token: ${{ github.token }}
+      - name: Rename verified bytes and record checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir package
+          test -s verified/Nuvio-2.0.18-android.apk
+          mv verified/Nuvio-2.0.18-android.apk package/StreamMax-1.0.11-android.apk
+          cp verified/STREAMMAX-BUILD-INFO.txt package/
+          cd package
+          sha256sum StreamMax-1.0.11-android.apk > StreamMax-1.0.11-SHA256.txt
+      - name: Attach verified APK to draft only
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload v1.0.11 --repo "$GITHUB_REPOSITORY" package/*
+          test "$(gh api repos/${GITHUB_REPOSITORY}/releases/420608950 --jq .draft)" = true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-1.0.11-APK
+          path: package/*
+          if-no-files-found: error
+          retention-days: 30
