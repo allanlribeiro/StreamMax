@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('streammaxDesktop', Object.freeze({
   authPoll: () => ipcRenderer.invoke('streammax:auth-poll'),
   authCancel: () => ipcRenderer.invoke('streammax:auth-cancel'),
   openLoginPage: () => ipcRenderer.invoke('streammax:open-login'),
+  loadMetadata: (key,type,id) => ipcRenderer.invoke('streammax:metadata',key,type,id),
   searchSources: (type,id,requestId) => ipcRenderer.invoke('streammax:source-search',type,id,requestId),
   onSourcesProgress: callback => {
     if(typeof callback!=='function')throw new TypeError('Callback required');
