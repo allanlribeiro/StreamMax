@@ -1,14 +1,13 @@
-name: StreamMax Windows Desktop Checks
+name: StreamMax Windows Desktop
 on:
   push:
-    branches:
-      - feature/streammax-windows-desktop
+    branches: [feature/streammax-windows-desktop]
     paths:
       - 'desktop/**'
       - '.github/workflows/streammax-windows-checks.yml'
   workflow_dispatch:
 jobs:
-  desktop-checks:
+  windows-desktop:
     runs-on: windows-latest
     defaults:
       run:
@@ -18,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate JavaScript and JSON
+      - name: Validate JS and manifest
         shell: pwsh
         run: |
           node --check main.js
@@ -27,16 +26,33 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Check desktop package
+      - name: Test icon source and installer eligibility
+        id: official_icon
         shell: pwsh
         run: |
-          node -e "const p=require('./package.json');if(p.build.nsis.createDesktopShortcut!==true||p.build.nsis.createStartMenuShortcut!==true)process.exit(1)"
-          Write-Output 'Atalhos Windows configurados.'
-      - name: Check official icon availability
-        shell: pwsh
-        run: |
-          if (Test-Path assets/streammax.ico) {
-            Write-Output 'Logo ICO disponivel para empacotamento.'
+          if (Test-Path assets/streammax-s.png) {
+            "available=true" >> $env:GITHUB_OUTPUT
+            Write-Output 'Logo S source found; eligible for packaging.'
           } else {
-            Write-Output 'Logo ICO oficial ainda pendente. Instalador nao sera criado.'
+            "available=false" >> $env:GITHUB_OUTPUT
+            Write-Output 'Official S artwork not present; no installer will be published.'
           }
+      - name: Generate multi-size Windows icon from approved S
+        if: steps.official_icon.outputs.available == 'true'
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pillow
+          python scripts/make_icon.py
+      - name: Build unsigned Windows test installer
+        if: steps.official_icon.outputs.available == 'true'
+        shell: pwsh
+        run: |
+          npm run dist
+      - name: Publish test installer as workflow artifact
+        if: steps.official_icon.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Windows-Preview-unsigned
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
