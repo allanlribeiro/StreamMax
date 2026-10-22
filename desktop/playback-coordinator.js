@@ -40,7 +40,8 @@ function createPlaybackCoordinator({player,sources,store,clock=Date.now,onProgre
  });
  player.onFinished(({reason})=>{
   if(!active)return;
-  void persist(true,reason==='eof');
+  if(reason==='eof'&&latest.durationMs>0)latest.positionMs=latest.durationMs;
+  void persist(true);
  });
  player.onStatus(({state})=>{
   if(!active)return;
