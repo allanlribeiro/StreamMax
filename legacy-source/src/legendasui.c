@@ -1339,7 +1339,9 @@ void legendasui_corpo(GfxRect c, float a) {
       // disappears on it, and the hints say what OK does there.
       for (i = 0; i < nLinhasV; i++) if (linhas[i].tipo == LR_CAND || linhas[i].tipo == LR_NENHUMA) { nf++; if (i <= foco) pf = nf; }
       if (!naSync) {
-        snprintf(q, sizeof q, i18n("%d de %d"), nf ? pf : 0, nf);
+        if (nf && (linhas[foco].tipo == LR_CAND || linhas[foco].tipo == LR_NENHUMA))
+          snprintf(q, sizeof q, i18n("%d de %d"), pf, nf);
+        else q[0] = 0;
         { TxtLinha l = txt_linha(TXT_ILHA_APOIO, q, 243, 242, 239, 115);
           txt_desenhar_alpha(l, x0 + 10.0f, yc - (float)l.h * 0.5f, a); }
         if (menu) plrui_dicas(km, rm, 2, x0 + w - 10.0f, yc, 1, a);
