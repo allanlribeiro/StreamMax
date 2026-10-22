@@ -47,6 +47,18 @@ Para consultar a mesma conta que o Android, o aplicativo agora permite **configu
 
 Não envie segredos por chat nem em issues. As credenciais de sessão devem permanecer no armazenamento protegido do Windows. A edição Windows ainda não descobre automaticamente o servidor configurado na TV. As variáveis têm prioridade sobre o arquivo local de configuração; nunca forneça `service_role`, chaves privadas ou tokens de sessão.
 
+## Compilar versão de teste usando o código existente
+
+No Windows, abra PowerShell na pasta `desktop` e execute:
+
+```powershell
+.\scripts\build-test.ps1 -LogoPath "C:\caminho\streammax-s.png"
+```
+
+O script copia a arte **S aprovada**, valida a suíte de testes, abre o Electron em modo de verificação de interface, gera o ícone e compila o instalador unsigned na pasta `desktop\dist`. Ele **interrompe a compilação se algum teste falhar**. Requer Node.js, Python e conexão à internet para instalar as dependências; não modifica o código Android.
+
+Sem a logo oficial no repositório, o pipeline do GitHub ainda executa testes e smoke test, mas não publica instalador. A arte PNG original tem prioridade sobre qualquer JPEG de prévia.
+
 ## Ícone e instalador
 A arte S aprovada deve estar em `desktop/assets/streammax-s.png` (quadrada, 256 px ou maior); o workflow converte para ICO multirresolução. Sem essa arte, o workflow **não** gera instalador para não usar ícone diferente. Instaladores experimentais não são assinados.
 
