@@ -1,0 +1,48 @@
+name: StreamMax Home stable-signed APK
+on:
+  workflow_dispatch:
+jobs:
+  signed-apk:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: streammax-home-rc3/standalone
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Require protected signing secrets
+        env:
+          STREAMMAX_KEYSTORE_B64: ${{ secrets.STREAMMAX_HOME_KEYSTORE_B64 }}
+          STREAMMAX_KEYSTORE_PASSWORD: ${{ secrets.STREAMMAX_HOME_STORE_PASSWORD }}
+          STREAMMAX_KEY_ALIAS: ${{ secrets.STREAMMAX_HOME_KEY_ALIAS }}
+          STREAMMAX_KEY_PASSWORD: ${{ secrets.STREAMMAX_HOME_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for variable in STREAMMAX_KEYSTORE_B64 STREAMMAX_KEYSTORE_PASSWORD STREAMMAX_KEY_ALIAS STREAMMAX_KEY_PASSWORD; do
+            if [[ -z "${!variable}" ]]; then echo "Missing required secret: $variable" >&2; exit 1; fi
+          done
+          keystore_path="$RUNNER_TEMP/streammax-home-release.jks"
+          printf '%s' "$STREAMMAX_KEYSTORE_B64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+          echo "STREAMMAX_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+      - name: Build release with stable keystore
+        env:
+          STREAMMAX_KEYSTORE_PASSWORD: ${{ secrets.STREAMMAX_HOME_STORE_PASSWORD }}
+          STREAMMAX_KEY_ALIAS: ${{ secrets.STREAMMAX_HOME_KEY_ALIAS }}
+          STREAMMAX_KEY_PASSWORD: ${{ secrets.STREAMMAX_HOME_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --no-daemon
+      - name: Publish signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Home-stable-signed
+          path: streammax-home-rc3/standalone/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
