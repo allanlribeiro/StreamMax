@@ -56,9 +56,9 @@ aparelhos de 2 GB de RAM são critérios de compatibilidade.
 - Executar os testes Kotlin `StreamMaxApkCacheTest` em ambiente Android
   configurado. O helper foi isolado do framework e validado também em Kotlin/JVM.
 - Só compilar APK de teste depois de passar pela revisão e testes.
-- Não alterar `SM_UPDATE_VERSION` para 1.0.10 nem publicar `v1.0.10`
-  antes de gerar um APK assinado, confirmar mesmo certificado da 1.0.9 e
-  validar pelo menos na TCL.
+- A branch de teste usa `SM_UPDATE_VERSION` 1.0.10 e Android 2.0.17
+  (`versionCode` 20017). Não publicar `v1.0.10` no canal OTA sem confirmar
+  a assinatura e validar o APK na TCL. A 1.0.9 permanece oficial.
 - **Nenhum trabalho de IPTV ou Tizen nesta versão.**
 
 **Observação:** testes estáticos e unitários não comprovam FPS, tempo de
