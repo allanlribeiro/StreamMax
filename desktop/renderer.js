@@ -3,6 +3,7 @@ const api=window.streammaxDesktop;
 const $=id=>document.getElementById(id);
 const auth=$('auth-panel'),home=$('home-panel'),account=$('account-panel');
 let activeSourceRequest=null;
+let activePlaybackMetadata=null;
 let requestSerial=0;
 const PLAYER_LABELS={
  idle:'Player parado',starting:'Abrindo player…',loading:'Carregando vídeo…',
@@ -57,6 +58,23 @@ for(const [id,kind] of [['player-audio-track','audio'],['player-subtitle-track',
   catch(error){$('mpv-status').textContent='Falha na seleção de faixa: '+String(error.message||error);}
  });
 }
+function formatTime(ms){
+ if(!Number.isFinite(ms)||ms<0)return '0:00';
+ const seconds=Math.floor(ms/1000);
+ return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
+}
+api.onPlayerProgress(event=>{
+ if(!event||typeof event!=='object')return;
+ const position=Number(event.positionMs)||0;
+ const duration=Number(event.durationMs)||0;
+ $('playback-timeline').textContent=duration>0
+  ?formatTime(position)+' / '+formatTime(duration)+
+    (Number.isFinite(event.bufferedSeconds)?' · Buffer '+Math.round(event.bufferedSeconds)+'s':'')
+  :'';
+});
+api.onPlayerWarning(event=>{
+ if(event?.message)$('mpv-status').textContent=String(event.message);
+});
 api.onPlayerStatus(event=>{
  if(!event||typeof event.state!=='string')return;
  $('mpv-status').textContent=PLAYER_LABELS[event.state]||'Player iniciado';
@@ -87,6 +105,7 @@ let detailsItem=null;
 function closeDetails(){
  detailGeneration++;
  activeSourceRequest=null;
+ activePlaybackMetadata=null;
  detailsItem=null;
  episodeSeasons=[];
  visibleEpisodes=[];
@@ -160,7 +179,10 @@ async function showDetails(item){
      renderEpisodeChoice();
      $('sources-status').textContent='Selecione o episódio para encontrar fontes.';
    }else if(meta.type==='movie'){
-     openSources({type:meta.type,id:meta.id});
+     openSources({type:meta.type,id:meta.id},{
+      contentId:meta.id,contentType:'movie',name:meta.name,
+      poster:meta.poster||'',backdrop:meta.background||''
+     });
    }else{
      $('sources-status').textContent='Esse tipo de conteúdo ainda não está disponível na edição Windows.';
    }
@@ -169,11 +191,15 @@ async function showDetails(item){
    $('detail-meta-status').textContent='Informações completas indisponíveis; exibindo dados do catálogo.';
    if(isSeriesType(item.type)){
      $('sources-status').textContent='Não foi possível recuperar os episódios desta série.';
-   }else if(item.type==='movie')openSources(item);
+   }else if(item.type==='movie')openSources(item,{
+     contentId:item.id,contentType:'movie',name:item.name,
+     poster:item.poster||'',backdrop:item.background||''
+    });
    else $('sources-status').textContent='Esse tipo de conteúdo ainda não está disponível na edição Windows.';
  }
 }
-function openSources(item){
+function openSources(item,metadata=null){
+ activePlaybackMetadata=metadata;
  activeSourceRequest='sources-'+Date.now()+'-'+(++requestSerial);
  const requestId=activeSourceRequest;
  $('sources-list').replaceChildren();
@@ -225,7 +251,10 @@ api.onSourcesProgress(update=>{
        return;
       }
       $('mpv-status').textContent='Iniciando o mpv…';
-      await api.playSource(source.id);
+      const metadata=activePlaybackMetadata;
+      if(!metadata)throw new Error('Informações do título indisponíveis');
+      const result=await api.playSource(source.id,metadata);
+      if(result.resumeAvailable)$('mpv-status').textContent='Retomando reprodução anterior…';
      }catch(error){
       $('mpv-status').textContent='Não foi possível iniciar a fonte: '+String(error.message||error);
      }finally{play.disabled=false;}
@@ -240,6 +269,63 @@ const view=window.StreamMaxHomeView.createHomeView({
  root:$('home-viewport'),
  onOpenDetails: showDetails
 });
+async function loadContinueWatching(){
+ const list=$('continue-list');
+ list.replaceChildren();
+ $('continue-message').textContent='Carregando histórico local…';
+ try{
+  const records=await api.listWatchProgress();
+  if(!authorized)return;
+  if(!records.length){
+   $('continue-message').textContent='Nenhum conteúdo iniciado neste computador ainda.';
+   return;
+  }
+  $('continue-message').textContent=records.length+' conteúdo(s) para continuar.';
+  for(const record of records){
+   const card=document.createElement('button');
+   card.type='button';card.className='continue-card';
+   const art=document.createElement('img');
+   art.alt='';art.loading='lazy';art.className='continue-card__image';
+   if(typeof record.poster==='string'&&record.poster.startsWith('https://'))art.src=record.poster;
+   else art.hidden=true;
+   const meta=document.createElement('div');
+   const title=document.createElement('strong');
+   title.textContent=record.name||record.contentId;
+   const episode=document.createElement('span');
+   episode.textContent=record.contentType==='series'
+    ?'T'+record.season+' E'+record.episode+(record.episodeTitle?' · '+record.episodeTitle:'')
+    :'Filme';
+   const pct=Math.min(100,Math.round(100*record.position/record.duration));
+   const label=document.createElement('small');
+   label.textContent=formatTime(record.position)+' de '+formatTime(record.duration)+' · '+pct+'%';
+   const progress=document.createElement('progress');
+   progress.max=100;progress.value=pct;
+   meta.append(title,episode,label,progress);
+   card.append(art,meta);
+   card.addEventListener('click',()=>{
+    activeSourceRequest=null;activePlaybackMetadata=null;
+    $('detail-name').textContent=record.name||record.contentId;
+    $('detail-description').textContent=record.episodeTitle||'';
+    $('detail-facts').textContent='Retomar de '+formatTime(record.position);
+    $('detail-meta-status').textContent='Histórico deste computador';
+    $('detail-episodes').hidden=true;
+    $('detail-panel').hidden=false;
+    $('detail-close').focus();
+    openSources({type:record.contentType,id:record.videoId},{
+     contentId:record.contentId,contentType:record.contentType,
+     name:record.name,episodeTitle:record.episodeTitle,
+     season:record.season,episode:record.episode,
+     poster:record.poster,backdrop:record.backdrop
+    });
+   });
+   list.append(card);
+  }
+ }catch(error){
+  $('continue-message').textContent='Não foi possível ler o histórico: '+String(error.message||error);
+ }
+}
+$('continue-refresh').addEventListener('click',loadContinueWatching);
+
 let authorized=false;
 let activePage='home';
 let loginTimer=null;
@@ -250,15 +336,16 @@ let nextRowIndex=0;
 let booting=false;
 let renderGeneration=0;
 function showPage(page){
- activePage=page==='account'?'account':'home';
+ activePage=['account','continue'].includes(page)?page:'home';
  document.querySelectorAll('[data-page]').forEach(b=>{
   if(b.dataset.page===activePage)b.setAttribute('aria-current','page');
   else b.removeAttribute('aria-current');
  });
  account.hidden=activePage!=='account'||!authorized;
  home.hidden=activePage!=='home'||!authorized;
+ $('continue-panel').hidden=activePage!=='continue'||!authorized;
  auth.hidden=authorized||activePage==='account';
- if(!authorized){auth.hidden=false;account.hidden=true;home.hidden=true;}
+ if(!authorized){auth.hidden=false;account.hidden=true;home.hidden=true;$('continue-panel').hidden=true;}
 }
 function setAuth(title,description,message=''){
  $('auth-title').textContent=title;
@@ -375,7 +462,10 @@ $('episode-search').addEventListener('click',()=>{
  if(!episode)return;
  openSources({type:'series',id:episode.id});
 });
-document.querySelectorAll('[data-page]').forEach(button=>button.addEventListener('click',()=>showPage(button.dataset.page)));
+document.querySelectorAll('[data-page]').forEach(button=>button.addEventListener('click',()=>{
+ showPage(button.dataset.page);
+ if(button.dataset.page==='continue'&&authorized)void loadContinueWatching();
+}));
 $('signout').addEventListener('click',async()=>{
  stopPolling();
  await api.authSignOut();
@@ -383,6 +473,8 @@ $('signout').addEventListener('click',async()=>{
  catalogs=[];
  nextRowIndex=0;
  view.clear();
+ $('continue-list').replaceChildren();
+ $('continue-message').textContent='';
  $('login-code').hidden=true;$('login-link').hidden=true;
  $('login-open').hidden=true;$('login-retry').hidden=true;
  $('login-start').hidden=false;
