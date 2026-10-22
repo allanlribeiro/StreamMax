@@ -66,3 +66,8 @@ A versão 0.1.0 já executada pelo usuário é anterior a este porte de interfac
 
 ## Licenças
 Preservar o licenciamento GPLv3 do projeto original e as licenças dos componentes externos. Não distribuir segredos embutidos. Validar atualizações e reprodução diretamente em Windows antes de publicar release.
+
+## Player automático e critério de publicação
+- O app detecta `mpv.exe` em `resources/mpv/`, ao lado do executável e em instalações convencionais (Program Files, Scoop, WinGet, Chocolatey). A seleção manual só aparece como alternativa; não baixa nem executa binários de terceiros automaticamente.
+- A compilação de integração continua no GitHub Actions para cada push, com testes e smoke test; **o upload de um instalador experimental agora requer execução manual e opção explícita `publish_preview`**. Não equivale à aprovação de login, home e reprodução em uma conta real.
+- Para considerar o app pronto, validar Windows com servidor real, catálogos reais, fonte direta, áudio, legenda e retomada de reprodução; compilação verde sozinha não é suficiente.
