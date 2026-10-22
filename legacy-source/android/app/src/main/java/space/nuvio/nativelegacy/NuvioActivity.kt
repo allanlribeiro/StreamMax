@@ -440,6 +440,7 @@ class NuvioActivity : SDLActivity() {
         val dir = File(filesDir, "dados/atualizacao")
         if (!dir.isDirectory) return
         Thread({
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try {
                 if (!instalando) {
                     @Suppress("DEPRECATION")
