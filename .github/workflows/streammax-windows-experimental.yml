@@ -2,6 +2,15 @@ name: StreamMax Windows experimental
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - streammax/windows-desktop
+    paths:
+      - 'legacy-source/src/**'
+      - 'legacy-source/tools/windows*'
+      - 'legacy-source/installer/**'
+      - 'legacy-source/tests/streammax-windows-desktop.sh'
+      - '.github/workflows/streammax-windows-experimental.yml'
   push:
     branches:
       - streammax/windows-desktop
