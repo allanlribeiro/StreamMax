@@ -30,8 +30,12 @@ function createRemoteProgressClient({sessionClient,endpoint,publicKey,profileId=
  const key=String(publicKey||'');
  if(!key)throw new TypeError('Public key required');
  const rpcUrl=new URL('rest/v1/rpc/sync_pull_watch_progress',base.href.replace(/\/?$/,'/')).href;
+ let cache=[];
+ let cacheUntil=0;
+ let generation=0;
  async function list({limit=200}={}){
   if(!Number.isInteger(limit)||limit<1||limit>500)throw new TypeError('Invalid history limit');
+  const requestGeneration=generation;
   return sessionClient.withAccessToken(async token=>{
    const response=await transport(rpcUrl,{
     method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),
@@ -47,11 +51,24 @@ function createRemoteProgressClient({sessionClient,endpoint,publicKey,profileId=
     const previous=latest.get(item.contentId);
     if(!previous||item.lastWatched>previous.lastWatched)latest.set(item.contentId,item);
    }
-   return [...latest.values()]
+   const filtered=[...latest.values()]
     .filter(item=>item.position/item.duration>=0.02&&item.position/item.duration<0.90)
     .sort((a,b)=>b.lastWatched-a.lastWatched);
+   if(requestGeneration!==generation)throw new Error('Consulta de histórico cancelada');
+   cache=filtered;
+   cacheUntil=Date.now()+5*60*1000;
+   return filtered;
   });
  }
- return {list};
+ return {
+  list,
+  async resume(contentId,videoId){
+   if(typeof contentId!=='string'||typeof videoId!=='string'||!contentId||!videoId)return null;
+   if(Date.now()>=cacheUntil){await list();}
+   const entry=cache.find(x=>x.contentId===contentId&&x.videoId===videoId);
+   return entry?{positionMs:entry.position,durationMs:entry.duration}:null;
+  },
+  clear(){generation++;cache=[];cacheUntil=0;}
+ };
 }
 module.exports={normalizeRemoteEntry,createRemoteProgressClient};
