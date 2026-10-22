@@ -15,8 +15,8 @@ android {
         applicationId 'com.streammax.home.rc3'
         minSdk 23
         targetSdk 32
-        versionCode 5
-        versionName '1.0.1-RC4-layout-restored'
+        versionCode 6
+        versionName '1.0.2-RC2-original-bridge'
     }
     signingConfigs {
         if (signingConfigured) {
