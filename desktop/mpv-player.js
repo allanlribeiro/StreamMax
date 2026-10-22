@@ -81,6 +81,7 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
      events.emit('progress',timeline());
     }
     if(event.name==='paused-for-cache'&&event.data===true)publish('buffering');
+    else if(event.name==='paused-for-cache'&&event.data===false&&state==='buffering')publish('playing');
     else if(event.name==='pause'&&event.data===true)publish('paused');
     else if(event.name==='pause'&&event.data===false&&state!=='loading')publish('playing');
    }
