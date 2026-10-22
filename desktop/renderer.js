@@ -580,10 +580,17 @@ async function boot(){
  try{
   const settings=await api.authStatus();
   if(!settings.configured){
-   setAuth('Conexão não configurada','Para utilizar sua conta e seus addons, configure o servidor público do mesmo StreamMax que você usa no Android.');
-   $('server-config-panel').hidden=false;
-   $('app-status').textContent=settings.configSource==='invalid'?
-    'Configuração do servidor inválida':'Servidor não configurado';
+   if(settings.configSource==='invalid_environment'){
+    setAuth('Configuração do Windows inválida',
+      'As variáveis de conexão do Windows estão incorretas. Corrija STREAMMAX_SUPABASE_URL, STREAMMAX_SUPABASE_PUBLIC_KEY e STREAMMAX_LOGIN_REDIRECT_URL antes de abrir o aplicativo.');
+    $('server-config-panel').hidden=true;
+    $('app-status').textContent='Variáveis inválidas';
+   }else{
+    setAuth('Conexão não configurada','Para utilizar sua conta e seus addons, configure o servidor público do mesmo StreamMax que você usa no Android.');
+    $('server-config-panel').hidden=false;
+    $('app-status').textContent=settings.configSource==='invalid'?
+     'Configuração do servidor inválida':'Servidor não configurado';
+   }
    return;
   }
   const result=await api.authRestore();
