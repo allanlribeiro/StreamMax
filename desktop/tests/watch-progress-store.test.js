@@ -71,3 +71,12 @@ test('invalid progress identity and duration rejected',async()=>{
   await assert.rejects(store.upsert({...movie(1000),contentType:'series'}),/episode identity/);
  });
 });
+
+test('completed latest episode suppresses stale continue-watching episode',async()=>{
+ await fixture(async({store})=>{
+  const base={contentId:'ttshow',contentType:'series',name:'Series',duration:100000};
+  await store.upsert({...base,videoId:'ttshow:1:1',season:1,episode:1,position:45000,lastWatched:10});
+  await store.upsert({...base,videoId:'ttshow:1:2',season:1,episode:2,position:95000,lastWatched:20});
+  assert.deepEqual(await store.list(),[],'older episode must not reappear');
+ });
+});
