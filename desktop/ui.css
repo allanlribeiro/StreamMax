@@ -65,3 +65,7 @@ a{color:#60c5ff;overflow-wrap:anywhere}
 .player-controls{border-top:1px solid #264364;margin-top:20px;padding-top:14px;display:flex;flex-wrap:wrap;gap:9px}
 .player-controls h3{width:100%;margin:0 0 3px}
 .source-play{margin-top:10px;padding:8px 13px;background:#0b609b!important;font-size:12px}
+
+.track-controls{width:100%;display:flex;gap:12px;flex-wrap:wrap;margin:2px 0 12px}
+.track-controls label{display:flex;flex-direction:column;gap:7px;flex:1 1 180px;font-size:12px;color:#aacce7}
+.track-controls select{width:100%;border-radius:9px;padding:10px;background:#122c4a;color:#f6fbff;border:1px solid #2d5679}
