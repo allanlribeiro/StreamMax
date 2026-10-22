@@ -33,7 +33,9 @@
       "ui.css",
       "source-discovery.js",
       "mpv-player.js",
-      "track-language.js"
+      "track-language.js",
+      "watch-progress-store.js",
+      "playback-coordinator.js"
     ],
     "win": {
       "target": [
