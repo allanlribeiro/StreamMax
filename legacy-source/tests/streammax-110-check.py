@@ -63,8 +63,8 @@ assert "private external fun nativeCheckpoint()" in activity
 assert "checkpoint()" in activity
 assert "if (apk.name == protectedName) continue" in apks
 
-# Do not break official in-app OTA: the feature branch is not yet v1.0.10.
-assert '#define SM_UPDATE_VERSION "1.0.9"' in version
+# The candidate is v1.0.10 on an isolated branch; no public GitHub release is created.
+assert '#define SM_UPDATE_VERSION "1.0.10"' in version
 assert "apkOficialParaAtualizar(arq)" in activity
 assert "oficiais.isNotEmpty() && oficiais == recebidos" in activity
 print("PASS: 1.0.10 Android trim, visible artwork, safe OTA cleanup and signed-updater contracts")
