@@ -48,6 +48,21 @@ assert "bruto = p->pre->bruto ? malloc((size_t)nb + 1) : NULL;" in subtitle
 assert "p->pre->bruto = NULL;" not in subtitle
 assert "if (!strcmp(p->url, url) && (!p->terminou || p->bruto))" in subtitle
 
+# Playback checkpoints: save every 30 s locally and on Android lifecycle
+# transitions; keep account syncing at a separate 5-minute interval.
+player = (root / "src/player.c").read_text()
+android = (root / "src/android.c").read_text()
+assert "#define PLR_PARCIAL_INTERVALO_S 30.0f" in player
+assert "gravarProgressoParcial(parcialConta >= 300.0f" in player
+assert 'gravarProgressoParcial(tipo != SDL_APP_LOWMEMORY, "background");' in player
+assert "parcialRelogio = parcialConta = 0.0f;" in player
+assert "static float parcialRelogio, parcialConta;" in player
+assert "Java_space_nuvio_nativelegacy_NuvioActivity_nativeCheckpoint" in android
+assert "SDL_PushEvent(&e);" in android
+assert "private external fun nativeCheckpoint()" in activity
+assert "checkpoint()" in activity
+assert "if (apk.name == protectedName) continue" in apks
+
 # Do not break official in-app OTA: the feature branch is not yet v1.0.10.
 assert '#define SM_UPDATE_VERSION "1.0.9"' in version
 assert "apkOficialParaAtualizar(arq)" in activity
