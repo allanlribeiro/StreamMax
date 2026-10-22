@@ -36,7 +36,8 @@
       "track-language.js",
       "watch-progress-store.js",
       "playback-coordinator.js",
-      "remote-progress-client.js"
+      "remote-progress-client.js",
+      "server-config.js"
     ],
     "win": {
       "target": [
