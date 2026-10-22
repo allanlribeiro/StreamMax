@@ -1,7 +1,7 @@
 'use strict';
 const {randomBytes}=require('node:crypto');
 const {RPC,callLoginRpc}=require('./auth-rpc');
-function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessionStore=null}){
+function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessionStore=null,sessionClient=null}){
  let pending=null;
  const configured=Boolean(endpoint&&publicKey&&redirectUrl);
  async function request(method,options){
@@ -24,6 +24,7 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessi
  return {
   status(){return {configured,pending:!!pending};},
   async restore(){
+   if(sessionClient)return sessionClient.restore();
    if(!sessionStore)return {authenticated:false,reason:'session_storage_unavailable'};
    const saved=await sessionStore.load();
    if(!saved)return {authenticated:false,reason:'no_saved_session'};
