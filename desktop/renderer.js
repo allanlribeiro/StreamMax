@@ -40,6 +40,7 @@ function feedback(message){
  $('home-feedback').textContent=message||'';
 }
 function stopPolling(){
+ loginStartedAt=0;
  if(loginTimer!==null)clearTimeout(loginTimer);
  loginTimer=null;polling=false;
 }
