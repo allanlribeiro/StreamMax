@@ -19,6 +19,8 @@ test('keeps nonce private and allows cancelling the login attempt', async () => 
   assert.equal(service.status().pending,true);
   assert.equal(Object.hasOwn(challenge,'deviceNonce'),false);
   assert.ok(calls[0].body.p_device_nonce);
+  assert.equal(calls[0].body.p_device_type,'mobile');
+  assert.equal(calls[0].body.p_device_name,'StreamMax Windows');
   assert.equal(service.cancel().pending,false);
   await assert.rejects(service.poll(),/Nenhum login pendente/);
 });
