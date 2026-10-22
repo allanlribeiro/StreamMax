@@ -39,3 +39,17 @@ test('preserves home row order, grid items and poster/trailer preferences', () =
   assert.equal(state.posterCardWidthDp, 140);
   assert.equal(state.posterCardHeightDp, 210);
 });
+
+test('accepts Android CatalogRow identity fields without requiring invented id',()=>{
+ const state=normalizeHomeState({
+  homeLayout:'MODERN',
+  catalogRows:[{
+   addonId:'plugin',addonName:'Plugin',addonBaseUrl:'https://addon.example',
+   catalogId:'popular',catalogName:'Filmes populares',type:'movie',items:[{id:'tt1',name:'Filme'}]
+  }]
+ });
+ assert.equal(state.catalogRows.length,1);
+ assert.equal(state.catalogRows[0].title,'Filmes populares');
+ assert.equal(state.catalogRows[0].catalogId,'popular');
+ assert.equal(state.catalogRows[0].items[0].id,'tt1');
+});
