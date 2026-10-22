@@ -659,7 +659,14 @@ class NuvioActivity : SDLActivity() {
         jaComecou = true
     }
 
+    // Persistir no fio SDL antes de o Android suspender/encerrar a Activity.
+    private external fun nativeCheckpoint()
+    private fun checkpoint() {
+        if (!mBrokenLibraries) try { nativeCheckpoint() } catch (_: UnsatisfiedLinkError) {}
+    }
+
     override fun onStop() {
+        checkpoint()
         val ini = SystemClock.elapsedRealtime()
         try {
             val f = despedida()
@@ -692,6 +699,7 @@ class NuvioActivity : SDLActivity() {
     // 2.0.3). Direto no logcat: o printf do C passa por um pipe e pode esperar.
     override fun onPause() {
         trimResumida = false
+        checkpoint()
         // Nunca deixar o video da vinheta rodando em background.
         aberturaStreamMax?.encerrar("background")
         val ini = SystemClock.elapsedRealtime()
