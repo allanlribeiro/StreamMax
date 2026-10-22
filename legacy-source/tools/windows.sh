@@ -15,7 +15,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 CC="${CC:-gcc}"
-DEPS=(sdl2 SDL2_image SDL2_ttf angleproject zlib)
+DEPS=(sdl2 SDL2_image SDL2_ttf angleproject zlib mpv)
 if ! pkg-config --exists "${DEPS[@]}"; then
   echo "windows.sh: faltam SDL2, SDL2_image, SDL2_ttf, ANGLE e zlib no MSYS2 UCRT64." >&2
   exit 2
