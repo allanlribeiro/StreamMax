@@ -21,6 +21,42 @@ async function refreshPlayerStatus(){
   $('mpv-status').textContent='Não foi possível verificar o mpv: '+String(error.message||error);
  }
 }
+function updateTrackSelect(elementId,tracks,kind){
+ const selector=$(elementId);
+ selector.replaceChildren();
+ if(kind==='sub'){
+  const none=document.createElement('option');
+  none.value='no';none.textContent='Desativada';
+  selector.append(none);
+ }
+ const list=tracks.filter(track=>track.type===kind);
+ for(const track of list){
+  const option=document.createElement('option');
+  option.value=String(track.id);
+  option.textContent=track.language+(track.title?' · '+track.title:'')+(track.forced?' · Forçada':'');
+  option.selected=track.selected;
+  selector.append(option);
+ }
+ if(!list.length&&kind==='audio'){
+  const option=document.createElement('option');
+  option.value='';option.textContent='Nenhuma faixa disponível';
+  selector.append(option);
+ }
+ selector.disabled=!list.length&&kind==='audio';
+}
+api.onPlayerTracks(event=>{
+ const tracks=Array.isArray(event?.tracks)?event.tracks:[];
+ updateTrackSelect('player-audio-track',tracks,'audio');
+ updateTrackSelect('player-subtitle-track',tracks,'sub');
+});
+for(const [id,kind] of [['player-audio-track','audio'],['player-subtitle-track','sub']]){
+ $(id).addEventListener('change',async()=>{
+  const value=$(id).value;
+  if(!value)return;
+  try{await api.playerTrack(kind,value==='no'?'no':Number(value));}
+  catch(error){$('mpv-status').textContent='Falha na seleção de faixa: '+String(error.message||error);}
+ });
+}
 api.onPlayerStatus(event=>{
  if(!event||typeof event.state!=='string')return;
  $('mpv-status').textContent=PLAYER_LABELS[event.state]||'Player iniciado';
