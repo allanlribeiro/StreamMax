@@ -3,6 +3,13 @@
 // Session tokens continue to use Electron safeStorage in session-store.js.
 const fs=require('node:fs');
 const path=require('node:path');
+const OFFICIAL_PUBLIC_CONFIG=Object.freeze({
+ // The same PUBLIC config published in .github/workflows/streammax-111-apk.yml.
+ // Publishable key is not a service role key or an account token.
+ endpoint:'https://api.nuvio.tv',
+ publicKey:'sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN',
+ redirectUrl:'https://nuvio.tv/link'
+});
 function normalizeServerConfig(input){
  if(!input||typeof input!=='object')throw new TypeError('Configuração do servidor inválida');
  const endpoint=String(input.endpoint||'').trim().replace(/\/+$/,'');
@@ -38,7 +45,7 @@ function createServerConfigStore({filePath,env=process.env}){
   try{
    return {value:normalizeServerConfig(JSON.parse(fs.readFileSync(filePath,'utf8'))),source:'file'};
   }catch(error){
-   if(error.code==='ENOENT')return {value:null,source:'missing'};
+   if(error.code==='ENOENT')return {value:normalizeServerConfig(OFFICIAL_PUBLIC_CONFIG),source:'official'};
    return {value:null,source:'invalid'};
   }
  }
@@ -56,4 +63,4 @@ function createServerConfigStore({filePath,env=process.env}){
  }
  return {load,save};
 }
-module.exports={normalizeServerConfig,createServerConfigStore};
+module.exports={normalizeServerConfig,createServerConfigStore,OFFICIAL_PUBLIC_CONFIG};
