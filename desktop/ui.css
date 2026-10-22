@@ -86,3 +86,10 @@ a{color:#60c5ff;overflow-wrap:anywhere}
 .remote-history h2{font-size:21px;margin:0 0 12px}
 .remote-history p{color:#aec8df}
 .remote-progress-entry{cursor:default}
+
+.server-config{margin-top:26px;padding-top:20px;border-top:1px solid #284b70}
+.server-config h2{font-size:19px}
+.server-config p{font-size:13px}
+.server-config label{display:flex;flex-direction:column;gap:7px;margin:13px 0;color:#c4d9ec;font-size:13px}
+.server-config input{width:100%;padding:11px 13px;border-radius:9px;border:1px solid #285578;background:#0a2035;color:#f2f9ff}
+#server-config-message{color:#f0c28a;overflow-wrap:anywhere}
