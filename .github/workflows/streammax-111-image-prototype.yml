@@ -1,0 +1,64 @@
+name: StreamMax 1.0.11 image prototype checks (no APK, no OTA)
+
+on:
+  push:
+    branches:
+      - feature/streammax-1.0.11-video-enhancement-prototype
+    paths:
+      - 'legacy-source/android/app/build.gradle.kts'
+      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt'
+      - 'legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/StreamMaxImagePreview.kt'
+      - 'legacy-source/android/app/src/test/java/space/nuvio/nativelegacy/StreamMaxImagePreviewTest.kt'
+      - 'legacy-source/tests/streammax-111-image-preview-check.py'
+      - '.github/workflows/streammax-111-image-prototype.yml'
+  pull_request:
+    branches:
+      - feature/streammax-1.0.10-legacy-208
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safety-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm image experimental mode disabled in production
+        run: python3 legacy-source/tests/streammax-111-image-preview-check.py
+      - name: Retain 1.0.10 regressions
+        run: |
+          python3 legacy-source/tests/streammax-110-check.py
+          bash legacy-source/tests/streammax-updater.sh
+
+  android-kotlin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        run: |
+          set -euo pipefail
+          echo "sdk.dir=$ANDROID_HOME" > legacy-source/android/local.properties
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' | sudo tee "$ANDROID_HOME/licenses/android-sdk-license" >/dev/null
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+      - name: SDL Java bridge for compilation
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cache/nuvio-android/src"
+          curl -fLsS --retry 2 --connect-timeout 15 --max-time 180 \
+            https://github.com/libsdl-org/SDL/releases/download/release-2.30.9/SDL2-2.30.9.tar.gz \
+            | tar -xz -C "$HOME/.cache/nuvio-android/src"
+          test -f "$HOME/.cache/nuvio-android/src/SDL2-2.30.9/android-project/app/src/main/java/org/libsdl/app/SDLActivity.java"
+      - name: Compile Android Kotlin, including experimental shader
+        working-directory: legacy-source/android
+        run: ./gradlew :app:compileDebugKotlin --no-daemon --console=plain --stacktrace
+      - name: Kotlin unit tests of HDR and resolution exclusions
+        working-directory: legacy-source/android
+        run: ./gradlew :app:testDebugUnitTest --tests '*StreamMaxImagePreviewTest' --no-daemon --console=plain

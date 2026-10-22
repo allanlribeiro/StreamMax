@@ -160,6 +160,35 @@ object NvPlayer {
     private var ultAtmos = -1
     private var avisouSemAudio = false
     private var quadrosPerdidos = 0L
+    // Prototipo 1.0.11: associado ao player, inclusive quando foi pre-preparado.
+    // Nunca afeta o caminho de producao: exige app debuggable + ADB opt-in.
+    private val imagemPreviewAtivos = java.util.WeakHashMap<ExoPlayer, Boolean>()
+    private var imagemPreviewUltimaQueda = 0L
+    private var imagemPreviewAmostrasRuins = 0
+    private fun desligarImagemPreview(p: ExoPlayer, motivo: String) {
+        if (imagemPreviewAtivos.remove(p) != true) return
+        Log.w(TAG, "[imagem-preview] desativado motivo=$motivo")
+        // Com Media3 a volta total ao decoder->Surface sem GL ocorre na proxima abertura.
+        // Aqui so removemos o filtro, sem reiniciar/recarregar a fonte do usuario.
+        try { p.setVideoEffects(emptyList()) }
+        catch (error: Exception) { Log.w(TAG, "[imagem-preview] limpar efeito: " + error.javaClass.simpleName) }
+    }
+    private fun checarImagemPreview(tracks: Tracks) {
+        val p = player ?: return
+        if (imagemPreviewAtivos[p] != true) return
+        for (g in tracks.groups) if (g.type == C.TRACK_TYPE_VIDEO) {
+            for (i in 0 until g.length) if (g.isTrackSelected(i)) {
+                val f = g.getTrackFormat(i)
+                val recusa = StreamMaxImagePreview.refusal(
+                    f.width, f.height, f.colorInfo?.colorTransfer ?: C.INDEX_UNSET,
+                    f.frameRate, f.drmInitData != null)
+                if (recusa != null) {
+                    desligarImagemPreview(p, recusa)
+                    return
+                }
+            }
+        }
+    }
     private var statsTiques = 0
     private var bufferAlvoMs = androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
 
@@ -1336,6 +1365,17 @@ object NvPlayer {
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), false)
         r.p.trackSelectionParameters = r.p.trackSelectionParameters.buildUpon()
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+        // Opt-in EXCLUSIVAMENTE no APK strictdebug. Nenhum novo estagio GL na release.
+        // Antes do prepare e necessario para o pipeline de efeitos do Media3.
+        if (StreamMaxImagePreview.requested(act)) {
+            try {
+                r.p.setVideoEffects(StreamMaxImagePreview.effect())
+                imagemPreviewAtivos[r.p] = true
+                Log.i(TAG, "[imagem-preview] shader suave preparado (experimental)")
+            } catch (error: Exception) {
+                Log.w(TAG, "[imagem-preview] indisponivel: " + error.javaClass.simpleName)
+            }
+        }
     }
 
     private fun abrirMain(url: String, cabecalhos: String, reabrindo: Boolean,
@@ -1403,6 +1443,8 @@ object NvPlayer {
             val p = r.p
             recursosAtuais = r
             player = p
+            imagemPreviewUltimaQueda = quadrosPerdidos
+            imagemPreviewAmostrasRuins = 0
             processador = r.proc
             r.tap.ligado = tap.ligado
             tap = r.tap
@@ -1645,6 +1687,12 @@ object NvPlayer {
     // alem da string do host (que o JNI copia).
     private fun relatarStats(p: ExoPlayer) {
         val e = ParaleloDataSource.Estat
+        if (imagemPreviewAtivos[p] == true) {
+            val novas = (quadrosPerdidos - imagemPreviewUltimaQueda).coerceAtLeast(0)
+            imagemPreviewUltimaQueda = quadrosPerdidos
+            imagemPreviewAmostrasRuins = if (novas >= 4) imagemPreviewAmostrasRuins + 1 else 0
+            if (imagemPreviewAmostrasRuins >= 2) desligarImagemPreview(p, "quadros_perdidos")
+        }
         val buf = (p.bufferedPosition - p.currentPosition).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
         var quadros = -1L
         var perdidos = -1L
@@ -2097,6 +2145,10 @@ object NvPlayer {
             // Pixel anamorfico entra na largura: e a proporcao que o zoom do C usa.
             videoW = (v.width * v.pixelWidthHeightRatio + 0.5f).toInt()
             videoH = v.height
+            // Nao executar o shader na resolucao 4K mesmo com o piloto ligado.
+            if (StreamMaxImagePreview.refusal(videoW, videoH, C.INDEX_UNSET, -1f, false) != null) {
+                player?.let { desligarImagemPreview(it, "resolucao") }
+            }
             ev(EV_TAMANHO, videoW, videoH)
             if (temJanela) calcularJanela() else aplicarEncaixe()
         }
@@ -2104,6 +2156,7 @@ object NvPlayer {
         override fun onTracksChanged(tracks: Tracks) {
             if (!atual(minha)) return
             publicarFaixas(tracks)
+            checarImagemPreview(tracks)
             if (!quadroVisto && player?.playbackState == Player.STATE_READY) agendarVigiaPrimeiroQuadro()
             for (g in tracks.groups) if (g.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until g.length) if (g.isTrackSelected(i)) {
