@@ -1,6 +1,6 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {createCatalogClient,catalogUrl,manifestUrl}=require('../catalog-client');
+const {createCatalogClient,catalogUrl,metaUrl,manifestUrl}=require('../catalog-client');
 test('builds catalog routes and pagination like Android',()=>{
  assert.equal(catalogUrl('https://addon.example/base','movie','popular',0),
    'https://addon.example/base/catalog/movie/popular.json');
@@ -82,4 +82,51 @@ test('enables only manifest-advertised stream providers and clears them on logou
  assert.equal(c.getSourceProviders()[0].name,'Vídeos');
  c.clear();
  assert.deepEqual(c.getSourceProviders(),[]);
+});
+
+test('fetches series metadata and true episode IDs without sharing Supabase bearer',async()=>{
+ const addonCalls=[];
+ const c=createCatalogClient({
+  endpoint:'https://backend.example',publicKey:'public',
+  sessionClient:{withAccessToken:fn=>fn('private')},
+  transport:async url=>({ok:true,json:async()=>url.includes('get_sync_owner')?'owner-id':[
+   {url:'https://series.example/secret?key=addon-key',enabled:true,name:'Séries'}
+  ]}),
+  addonTransport:async(url,options)=>{
+   addonCalls.push({url,options});
+   if(url.includes('manifest.json'))return {ok:true,json:async()=>({id:'series-addon',name:'Séries',catalogs:[{id:'featured',type:'series'}]})};
+   return {ok:true,json:async()=>({meta:{
+    id:'tt001',type:'series',name:'Minha série',genres:['Drama'],videos:[
+     {id:'tt001:1:1',season:1,episode:1,title:'Piloto'},
+     {id:'tt001:2:3',season:2,episode:3,title:'Continuação',thumbnail:'https://img.example/3.jpg'}
+    ]
+   }})};
+  }
+ });
+ const rows=await c.reload();
+ const detail=await c.meta(rows.catalogs[0].key,'series','tt001');
+ assert.deepEqual(detail.videos.map(ep=>ep.id),['tt001:1:1','tt001:2:3']);
+ assert.equal(detail.videos[1].season,2);
+ assert.equal(detail.videos[1].episode,3);
+ assert.equal(addonCalls.at(-1).url,'https://series.example/secret/meta/series/tt001.json?key=addon-key');
+ assert.ok(addonCalls.every(v=>!v.options.headers.apikey&&!v.options.headers.Authorization));
+});
+test('accepts stream-only addons that omit catalog declarations',async()=>{
+ const c=createCatalogClient({
+  endpoint:'https://backend.example',publicKey:'public',
+  sessionClient:{withAccessToken:fn=>fn('private')},
+  transport:async url=>({ok:true,json:async()=>url.includes('get_sync_owner')?'owner-id':[
+   {url:'https://streams.example/base',enabled:true,name:'Fontes'}
+  ]}),
+  addonTransport:async()=>({ok:true,json:async()=>({id:'sources',name:'Fontes',resources:['stream']})})
+ });
+ const rows=await c.reload();
+ assert.equal(rows.catalogs.length,0);
+ assert.equal(c.getSourceProviders().length,1);
+});
+test('enforces catalog origin for metadata and encodes episode lookup safely',async()=>{
+ assert.equal(metaUrl('https://addon.example/private?token=addon','series','tt123:1:2'),
+  'https://addon.example/private/meta/series/tt123%3A1%3A2.json?token=addon');
+ const c=createCatalogClient({endpoint:'https://backend.example',publicKey:'public',sessionClient:{withAccessToken:fn=>fn('private')}});
+ await assert.rejects(c.meta('unknown','series','tt123'),/Unknown catalog/);
 });
