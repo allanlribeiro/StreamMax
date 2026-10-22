@@ -14,3 +14,15 @@ test('matches Android poll and exchange payloads',()=>{
 test('requires trusted transport and blocks insecure service origin',async()=>{
  await assert.rejects(()=>callLoginRpc({transport:async()=>{},endpoint:'http://example.org',publicKey:'public',method:RPC.poll,options:{code:'X',deviceNonce:'a'}}));
 });
+
+test('preserves service subpath when constructing device login RPC URL',async()=>{
+ let called;
+ await callLoginRpc({
+  transport:async(url)=>{called=url;return {ok:true};},
+  endpoint:'https://example.org/backend/',
+  publicKey:'public',
+  method:RPC.poll,
+  options:{code:'X',deviceNonce:'a'}
+ });
+ assert.equal(called,'https://example.org/backend/rest/v1/rpc/poll_tv_login_session');
+});
