@@ -66,6 +66,16 @@ void android_baixar_registro(const char *arquivo, const char *sucesso, const cha
   (*env)->DeleteLocalRef(env, act);
 }
 
+// Envia o checkpoint pelo fio SDL (nunca grava no fio da interface Android).
+JNIEXPORT void JNICALL
+Java_space_nuvio_nativelegacy_NuvioActivity_nativeCheckpoint(JNIEnv *env, jobject act) {
+  (void)env; (void)act;
+  if (!SDL_WasInit(SDL_INIT_EVENTS)) return;
+  SDL_Event e = {0};
+  e.type = SDL_APP_WILLENTERBACKGROUND;
+  SDL_PushEvent(&e);
+}
+
 #ifdef NV_TOUCH_UI
 static SDL_atomic_t toqueCancelEvento;
 

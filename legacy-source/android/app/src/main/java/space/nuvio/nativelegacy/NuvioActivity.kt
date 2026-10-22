@@ -314,9 +314,13 @@ class NuvioActivity : SDLActivity() {
     // a levar 16 s com o low-memory killer ativo. SDLActivity so repassa
     // onLowMemory (o aviso mais forte), nao estes degraus.
     private external fun nativeTrimMemoria(nivel: Int)
+    // Android UI_HIDDEN/BACKGROUND signals reflect lifecycle, not memory pressure
+    // while the TV is still showing StreamMax. Preserve visible poster textures.
+    private var trimResumida = false
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        if (trimResumida && level >= 20) return
         if (level >= 5) SDLActivity.nativeLowMemory()
         // Antes de a libmain.so carregar nao ha para quem avisar.
         try { nativeTrimMemoria(level) } catch (_: UnsatisfiedLinkError) { }
@@ -428,7 +432,34 @@ class NuvioActivity : SDLActivity() {
     // nao foi queda, e o modo seguro nao desfaz ajustes por causa dela.
     private fun despedida() = File(filesDir, "dados/despedida.txt")
 
-    private var instalando = false
+    @Volatile private var instalando = false
+
+    // Limpa apenas APKs antigos e reconhecidos da pasta privada de atualização,
+    // sem ler o arquivo grande no fio da interface e sem tocar em dados/sessões.
+    private fun podarApksAntigos() {
+        val dir = File(filesDir, "dados/atualizacao")
+        if (!dir.isDirectory) return
+        Thread({
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            try {
+                if (!instalando) {
+                    @Suppress("DEPRECATION")
+                    val instalado = packageManager.getPackageInfo(packageName, 0)
+                    val codigo = if (Build.VERSION.SDK_INT >= 28)
+                        instalado.longVersionCode else instalado.versionCode.toLong()
+                    StreamMaxApkCache.prune(dir, codigo, null) { file ->
+                        @Suppress("DEPRECATION")
+                        val archive = packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+                        if (archive == null || archive.packageName != packageName) null
+                        else if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode
+                        else archive.versionCode.toLong()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("StreamMax", "Nao foi possivel limpar APKs antigos", e)
+            }
+        }, "StreamMax-Apk-Prune").start()
+    }
 
     // Inspeciona o APK assinado ANTES de abrir permissoes ou o instalador.
     // Nao aceita pacote estranho, downgrade, certificado diferente ou caminho
@@ -628,7 +659,14 @@ class NuvioActivity : SDLActivity() {
         jaComecou = true
     }
 
+    // Persistir no fio SDL antes de o Android suspender/encerrar a Activity.
+    private external fun nativeCheckpoint()
+    private fun checkpoint() {
+        if (!mBrokenLibraries) try { nativeCheckpoint() } catch (_: UnsatisfiedLinkError) {}
+    }
+
     override fun onStop() {
+        checkpoint()
         val ini = SystemClock.elapsedRealtime()
         try {
             val f = despedida()
@@ -643,6 +681,7 @@ class NuvioActivity : SDLActivity() {
     }
 
     override fun onResume() {
+        trimResumida = true
         super.onResume()
         aplicarOrientacaoTouch()
         telaCheiaTouch()
@@ -659,6 +698,8 @@ class NuvioActivity : SDLActivity() {
     // do ciclo de vida (ANR ao apertar a tecla de ajustes da TV tocando, TCL,
     // 2.0.3). Direto no logcat: o printf do C passa por um pipe e pode esperar.
     override fun onPause() {
+        trimResumida = false
+        checkpoint()
         // Nunca deixar o video da vinheta rodando em background.
         aberturaStreamMax?.encerrar("background")
         val ini = SystemClock.elapsedRealtime()
@@ -687,6 +728,7 @@ class NuvioActivity : SDLActivity() {
     // super.onCreate: o SDL abre o main numa thread logo depois.
     private fun prepararAmbiente() {
         val dados = File(filesDir, "dados").apply { mkdirs() }
+        podarApksAntigos()
         val uiMode = (getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager)?.currentModeType
         val automaticMobile = InterfaceMode.automaticMobile(
             uiMode == Configuration.UI_MODE_TYPE_TELEVISION,

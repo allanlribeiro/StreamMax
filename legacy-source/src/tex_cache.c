@@ -879,6 +879,14 @@ static long limiteBytes(void) {
   long lim = pressaoAtiva() ? orcamento / 100 * pressaoPct : orcamento;
   if (pressaoPlay < 100 && orcamento / 100 * pressaoPlay < lim)
     lim = orcamento / 100 * pressaoPlay;
+  // Nuvio Legacy 2.0.8: nunca reduzir o teto abaixo das capas da tela atual.
+  // Evita remover/redecodificar continuamente a arte que o usuário está vendo.
+  if (lim < orcamento) {
+    long tela = 0;
+    for (int i = 0; i < nMax; i++)
+      if (quente(&itens[i])) tela += bytesTextura(&itens[i]);
+    if (tela > lim) lim = tela;
+  }
   return lim;
 }
 // % do teto que fica enquanto um video esta aberto (reproduzindo ou nao:

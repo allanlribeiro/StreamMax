@@ -1,0 +1,57 @@
+name: StreamMax 1.0.10 selective upstream regressions
+
+on:
+  push:
+    branches:
+      - feature/streammax-1.0.10-legacy-208
+    paths:
+      - 'legacy-source/src/**'
+      - 'legacy-source/android/app/src/**'
+      - 'legacy-source/tests/**'
+      - 'docs/streammax-1.0.10-legado-208.md'
+      - '.github/workflows/streammax-110-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    name: Android memory and StreamMax OTA contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Targeted 1.0.10 code checks
+        run: python3 legacy-source/tests/streammax-110-check.py
+      - name: Signed updater contracts
+        run: bash legacy-source/tests/streammax-updater.sh
+      - name: Keep TCL Home visuals and source selection
+        run: |
+          bash legacy-source/tests/streammax-home-visual.sh
+          bash legacy-source/tests/streammax-hero-trailer.sh
+          bash legacy-source/tests/streammax-first-source.sh
+          bash legacy-source/tests/streammax-next-prefetch.sh
+      - name: Validate PT-BR source and regional subtitles
+        run: |
+          bash legacy-source/tests/streammax-source-ptbr.sh
+          cc -std=c11 -Wall -Wextra -I legacy-source/src \
+            legacy-source/src/linguas.c legacy-source/tests/test_streammax_subtitle_regions.c \
+            -o /tmp/streammax-subtitle-regions
+          /tmp/streammax-subtitle-regions
+
+  native-compile:
+    name: Compile native C player without APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+            libgles2-mesa-dev libegl1-mesa-dev zlib1g-dev
+      - name: Compile StreamMax C application
+        working-directory: legacy-source
+        run: bash tools/linux.sh --build
