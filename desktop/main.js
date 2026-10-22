@@ -66,8 +66,10 @@ mpvPlayer.onTracks(event=>{
 app.setAppUserModelId('com.streammax.desktop');
 let window;
 function createWindow() {
+  const smoke=process.env.STREAMMAX_SMOKE_TEST==='1';
   const options = {
     width: 1280, height: 800, minWidth: 900, minHeight: 560,
+    show:!smoke,
     title: 'StreamMax', backgroundColor: '#080e1b',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   };
@@ -75,6 +77,40 @@ function createWindow() {
   if (fs.existsSync(ico)) options.icon = ico;
   window = new BrowserWindow(options);
   window.removeMenu();
+  if(smoke){
+    let finished=false;
+    const deadline=setTimeout(()=>finish(1,'renderer timeout'),30000);
+    function finish(code,message){
+      if(finished)return;
+      finished=true;
+      clearTimeout(deadline);
+      process.stdout.write('StreamMax smoke: '+message+'\n');
+      app.exit(code);
+    }
+    window.webContents.once('did-fail-load',(_event,code,message)=>
+      finish(1,'load failure '+code+': '+message));
+    window.webContents.once('render-process-gone',()=>finish(1,'renderer crashed'));
+    window.webContents.once('did-finish-load',async()=>{
+      try{
+        const result=await window.webContents.executeJavaScript(`
+          ({
+            title:document.title,
+            api:typeof window.streammaxDesktop?.authStatus==='function'&&
+              typeof window.streammaxDesktop?.saveServerConfig==='function',
+            root:!!document.getElementById('home-viewport'),
+            auth:!!document.getElementById('auth-panel'),
+            setup:!!document.getElementById('server-config-panel'),
+            watch:!!document.getElementById('continue-panel'),
+            renderer:!!window.StreamMaxHomeView
+          })
+        `);
+        if(result.title!=='StreamMax'||!result.api||!result.root||
+           !result.auth||!result.setup||!result.watch||!result.renderer)
+          throw new Error('Missing UI or preload bridge: '+JSON.stringify(result));
+        finish(0,'renderer and bridge loaded');
+      }catch(error){finish(1,String(error.message||error));}
+    });
+  }
   window.loadFile('index.html');
   window.webContents.on('before-input-event', (event,input) => {
     if(input.type==='keyDown' && input.key==='F11') {window.setFullScreen(!window.isFullScreen());event.preventDefault();}
