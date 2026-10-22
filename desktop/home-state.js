@@ -27,6 +27,15 @@ function normalizeHomeState(payload) {
     catalogRows: normalizedRows,
     continueWatchingEnabled: payload.continueWatchingEnabled === true,
     continueWatchingItems: payload.continueWatchingEnabled === true ? watching.slice() : [],
+    homeRows: Array.isArray(payload.homeRows) ? payload.homeRows.slice() : [],
+    gridItems: Array.isArray(payload.gridItems) ? payload.gridItems.slice() : [],
+    heroSectionEnabled: payload.heroSectionEnabled !== false,
+    modernLandscapePostersEnabled: payload.modernLandscapePostersEnabled === true,
+    focusedPosterBackdropTrailerEnabled: payload.focusedPosterBackdropTrailerEnabled === true,
+    focusedPosterBackdropTrailerMuted: payload.focusedPosterBackdropTrailerMuted !== false,
+    posterCardWidthDp: Number.isFinite(payload.posterCardWidthDp) ? payload.posterCardWidthDp : 126,
+    posterCardHeightDp: Number.isFinite(payload.posterCardHeightDp) ? payload.posterCardHeightDp : 189,
+    posterCardCornerRadiusDp: Number.isFinite(payload.posterCardCornerRadiusDp) ? payload.posterCardCornerRadiusDp : 12,
     error: payload.error == null ? null : String(payload.error),
     isLoading: payload.isLoading === true
   };
