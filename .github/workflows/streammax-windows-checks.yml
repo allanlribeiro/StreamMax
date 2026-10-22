@@ -23,6 +23,8 @@ jobs:
           node --check main.js
           node --check preload.js
           node --check renderer.js
+          node --check home-state.js
+          node --test tests/home-state.test.js
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
