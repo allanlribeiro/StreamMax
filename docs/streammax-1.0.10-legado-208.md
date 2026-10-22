@@ -31,12 +31,19 @@ aparelhos de 2 GB de RAM são critérios de compatibilidade.
   o consumidor sem invalidar o cache. Metadados de provedor e interfaces
   regionais ainda precisam de análise específica.
 
+## Parcialmente integrado: progresso (aguarda validação)
+- **Retomada:** checkpoint local a cada 30 segundos efetivos de reprodução;
+  sincronização de conta é solicitada em intervalos separados de cinco
+  minutos. Eventos de suspensão enviam um checkpoint pelo loop SDL, sem
+  bloqueio de armazenamento no fio principal do Android. Avisos de memória
+  baixa não forçam sincronização da conta. Mantidos controles de fonte
+  principal, duração real, episódio, progresso mínimo e filtro de trailers.
+  A persistência em um desligamento forçado ainda exige teste na TCL.
+
 ## Próximas etapas (não implementadas)
 1. **Legendas:** revisar os metadados do provedor e a interface existente,
    preservando pt-BR/pt-PT e os menus aprovados.
-2. **Retomada:** portar checkpoints persistentes em intervalo e ao suspender,
-   sem sobrescrever lógica de fonte lembrada/último episódio.
-3. **Arte e biblioteca:** fallback TMDB para logos, backdrops em busca e
+2. **Arte e biblioteca:** fallback TMDB para logos, backdrops em busca e
    sincronização de snapshots, em alterações isoladas.
 4. **Desempenho adaptativo:** portar melhorias de `gpunivel.c` somente com
    medições A/B; não piorar o visual azul nem forçar efeitos permanentes.
