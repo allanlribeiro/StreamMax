@@ -2,6 +2,12 @@ const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
+const {createAuthService}=require('./auth-service');
+const authService=createAuthService({
+ endpoint:process.env.STREAMMAX_SUPABASE_URL,
+ publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
+ redirectUrl:process.env.STREAMMAX_LOGIN_REDIRECT_URL
+});
 app.setAppUserModelId('com.streammax.desktop');
 let window;
 function createWindow() {
@@ -30,5 +36,9 @@ ipcMain.handle('streammax:open-video', async () => {
     filters:[{name:'Vídeos',extensions:['mp4','m4v','webm','mov','mkv']}]});
   return response.canceled ? null : pathToFileURL(response.filePaths[0]).href;
 });
+ipcMain.handle('streammax:auth-status',()=>authService.status());
+ipcMain.handle('streammax:auth-start',()=>authService.start());
+ipcMain.handle('streammax:auth-poll',()=>authService.poll());
+ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
