@@ -2,7 +2,7 @@
 // Coordinates the existing mpv player, source discovery and encrypted progress store.
 // Source URL never crosses the renderer IPC; each saved entry matches Android's
 // contentId / videoId / season / episode and millisecond position schema.
-function createPlaybackCoordinator({player,sources,store,clock=Date.now,onProgress=()=>{},onError=()=>{}}){
+function createPlaybackCoordinator({player,sources,store,remoteResume=null,clock=Date.now,onProgress=()=>{},onError=()=>{}}){
  if(!player||!sources||!store)throw new TypeError('Playback dependencies required');
  let active=null;
  let latest={positionMs:0,durationMs:0,bufferedSeconds:null};
@@ -78,13 +78,23 @@ function createPlaybackCoordinator({player,sources,store,clock=Date.now,onProgre
    lastSaveAt=0;
    let resume=null;
    try{resume=await store.resume(meta.contentId,source.videoId);}
-   catch{onError('Histórico local indisponível: o vídeo começará do início.');}
+   catch{onError('Histórico local indisponível.');}
+   let resumeSource=resume?'local':null;
+   if(!resume&&typeof remoteResume==='function'){
+    try{
+     resume=await remoteResume(meta.contentId,source.videoId);
+     if(resume&&Number.isFinite(resume.positionMs)&&Number.isFinite(resume.durationMs)&&
+       resume.positionMs>=0&&resume.durationMs>0&&resume.positionMs/resume.durationMs>=0.02&&
+       resume.positionMs/resume.durationMs<0.9)resumeSource='android-account';
+     else{resume=null;resumeSource=null;}
+    }catch{onError('Retomada da TV indisponível; iniciando pelo começo.');}
+   }
    if(version!==myVersion)throw new Error('Reprodução substituída');
    active={metadata:meta,videoId:source.videoId,resumeMs:resume?.positionMs||0,
     savedDurationMs:resume?.durationMs||0};
    try{
     const result=await player.play(source.url);
-    return {...result,resumeAvailable:!!resume};
+    return {...result,resumeAvailable:!!resume,resumeSource};
    }catch(error){if(version===myVersion)active=null;throw error;}
   },
   async stop(){
