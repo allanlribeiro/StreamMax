@@ -254,7 +254,8 @@ api.onSourcesProgress(update=>{
       const metadata=activePlaybackMetadata;
       if(!metadata)throw new Error('Informações do título indisponíveis');
       const result=await api.playSource(source.id,metadata);
-      if(result.resumeAvailable)$('mpv-status').textContent='Retomando reprodução anterior…';
+      if(result.resumeAvailable)$('mpv-status').textContent=result.resumeSource==='android-account'?
+        'Retomando posição salva na TV…':'Retomando posição salva neste computador…';
      }catch(error){
       $('mpv-status').textContent='Não foi possível iniciar a fonte: '+String(error.message||error);
      }finally{play.disabled=false;}
@@ -341,8 +342,10 @@ async function loadRemoteHistory(){
   for(const record of records){
    // Remote sync RPC returns IDs and watch positions, not names or artwork.
    // Preserve that distinction; do not invent titles or imply local import.
-   const card=document.createElement('div');
+   const card=document.createElement('button');
+   card.type='button';
    card.className='continue-card remote-progress-entry';
+   card.title='Buscar fonte e retomar a posição salva na TV';
    const metadata=document.createElement('div');
    const title=document.createElement('strong');
    title.textContent=record.contentId;
@@ -357,6 +360,26 @@ async function loadRemoteHistory(){
    progress.value=Math.min(100,Math.round(100*record.position/record.duration));
    metadata.append(title,details,label,progress);
    card.append(metadata);
+   card.addEventListener('click',()=>{
+    ++detailGeneration;
+    activeSourceRequest=null;
+    activePlaybackMetadata=null;
+    detailsItem=null;
+    $('detail-name').textContent=record.contentId;
+    $('detail-description').textContent=record.contentType==='series'?
+      'Temporada '+record.season+' · Episódio '+record.episode:'Filme';
+    $('detail-facts').textContent='Histórico da TV · Retomar de '+formatTime(record.position);
+    $('detail-meta-status').textContent='Título e capa ainda não recuperados para esta prévia.';
+    $('detail-episodes').hidden=true;
+    $('detail-panel').hidden=false;
+    $('detail-close').focus();
+    openSources({type:record.contentType,id:record.videoId},{
+      contentId:record.contentId,contentType:record.contentType,
+      name:record.contentId,episodeTitle:'',
+      season:record.season,episode:record.episode,
+      poster:'',backdrop:''
+    });
+   });
    list.append(card);
   }
  }catch(error){
