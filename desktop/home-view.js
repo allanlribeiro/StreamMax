@@ -46,7 +46,7 @@
       if(!item)return;
       active=item;
       heroImage.hidden=!item.background;
-      if(item.background)heroImage.src=item.background;
+      if(item.background&&heroImage.getAttribute('src')!==item.background)heroImage.src=item.background;
       else heroImage.removeAttribute('src');
       title.textContent=item.name;
       desc.textContent=[item.releaseInfo,item.description].filter(Boolean).join(' • ');
@@ -75,9 +75,18 @@
         card.addEventListener('focus',()=>select(item));
         card.addEventListener('click',()=>onOpenDetails(item));
         card.addEventListener('keydown',event=>{
-          if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
-          const sibling=event.key==='ArrowRight'?card.nextElementSibling:card.previousElementSibling;
-          if(sibling&&sibling.tagName==='BUTTON'){event.preventDefault();sibling.focus();sibling.scrollIntoView({block:'nearest',inline:'nearest'});}
+          let next=null;
+          if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
+            next=event.key==='ArrowRight'?card.nextElementSibling:card.previousElementSibling;
+          }else if(event.key==='ArrowUp'||event.key==='ArrowDown'){
+            const otherRow=event.key==='ArrowDown'?section.nextElementSibling:section.previousElementSibling;
+            const rowCards=otherRow?Array.from(otherRow.querySelectorAll('.poster-card')):[];
+            const currentIndex=Array.from(rail.children).indexOf(card);
+            next=rowCards[Math.min(currentIndex,rowCards.length-1)]||null;
+          }
+          if(next&&next.tagName==='BUTTON'){
+            event.preventDefault();next.focus();next.scrollIntoView({block:'nearest',inline:'nearest'});
+          }
         });
         rail.append(card);
         all.push(item);
