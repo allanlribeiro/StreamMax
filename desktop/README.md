@@ -1,35 +1,38 @@
-# StreamMax para Windows — prévia desktop (em desenvolvimento)
+# StreamMax para Windows — porte experimental
 
-Base derivada da ramificação Android TV `feature/streammax-111-static-s-logo`. **Não é ainda uma versão completa do StreamMax para Windows.**
+Referência Android: `feature/streammax-111-static-s-logo` (StreamMax 1.0.11).
+Desenvolvimento isolado: `feature/streammax-windows-desktop`.
 
-## Recursos implementados na prévia
-- Interface inicial para mouse, teclado, modo janela e tela cheia (F11).
-- Player experimental para abrir um vídeo local: o Electron/Chromium **não garante suporte** a todos os formatos (por exemplo, MKV ou codecs não suportados).
-- Espaço reproduz/pausa; setas esquerda/direita buscam 5 segundos quando o player está ativo; Esc volta à página inicial.
-- Separação do projeto Android TV: nenhuma alteração no APK.
-- Preparação para instalador NSIS, ícone no executável, menu Iniciar e atalho na área de trabalho.
+## Objetivo inalterado
+Portar **a experiência do Android**, mantendo tela inicial, ordem dos catálogos, destaques, login, detalhes, player e histórico. Alterar somente a interação necessária a mouse/teclado e janelas Windows.
 
-## Rodar o protótipo no Windows
-Instale Node.js, clone o repositório e entre na pasta `desktop`. Execute:
-```powershell
-npm install
-npm start
-```
+## Implementado no código desta ramificação
+- Estrutura de janela Electron independente do Android TV, com F11.
+- Tela inicial **em desenvolvimento**: hero superior (texto à esquerda e arte à direita) e linhas horizontais. Usa apenas metadados retornados pelos catálogos reais; não cria títulos fictícios. Foco por mouse/teclado, setas horizontais, rolagem e carregamento em lotes.
+- Integração inicial de login de dispositivo via Supabase, com abertura da página de autorização no navegador.
+- Sessão protegida por `safeStorage`, renovação de tokens, restauração com validação remota e logout seguro.
+- Consulta somente-leitura dos addons da conta para o **perfil principal (1)**, via `get_sync_owner` e tabela `addons`.
+- Busca de manifestos e páginas de catálogos dos addons usando requisições separadas, sem encaminhar tokens Supabase a terceiros.
+- Testes de código, autenticação, visualização de metadados e catálogos com respostas simuladas.
 
-## Logo S, compilação e distribuição
-O ícone **não pode ser substituído por outro símbolo**. O ícone triangular presente no Android não é o S aprovado para esta edição.
-Coloque a imagem quadrada oficial do S (PNG de pelo menos 256x256) em:
-`desktop/assets/streammax-s.png`
+## O que ainda não está pronto
+**Não há equivalência funcional com a versão Android.** A tela inicial é uma implementação parcial da organização Modern, ainda não foi comparada visualmente pixel a pixel. Estão pendentes: seleção/sincronização de outros perfis e preferências de layout/hero, Continuar Assistindo, trailers, busca completa, detalhes, seleção de fontes, legendas pt-BR/pt-PT, áudio, player com codecs/formatos adequados, preferências, atualização e testes ponta a ponta.
 
-O CI converte essa arte para `desktop/assets/streammax.ico` com `scripts/make_icon.py`, então executa `npm run dist`. A criação do instalador de teste é **condicional à presença da logo oficial**, para impedir que o Windows ganhe um ícone incorreto. Se presente, a execução do Actions tentará produzir o instalador **não assinado** como artefato `StreamMax-Windows-Preview-unsigned`; o resultado precisa ser conferido no próprio Actions e instalado/testado em um PC Windows.
+O botão de detalhes exibe somente informações já disponíveis no catálogo e informa que o player e a seleção de fontes ainda não foram portados. Não é uma tela de detalhes final.
 
-Não há APK Android embutido, emulação, nem reuso direto dos componentes Kotlin/Jetpack Compose.
+## Configuração de desenvolvimento
+Instale Node.js LTS. Em `desktop/`, use `npm install`, `npm test`, `npm start`.
+Para consultar a mesma conta que o Android, é necessário configurar **por um método local seguro**, sem fazer commit de credenciais, as variáveis públicas e de servidor:
+- `STREAMMAX_SUPABASE_URL`: URL HTTPS do backend usado pelo Android;
+- `STREAMMAX_SUPABASE_PUBLIC_KEY`: chave **publicável** (nunca service role);
+- `STREAMMAX_LOGIN_REDIRECT_URL`: endereço HTTPS compatível de autorização de dispositivo no backend.
 
-## Pendente
-1. Fornecer/incorporar a arte S aprovada para gerar o ICO e permitir o instalador.
-2. Implementar as integrações reais de autenticação, catálogos, addons, histórico, seleção de fontes e legendas.
-3. Selecionar solução de player desktop com compatibilidade adequada aos codecs e fontes usados no projeto.
-4. Validar instalador, atalhos e janelas no Windows 10/11.
-5. Planejar atualizações automáticas e distribuição assinada quando a edição desktop estiver funcional.
+Não envie segredos por chat nem em issues. As credenciais de sessão devem permanecer no armazenamento protegido do Windows. A versão Windows ainda não implementa a descoberta automática da configuração de servidor do Android.
 
-Respeitar GPLv3, atribuições e licenças das dependências. Nunca incluir credenciais privadas no cliente.
+## Ícone e instalador
+A arte S aprovada deve estar em `desktop/assets/streammax-s.png` (quadrada, 256 px ou maior); o workflow converte para ICO multirresolução. Sem essa arte, o workflow **não** gera instalador para não usar ícone diferente. Instaladores experimentais não são assinados.
+
+A versão 0.1.0 já executada pelo usuário é anterior a este porte de interface. **Atualizações de código não alteram automaticamente esse executável.**
+
+## Licenças
+Preservar o licenciamento GPLv3 do projeto original e as licenças dos componentes externos. Não distribuir segredos embutidos. Validar atualizações e reprodução diretamente em Windows antes de publicar release.
