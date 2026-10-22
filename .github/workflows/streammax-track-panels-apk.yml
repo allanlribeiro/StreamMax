@@ -12,6 +12,7 @@ on:
       - feature/streammax-static-s-splash-20261022
     paths:
       - '.github/workflows/streammax-track-panels-apk.yml'
+      - 'migration/check-playback-contracts.py'
 
 permissions:
   contents: read
