@@ -46,9 +46,23 @@ public final class MainActivity extends Activity {
         LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(42),dp(24),dp(42),dp(24));
-        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.BL_TR,
-            new int[]{0xff04070c,0xff13283a,0xff04060c}));
-        setContentView(root);
+        int wallpaper = getResources().getIdentifier("streammax_metal_waves", "drawable", getPackageName());
+        if (wallpaper == 0) {
+            throw new IllegalStateException("Imagem original RC2 ausente: não gerar APK com layout substituto.");
+        }
+        android.widget.ImageView background = new android.widget.ImageView(this);
+        background.setImageResource(wallpaper);
+        background.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        android.widget.FrameLayout.LayoutParams backgroundParams =
+            new android.widget.FrameLayout.LayoutParams(-1, -1);
+        android.widget.FrameLayout frame = new android.widget.FrameLayout(this);
+        frame.addView(background, backgroundParams);
+        android.view.View overlay = new android.view.View(this);
+        overlay.setBackgroundColor(0x7802060C);
+        frame.addView(overlay, backgroundParams);
+        frame.addView(root, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        root.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        setContentView(frame);
 
         LinearLayout header=horizontal();
         LinearLayout titleBlock=new LinearLayout(this);titleBlock.setOrientation(1);
