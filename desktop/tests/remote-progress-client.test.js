@@ -51,3 +51,40 @@ test('invalid records are discarded and tokens never appear in returned results'
  assert.equal(JSON.stringify(result).includes('private-secret'),false);
  assert.equal(JSON.stringify(result).includes('secret-user'),false);
 });
+
+test('trusted remote resume reuses fetched history and never invents a new position',async()=>{
+ let networkCalls=0;
+ const client=createRemoteProgressClient({
+  sessionClient:{withAccessToken:fn=>fn('test')},
+  endpoint:'https://example.org',publicKey:'public',
+  transport:async()=>{networkCalls++;return {ok:true,json:async()=>[
+   {content_id:'tt88',content_type:'movie',video_id:'tt88',position:45500,duration:100000,last_watched:123}
+  ]};}
+ });
+ assert.deepEqual(await client.resume('tt88','tt88'),{positionMs:45500,durationMs:100000});
+ assert.equal(networkCalls,1);
+ assert.equal(await client.resume('tt88','wrong-episode'),null);
+ assert.equal(networkCalls,1);
+ client.clear();
+ assert.deepEqual(await client.resume('tt88','tt88'),{positionMs:45500,durationMs:100000});
+ assert.equal(networkCalls,2);
+});
+test('signout while history request is pending cannot refill another account cache',async()=>{
+ let release;
+ const hold=new Promise(resolve=>{release=resolve;});
+ let started;
+ const requested=new Promise(resolve=>{started=resolve;});
+ const client=createRemoteProgressClient({
+  sessionClient:{withAccessToken:fn=>fn('prior-account')},
+  endpoint:'https://example.org',publicKey:'public',
+  transport:async()=>{started();await hold;return{ok:true,json:async()=>[
+   {content_id:'ttold',content_type:'movie',video_id:'ttold',position:40000,duration:100000,last_watched:100}
+  ]};}
+ });
+ const running=client.list();
+ await requested;
+ client.clear();
+ release();
+ await assert.rejects(running,/cancelada/);
+ assert.equal(client.resume instanceof Function,true);
+});
