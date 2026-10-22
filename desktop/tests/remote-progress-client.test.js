@@ -88,3 +88,27 @@ test('signout while history request is pending cannot refill another account cac
  await assert.rejects(running,/cancelada/);
  assert.equal(client.resume instanceof Function,true);
 });
+
+test('resume shares an in-flight login warmup rather than making a second network request',async()=>{
+ let respond;
+ const gate=new Promise(resolve=>{respond=resolve;});
+ let started;
+ const entered=new Promise(resolve=>{started=resolve;});
+ let calls=0;
+ const client=createRemoteProgressClient({
+  sessionClient:{withAccessToken:fn=>fn('test')},
+  endpoint:'https://example.org',publicKey:'public',
+  transport:async()=>{calls++;started();await gate;return{ok:true,json:async()=>[
+   {content_id:'ttwarm',content_type:'movie',video_id:'ttwarm',position:43000,duration:100000,last_watched:10}
+  ]};}
+ });
+ const warmup=client.list();
+ await entered;
+ const playing=client.resume('ttwarm','ttwarm');
+ assert.equal(calls,1);
+ respond();
+ const [records,position]=await Promise.all([warmup,playing]);
+ assert.equal(records.length,1);
+ assert.deepEqual(position,{positionMs:43000,durationMs:100000});
+ assert.equal(calls,1);
+});
