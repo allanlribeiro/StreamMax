@@ -24,9 +24,16 @@ aparelhos de 2 GB de RAM são critérios de compatibilidade.
   certificado, código de versão e assinatura já existentes no StreamMax.
   O Nuvio upstream usa outro diretório; não copiar o caminho dele literalmente.
 
+## Parcialmente integrado (aguarda validação)
+- **Legendas:** porta o reaproveitamento de downloads durante a sessão do
+  Legacy 2.0.8 (`legenda.c`). Evita baixar a mesma URL novamente ao mudar de
+  faixa, mantém as referências separadas por reprodução e copia os bytes para
+  o consumidor sem invalidar o cache. Metadados de provedor e interfaces
+  regionais ainda precisam de análise específica.
+
 ## Próximas etapas (não implementadas)
-1. **Legendas:** portar cache de pré-download da sessão e preservação de
-   metadados do provedor, sem desfazer pt-BR/pt-PT nem os menus aprovados.
+1. **Legendas:** revisar os metadados do provedor e a interface existente,
+   preservando pt-BR/pt-PT e os menus aprovados.
 2. **Retomada:** portar checkpoints persistentes em intervalo e ao suspender,
    sem sobrescrever lógica de fonte lembrada/último episódio.
 3. **Arte e biblioteca:** fallback TMDB para logos, backdrops em busca e
