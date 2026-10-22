@@ -22,7 +22,8 @@ int main(void) {
   assert(!sm_update_nova_versao("v1.0.7"));
   assert(!sm_update_nova_versao("v1.0.8"));
   assert(!sm_update_nova_versao("v1.0.9"));
-  assert(sm_update_nova_versao("v1.0.10"));
+  assert(!sm_update_nova_versao("v1.0.10"));
+  assert(sm_update_nova_versao("v1.0.11"));
   assert(sm_update_nova_versao("v1.1.0"));
   assert(sm_update_nova_versao("v2.0.0"));
   assert(!sm_update_nova_versao("v0.9.9"));
