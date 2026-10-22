@@ -25,7 +25,8 @@
       "catalog-contract.js",
       "auth-flow.js",
       "auth-rpc.js",
-      "auth-service.js"
+      "auth-service.js",
+      "session-store.js"
     ],
     "win": {
       "target": [
