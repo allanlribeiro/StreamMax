@@ -48,70 +48,23 @@ static void abSaida(float p, float *veu, float *alfaMarca) {
   *alfaMarca = (1.0f - pm) * (1.0f - pm);
 }
 
-static GLuint marca;
-static float marcaAsp;
-// ARTE CHEIA (splash 1.7.2): a mesma imagem do splash.png da LG e do fundo da
-// janela no Android, em 1280x720 (decodifica em ~1/2 do tempo da 1920 e some em
-// menos de 1,5 s, entao a ampliacao nao chega a ser vista). Com ela, a marca e
-// o fundo liso ficam de fora: a arte ja tem os dois.
-static int arteCheia;
-static int marcaTexto;
+// Splash StreamMax: somente o S OFICIAL, obtido da propria arte do icone.
+// A textura ja possui tratamento de fundo no logoapp.c. Nenhum video,
+// palavra STREAMMAX, JPEG de splash ou textura 16:9 sao decodificados aqui.
+#define AB_SIMBOLO_W 432.0f
+#define AB_SIMBOLO_H 540.0f
 static int fundoFica;
+static int estado; // 0 nao iniciou, 1 parado, 2 esmaecendo, 3 acabou
+static Uint32 inicio, saidaEm;
+static int estiloAb;
 
 void abertura_fundo_fica(int sim) { fundoFica = sim; }
-static int estado;          // 0 nao iniciou, 1 parada, 2 saindo, 3 acabou
-static Uint32 inicio, saidaEm;
-static float escala = 1.0f, escalaVel;
-static int estiloAb;        // ajustes_abertura() lido no arranque
-static float marcaW = AB_MARCA_W;   // largura da marca no 1080p
 
 void abertura_iniciar(const char *dirArte) {
-  char cam[600];
-  SDL_Surface *s, *c;
   estado = 0;
-  arteCheia = 0;
-  marcaTexto = 0;
-  marca = 0;
+  fundoFica = 0;
   estiloAb = ajustes_abertura();
-  marcaW = AB_MARCA_W;
-  s = NULL;
-  logoapp_iniciar(dirArte);
-  // Marca oficial StreamMax: splash estatico em 16:9, carregado uma unica vez.
-  // Se ainda nao instalada, manter o comportamento original.
-  // Preferir JPEG leve para a abertura cinematografica aprovada.
-  // PNG permanece aceito para instalacoes anteriores.
-  snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.jpg", dirArte ? dirArte : ".");
-  s = IMG_Load(cam);
-  if (!s) {
-    snprintf(cam, sizeof cam, "%s/marcas/streammax_splash.png", dirArte ? dirArte : ".");
-    s = IMG_Load(cam);
-  }
-  if (s) arteCheia = 1;
-  // Somente a arte cinematografica oficial ocupa o splash. Qualquer
-  // logo alternativo ficaria visualmente diferente antes da tela de perfis.
-  // Nao usar o splash nem a palavra Nuvio do Legacy como fallback.
-  // Se a arte StreamMax nao existir, usar apenas o fundo azul-marinho.
-  if (!s) {
-    marca = 0;
-    marcaAsp = 1.0f;
-    marcaTexto = 1;
-    printf("[abertura] arte StreamMax ausente; titulo leve no fundo cinematografico\n");
-    return;
-  }
-  c = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);   // RGBA em bytes
-  SDL_FreeSurface(s);
-  if (!c) return;
-  glGenTextures(1, &marca);
-  glBindTexture(GL_TEXTURE_2D, marca);
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, c->w, c->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, c->pixels);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  gfx_tex_esquecer(0);   // o gfx guarda a ultima textura ligada
-  marcaAsp = c->h > 0 ? (float)c->w / (float)c->h : 3.15f;
-  SDL_FreeSurface(c);
+  logoapp_iniciar(dirArte); // usa marcas/streammax_icon.png, ja empacotado
 }
 
 void abertura_tecla(void) {
@@ -122,124 +75,85 @@ int abertura_ativa(void) { return estado < 3; }
 
 static void acabar(void) {
   estado = 3;
-  if (marca) { gfx_tex_esquecer(marca); glDeleteTextures(1, &marca); marca = 0; }
-  printf("[abertura] fim em %u ms\n", (unsigned)(SDL_GetTicks() - inicio));
+  printf("[abertura] fim em %u ms\\n", (unsigned)(SDL_GetTicks() - inicio));
   fflush(stdout);
 }
 
 int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
   float veu = 1.0f, alfaMarca = 1.0f;
   const AbEstilo es = abEstilo(estiloAb, anim_politica_reduzida);
-  float alvo = es.zoom ? 1.018f : 1.0f;
+  (void)dt; // O S permanece imovel enquanto o aplicativo inicializa.
   if (estado == 3) return 0;
-  if (estado == 0) { estado = 1; inicio = agora; escala = 1.0f; escalaVel = 0.0f; }
+  if (estado == 0) { estado = 1; inicio = agora; }
   if (estado == 1) {
     Uint32 passou = agora - inicio;
-    // NUVIO_ABERTURA_MS segura a parada (captura de tela no Mac/TV).
     static long segura = -1;
-    if (segura < 0) { const char *v = getenv("NUVIO_ABERTURA_MS"); segura = v ? atol(v) : 0; }
-    if (segura > 0 && passou < (Uint32)segura) pendentes = 1, passou = 0;
-    // Sai quando as artes do primeiro quadro chegaram (nada em voo) ou no teto.
-    if ((passou >= es.minMs && pendentes <= 0) || passou >= ABERTURA_TETO_MS) {
-      estado = 2; saidaEm = agora;
+    if (segura < 0) {
+      const char *v = getenv("NUVIO_ABERTURA_MS");
+      segura = v ? atol(v) : 0;
+    }
+    if (segura > 0 && passou < (Uint32)segura) {
+      pendentes = 1;
+      passou = 0;
+    }
+    if ((passou >= es.minMs && pendentes <= 0) ||
+        passou >= ABERTURA_TETO_MS) {
+      estado = 2;
+      saidaEm = agora;
     }
   }
   if (estado == 2) {
-    float p = (float)(agora - saidaEm) / ((arteCheia && fundoFica && !anim_politica_reduzida) ? 760.0f : es.saidaMs);
+    const float duracao = (fundoFica && !anim_politica_reduzida)
+                             ? 760.0f : es.saidaMs;
+    float p = (float)(agora - saidaEm) / duracao;
     if (p >= 1.0f) { acabar(); return 0; }
-    // A marca cresce um pouco por mola (a mesma de segunda ordem do resto do
-    // app) — abre para a home.
     abSaida(p, &veu, &alfaMarca);
-    // Na passagem da arte cheia para os perfis, usar smoothstep: o
-    // antigo q^3 apagava quase tudo nos primeiros quadros (corte seco).
-    // Somente a camada visual muda; nenhuma tela/perfil e reiniciado.
-    if (arteCheia && fundoFica) {
+    if (fundoFica) {
       float q = 1.0f - p;
       veu = q * q * (3.0f - 2.0f * q);
     }
-    if (es.zoom) alvo = 1.09f;
   }
-  // Sem zoom (So esmaece, Direto, animacoes reduzidas): so o esvanecimento.
-  escala = !es.zoom ? 1.0f : anim_mola2(&escalaVel, escala, alvo, dt, 9.0f);
-  if (marca && arteCheia) {
-    // A arte inteira cresce a partir do centro e sai junto com o veu. Sobre o
-    // login ela fica parada: o fundo de baixo continua as listras, e quem
-    // some e o logo.
-    float k = fundoFica ? 1.0f : escala;
-    float w = NV_TELA_W * k, h = NV_TELA_H * k;
-    gfx_tex_aspect_atual = 0.0f;
-    gfx_rect((GfxRect){ (NV_TELA_W - w) * 0.5f, (NV_TELA_H - h) * 0.5f, w, h },
-             marca, GFX_TEXTO, 0, 0, 0, 0.0f, 1, 1, 1, veu);
-    return 1;
-  }
-  gfx_cor((GfxRect){ 0, 0, NV_TELA_W, NV_TELA_H }, 0.0f,
+  gfx_cor((GfxRect){0, 0, NV_TELA_W, NV_TELA_H}, 0,
           AB_FUNDO_R, AB_FUNDO_G, AB_FUNDO_B, veu);
-  // Fallback de identidade do StreamMax, sem textura, PNG antigo ou video.
-  // Nao bloqueia a primeira tela: usa fonte ja carregada pelo aplicativo.
-  if (marcaTexto && alfaMarca > 0.004f) {
-    TxtLinha titulo = txt_linha(TXT_ILHA_TITULO, "STREAMMAX", 232, 242, 255, 255);
-    float cx = NV_TELA_W * 0.5f;
-    gfx_cor((GfxRect){cx - 305.0f, AB_CENTRO_Y + 54.0f, 610.0f, 2.0f},
-            0.0f, 0.12f, 0.57f, 0.92f, alfaMarca * 0.70f);
-    txt_desenhar_alpha(titulo, cx - (float)titulo.w * 0.5f,
-                       AB_CENTRO_Y - (float)titulo.h * 0.5f, alfaMarca);
-  }
-  if (marca && alfaMarca > 0.004f) {
-    float w = marcaW * escala, h = w / marcaAsp;
-    gfx_tex_aspect_atual = 0.0f;
-    gfx_rect((GfxRect){ NV_TELA_W * 0.5f - w * 0.5f, AB_CENTRO_Y - h * 0.5f, w, h },
-             marca, GFX_TEXTO, 0, 0, 0, 0.0f, 1, 1, 1, alfaMarca);
+  if (alfaMarca > 0.004f) {
+    // S original 432x540 no plano virtual 1920x1080, centro exato.
+    logoapp_streammax_simbolo(
+        (GfxRect){(NV_TELA_W - AB_SIMBOLO_W) * 0.5f,
+                  (NV_TELA_H - AB_SIMBOLO_H) * 0.5f,
+                  AB_SIMBOLO_W, AB_SIMBOLO_H},
+        alfaMarca);
   }
   return 1;
 }
 
-// PREVIA DOS AJUSTES (Aparencia > "Abertura do app"): uma volta da abertura em
-// laco dentro de `r`, com a MESMA conta de saida (abEstilo/abSaida) e o logo
-// pedido. Quem chama desenha antes o que fica por baixo (a "home") e recorta;
-// aqui so entram o veu e a marca. Linha do tempo: entra (200 ms), para (a do
-// estilo, esticada a 900 ms para dar para ver), sai (a do estilo) e descansa
-// 900 ms com a home a mostra.
-void abertura_previa(GfxRect r, float raio, int estilo, int logo, Uint32 agora, float alfa) {
+// PREVIA DOS AJUSTES: reproduz a mesma abertura so com o S, sem animacao
+// de zoom nem palavra; a configuracao de saida ainda controla o fade.
+void abertura_previa(GfxRect r, float raio, int estilo, int logo,
+                     Uint32 agora, float alfa) {
   const AbEstilo es = abEstilo(estilo, 0);
-  const float entra = 200.0f, para = es.minMs ? 900.0f : 120.0f, descansa = 900.0f;
-  const float ciclo = entra + para + es.saidaMs + descansa;
-  float t = (float)(agora % (Uint32)ciclo), veu = 1.0f, am = 1.0f, k = 1.0f, a;
-  GLuint tx;
-  if (alfa <= 0.004f || r.w < 8.0f) return;
-  if (t < entra) { am = veu = t / entra; }
-  else if (t < entra + para) {
-    float u = (t - entra) / (es.minMs ? es.minMs : 1.0f);
-    if (u > 1.0f) u = 1.0f;
-    u = 1.0f - (1.0f - u) * (1.0f - u);
-    k = es.zoom ? 1.0f + 0.018f * u : 1.0f;
+  const float entra = 200.0f, para = es.minMs ? 900.0f : 120.0f;
+  const float ciclo = entra + para + es.saidaMs + 900.0f;
+  float t = (float)(agora % (Uint32)ciclo);
+  float veu = 1.0f, am = 1.0f;
+  float h, w;
+  (void)logo; // A marca StreamMax da abertura e fixa, independentemente do tema.
+  if (alfa <= 0.004f || r.w < 8.0f || r.h < 8.0f) return;
+  if (t < entra) {
+    am = veu = t / entra;
+  } else if (t < entra + para) {
+    // imagem congelada
   } else if (t < entra + para + es.saidaMs) {
-    float p = (t - entra - para) / es.saidaMs, e = 1.0f - (1.0f - p) * (1.0f - p) * (1.0f - p);
-    abSaida(p, &veu, &am);
-    k = es.zoom ? 1.018f + (1.09f - 1.018f) * e : 1.0f;
-  } else { veu = 0.0f; am = 0.0f; }
-  a = veu * alfa;
-  if (logo == LOGO_CLASSICO) {
-    // Arte cheia: o fundo e a marca ja estao na imagem.
-    const char *c = logoapp_caminho(LOGO_CLASSICO, LOGO_F_MARCA);
-    tx = a > 0.004f ? tex_obter_larg(c, r.w) : 0;
-    if (tx) {
-      float w = r.w * k, h = r.h * k;
-      gfx_tex_aspect_atual = 0.0f;
-      gfx_rect((GfxRect){ r.x + (r.w - w) * 0.5f, r.y + (r.h - h) * 0.5f, w, h },
-               tx, GFX_TEXTO, 0, 0, 0, raio, 1, 1, 1, a);
-    } else if (a > 0.004f) gfx_cor(r, raio, AB_FUNDO_R, AB_FUNDO_G, AB_FUNDO_B, a);
-    return;
+    abSaida((t - entra - para) / es.saidaMs, &veu, &am);
+  } else {
+    am = veu = 0.0f;
   }
-  gfx_cor(r, raio, AB_FUNDO_R, AB_FUNDO_G, AB_FUNDO_B, a);
+  gfx_cor(r, raio, AB_FUNDO_R, AB_FUNDO_G, AB_FUNDO_B, veu * alfa);
+  h = r.h * (AB_SIMBOLO_H / NV_TELA_H);
+  w = h * (AB_SIMBOLO_W / AB_SIMBOLO_H);
+  if (w > r.w * 0.8f) { w = r.w * 0.8f; h = w * (AB_SIMBOLO_H / AB_SIMBOLO_W); }
   if (am * alfa > 0.004f) {
-    const char *c = logoapp_caminho(LOGO_NOVO, LOGO_F_MARCA);
-    float asp = tex_aspecto(c), w, h;
-    tx = tex_obter_larg(c, r.w * (AB_NOVO_W / NV_TELA_W));
-    if (!tx) return;
-    if (asp <= 0.0f) asp = 1.34f;
-    w = r.w * (AB_NOVO_W / NV_TELA_W) * k; h = w / asp;
-    gfx_tex_aspect_atual = 0.0f;
-    gfx_rect((GfxRect){ r.x + (r.w - w) * 0.5f, r.y + r.h * 0.5f - h * 0.5f, w, h },
-             tx, GFX_TEXTO, 0, 0, 0, 0.0f, 1, 1, 1, am * alfa);
+    logoapp_streammax_simbolo(
+        (GfxRect){r.x + (r.w - w) * 0.5f,
+                  r.y + (r.h - h) * 0.5f, w, h}, am * alfa);
   }
 }
