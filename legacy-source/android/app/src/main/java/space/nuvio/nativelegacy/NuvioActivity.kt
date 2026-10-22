@@ -449,7 +449,7 @@ class NuvioActivity : SDLActivity() {
                     StreamMaxApkCache.prune(dir, codigo, null) { file ->
                         @Suppress("DEPRECATION")
                         val archive = packageManager.getPackageArchiveInfo(file.absolutePath, 0)
-                        if (archive?.packageName != packageName) null
+                        if (archive == null || archive.packageName != packageName) null
                         else if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode
                         else archive.versionCode.toLong()
                     }
