@@ -33,6 +33,7 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessi
   },
   async signOut(){
    pending=null;
+   if(sessionClient)return sessionClient.signOut();
    if(sessionStore)await sessionStore.clear();
    return {authenticated:false};
   },
