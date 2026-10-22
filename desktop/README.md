@@ -13,12 +13,14 @@ Portar **a experiência do Android**, mantendo tela inicial, ordem dos catálogo
 - Sessão protegida por `safeStorage`, renovação de tokens, restauração com validação remota e logout seguro.
 - Consulta somente-leitura dos addons da conta para o **perfil principal (1)**, via `get_sync_owner` e tabela `addons`.
 - Busca de manifestos e páginas de catálogos dos addons usando requisições separadas, sem encaminhar tokens Supabase a terceiros.
+- Detalhes dos títulos consultados do addon de origem: descrição, metadados e **lista real de episódios**, com filtros de temporada e seleção explícita do episódio antes de buscar fontes. A pesquisa de fontes acontece conforme cada addon responde, sem aguardar todos os demais.
+- Addons que fornecem apenas streams são reconhecidos mesmo sem apresentar catálogos.
 - Testes de código, autenticação, visualização de metadados e catálogos com respostas simuladas.
 
 ## O que ainda não está pronto
 **Não há equivalência funcional com a versão Android.** A tela inicial é uma implementação parcial da organização Modern, ainda não foi comparada visualmente pixel a pixel. Estão pendentes: seleção/sincronização de outros perfis e preferências de layout/hero, Continuar Assistindo, trailers, busca completa, detalhes, seleção de fontes, legendas pt-BR/pt-PT, áudio, player com codecs/formatos adequados, preferências, atualização e testes ponta a ponta.
 
-O botão de detalhes exibe somente informações já disponíveis no catálogo e informa que o player e a seleção de fontes ainda não foram portados. Não é uma tela de detalhes final.
+A tela de detalhes **já busca metadados reais do addon de origem e lista fontes**, mas ainda não é uma reprodução funcional: falta portar a seleção final da fonte e o player Windows. Para séries, só pesquisa fontes depois que um episódio válido for escolhido; não tenta reproduzir o identificador da série. Se os metadados de episódios estiverem indisponíveis, informa a limitação sem inventar episódios.
 
 ## Configuração de desenvolvimento
 Instale Node.js LTS. Em `desktop/`, use `npm install`, `npm test`, `npm start`.
