@@ -28,6 +28,14 @@ function catalogUrl(base,type,id,skip=0,extraArgs={}){
   }
   return parsed.toString();
 }
+function metaUrl(base,type,id){
+ const parsed=safeAddonUrl(base);
+ const basePath=parsed.pathname.replace(/\/$/,'').replace(/\/manifest\.json$/i,'');
+ if(!/^[a-z0-9_-]{1,48}$/i.test(type)||typeof id!=='string'||!id||id.length>256)
+  throw new TypeError('Invalid metadata identity');
+ parsed.pathname=basePath+'/meta/'+encodeURIComponent(type)+'/'+encodeURIComponent(id)+'.json';
+ return parsed.href;
+}
 function manifestUrl(raw){
  const url=safeAddonUrl(raw);
  url.pathname=url.pathname.replace(/\/$/,'').replace(/\/manifest\.json$/i,'')+'/manifest.json';
@@ -129,9 +137,36 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
     catalogName:args.catalogName,type:args.type,items,
     hasMore:item.supportsSkip&&body.metas.length>0,nextSkip:skip+body.metas.length};
  }
- return {reload,page,
+ async function meta(key,type,id){
+  const row=catalogs.get(key);
+  if(!row)throw new Error('Unknown catalog');
+  const url=metaUrl(row.baseUrl,type,id);
+  const result=await readJson(url,{headers:{Accept:'application/json'}},addonTransport);
+  const m=result&&result.meta;
+  if(!m||typeof m!=='object'||typeof m.id!=='string')throw new Error('Metadata unavailable');
+  const videoList=Array.isArray(m.videos)?m.videos:[];
+  return {
+   id:m.id,type:String(m.type||type),name:String(m.name||''),
+   description:typeof m.description==='string'?m.description:'',
+   poster:typeof m.poster==='string'?m.poster:null,
+   background:typeof m.background==='string'?m.background:null,
+   logo:typeof m.logo==='string'?m.logo:null,
+   releaseInfo:typeof m.releaseInfo==='string'?m.releaseInfo:'',
+   runtime:typeof m.runtime==='string'?m.runtime:'',
+   genres:Array.isArray(m.genres)?m.genres.filter(v=>typeof v==='string').slice(0,24):[],
+   videos:videoList.slice(0,400).filter(v=>v&&typeof v.id==='string'&&v.id.length<=256).map(v=>({
+     id:v.id,title:String(v.title||v.name||'').slice(0,160),
+     season:Number.isInteger(v.season)?v.season:null,
+     episode:Number.isInteger(v.episode)?v.episode:null,
+     overview:typeof v.overview==='string'?v.overview.slice(0,600):
+      (typeof v.description==='string'?v.description.slice(0,600):''),
+     thumbnail:typeof v.thumbnail==='string'?v.thumbnail:null
+   }))
+  };
+ }
+ return {reload,page,meta,
   getSourceProviders(){return sourceProviders.map(x=>({...x}));},
   clear(){generation++;registered=[];catalogs=new Map();sourceProviders=[];}
  };
 }
-module.exports={createCatalogClient,catalogUrl,manifestUrl,safeAddonUrl};
+module.exports={createCatalogClient,catalogUrl,metaUrl,manifestUrl,safeAddonUrl};
