@@ -43,6 +43,11 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Smoke test actual Electron renderer on Windows
+        shell: pwsh
+        run: |
+          $env:STREAMMAX_SMOKE_TEST = '1'
+          npm run smoke
       - name: Test icon source and installer eligibility
         id: official_icon
         shell: pwsh
