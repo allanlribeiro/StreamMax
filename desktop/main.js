@@ -6,6 +6,7 @@ const {createAuthService}=require('./auth-service');
 const {createSessionStore}=require('./session-store');
 const {createSessionClient}=require('./session-client');
 const {createCatalogClient}=require('./catalog-client');
+const {createSourceDiscovery}=require('./source-discovery');
 const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
 const sessionClient=(process.env.STREAMMAX_SUPABASE_URL&&process.env.STREAMMAX_SUPABASE_PUBLIC_KEY)
   ?createSessionClient({
@@ -26,6 +27,7 @@ const catalogClient=sessionClient?createCatalogClient({
   publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
   profileId:1
 }):null;
+const sourceDiscovery=createSourceDiscovery();
 app.setAppUserModelId('com.streammax.desktop');
 let window;
 function createWindow() {
@@ -56,7 +58,7 @@ ipcMain.handle('streammax:open-video', async () => {
 });
 ipcMain.handle('streammax:auth-status',()=>authService.status());
 ipcMain.handle('streammax:auth-restore',()=>authService.restore());
-ipcMain.handle('streammax:auth-signout',()=>{catalogClient?.clear();return authService.signOut();});
+ipcMain.handle('streammax:auth-signout',()=>{catalogClient?.clear();sourceDiscovery.reset();return authService.signOut();});
 ipcMain.handle('streammax:auth-start',()=>authService.start());
 ipcMain.handle('streammax:auth-poll',()=>authService.poll());
 ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
@@ -76,6 +78,16 @@ ipcMain.handle('streammax:catalog-page',(_event,key,skip=0,extras={})=>{
   if(!catalogClient)throw new Error('Account service not configured');
   if(typeof key!=='string'||key.length>128)throw new TypeError('Invalid catalog key');
   return catalogClient.page(key,skip,extras);
+});
+ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
+ if(!catalogClient)throw new Error('Catalog provider unavailable');
+ if(typeof requestId!=='string'||requestId.length>72)throw new TypeError('Invalid request identifier');
+ return sourceDiscovery.search({
+  type,id,providers:catalogClient.getSourceProviders(),
+  onUpdate:state=>{
+   if(window&&!window.isDestroyed())window.webContents.send('streammax:sources-progress',{requestId,...state});
+  }
+ });
 });
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
