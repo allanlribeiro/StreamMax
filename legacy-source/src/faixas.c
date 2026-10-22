@@ -1165,15 +1165,16 @@ static int estiloTecla(SDL_Keycode k, int rep) {
     return 1;
   }
   if (voltar) { coluna = 1; return 1; }
-  // A grade de FX_BARRA_COLS colunas: as quatro setas andam nela; a esquerda da
-  // primeira coluna volta para a lista de legendas.
-  if (dx < 0) { if (*f % FX_BARRA_COLS) (*f)--; else coluna = 1; }
-  else if (dx > 0) { if (*f % FX_BARRA_COLS < FX_BARRA_COLS - 1 && *f + 1 < FX_N_ESTILO) (*f)++; }
-  else if (dy < 0) { if (*f >= FX_BARRA_COLS) *f -= FX_BARRA_COLS; }
-  else if (dy > 0) { if (*f + FX_BARRA_COLS < FX_N_ESTILO) *f += FX_BARRA_COLS; }
+  // Appearance excludes delay (index 7); delay belongs to the synchronization screen.
+  int visual = *f > 7 ? *f - 1 : *f;
+  if (dx < 0) { if (visual % FX_BARRA_COLS) visual--; else coluna = 1; }
+  else if (dx > 0) { if (visual % FX_BARRA_COLS < FX_BARRA_COLS - 1 && visual + 1 < FX_N_ESTILO - 1) visual++; }
+  else if (dy < 0) { if (visual >= FX_BARRA_COLS) visual -= FX_BARRA_COLS; }
+  else if (dy > 0) { if (visual + FX_BARRA_COLS < FX_N_ESTILO - 1) visual += FX_BARRA_COLS; }
   else if (ok) {
     if (estTipo(*f)) estAbrir(*f); else ciclarEstilo(*f);
   }
+  *f = visual >= 7 ? visual + 1 : visual;
   return 1;
 }
 
@@ -1894,7 +1895,7 @@ static void celulaEstilo(int i, GfxRect r, float a, int ativa) {
     txt_desenhar_alpha(lv, x, yv, a); }
 }
 
-#define IL_EST_FILEIRAS ((FX_N_ESTILO + FX_BARRA_COLS - 1) / FX_BARRA_COLS)
+#define IL_EST_FILEIRAS ((FX_N_ESTILO - 1 + FX_BARRA_COLS - 1) / FX_BARRA_COLS)
 static float estiloGradeH(void) {
   float h = IL_EST_CEL_H * IL_EST_FILEIRAS + 6.0f * (IL_EST_FILEIRAS - 1);
   if (telefoneui_ativo() && (ctl == EST_FONTE || (ctlVis == EST_FONTE && ctlAnim > .005f))) {
@@ -2067,7 +2068,9 @@ static void corpoEstilo(GfxRect c, float a) {
   if (ctlAnim < 0.995f) {
     float ag = a * (1.0f - anim_clamp(ctlAnim * 1.6f, 0.0f, 1.0f)), dy = -10.0f * ctlAnim;
     for (i = 0; i < FX_N_ESTILO; i++) {
-      GfxRect r = { x0 + (i % FX_BARRA_COLS) * (cw + 6.0f), y + dy + (i / FX_BARRA_COLS) * (IL_EST_CEL_H + 6.0f),
+      if (i == 7) continue;
+      int visual = i > 7 ? i - 1 : i;
+      GfxRect r = { x0 + (visual % FX_BARRA_COLS) * (cw + 6.0f), y + dy + (visual / FX_BARRA_COLS) * (IL_EST_CEL_H + 6.0f),
                     cw, IL_EST_CEL_H };
       celulaEstilo(i, r, ag, assentada && ctlAnim < 0.01f);
     }

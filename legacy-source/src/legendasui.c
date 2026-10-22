@@ -203,6 +203,7 @@ static int pagina; // 0 tracks, 1 synchronization, 2 more options
 static int paginaVoltaSync;
 static int soExternas;
 static char focoVolta[3][96];
+static char focoAntesAcoes[96];
 static int menu, menuFoco, okPendente, okLongo;
 static Uint32 okDesde;
 static char menuVolta[96], verIdioma[16];
@@ -721,6 +722,16 @@ int legendasui_evento(const SDL_Event *e) {
   if (k == SDLK_DOWN) { if (foco < nLinhasV - 1) focar(foco + 1); return LEGUI_TRATADO; }
   if (k == SDLK_LEFT || k == SDLK_RIGHT) {
     int d = k == SDLK_RIGHT ? 1 : -1;
+    // Right jumps directly to the actions below a long track list.
+    if (!pagina && d > 0 && l && l->tipo != LR_SINCRONIA && l->tipo != LR_APARENCIA && l->tipo != LR_OPCOES) {
+      snprintf(focoAntesAcoes, sizeof focoAntesAcoes, "%s", focoChave);
+      for (int j = 0; j < nLinhasV; ++j) if (linhas[j].tipo == LR_SINCRONIA) { focar(j); break; }
+      return LEGUI_TRATADO;
+    }
+    if (!pagina && d < 0 && l && (l->tipo == LR_SINCRONIA || l->tipo == LR_APARENCIA || l->tipo == LR_OPCOES)) {
+      for (int j = 0; j < nLinhasV; ++j) if (!strcmp(linhas[j].chave, focoAntesAcoes[0] ? focoAntesAcoes : "m|-")) { focar(j); break; }
+      return LEGUI_TRATADO;
+    }
     // No original, ESQUERDA sai das opcoes para a coluna de idiomas.
     // Linhas com ajuste proprio (atraso/alvo/sync) continuam priorizando
     // suas setas sem efeito colateral sobre o idioma escolhido.
@@ -1021,7 +1032,6 @@ static void textoLinha(const LuiLinha *l, char *nome, size_t tn, char *sub, size
       { char detalhe[256];
         legendasui_titulo(cand, nCand, l->cand, detalhe, sizeof detalhe);
         snprintf(nome, tn, "%s", nomeIdioma(c->idioma));
-        if (strcmp(detalhe, nome)) juntar(sub, ts, detalhe);
         if (!mais && !ver) {
           juntar(sub, ts, c->embutida ? i18n("Embutida") : c->origem);
           juntar(sub, ts, legendasui_tipo_rotulo(c));
@@ -1031,7 +1041,7 @@ static void textoLinha(const LuiLinha *l, char *nome, size_t tn, char *sub, size
         juntar(sub, ts, c->formato);
         { const char *t = legendasui_tipo_rotulo(c);
           if (t && !strstr(nome, t)) juntar(sub, ts, t); }
-        juntar(sub, ts, c->arquivo);
+        juntar(sub, ts, c->arquivo[0] ? c->arquivo : strcmp(detalhe, nome) ? detalhe : NULL);
         if (l->slot == 0 && marca) juntar(sub, ts, marca);
         }
       }
@@ -1321,13 +1331,13 @@ void legendasui_corpo(GfxRect c, float a) {
     } else {
       char q[32];
       // "Segure OK" saiu daqui: a linha em foco ja diz (Mais opcoes).
-      const char *k[3] = { "OK", "\xe2\x86\x90", "Voltar" };
-      const char *rt[3] = { "Selecionar", "Idiomas", pagina || soExternas || ver ? "Voltar" : "Fechar" };
+      const char *k[3] = { "OK", pagina == 1 ? "← →" : "→", "Voltar" };
+      const char *rt[3] = { "Selecionar", pagina == 1 ? "Ajustar" : "Ajustes", pagina || soExternas || ver ? "Voltar" : "Fechar" };
       const char *km[2] = { "OK", "Voltar" }, *rm[2] = { "Usar", "Fechar" };
       int naSync = nLinhasV && linhas[foco].tipo == LR_SYNC, nf = 0, pf = 0;
       // The AutoSync row is not a choice: it is left out of "N de M", which
       // disappears on it, and the hints say what OK does there.
-      for (i = 0; i < nLinhasV; i++) if (linhas[i].tipo != LR_SYNC) { nf++; if (i <= foco) pf = nf; }
+      for (i = 0; i < nLinhasV; i++) if (linhas[i].tipo == LR_CAND || linhas[i].tipo == LR_NENHUMA) { nf++; if (i <= foco) pf = nf; }
       if (!naSync) {
         snprintf(q, sizeof q, i18n("%d de %d"), nf ? pf : 0, nf);
         { TxtLinha l = txt_linha(TXT_ILHA_APOIO, q, 243, 242, 239, 115);

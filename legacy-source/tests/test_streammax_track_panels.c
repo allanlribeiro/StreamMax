@@ -64,6 +64,7 @@ int main(void) {
   painelTecla(SDLK_ESCAPE);
   faixas_teste_foco(&col, &vol, &vel); assert(col == 1 && faixas_aberta());
   painelTecla(SDLK_RIGHT);
+  assert(!strcmp(legendasui_teste_chave(), "sincronia"));
   faixas_teste_foco(&col, &vol, &vel); assert(col == 1); // no accidental jump to style
   painelTecla(SDLK_ESCAPE); assert(!faixas_aberta());
   puts("PASS: separate audio/subtitle panels, language chooser, sync, secondary controls and Back navigation");

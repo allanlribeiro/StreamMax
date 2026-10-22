@@ -307,8 +307,8 @@ static void cartaoCentro(Uint32 agora) {
     GfxRect R = { (NV_TELA_W - w) * 0.5f, (NV_TELA_H - h) * 0.5f, w, h };
     GfxRect F = { (NV_TELA_W - c->w) * 0.5f, (NV_TELA_H - c->h) * 0.5f, c->w, c->h };
     if (c->painelEsquerdo) {
-      // O seletor de legendas de tres colunas usa um overlay amplo e central,
-      // como o Nuvio original. A folha de audio (mais estreita) nao muda.
+      // Appearance is its own wide screen. Audio and subtitle track lists
+      // use independent, narrower side panels.
       const int seletorLegendas = c->w > 1200.0f;
       const float margemBaixo = seletorLegendas ? 30.0f : 76.0f;
       const float topoMin = 36.0f;
