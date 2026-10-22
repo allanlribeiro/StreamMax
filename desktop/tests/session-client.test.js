@@ -46,3 +46,27 @@ test('missing local session never contacts the server',async()=>{
  const transport=async()=>{throw new Error('Unexpected network');};
  assert.deepEqual(await createSessionClient({...config,store,transport}).restore(),{authenticated:false,reason:'no_saved_session'});
 });
+
+test('sign-out waits for in-flight restore and removes re-created token data',async()=>{
+ let resumeRefresh;
+ const wait=new Promise(resolve=>{resumeRefresh=resolve;});
+ let session={access_token:'expired',refresh_token:'old'};
+ const store={
+   load:async()=>session,
+   save:async value=>{session=value;},
+   clear:async()=>{session=null;}
+ };
+ const transport=async url=>{
+   if(url.includes('/user'))return {ok:false,status:401};
+   await wait;
+   return {ok:true,status:200,json:async()=>({access_token:'new',refresh_token:'new-refresh'})};
+ };
+ const client=createSessionClient({...config,store,transport});
+ const restoring=client.restore();
+ await Promise.resolve();
+ const signingOut=client.signOut();
+ resumeRefresh();
+ assert.deepEqual(await restoring,{authenticated:false,reason:'signed_out'});
+ assert.deepEqual(await signingOut,{authenticated:false});
+ assert.equal(session,null);
+});
