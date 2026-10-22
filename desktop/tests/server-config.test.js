@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
-const {normalizeServerConfig,createServerConfigStore}=require('../server-config');
+const {normalizeServerConfig,createServerConfigStore,OFFICIAL_PUBLIC_CONFIG}=require('../server-config');
 
 const publicSettings={
  endpoint:'https://backend.example/',
@@ -27,7 +27,7 @@ test('first-run configuration is persisted without exposing tokens and can reloa
  try{
   const filename=path.join(dir,'server-config.json');
   const config=createServerConfigStore({filePath:filename,env:{}});
-  assert.deepEqual(config.load(),{value:null,source:'missing'});
+  assert.deepEqual(config.load(),{value:OFFICIAL_PUBLIC_CONFIG,source:'official'});
   assert.deepEqual(config.save(publicSettings),{saved:true});
   assert.deepEqual(config.load(),{
    source:'file',value:normalizeServerConfig(publicSettings)
@@ -61,4 +61,15 @@ test('an invalid environment config fails closed without crashing startup',()=>{
   assert.deepEqual(config.load(),{value:null,source:'invalid_environment'});
   assert.throws(()=>config.save(publicSettings),/gerenciada/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('first launch uses the identical public Cloud config as StreamMax Android',()=>{
+ const pathName=path.join(os.tmpdir(),'streammax-default-not-present-'+process.pid+'.json');
+ const config=createServerConfigStore({filePath:pathName,env:{}});
+ const current=config.load();
+ assert.equal(current.source,'official');
+ assert.equal(current.value.endpoint,'https://api.nuvio.tv');
+ assert.ok(current.value.publicKey.startsWith('sb_publishable_'));
+ assert.equal(current.value.redirectUrl,'https://nuvio.tv/link');
+ assert.ok(!JSON.stringify(current).includes('access_token'));
 });
