@@ -21,7 +21,7 @@ jobs:
           run="$(gh api repos/${GITHUB_REPOSITORY}/actions/runs/39765201966)"
           test "$(jq -r .conclusion <<< "$run")" = success
           test "$(jq -r .head_sha <<< "$run")" = 32a0c610b97a0f99752d50ef6de3cb4c65f8d89c
-          draft="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/v1.0.11)"
+          draft="$(gh api repos/${GITHUB_REPOSITORY}/releases/420608950)"
           test "$(jq -r .draft <<< "$draft")" = true
           test "$(jq -r .target_commitish <<< "$draft")" = 32a0c610b97a0f99752d50ef6de3cb4c65f8d89c
           test "$(jq '.assets | length' <<< "$draft")" = 0
@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release upload v1.0.11 --repo "$GITHUB_REPOSITORY" package/*
-          test "$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/v1.0.11 --jq .draft)" = true
+          test "$(gh api repos/${GITHUB_REPOSITORY}/releases/420608950 --jq .draft)" = true
       - uses: actions/upload-artifact@v4
         with:
           name: StreamMax-1.0.11-APK
