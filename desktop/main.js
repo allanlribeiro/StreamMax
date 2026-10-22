@@ -40,6 +40,9 @@ const mpvPlayer=createMpvPlayer({executable:savedMpvPath()||process.env.STREAMMA
 mpvPlayer.onStatus(event=>{
  if(window&&!window.isDestroyed())window.webContents.send('streammax:player-status',event);
 });
+mpvPlayer.onTracks(event=>{
+ if(window&&!window.isDestroyed())window.webContents.send('streammax:player-tracks',event);
+});
 app.setAppUserModelId('com.streammax.desktop');
 let window;
 function createWindow() {
@@ -121,6 +124,7 @@ ipcMain.handle('streammax:player-play',(_event,sourceId)=>{
  return mpvPlayer.play(url);
 });
 ipcMain.handle('streammax:player-command',(_event,command)=>mpvPlayer.command(command));
+ipcMain.handle('streammax:player-track',(_event,type,id)=>mpvPlayer.selectTrack(type,id));
 ipcMain.handle('streammax:player-stop',()=>mpvPlayer.stop());
 ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
  if(!catalogClient)throw new Error('Catalog provider unavailable');
