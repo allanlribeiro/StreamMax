@@ -1995,9 +1995,17 @@ int main(int argc, char **argv) {
         SDL_SetWindowFullscreen(win, cheia ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
         continue;
       }
+      // Atalhos usuais de PC, usando as mesmas rotas de teclado da TV.
       if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) &&
-          (e.key.keysym.sym == SDLK_ESCAPE || e.key.keysym.sym == SDLK_BACKSPACE)) {
-        e.key.keysym.sym = SDLK_AC_BACK; // Esc e Backspace voltam em TODAS as telas
+          e.key.keysym.sym == SDLK_f && (e.key.keysym.mod & KMOD_CTRL)) {
+        e.key.keysym.sym = SDLK_F5; // Ctrl+F: busca Spotlight
+        e.key.keysym.scancode = SDL_SCANCODE_F5;
+      }
+      if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) &&
+          ((e.key.keysym.sym == SDLK_LEFT && (e.key.keysym.mod & KMOD_ALT)) ||
+            e.key.keysym.sym == SDLK_ESCAPE ||
+            e.key.keysym.sym == SDLK_BACKSPACE)) {
+        e.key.keysym.sym = SDLK_AC_BACK; // Esc/Backspace/Alt+Seta Esquerda: voltar
         e.key.keysym.scancode = SDL_SCANCODE_AC_BACK;
       }
 #endif
