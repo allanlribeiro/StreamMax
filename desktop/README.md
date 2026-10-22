@@ -17,8 +17,15 @@ Portar **a experiência do Android**, mantendo tela inicial, ordem dos catálogo
 - Addons que fornecem apenas streams são reconhecidos mesmo sem apresentar catálogos.
 - Testes de código, autenticação, visualização de metadados e catálogos com respostas simuladas.
 
+## Player mpv externo — primeira etapa
+- Fontes com URL direta HTTP(S) podem ser abertas em **janela externa do mpv**, usando uma conexão IPC Windows com nome aleatório. A URL assinada não aparece na linha de comando nem é devolvida ao JavaScript da interface.
+- Na tela de detalhes, selecione uma fonte direta e clique em **Reproduzir no mpv**. Na primeira utilização, escolha um `mpv.exe` confiável com **Configurar mpv.exe**. O caminho é salvo em `userData/mpv-settings.json`; não guardamos URL nem token nesse arquivo.
+- O mpv **não vem embutido** no instalador atual. Precisa ser instalado/obtido separadamente pelo usuário até que haja uma solução de empacotamento com licenças e dependências verificadas.
+- Funções iniciadas: pausa/retomada, salto de ±10s, alternância de faixa de áudio, legenda e visibilidade de legenda. A sessão continua em uma janela própria do mpv; a integração de progresso, legendas pt-BR/pt-PT, configurações de áudio e reprodução integrada ainda não está concluída.
+- Apenas streams com URL direta são aceitos nessa primeira etapa; fontes torrent/infoHash e protocolos não suportados são listados como indisponíveis para reprodução direta.
+
 ## O que ainda não está pronto
-**Não há equivalência funcional com a versão Android.** A tela inicial é uma implementação parcial da organização Modern, ainda não foi comparada visualmente pixel a pixel. Estão pendentes: seleção/sincronização de outros perfis e preferências de layout/hero, Continuar Assistindo, trailers, busca completa, detalhes, seleção de fontes, legendas pt-BR/pt-PT, áudio, player com codecs/formatos adequados, preferências, atualização e testes ponta a ponta.
+**Não há equivalência funcional com a versão Android.** A tela inicial é uma implementação parcial da organização Modern, ainda não foi comparada visualmente pixel a pixel. Estão pendentes: seleção/sincronização de outros perfis e preferências de layout/hero, Continuar Assistindo, trailers, busca completa, detalhes completos, seleção de fontes avançada, legendas pt-BR/pt-PT, áudio configurável, player integrado com codecs/formatos adequados, preferências, atualização e testes ponta a ponta.
 
 A tela de detalhes **já busca metadados reais do addon de origem e lista fontes**, mas ainda não é uma reprodução funcional: falta portar a seleção final da fonte e o player Windows. Para séries, só pesquisa fontes depois que um episódio válido for escolhido; não tenta reproduzir o identificador da série. Se os metadados de episódios estiverem indisponíveis, informa a limitação sem inventar episódios.
 
