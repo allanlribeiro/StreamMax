@@ -7,7 +7,7 @@ const {createSessionStore}=require('./session-store');
 const {createSessionClient}=require('./session-client');
 const {createCatalogClient}=require('./catalog-client');
 const {createSourceDiscovery}=require('./source-discovery');
-const {createMpvPlayer}=require('./mpv-player');
+const {createMpvPlayer,validateExecutable}=require('./mpv-player');
 const {findMpvExecutable}=require('./mpv-discovery');
 const {createWatchProgressStore}=require('./watch-progress-store');
 const {createPlaybackCoordinator}=require('./playback-coordinator');
@@ -47,7 +47,11 @@ function savedMpvPath(){
 const foundMpv=findMpvExecutable({
  resourcesPath:process.resourcesPath,appDir:path.dirname(process.execPath)
 });
-const customMpv=savedMpvPath()||process.env.STREAMMAX_MPV_PATH||null;
+let customMpv=savedMpvPath()||process.env.STREAMMAX_MPV_PATH||null;
+if(customMpv){
+ try{validateExecutable(customMpv);}
+ catch{customMpv=null;}
+}
 const mpvPlayer=createMpvPlayer({executable:customMpv||foundMpv.executable});
 let mpvPathSource=customMpv?'user':foundMpv.source;
 const watchProgressStore=createWatchProgressStore({
