@@ -68,7 +68,7 @@ class NuvioActivity : SDLActivity() {
     override fun getLibraries(): Array<String> = arrayOf("SDL2", "main")
 
     private var camadaVideo: FrameLayout? = null
-    private var aberturaStreamMax: StreamMaxAberturaVideo? = null
+    private var aberturaStreamMax: StreamMaxAberturaEstatica? = null
     private var touchInsetLeft = 0
     private var touchInsetTop = 0
     private var touchInsetRight = 0
@@ -203,14 +203,12 @@ class NuvioActivity : SDLActivity() {
         mSurface.holder.setFormat(PixelFormat.TRANSLUCENT)
         NvPlayer.iniciar(this, camada)
         NvPlayer.interfaceModo(interfaceMobile)
-        // A vinheta pertence ao arranque do PROCESSO (jaCriada impede uma
-        // segunda Activity no mesmo processo), inclusive quando o Android
-        // restaura um savedInstanceState ou a interface foi configurada como
-        // mobile numa Google TV. Antes ela era pulada silenciosamente nesses
-        // cenarios embora o MP4 estivesse presente no APK.
+        // Exibir so a imagem S aprovada, sem iniciar outro decodificador.
+        // Apos o primeiro quadro SDL, a Home/login assume a superficie.
         if (!mBrokenLibraries) {
-            Log.i("StreamMaxAbertura", "iniciando video de abertura: mobile=$interfaceMobile, restaurado=${savedInstanceState != null}")
-            aberturaStreamMax = StreamMaxAberturaVideo(this, mLayout).also { it.iniciar() }
+            aberturaStreamMax = StreamMaxAberturaEstatica(this, mLayout) {
+                try { nativeQuadros() } catch (_: Throwable) { -1L }
+            }.also { it.iniciar() }
         }
     }
 
@@ -700,7 +698,7 @@ class NuvioActivity : SDLActivity() {
     override fun onPause() {
         trimResumida = false
         checkpoint()
-        // Nunca deixar o video da vinheta rodando em background.
+        // Liberar o bitmap ao sair do primeiro plano.
         aberturaStreamMax?.encerrar("background")
         val ini = SystemClock.elapsedRealtime()
         vigia?.frente(false)
