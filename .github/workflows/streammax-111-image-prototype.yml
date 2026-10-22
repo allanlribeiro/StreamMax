@@ -11,6 +11,9 @@ on:
       - 'legacy-source/android/app/src/test/java/space/nuvio/nativelegacy/StreamMaxImagePreviewTest.kt'
       - 'legacy-source/tests/streammax-111-image-preview-check.py'
       - '.github/workflows/streammax-111-image-prototype.yml'
+  pull_request:
+    branches:
+      - feature/streammax-1.0.10-legacy-208
   workflow_dispatch:
 
 permissions:
