@@ -47,3 +47,12 @@ tasks.register('verifyStableSigning') {
     }
 }
 tasks.matching { it.name == 'assembleRelease' }.configureEach { dependsOn 'verifyStableSigning' }
+
+tasks.register('verifyOriginalRc2Wallpaper') {
+    doLast {
+        if (!file('src/main/res/drawable-nodpi/streammax_metal_waves.jpg').isFile()) {
+            throw new GradleException('RC2 original wallpaper is not present. Refusing layout restoration build.')
+        }
+    }
+}
+tasks.matching { it.name == 'preBuild' }.configureEach { dependsOn 'verifyOriginalRc2Wallpaper' }
