@@ -11,29 +11,29 @@ const {createMpvPlayer}=require('./mpv-player');
 const {createWatchProgressStore}=require('./watch-progress-store');
 const {createPlaybackCoordinator}=require('./playback-coordinator');
 const {createRemoteProgressClient}=require('./remote-progress-client');
-const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
-const sessionClient=(process.env.STREAMMAX_SUPABASE_URL&&process.env.STREAMMAX_SUPABASE_PUBLIC_KEY)
-  ?createSessionClient({
-    endpoint:process.env.STREAMMAX_SUPABASE_URL,
-    publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
-    store:sessionStore
-  }):null;
+const {createServerConfigStore}=require('./server-config');
+const serverConfigStore=createServerConfigStore({
+ filePath:path.join(app.getPath('userData'),'server-config.json')
+});
+const savedServer=serverConfigStore.load();
+const serverSettings=savedServer.value;
+const sessionStore=createSessionStore({
+ safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')
+});
+const sessionClient=serverSettings?createSessionClient({
+ endpoint:serverSettings.endpoint,publicKey:serverSettings.publicKey,store:sessionStore
+}):null;
 const authService=createAuthService({
- endpoint:process.env.STREAMMAX_SUPABASE_URL,
- publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
- redirectUrl:process.env.STREAMMAX_LOGIN_REDIRECT_URL,
- sessionStore,
- sessionClient
+ endpoint:serverSettings?.endpoint,publicKey:serverSettings?.publicKey,
+ redirectUrl:serverSettings?.redirectUrl,sessionStore,sessionClient
 });
 const catalogClient=sessionClient?createCatalogClient({
-  sessionClient,
-  endpoint:process.env.STREAMMAX_SUPABASE_URL,
-  publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
-  profileId:1
+ sessionClient,endpoint:serverSettings.endpoint,
+ publicKey:serverSettings.publicKey,profileId:1
 }):null;
 const remoteProgress=sessionClient?createRemoteProgressClient({
- sessionClient,endpoint:process.env.STREAMMAX_SUPABASE_URL,
- publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,profileId:1
+ sessionClient,endpoint:serverSettings.endpoint,
+ publicKey:serverSettings.publicKey,profileId:1
 }):null;
 const sourceDiscovery=createSourceDiscovery();
 const mpvSettingsFile=path.join(app.getPath('userData'),'mpv-settings.json');
@@ -100,7 +100,22 @@ function warmRemoteHistory(){
  });
  remoteWarmup=pending;
 }
-ipcMain.handle('streammax:auth-status',()=>authService.status());
+ipcMain.handle('streammax:auth-status',()=>({
+ ...authService.status(),configSource:savedServer.source
+}));
+ipcMain.handle('streammax:server-save',async(_event,input)=>{
+ // Update public settings only on explicit user action; restart is mandatory.
+ if(!input||typeof input!=='object')throw new TypeError('Configuração inválida');
+ serverConfigStore.save(input);
+ catalogClient?.clear();
+ sourceDiscovery.reset();
+ remoteProgress?.clear();
+ await playback.signOut();
+ await authService.signOut();
+ app.relaunch();
+ app.quit();
+ return {saved:true,restarting:true};
+});
 ipcMain.handle('streammax:auth-restore',async()=>{
  const result=await authService.restore();
  if(result.authenticated)warmRemoteHistory();
