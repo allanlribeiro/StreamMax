@@ -402,6 +402,7 @@ let nextRowIndex=0;
 let booting=false;
 let renderGeneration=0;
 function showPage(page){
+ document.body.classList.toggle('is-authenticated',authorized);
  activePage=['account','continue'].includes(page)?page:'home';
  document.querySelectorAll('[data-page]').forEach(b=>{
   if(b.dataset.page===activePage)b.setAttribute('aria-current','page');
@@ -525,14 +526,22 @@ $('season-select').addEventListener('change',renderEpisodeChoice);
 $('episode-select').addEventListener('change',renderEpisodeSummary);
 $('episode-search').addEventListener('click',()=>{
  const episode=visibleEpisodes[Number($('episode-select').value)];
- if(!episode)return;
- openSources({type:'series',id:episode.id});
+ if(!episode||!detailsItem)return;
+ openSources({type:'series',id:episode.id},{
+  contentId:detailsItem.id,contentType:'series',
+  name:detailsItem.name,episodeTitle:episode.title,
+  videoId:episode.id,season:episode.season,episode:episode.episode,
+  poster:detailsItem.poster||'',backdrop:detailsItem.background||''
+ });
 });
 document.querySelectorAll('[data-page]').forEach(button=>button.addEventListener('click',()=>{
  showPage(button.dataset.page);
  if(button.dataset.page==='continue'&&authorized)void loadContinueWatching();
 }));
 $('signout').addEventListener('click',async()=>{
+ ++renderGeneration;
+ ++detailGeneration;
+ activeSourceRequest=null;
  ++remoteHistoryGeneration;
  $('remote-progress-list').replaceChildren();
  $('remote-progress-status').textContent='';
