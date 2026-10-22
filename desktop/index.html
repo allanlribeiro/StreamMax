@@ -23,6 +23,21 @@
       <button type="button" class="secondary" id="login-retry" hidden>Verificar autorização</button>
     </div>
     <p class="state__message" id="auth-message"></p>
+    <section id="server-config-panel" class="server-config" hidden aria-label="Configurar conexão">
+      <h2>Conectar ao mesmo servidor do StreamMax Android</h2>
+      <p>Informe somente os dados públicos do servidor. Não insira chaves secretas, tokens de sessão ou credenciais de administrador.</p>
+      <label for="server-endpoint">Endereço HTTPS do backend
+        <input type="url" id="server-endpoint" placeholder="https://seu-servidor.example" autocomplete="off" spellcheck="false"/>
+      </label>
+      <label for="server-pubkey">Chave pública / anon do backend
+        <input type="password" id="server-pubkey" placeholder="Chave publicável" autocomplete="off" spellcheck="false"/>
+      </label>
+      <label for="server-redirect">URL HTTPS de autorização
+        <input type="url" id="server-redirect" placeholder="https://seu-servidor.example/autorizacao" autocomplete="off" spellcheck="false"/>
+      </label>
+      <button type="button" class="primary" id="server-save">Salvar conexão e reiniciar</button>
+      <p id="server-config-message" role="status"></p>
+    </section>
   </section>
   <section id="home-panel" hidden aria-label="Tela inicial">
     <div id="home-viewport"></div>
