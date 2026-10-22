@@ -60,6 +60,14 @@ ipcMain.handle('streammax:auth-signout',()=>{catalogClient?.clear();return authS
 ipcMain.handle('streammax:auth-start',()=>authService.start());
 ipcMain.handle('streammax:auth-poll',()=>authService.poll());
 ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
+ipcMain.handle('streammax:open-login',async()=>{
+ const target=authService.verificationPage();
+ if(!target)throw new Error('No current authorization page');
+ const url=new URL(target);
+ if(url.protocol!=='https:'||url.username||url.password)throw new Error('Invalid authorization URL');
+ await shell.openExternal(url.href);
+ return true;
+});
 ipcMain.handle('streammax:catalogs-reload',()=>{
   if(!catalogClient)throw new Error('Account service not configured');
   return catalogClient.reload();
