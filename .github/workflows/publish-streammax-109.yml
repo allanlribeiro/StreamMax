@@ -8,7 +8,7 @@ on:
     branches:
       - release/streammax-1.0.9-ota-publish
     paths:
-      - '.github/workflows/publish-streammax-108.yml'
+      - '.github/workflows/publish-streammax-109.yml'
 
 permissions:
   contents: write
