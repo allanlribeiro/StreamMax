@@ -1,10 +1,12 @@
 name: StreamMax separate audio and subtitle panel checks
 on:
   push:
-    branches: [feature/streammax-audio-subtitle-panels]
+    branches: [feature/streammax-audio-subtitle-panels, feature/streammax-static-s-splash-20261022]
     paths:
       - 'legacy-source/src/**'
       - 'legacy-source/tests/**'
+      - 'legacy-source/android/app/src/main/**'
+      - 'legacy-source/tools/android.sh'
       - '.github/workflows/streammax-track-panels-check.yml'
   workflow_dispatch:
 permissions:
@@ -41,6 +43,7 @@ jobs:
         run: |
           bash legacy-source/tests/streammax-source-ptbr.sh
           bash legacy-source/tests/streammax-ui-brand.sh
+          bash legacy-source/tests/streammax-static-s-splash.sh
           bash legacy-source/tests/streammax-updater.sh
           python3 legacy-source/tests/streammax-111-image-preview-check.py
           python3 migration/check-player-original-engine.py
