@@ -22,7 +22,8 @@
       "renderer.js",
       "assets/**/*",
       "home-state.js",
-      "catalog-contract.js"
+      "catalog-contract.js",
+      "auth-flow.js"
     ],
     "win": {
       "target": [
