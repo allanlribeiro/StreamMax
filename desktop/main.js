@@ -49,6 +49,7 @@ const watchProgressStore=createWatchProgressStore({
 });
 const playback=createPlaybackCoordinator({
  player:mpvPlayer,sources:sourceDiscovery,store:watchProgressStore,
+ remoteResume:remoteProgress?(contentId,videoId)=>remoteProgress.resume(contentId,videoId):null,
  onProgress:position=>{
   if(window&&!window.isDestroyed())window.webContents.send('streammax:player-progress',position);
  },
@@ -95,6 +96,7 @@ ipcMain.handle('streammax:auth-restore',()=>authService.restore());
 ipcMain.handle('streammax:auth-signout',async()=>{
  catalogClient?.clear();
  sourceDiscovery.reset();
+ remoteProgress?.clear();
  await playback.signOut();
  return authService.signOut();
 });
