@@ -24,7 +24,8 @@
       "home-state.js",
       "catalog-contract.js",
       "auth-flow.js",
-      "auth-rpc.js"
+      "auth-rpc.js",
+    "auth-service.js"
     ],
     "win": {
       "target": [
