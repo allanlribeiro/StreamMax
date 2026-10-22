@@ -87,11 +87,14 @@ function createWatchProgressStore({safeStorage,filePath,clock=Date.now}){
     const items=await load();
     const latest=new Map();
     for(const item of items){
-     if(item.position/item.duration<0.02||item.position/item.duration>=0.9)continue;
      const previous=latest.get(item.contentId);
      if(!previous||item.lastWatched>previous.lastWatched)latest.set(item.contentId,item);
     }
-    return [...latest.values()].sort((a,b)=>b.lastWatched-a.lastWatched);
+    // Match Android: select the most recent episode *before* excluding completed
+    // or barely started items, so older episodes cannot reappear after completion.
+    return [...latest.values()]
+     .filter(item=>item.position/item.duration>=0.02&&item.position/item.duration<0.9)
+     .sort((a,b)=>b.lastWatched-a.lastWatched);
    });
   },
   resume(contentId,videoId){
