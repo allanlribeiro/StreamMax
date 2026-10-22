@@ -130,3 +130,34 @@ test('enforces catalog origin for metadata and encodes episode lookup safely',as
  const c=createCatalogClient({endpoint:'https://backend.example',publicKey:'public',sessionClient:{withAccessToken:fn=>fn('private')}});
  await assert.rejects(c.meta('unknown','series','tt123'),/Unknown catalog/);
 });
+
+test('fetches manifests concurrently but preserves saved addon ordering',async()=>{
+ let unblockSlow;
+ const slow=new Promise(resolve=>{unblockSlow=resolve;});
+ const requests=[];
+ const c=createCatalogClient({
+  endpoint:'https://backend.example',publicKey:'public',
+  sessionClient:{withAccessToken:fn=>fn('private')},
+  transport:async url=>({ok:true,json:async()=>url.includes('get_sync_owner')?'owner-id':[
+   {url:'https://slow.example/path',name:'Primeiro',enabled:true,sort_order:0},
+   {url:'https://fast.example/path',name:'Segundo',enabled:true,sort_order:1}
+  ]}),
+  addonTransport:async url=>{
+   requests.push(url);
+   if(url.includes('slow.example'))await slow;
+   return {ok:true,json:async()=>({
+    id:url.includes('slow.example')?'slow':'fast',
+    name:'Addon',
+    resources:['catalog'],
+    catalogs:[{id:'popular',name:'Popular',type:'movie'}]
+   })};
+  }
+ });
+ const loading=c.reload();
+ for(let i=0;i<20&&requests.length<2;i++)await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(requests.length,2,'both manifests should start without waiting for slow host');
+ unblockSlow();
+ const results=await loading;
+ assert.deepEqual(results.addons.map(v=>v.name),['Primeiro','Segundo']);
+ assert.deepEqual(results.catalogs.map(v=>v.addonId),['slow','fast']);
+});
