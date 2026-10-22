@@ -10,5 +10,12 @@ contextBridge.exposeInMainWorld('streammaxDesktop', Object.freeze({
   authPoll: () => ipcRenderer.invoke('streammax:auth-poll'),
   authCancel: () => ipcRenderer.invoke('streammax:auth-cancel'),
   openLoginPage: () => ipcRenderer.invoke('streammax:open-login'),
+  searchSources: (type,id,requestId) => ipcRenderer.invoke('streammax:source-search',type,id,requestId),
+  onSourcesProgress: callback => {
+    if(typeof callback!=='function')throw new TypeError('Callback required');
+    const listener=(_event,payload)=>callback(payload);
+    ipcRenderer.on('streammax:sources-progress',listener);
+    return ()=>ipcRenderer.removeListener('streammax:sources-progress',listener);
+  },
   openLocalVideo: () => ipcRenderer.invoke('streammax:open-video')
 }));
