@@ -9,6 +9,7 @@ function createSessionClient({endpoint,publicKey,store,transport=fetch}) {
     throw new TypeError('HTTPS authentication origin required');
   if(typeof publicKey!=='string'||!publicKey)throw new TypeError('Public key required');
   let inFlight=null;
+  let sessionGeneration=0;
   const root=base.href.endsWith('/')?base.href:base.href+'/';
   async function call(route,{method='GET',body,token}={}) {
     const headers={'apikey':publicKey,'accept':'application/json'};
@@ -57,8 +58,19 @@ function createSessionClient({endpoint,publicKey,store,transport=fetch}) {
   }
   return {
     async restore(){
-      if(!inFlight)inFlight=restoreOnce().finally(()=>{inFlight=null;});
+      if(!inFlight){
+        const generation=sessionGeneration;
+        inFlight=restoreOnce().then(result=>generation===sessionGeneration?result:{authenticated:false,reason:'signed_out'})
+          .finally(()=>{inFlight=null;});
+      }
       return inFlight;
+    },
+    async signOut(){
+      sessionGeneration++;
+      const running=inFlight;
+      if(running)await running.catch(()=>{});
+      await store.clear();
+      return {authenticated:false};
     }
   };
 }
