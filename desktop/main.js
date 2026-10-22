@@ -156,4 +156,17 @@ ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
  });
 });
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
-app.on('window-all-closed',()=>{void playback.stop();if(process.platform!=='darwin')app.quit();});
+let shutdownReady=false;
+let shutdownInProgress=false;
+app.on('before-quit',event=>{
+ if(shutdownReady)return;
+ event.preventDefault();
+ if(shutdownInProgress)return;
+ shutdownInProgress=true;
+ // Flush the current watch position before Electron terminates.
+ Promise.resolve(playback.stop()).catch(()=>{}).finally(()=>{
+  shutdownReady=true;
+  app.quit();
+ });
+});
+app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
