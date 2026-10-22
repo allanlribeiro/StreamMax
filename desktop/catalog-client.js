@@ -43,6 +43,7 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
  if(!apiKey)throw new TypeError('Public client key required');
  let registered=[];
  let catalogs=new Map();
+ let sourceProviders=[];
  let generation=0;
  async function readJson(url,opts={},client=transport){
   const response=await client(url,{...opts,redirect:'error',signal:AbortSignal.timeout(14000)});
@@ -64,6 +65,7 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
   });
   const nextCatalogs=new Map();
   const nextRegistered=[];
+  const nextProviders=[];
   for(let i=0;i<addons.length;i++){
     const item=addons[i];
     if(!item||typeof item.url!=='string')continue;
@@ -77,6 +79,8 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
         const m=await readJson(url,{headers:{Accept:'application/json'}},addonTransport);
         if(!m||!Array.isArray(m.catalogs))throw new Error('Invalid addon manifest');
         entry.name=entry.name||String(m.name||'');
+        const supportsStream=Array.isArray(m.resources)&&m.resources.some(r=>r==='stream'||(r&&typeof r==='object'&&r.name==='stream'));
+        if(supportsStream)nextProviders.push({name:entry.name,baseUrl:item.url,enabled:true,supportsStream:true});
         for(let j=0;j<m.catalogs.length;j++){
           const desc=m.catalogs[j];
           if(!desc||typeof desc.id!=='string'||typeof desc.type!=='string')continue;
@@ -93,6 +97,7 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
   if(myGeneration!==generation)throw new Error('Catalog request cancelled');
   registered=nextRegistered;
   catalogs=nextCatalogs;
+  sourceProviders=nextProviders;
   return {addons:registered.map(x=>({...x})),catalogs:Array.from(catalogs,( [key,v] )=>({
     key,addonId:v.addonId,addonName:v.addonName,catalogId:v.catalogId,catalogName:v.catalogName,type:v.type
   }))};
@@ -124,6 +129,9 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
     catalogName:args.catalogName,type:args.type,items,
     hasMore:item.supportsSkip&&body.metas.length>0,nextSkip:skip+body.metas.length};
  }
- return {reload,page,clear(){generation++;registered=[];catalogs=new Map();}};
+ return {reload,page,
+  getSourceProviders(){return sourceProviders.map(x=>({...x}));},
+  clear(){generation++;registered=[];catalogs=new Map();sourceProviders=[];}
+ };
 }
 module.exports={createCatalogClient,catalogUrl,manifestUrl,safeAddonUrl};
