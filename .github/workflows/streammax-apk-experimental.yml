@@ -56,10 +56,11 @@ jobs:
           grep -Fq 'primeiro quadro do MP4 exibido' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/StreamMaxAberturaVideo.kt
           test -s legacy-source/art/marcas/streammax_abertura.mp4
           echo "OK: abertura, lista regional e otimização de fontes integradas."
-      - name: Testar separacao regional de legendas
+      - name: Testar separacao regional de legendas e atualizador OTA
         shell: bash
         run: |
           set -euo pipefail
+          bash legacy-source/tests/streammax-updater.sh
           cc -std=c11 -Wall -Wextra -I legacy-source/src             legacy-source/src/linguas.c legacy-source/tests/test_streammax_subtitle_regions.c             -o /tmp/test_streammax_subtitle_regions
           /tmp/test_streammax_subtitle_regions
 
