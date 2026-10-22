@@ -2656,7 +2656,7 @@ void player_ciclo_evento(Uint32 tipo) {
     if (aberto && fontePrincipal() && !scrubbing) {
       double pos = video_pos();
       if (isfinite(pos) && pos >= 0.0) posSeg = (float)pos;
-      gravarProgressoParcial(1, "background");
+      gravarProgressoParcial(tipo != SDL_APP_LOWMEMORY, "background");
     }
     player_descartar_retido(); retomamorna_cancelar();
   }
