@@ -46,8 +46,9 @@
       if(!item)return;
       active=item;
       heroImage.hidden=!item.background;
-      if(item.background&&heroImage.getAttribute('src')!==item.background)heroImage.src=item.background;
-      else heroImage.removeAttribute('src');
+      if(item.background){
+        if(heroImage.getAttribute('src')!==item.background)heroImage.src=item.background;
+      }else heroImage.removeAttribute('src');
       title.textContent=item.name;
       desc.textContent=[item.releaseInfo,item.description].filter(Boolean).join(' • ');
       action.hidden=false;
@@ -56,10 +57,11 @@
     function addRow(data){
       if(!data||typeof data!=='object')return;
       const label=String(data.title||data.catalogName||'').trim();
-      const items=(Array.isArray(data.items)?data.items:[]).map(normalizeItem).filter(Boolean);
+      const catalogKey=String(data.key||'');
+      const items=(Array.isArray(data.items)?data.items:[]).map(normalizeItem).filter(Boolean).map(item=>({...item,catalogKey}));
       if(!items.length)return;
       const section=createEl('section','catalog-row');
-      section.dataset.catalogKey=String(data.key||'');
+      section.dataset.catalogKey=catalogKey;
       const heading=createEl('h2','catalog-row__title',label);
       const rail=createEl('div','catalog-row__rail');
       rail.setAttribute('aria-label',label);
