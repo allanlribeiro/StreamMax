@@ -30,7 +30,8 @@
       "session-client.js",
       "catalog-client.js",
       "home-view.js",
-      "ui.css"
+      "ui.css",
+      "source-discovery.js"
     ],
     "win": {
       "target": [
