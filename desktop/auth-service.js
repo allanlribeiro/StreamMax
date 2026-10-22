@@ -23,6 +23,7 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessi
  }
  return {
   status(){return {configured,pending:!!pending};},
+  verificationPage(){return pending?.verificationUrl||null;},
   async restore(){
    if(sessionClient)return sessionClient.restore();
    if(!sessionStore)return {authenticated:false,reason:'session_storage_unavailable'};
@@ -52,8 +53,9 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessi
    const userCode=String(result.user_code||result.userCode||result.code||'');
    const verificationUrl=String(result.verification_uri_complete||result.verificationUriComplete||result.web_url||result.webUrl||'');
    if(!code||!userCode||new URL(verificationUrl).protocol!=='https:')throw new Error('Resposta de login inválida');
-   pending={nonce,code};
-   return {userCode,verificationUrl,legacy};
+   pending={nonce,code,verificationUrl};
+   const pollIntervalSeconds=Number(result.poll_interval_seconds||result.pollIntervalSeconds||5);
+   return {userCode,verificationUrl,legacy,pollIntervalSeconds:Number.isFinite(pollIntervalSeconds)?Math.min(30,Math.max(3,pollIntervalSeconds)):5};
   },
   async poll(){
    if(!pending)throw new Error('Nenhum login pendente');
