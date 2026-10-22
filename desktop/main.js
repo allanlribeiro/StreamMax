@@ -79,6 +79,11 @@ ipcMain.handle('streammax:catalog-page',(_event,key,skip=0,extras={})=>{
   if(typeof key!=='string'||key.length>128)throw new TypeError('Invalid catalog key');
   return catalogClient.page(key,skip,extras);
 });
+ipcMain.handle('streammax:metadata',(_event,key,type,id)=>{
+ if(!catalogClient)throw new Error('Catalog provider unavailable');
+ if(typeof key!=='string'||key.length>128)throw new TypeError('Invalid catalog key');
+ return catalogClient.meta(key,type,id);
+});
 ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
  if(!catalogClient)throw new Error('Catalog provider unavailable');
  if(typeof requestId!=='string'||requestId.length>72)throw new TypeError('Invalid request identifier');
