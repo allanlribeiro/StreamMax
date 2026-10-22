@@ -3,15 +3,16 @@
   <uses-feature android:name="android.software.leanback" android:required="false"/>
   <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
   <queries>
+    <package android:name="com.streammax.home.rc2"/>
     <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent>
     <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
   </queries>
-  <application android:label="StreamMax Home RC3" android:theme="@android:style/Theme.Material.NoActionBar">
+  <application android:label="StreamMax Home TX6" android:theme="@android:style/Theme.Material.NoActionBar">
     <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.HOME"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter>
     </activity>
-    <service android:name=".HomeRedirectService" android:directBootAware="true" android:exported="true" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:label="StreamMax Home">
+    <service android:name=".HomeRedirectService" android:directBootAware="true" android:exported="true" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:label="StreamMax Home TX6">
       <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
       <meta-data android:name="android.accessibilityservice" android:resource="@xml/accessibility"/>
     </service>
