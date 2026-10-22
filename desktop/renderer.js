@@ -556,14 +556,34 @@ $('detail-panel').addEventListener('click',e=>{if(e.target===$('detail-panel'))c
 document.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&!$('detail-panel').hidden){closeDetails();event.preventDefault();}
 });
+$('server-save').addEventListener('click',async()=>{
+ const button=$('server-save');
+ button.disabled=true;
+ $('server-config-message').textContent='Validando a conexão…';
+ try{
+  const result=await api.saveServerConfig({
+   endpoint:$('server-endpoint').value,
+   publicKey:$('server-pubkey').value,
+   redirectUrl:$('server-redirect').value
+  });
+  $('server-pubkey').value='';
+  $('server-config-message').textContent=result.restarting?
+   'Conexão salva. O StreamMax será reiniciado.':
+   'Configuração salva.';
+ }catch(error){
+  $('server-config-message').textContent=String(error.message||error);
+ }finally{button.disabled=false;}
+});
 async function boot(){
  if(booting)return;
  booting=true;
  try{
   const settings=await api.authStatus();
   if(!settings.configured){
-   setAuth('Conexão não configurada','A edição Windows precisa da configuração de autenticação do mesmo servidor usado pelo Android. Nenhuma conta ou catálogo de demonstração será apresentado.');
-   $('app-status').textContent='Servidor não configurado';
+   setAuth('Conexão não configurada','Para utilizar sua conta e seus addons, configure o servidor público do mesmo StreamMax que você usa no Android.');
+   $('server-config-panel').hidden=false;
+   $('app-status').textContent=settings.configSource==='invalid'?
+    'Configuração do servidor inválida':'Servidor não configurado';
    return;
   }
   const result=await api.authRestore();
