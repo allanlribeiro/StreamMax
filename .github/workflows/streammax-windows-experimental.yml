@@ -85,7 +85,7 @@ jobs:
           cp -r deploy/app/fonts build/windows/package/fonts
           test -s build/windows/package/StreamMax.exe
           test -s build/windows/streammax.ico
-          if find build/windows/package/art -type f \\( -iname '*.txt' -o -iname '*.bin' -o -iname '*.tmp' \\) | grep -q .; then
+          if find build/windows/package/art -type f \( -iname '*.txt' -o -iname '*.bin' -o -iname '*.tmp' \) | grep -q .; then
             echo "::error::Arte do pacote contem arquivos privados"; exit 1
           fi
           test -d build/windows/package/art
