@@ -42,8 +42,12 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch}){
    const result=await request(RPC.poll,{deviceNonce:pending.nonce,code:pending.code});
    const status=String(result.status||'').toLowerCase();
    if(status==='expired'||status==='denied'||status==='rejected')pending=null;
-   // No exchange of credentials until Windows protected token storage is integrated.
-   return {status};
+   // Android exchanges approved codes for access/refresh tokens. This Windows
+   // preview must not claim to be signed in before secure storage is available.
+   if(status==='approved'||status==='authorized'||status==='completed'){
+     return {status:'awaiting_secure_session',authenticated:false};
+   }
+   return {status,authenticated:false};
   },
   cancel(){pending=null;return {pending:false};}
  };
