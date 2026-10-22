@@ -14,6 +14,10 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessi
     throw error;
   }
   const body=await response.json();
+  if(method===RPC.exchange){
+    if(!body||Array.isArray(body)||typeof body!=='object')throw new Error('Resposta de troca de sessão inválida');
+    return body;
+  }
   if(!Array.isArray(body)||!body[0])throw new Error('Resposta de autenticação vazia');
   return body[0];
  }
