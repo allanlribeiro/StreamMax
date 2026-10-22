@@ -52,6 +52,10 @@ jobs:
         shell: pwsh
         run: python -m pip install --disable-pip-version-check pillow
 
+      - name: Contratos de interface e player Windows
+        shell: msys2 {0}
+        run: bash legacy-source/tests/streammax-windows-desktop.sh
+
       - name: Compilar StreamMax.exe
         working-directory: legacy-source
         run: bash tools/windows.sh --build
@@ -77,11 +81,11 @@ jobs:
           test -d build/windows/package/art
           test -s build/windows/package/art/discord-ca.pem || { echo "::error::Bundle de certificados TLS ausente"; exit 1; }
           test -s build/windows/package/libcurl-4.dll
-          test -s build/windows/package/libmpv-2.dll || { echo "::error::libcurl nao incluida no instalador"; exit 1; }
+          test -s build/windows/package/libmpv-2.dll || { echo "::error::libmpv ausente no pacote"; exit 1; }
           for fonte in InterDisplay-Regular.ttf InterDisplay-Bold.ttf Roboto-Regular.ttf Montserrat-Regular.ttf; do
             test -s "build/windows/package/fonts/$fonte" || { echo "::error::Fonte do teclado faltando: $fonte"; exit 1; }
           done
-          printf 'StreamMax para Windows (experimental W0)\nExtraia todo o ZIP antes de executar StreamMax.exe.\nNao mova o EXE para fora desta pasta.\nO player de video ainda nao esta implementado nesta fase.\n' > build/windows/package/LEIA-ME.txt
+          printf 'StreamMax para Windows (experimental W0)\nExtraia todo o ZIP antes de executar StreamMax.exe.\nNao mova o EXE para fora desta pasta.\nPlayer Windows experimental integrado via libmpv. Validar filmes, fontes, audio, legendas e performance no PC antes de distribuir.\n' > build/windows/package/LEIA-ME.txt
 
 
       - name: Testar HTTPS com libcurl empacotada e PATH limpo
