@@ -32,7 +32,8 @@
       "home-view.js",
       "ui.css",
       "source-discovery.js",
-      "mpv-player.js"
+      "mpv-player.js",
+      "track-language.js"
     ],
     "win": {
       "target": [
