@@ -6,6 +6,12 @@ on:
       - 'desktop/**'
       - '.github/workflows/streammax-windows-checks.yml'
   workflow_dispatch:
+    inputs:
+      publish_preview:
+        description: 'Publish unsigned experimental installer (requires manual confirmation)'
+        required: false
+        type: boolean
+        default: false
 jobs:
   windows-desktop:
     runs-on: windows-latest
@@ -33,6 +39,7 @@ jobs:
           node --check catalog-client.js
           node --check source-discovery.js
           node --check mpv-player.js
+          node --check mpv-discovery.js
           node --check track-language.js
           node --check watch-progress-store.js
           node --check playback-coordinator.js
@@ -71,7 +78,7 @@ jobs:
         run: |
           npm run dist
       - name: Publish test installer as workflow artifact
-        if: steps.official_icon.outputs.available == 'true'
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_preview && steps.official_icon.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: StreamMax-Windows-Preview-unsigned
