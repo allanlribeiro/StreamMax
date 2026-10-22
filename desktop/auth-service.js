@@ -1,7 +1,7 @@
 'use strict';
 const {randomBytes}=require('node:crypto');
 const {RPC,callLoginRpc}=require('./auth-rpc');
-function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch}){
+function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessionStore=null}){
  let pending=null;
  const configured=Boolean(endpoint&&publicKey&&redirectUrl);
  async function request(method,options){
@@ -45,7 +45,14 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch}){
    // Android exchanges approved codes for access/refresh tokens. This Windows
    // preview must not claim to be signed in before secure storage is available.
    if(status==='approved'||status==='authorized'||status==='completed'){
-     return {status:'awaiting_secure_session',authenticated:false};
+     if(!sessionStore)return {status:'awaiting_secure_session',authenticated:false};
+     const exchanged=await request(RPC.exchange,{deviceNonce:pending.nonce,code:pending.code});
+     const access_token=exchanged.access_token||exchanged.accessToken;
+     const refresh_token=exchanged.refresh_token||exchanged.refreshToken;
+     if(!access_token||!refresh_token)throw new Error('Invalid token exchange response');
+     await sessionStore.save({access_token,refresh_token});
+     pending=null;
+     return {status:'authenticated',authenticated:true};
    }
    return {status,authenticated:false};
   },
