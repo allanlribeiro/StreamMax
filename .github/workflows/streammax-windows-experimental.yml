@@ -48,6 +48,7 @@ jobs:
             mingw-w64-ucrt-x86_64-curl
             mingw-w64-ucrt-x86_64-binutils
             mingw-w64-ucrt-x86_64-mpv
+            mingw-w64-ucrt-x86_64-python-pillow
 
       - name: Criar configuracao publica temporaria
         run: |
@@ -57,9 +58,9 @@ jobs:
           TV_LOGIN_WEB_BASE_URL=https://nuvio.tv/tv-login
           EOF
 
-      - name: Preparar imagem e Windows icon
-        shell: pwsh
-        run: python -m pip install --disable-pip-version-check pillow
+      - name: Confirmar Pillow no Python UCRT64 da compilacao
+        shell: msys2 {0}
+        run: python3 -c 'from PIL import Image; print("Pillow do UCRT64 pronto")'
 
       - name: Contratos de interface e player Windows
         shell: msys2 {0}
