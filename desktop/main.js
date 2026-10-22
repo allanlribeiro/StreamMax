@@ -1,12 +1,15 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 const {createAuthService}=require('./auth-service');
+const {createSessionStore}=require('./session-store');
+const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
 const authService=createAuthService({
  endpoint:process.env.STREAMMAX_SUPABASE_URL,
  publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
- redirectUrl:process.env.STREAMMAX_LOGIN_REDIRECT_URL
+ redirectUrl:process.env.STREAMMAX_LOGIN_REDIRECT_URL,
+ sessionStore
 });
 app.setAppUserModelId('com.streammax.desktop');
 let window;
