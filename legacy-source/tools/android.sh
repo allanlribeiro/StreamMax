@@ -64,15 +64,19 @@ test -s "$EST/assets/art/marcas/streammax_splash.jpg" || {
   echo "android.sh: abertura cinematografica StreamMax nao entrou no estagio Android" >&2
   exit 1
 }
-# Video de abertura opcional, sem conversao nem buffer extra no aplicativo.
-# O arquivo aprovado deve vir como art/marcas/streammax_abertura.mp4.
-if [ -s "$RAIZ/art/marcas/streammax_abertura.mp4" ]; then
-  install -Dm644 "$RAIZ/art/marcas/streammax_abertura.mp4" \
-    "$EST/assets/streammax_abertura.mp4"
-  echo "  abertura StreamMax: MP4 incluido nos assets"
-else
-  echo "  aviso: MP4 da abertura ausente; fallback estatico preservado"
-fi
+# Tela inicial: somente o S estatico aprovado pelo usuario.
+# O arquivo-fonte pequeno em base64 evita depender de decoders/processamento
+# de video em toda abertura. NUNCA empacotar o antigo MP4 no APK.
+ARTE_S_B64="$RAIZ/art/marcas/streammax_inicio_s.webp.b64"
+test -s "$ARTE_S_B64" || { echo "android.sh: falta arte S aprovada" >&2; exit 1; }
+base64 --decode "$ARTE_S_B64" > "$EST/assets/streammax_inicio_s.webp"
+python3 - "$EST/assets/streammax_inicio_s.webp" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1]); b = p.read_bytes()
+assert len(b) > 1024 and b[:4] == b'RIFF' and b[8:12] == b'WEBP', "invalid approved S artwork"
+print("  abertura StreamMax: somente imagem WEBP do S, sem MP4")
+PY
 mkdir -p "$EST/assets/fonts"
 cp deploy/app/fonts/* "$EST/assets/fonts/"
 mkdir -p "$EST/assets/licencas"
