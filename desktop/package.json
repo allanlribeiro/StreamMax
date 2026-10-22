@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win nsis",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test"
   },
   "build": {
     "appId": "com.streammax.desktop",
@@ -25,7 +25,7 @@
       "catalog-contract.js",
       "auth-flow.js",
       "auth-rpc.js",
-    "auth-service.js"
+      "auth-service.js"
     ],
     "win": {
       "target": [
