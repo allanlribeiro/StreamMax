@@ -56,7 +56,7 @@ ipcMain.handle('streammax:open-video', async () => {
 });
 ipcMain.handle('streammax:auth-status',()=>authService.status());
 ipcMain.handle('streammax:auth-restore',()=>authService.restore());
-ipcMain.handle('streammax:auth-signout',()=>authService.signOut());
+ipcMain.handle('streammax:auth-signout',()=>{catalogClient?.clear();return authService.signOut();});
 ipcMain.handle('streammax:auth-start',()=>authService.start());
 ipcMain.handle('streammax:auth-poll',()=>authService.poll());
 ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
