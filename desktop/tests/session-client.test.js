@@ -70,3 +70,10 @@ test('sign-out waits for in-flight restore and removes re-created token data',as
  assert.deepEqual(await signingOut,{authenticated:false});
  assert.equal(session,null);
 });
+
+test('validated linked accounts without email can restore their session',async()=>{
+ const store={load:async()=>({access_token:'verified',refresh_token:'private'}),save:async()=>{},clear:async()=>{}};
+ const transport=async()=>({ok:true,status:200,json:async()=>({id:'linked-user-id',email:null})});
+ const client=createSessionClient({...config,store,transport});
+ assert.deepEqual(await client.restore(),{authenticated:true});
+});
