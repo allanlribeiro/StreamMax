@@ -397,6 +397,7 @@ let authorized=false;
 let activePage='home';
 let loginTimer=null;
 let loginStartedAt=0;
+let loginPollDelayMs=5000;
 let polling=false;
 let catalogs=[];
 let nextRowIndex=0;
@@ -493,7 +494,7 @@ async function checkLogin(){
  }finally{
   polling=false;
   if(!authorized&&loginStartedAt&&Date.now()-loginStartedAt<5*60*1000){
-   loginTimer=setTimeout(checkLogin,5000);
+   loginTimer=setTimeout(checkLogin,loginPollDelayMs);
   }
  }
 }
@@ -512,7 +513,8 @@ $('login-start').addEventListener('click',async()=>{
   $('login-retry').hidden=false;
   setAuth('Autorize este computador','Abra a página de autorização e confirme o código exibido abaixo.');
   loginStartedAt=Date.now();
-  loginTimer=setTimeout(checkLogin,Math.max(3,Math.min(30,challenge.pollIntervalSeconds||5))*1000);
+  loginPollDelayMs=Math.max(2000,Math.min(10000,Number(challenge.pollIntervalSeconds||5)*1000));
+  loginTimer=setTimeout(checkLogin,loginPollDelayMs);
  }catch(error){
   setAuth('Não foi possível iniciar o login','Verifique a conexão e a configuração do servidor.',String(error.message||error));
   $('login-start').hidden=false;
