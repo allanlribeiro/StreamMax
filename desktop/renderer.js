@@ -16,7 +16,7 @@ function closeDetails(){
  visibleEpisodes=[];
  $('detail-panel').hidden=true;
 }
-function isSeriesType(type){return type==='series'||type==='tv';}
+function isSeriesType(type){return type==='series';}
 function renderEpisodeChoice(){
  const season=episodeSeasons[Number($('season-select').value)];
  visibleEpisodes=(detailsItem?.videos||[])
@@ -83,15 +83,18 @@ async function showDetails(item){
      $('detail-episodes').hidden=false;
      renderEpisodeChoice();
      $('sources-status').textContent='Selecione o episódio para encontrar fontes.';
-   }else{
+   }else if(meta.type==='movie'){
      openSources({type:meta.type,id:meta.id});
+   }else{
+     $('sources-status').textContent='Esse tipo de conteúdo ainda não está disponível na edição Windows.';
    }
  }catch(error){
    if(myGeneration!==detailGeneration||$('detail-panel').hidden)return;
    $('detail-meta-status').textContent='Informações completas indisponíveis; exibindo dados do catálogo.';
    if(isSeriesType(item.type)){
      $('sources-status').textContent='Não foi possível recuperar os episódios desta série.';
-   }else openSources(item);
+   }else if(item.type==='movie')openSources(item);
+   else $('sources-status').textContent='Esse tipo de conteúdo ainda não está disponível na edição Windows.';
  }
 }
 function openSources(item){
