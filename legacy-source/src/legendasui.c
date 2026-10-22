@@ -187,7 +187,7 @@ void legendasui_definir_sync(const LegendasSyncProvider *p) {
 }
 
 // --- rows --------------------------------------------------------------------------
-typedef enum { LR_CAND, LR_NENHUMA, LR_MAIS, LR_SYNC, LR_ALVO, LR_ATRASO, LR_PAR } LuiTipo;
+typedef enum { LR_CAND, LR_NENHUMA, LR_MAIS, LR_SYNC, LR_ALVO, LR_ATRASO, LR_PAR, LR_FILTRO, LR_BUSCAR, LR_APARENCIA, LR_SINCRONIA, LR_OPCOES } LuiTipo;
 typedef struct {
   LuiTipo tipo;
   int slot, cand;
@@ -198,6 +198,11 @@ static LuiLinha linhas[LUI_MAX_LINHAS];
 static int nLinhasV;
 
 static int mais, alvo, aberto;
+// One task per screen: tracks, synchronization, or secondary subtitle options.
+static int pagina; // 0 tracks, 1 synchronization, 2 more options
+static int paginaVoltaSync;
+static int soExternas;
+static char focoVolta[3][96];
 static int menu, menuFoco, okPendente, okLongo;
 static Uint32 okDesde;
 static char menuVolta[96], verIdioma[16];
@@ -215,10 +220,11 @@ static char focoChave[96];
 static int foco, rolagem, syncAcao;
 // StreamMax: a coluna de idiomas tem foco proprio, sem alterar a identidade
 // das linhas de fontes existentes (que continuam validas se o addon atualizar).
-#define LU_IDIOMAS_VIS 7
-#define LU_IDIOMAS_LARG 236.0f
+static int luVis(void);
+#define LU_IDIOMAS_VIS luVis()
+#define LU_IDIOMAS_LARG 880.0f
 #define LU_IDIOMAS_ESP 18.0f
-#define LU_IDIOMA_LINHA 62.0f
+#define LU_IDIOMA_LINHA 92.0f
 static char idiomas[LEGUI_MAX_CAND][16];
 static int nIdiomas, focoIdioma, rolagemIdioma, emIdiomas;
 #ifdef NV_TOUCH_UI
@@ -327,6 +333,11 @@ static void montarLinhas(void) {
   capturar();
   idPrimario(prim);
   nLinhasV = 0;
+  if (pagina == 1) {
+    linhaFixa(LR_ATRASO, alvo, "sync|atraso");
+    if (estadoSync(alvo)) linhaFixa(LR_SYNC, alvo, alvo ? "sync|s" : "sync|p");
+    goto restaurarFoco;
+  }
   if (!mais && !ver) {
     uint64_t assin = recAssinatura();
     int p, q, ativa = -1;
@@ -351,14 +362,15 @@ static void montarLinhas(void) {
       if (estadoSync(slot)) linhaFixa(LR_SYNC, slot, slot ? "sync|s" : "sync|p");
     linhaFixa(LR_MAIS, 0, "mais");
   } else {
-    // Same full list and per-slot delay controls as before; the language
-    // submenu merely filters this list, without introducing another screen.
-    linhaFixa(LR_ALVO, alvo, "m|alvo");
-    linhaFixa(LR_ATRASO, alvo, "m|atraso");
-    linhaFixa(LR_NENHUMA, alvo, "m|-");
-    // Sem idioma preferido (ou com "mostrar todas") o painel abre direto aqui
-    // e a linha do AutoSync, que so existia em Recomendadas, sumia.
-    if (!ver && estadoSync(alvo)) linhaFixa(LR_SYNC, alvo, alvo ? "m|sync|s" : "m|sync|p");
+    // Track list and actions. Delay and secondary subtitle controls are separate screens.
+    if (pagina == 2) {
+      linhaFixa(LR_FILTRO, alvo, "filtro");
+      linhaFixa(LR_NENHUMA, alvo, "m|-");
+    } else {
+      linhaFixa(LR_FILTRO, 0, "filtro");
+      if (!player_id_canal()[0]) linhaFixa(LR_BUSCAR, 0, "buscar");
+      linhaFixa(LR_NENHUMA, 0, "m|-");
+    }
     // Dono, 11/10: a lista junta as do MESMO idioma (as embutidas e as dos
     // addons chegavam intercaladas). Os idiomas da preferencia primeiro, os
     // outros na ordem em que aparecem; dentro do grupo, a ordem de sempre.
@@ -378,10 +390,19 @@ static void montarLinhas(void) {
         char k[96];
         i = ordem[j];
         if (ver && !ling_legenda_mesma_regiao(cand[i].idioma, verIdioma)) continue;
+        if (soExternas && cand[i].embutida) continue;
         snprintf(k, sizeof k, "m|%s", cand[i].id);
         linhaCandidata(i, alvo, k);
       } }
   }
+  if (pagina != 1) {
+    linhaFixa(LR_SINCRONIA, alvo, "sincronia");
+    if (pagina == 0) {
+      linhaFixa(LR_APARENCIA, 0, "aparencia");
+      linhaFixa(LR_OPCOES, 0, "opcoes");
+    }
+  }
+restaurarFoco:
   // FOCUS BY IDENTITY: find the row with the remembered key; if it vanished
   // (a list was replaced), stay at the same position and adopt that row.
   for (i = 0; i < nLinhasV; i++) if (!strcmp(linhas[i].chave, focoChave)) break;
@@ -431,7 +452,7 @@ static void focarIdiomaAtual(void) {
 // continua sendo uma acao explicita de OK na coluna de opcoes.
 static void selecionarIdioma(void) {
   mais = 1;
-  alvo = 0;
+  alvo = pagina == 2 ? alvo : 0;
   ver = focoIdioma > 0 && focoIdioma <= nIdiomas;
   if (ver) snprintf(verIdioma, sizeof verIdioma, "%s", idiomas[focoIdioma - 1]);
   snprintf(verGrupo, sizeof verGrupo, "mais");
@@ -449,6 +470,7 @@ static void selecionarIdioma(void) {
 void legendasui_abrir(void) {
   char prim[24];
   int i;
+  pagina = paginaVoltaSync = soExternas = 0; memset(focoVolta, 0, sizeof focoVolta);
   aberto = 1; mais = ajustes_legendas_todas() || !temPreferencia(); ver = 0; menu = okPendente = okLongo = 0; alvo = 0; rolagemZerar(); aviso[0] = 0;
   focoChave[0] = 0; foco = 0;
   emIdiomas = 0; focoIdioma = rolagemIdioma = 0;
@@ -465,6 +487,7 @@ void legendasui_abrir(void) {
     }
     if (temBR && temPT) mais = 1;
   }
+  mais = 1; // Main view always lists available tracks; secondary controls live in More.
   montarLinhas();
   // Open on the row of the active primary, else on the first row.
   idPrimario(prim);
@@ -482,6 +505,7 @@ int legendasui_versoes(void) { return aberto && ver; }
 void legendasui_reiniciar(void) {
   legenda2_reiniciar();
   aberto = menu = okPendente = okLongo = 0;
+  pagina = paginaVoltaSync = soExternas = 0;
   mais = 0; ver = 0; alvo = 0; focoChave[0] = 0; foco = 0; rolagemZerar(); aviso[0] = 0;
   nIdiomas = focoIdioma = rolagemIdioma = emIdiomas = 0;
 }
@@ -681,8 +705,15 @@ int legendasui_evento(const SDL_Event *e) {
     return LEGUI_TRATADO;
   }
   if (k == SDLK_AC_BACK || k == SDLK_ESCAPE || k == SDLK_BACKSPACE) {
+    if (pagina) {
+      pagina = pagina == 1 ? paginaVoltaSync : 0;
+      if (!pagina) alvo = 0;
+      snprintf(focoChave, sizeof focoChave, "%s", focoVolta[pagina]);
+      rolagemZerar(); montarLinhas(); return LEGUI_TRATADO;
+    }
+    if (soExternas) { soExternas = 0; snprintf(focoChave, sizeof focoChave, "buscar"); rolagemZerar(); montarLinhas(); return LEGUI_TRATADO; }
     if (ver) { ver = 0; rolagemZerar(); snprintf(focoChave, sizeof focoChave, "%s", verGrupo); montarLinhas(); return LEGUI_TRATADO; }
-    if (mais && temPreferencia() && !ajustes_legendas_todas()) { mais = 0; snprintf(focoChave, sizeof focoChave, "mais"); rolagemZerar(); montarLinhas(); return LEGUI_TRATADO; }
+    if (!mais && temPreferencia() && !ajustes_legendas_todas()) { mais = 0; snprintf(focoChave, sizeof focoChave, "mais"); rolagemZerar(); montarLinhas(); return LEGUI_TRATADO; }
     aberto = 0;
     return LEGUI_FECHAR;
   }
@@ -704,12 +735,30 @@ int legendasui_evento(const SDL_Event *e) {
       int n = nAcoes(l->slot, rot, 4);
       if (n > 0 && syncAcao + d >= 0 && syncAcao + d < n) { syncAcao += d; return LEGUI_TRATADO; }
     }
-    if (d > 0 || (d < 0 && foco == 0)) return LEGUI_ESTILO;
+    return LEGUI_TRATADO;
     return LEGUI_TRATADO;
   }
   if (ok) {
+    if (e->key.repeat && l && l->tipo >= LR_FILTRO) return LEGUI_TRATADO;
     if (!l) return LEGUI_TRATADO;
     switch (l->tipo) {
+      case LR_FILTRO: emIdiomas = 1; focarIdiomaAtual(); break;
+      case LR_BUSCAR:
+        if (!player_id_canal()[0]) {
+          addons_legendas_reiniciar(); soExternas = 1; ver = 0; rolagemZerar();
+          snprintf(focoChave, sizeof focoChave, "buscar");
+          avisar(i18n("Buscando legendas nos provedores"));
+        }
+        break;
+      case LR_APARENCIA: return LEGUI_ESTILO;
+      case LR_SINCRONIA:
+        snprintf(focoVolta[pagina], sizeof focoVolta[pagina], "sincronia");
+        paginaVoltaSync = pagina; pagina = 1;
+        focoChave[0] = 0; foco = 0; rolagemZerar(); break;
+      case LR_OPCOES:
+        pagina = 2; alvo = 1; soExternas = 0; ver = 0;
+        snprintf(focoVolta[0], sizeof focoVolta[0], "opcoes");
+        focoChave[0] = 0; foco = 0; rolagemZerar(); break;
       case LR_MAIS:
         mais = 1; alvo = 0; rolagemZerar(); focoChave[0] = 0; foco = 0;
         montarLinhas(); focar(nLinhasV > 3 ? 3 : 0);
@@ -782,26 +831,30 @@ int legendasui_teste_foco(int *alvoOut, int *syncOut) {
   return aberto ? foco : -1;
 }
 
+// Read-only navigation hooks alongside the existing test focus hook.
+int legendasui_teste_pagina(int *idiomasOut) {
+  if (idiomasOut) *idiomasOut = emIdiomas;
+  return pagina;
+}
+const char *legendasui_teste_chave(void) { return focoChave; }
+int legendasui_teste_focar_chave(const char *chave) {
+  montarLinhas();
+  for (int i = 0; i < nLinhasV; ++i) if (!strcmp(linhas[i].chave, chave)) { focar(i); return 1; }
+  return 0;
+}
+
 static int luVis(void) {
   int n = (int)((NV_VTELA_H - 48.0f - 40.0f - 60.0f - 183.0f + 4.0f) / (LU_LN_H + LU_LN_VAO));
   return n > 7 ? 7 : n < 2 ? 2 : n;
 }
 
 float legendasui_altura(void) {
-  int n, idiomasVis;
-  float alturaOpcoes, alturaIdiomas;
-  montarLinhas();
-  atualizarIdiomas();
-  n = nLinhasV < luVis() ? nLinhasV : luVis();
-  idiomasVis = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
-  alturaOpcoes = n * LU_LN_H + (n > 0 ? (n - 1) * LU_LN_VAO : 0.0f);
-  alturaIdiomas = 38.0f + idiomasVis * LU_IDIOMA_LINHA;
-  // A coluna de estilo ocupa 507px abaixo do cabecalho mesmo se houver
-  // so uma faixa: ela nao pode ser cortada pelo painel ou pelo rodape.
-  if (alturaIdiomas < 507.0f) alturaIdiomas = 507.0f;
+  int n;
+  montarLinhas(); atualizarIdiomas();
+  n = emIdiomas ? nIdiomas + 1 : nLinhasV;
+  if (n > luVis()) n = luVis();
   return LU_PAD_Y + LU_TIT_H + 14.0f +
-         (alturaOpcoes > alturaIdiomas ? alturaOpcoes : alturaIdiomas) +
-         14.0f + LU_PE_H + LU_PAD_Y;
+      n * LU_LN_H + (n > 0 ? (n - 1) * LU_LN_VAO : 0) + 14.0f + LU_PE_H + LU_PAD_Y;
 }
 
 static void rosto(GfxRect r, const char *idioma, const char *icone, int sel, float a) {
@@ -906,13 +959,33 @@ static void textoLinha(const LuiLinha *l, char *nome, size_t tn, char *sub, size
   const LegUiCand *c = l->cand >= 0 ? &cand[l->cand] : NULL;
   nome[0] = sub[0] = 0; *idioma = NULL; *icone = NULL; *ativo = 0; *apagada = 0;
   switch (l->tipo) {
+    case LR_FILTRO:
+      snprintf(nome, tn, "%s", i18n("Idioma"));
+      snprintf(sub, ts, "%s", ver ? nomeIdioma(verIdioma) : i18n("Todos os idiomas"));
+      *icone = "pl_captions"; break;
+    case LR_BUSCAR:
+      snprintf(nome, tn, "%s", i18n("Buscar legenda"));
+      snprintf(sub, ts, "%s", i18n("Legendas dos provedores disponíveis"));
+      *icone = "pl_layers"; break;
+    case LR_APARENCIA:
+      snprintf(nome, tn, "%s", i18n("Aparência"));
+      snprintf(sub, ts, "%s", i18n("Tamanho, fonte, cor e posição"));
+      *icone = "pl_captions"; break;
+    case LR_SINCRONIA:
+      snprintf(nome, tn, "%s", i18n("Sincronização"));
+      snprintf(sub, ts, "%s", i18n("Atraso e sincronização automática"));
+      *icone = "aj_clock"; break;
+    case LR_OPCOES:
+      snprintf(nome, tn, "%s", i18n("Mais opções"));
+      snprintf(sub, ts, "%s", i18n("Legenda secundária"));
+      *icone = "pl_layers"; break;
     case LR_PAR:
       snprintf(nome, tn, "%s + %s", c ? nomeIdioma(c->idioma) : i18n("Desligada"), nomeSecundario());
       snprintf(sub, ts, "%s", i18n("Combinação atual"));
       *icone = "pl_captions"; *ativo = 1;
       break;
     case LR_NENHUMA:
-      snprintf(nome, tn, "%s", i18n(l->slot ? "Sem segunda legenda" : "Desligada"));
+      snprintf(nome, tn, "%s", i18n(l->slot ? "Sem segunda legenda" : "Desativadas"));
       snprintf(sub, ts, "%s", i18n("Sem legenda"));
       *icone = "pl_eye-off";
       *ativo = l->slot ? !legenda2_identidade()[0] : !legendasui_slot_identidade(0)[0];
@@ -945,8 +1018,10 @@ static void textoLinha(const LuiLinha *l, char *nome, size_t tn, char *sub, size
       if (!c) break;
       *idioma = c->idioma;
       *ativo = ativoNoSlot(l->slot, c) && (l->slot == 0 || legenda2_estado() == LEG2_ATIVA);
-      { int nomeado = legendasui_titulo(cand, nCand, l->cand, nome, tn);
-        if (nomeado) juntar(sub, ts, nomeIdioma(c->idioma));   // language is secondary
+      { char detalhe[256];
+        legendasui_titulo(cand, nCand, l->cand, detalhe, sizeof detalhe);
+        snprintf(nome, tn, "%s", nomeIdioma(c->idioma));
+        if (strcmp(detalhe, nome)) juntar(sub, ts, detalhe);
         if (!mais && !ver) {
           juntar(sub, ts, c->embutida ? i18n("Embutida") : c->origem);
           juntar(sub, ts, legendasui_tipo_rotulo(c));
@@ -1022,10 +1097,6 @@ static void desenharLinha(const LuiLinha *l, int idx, int sel, float x, float y,
       const char *k[1] = { "Segure OK" }, *r[1] = { "Mais opções" };
       dir -= plrui_dicas(k, r, 1, dir, y + LU_LN_H * 0.5f, 1, 0.8f * aL) + 12.0f;
     }
-  } else if ((mais || ver) && sel && !menu && l->tipo == LR_CAND) {
-    // Na lista inteira o segurar tambem abre o menu da linha: a mesma dica.
-    const char *k[1] = { "Segure OK" }, *r[1] = { "Mais opções" };
-    dir -= plrui_dicas(k, r, 1, dir, y + LU_LN_H * 0.5f, 1, 0.8f * aL) + 12.0f;
   }
   if (l->tipo == LR_SYNC && sel) {
     // The chosen action between < > discs; a disc dims with nothing beyond it.
@@ -1076,11 +1147,11 @@ static void desenharLinha(const LuiLinha *l, int idx, int sel, float x, float y,
   }
   { float tx = x + 22.0f + 52.0f + 18.0f, tw = dir - tx;
     int c = sel ? 255 : 219, cs = 122;
-    TxtLinha ln = txt_linha_corta(TXT_ILHA_FORTE, nome, c, c, c - 2, 255, tw);
+    float nh = txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, 0, tw, 1.0f, 0, 0);
     TxtLinha ls = txt_linha_corta(TXT_ILHA_GENERO, sub, cs, cs, cs - 2, 255, tw);
-    float th = (float)ln.h + (sub[0] ? 5.0f + (float)ls.h : 0.0f), ty = y + (LU_LN_H - th) * 0.5f;
-    txt_desenhar_alpha(ln, tx, ty, aL);
-    if (sub[0]) txt_desenhar_alpha(ls, tx, ty + (float)ln.h + 5.0f, aL); }
+    float th = nh + (sub[0] ? 5.0f + (float)ls.h : 0.0f), ty = y + (LU_LN_H - th) * 0.5f;
+    txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, ty, tw, 1.0f, aL, 0);
+    if (sub[0]) txt_desenhar_alpha(ls, tx, ty + nh + 5.0f, aL); }
 }
 
 static const char *tituloSessao(void) {
@@ -1158,21 +1229,14 @@ static void ponteiroIdiomaAbrir(int i, int b) {
   emIdiomas = 0;
 }
 static void desenharIdiomas(float x, float y, float w, float a) {
-  const float cab = 38.0f;
-  TxtLinha titulo = txt_linha(TXT_ILHA_FORTE, i18n("Idiomas"), 202, 207, 218, 255);
-  txt_desenhar_alpha(titulo, x + 14.0f, y, a);
-  // Separador entre Idiomas e a lista de opcoes — as duas sao parte do
-  // mesmo painel, mas cada uma tem foco proprio no controle remoto.
-  gfx_cor((GfxRect){ x + w + LU_IDIOMAS_ESP * 0.5f, y, 1.0f,
-                     LU_IDIOMAS_VIS * LU_IDIOMA_LINHA + cab },
-          0.0f, 1, 1, 1, 0.10f * a);
-  for (int pos = 0; pos < LU_IDIOMAS_VIS; pos++) {
+  const float cab = 0.0f;
+  for (int pos = 0; pos < luVis(); pos++) {
     int i = rolagemIdioma + pos;
     const char *rot;
     int escolhido, focado;
     float yy = y + cab + pos * LU_IDIOMA_LINHA;
     GfxRect row;
-    TxtLinha linha;
+
     if (i > nIdiomas) break;
     rot = i == 0 ? i18n("Todos os idiomas") : i18n(ling_nome(idiomas[i - 1]));
     escolhido = i == 0 ? !ver : ver && ling_legenda_mesma_regiao(verIdioma, idiomas[i - 1]);
@@ -1180,11 +1244,9 @@ static void desenharIdiomas(float x, float y, float w, float a) {
     row = (GfxRect){ x, yy, w, LU_IDIOMA_LINHA - 6.0f };
     if (focado) plrui_linha_foco(row, 18.0f, a);
     else if (escolhido) gfx_cor(row, 18.0f / row.h, .11f, .23f, .35f, .78f * a);
-    linha = txt_linha_corta(TXT_ILHA_FORTE, rot, focado ? 255 : escolhido ? 233 : 202,
-                            focado ? 255 : escolhido ? 241 : 207,
-                            focado ? 255 : escolhido ? 250 : 218, 255, w - 38.0f);
-    txt_desenhar_alpha(linha, x + 16.0f,
-                       yy + (row.h - (float)linha.h) * 0.5f, a);
+    { float h = txt_bloco(TXT_ILHA_FORTE, rot, 238, 241, 249, x + 16, 0, w - 38, 1.0f, 0, 0);
+      txt_bloco(TXT_ILHA_FORTE, rot, 238, 241, 249, x + 16,
+                yy + (row.h - h) * .5f, w - 38, 1.0f, a, 0); }
     if (pont) ponteiro_alvo(row.x, row.y, row.w, row.h,
                             ponteiroIdioma, ponteiroIdiomaAbrir, i, 0);
   }
@@ -1199,75 +1261,22 @@ static void desenharIdiomas(float x, float y, float w, float a) {
   }
 }
 
-// Terceira area permanente inspirada no painel do Nuvio original. Exibe
-// ajustes REAIS da sessao; DIREITA e OK no titulo abrem a aba interativa
-// existente, sem duplicar mecanismos de estilo ou alterar o Media3.
-#define LU_EST_RESUMO_W 390.0f
-#define LU_EST_GAP 22.0f
-static void desenharEstiloResumo(float x, float y, float w, float a) {
-  const VideoLegendaEstilo *e = player_leg_estilo();
-  char taman[24], atras[24], opac[24];
-  const char *tit[4] = { "Atraso", "Tamanho da fonte",
-                          "Negrito", "Opacidade do texto" };
-  const char *val[4];
-  TxtLinha t;
-  snprintf(taman, sizeof taman, "%d%%", e->tamanho);
-  snprintf(atras, sizeof atras, "%+.1f s", e->atrasoMs / 1000.0f);
-  snprintf(opac, sizeof opac, "%d%%", 100 - (e->opacidade > 3 ? 3 : e->opacidade) * 25);
-  val[0] = atras;
-  val[1] = taman;
-  val[2] = i18n(e->negrito ? "Ligado" : "Desligado");
-  val[3] = opac;
-  t = txt_linha(TXT_ILHA_FORTE, i18n("Estilo da legenda"), 202, 207, 218, 255);
-  txt_desenhar_alpha(t, x + 12.0f, y, a);
-  for (int j = 0; j < 4; j++) {
-    float yy = y + 50.0f + (float)j * 97.0f;
-    t = txt_linha_corta(TXT_ILHA_FORTE, i18n(tit[j]), 207, 217, 235, 255, w - 30.0f);
-    txt_desenhar_alpha(t, x + 12.0f, yy, a);
-    gfx_cor((GfxRect){x+12.0f, yy+34.0f, w-24.0f, 43.0f},
-            0.22f, .081f, .115f, .169f, .87f*a);
-    t = txt_linha_corta(TXT_ILHA_FORTE, val[j], 242, 247, 255, 255, w - 48.0f);
-    txt_desenhar_alpha(t, x + 24.0f, yy + 40.0f, a);
-  }
-  { GfxRect btn = {x+12.0f, y+454.0f, w-24.0f, 53.0f};
-    gfx_cor(btn, .20f, .092f, .264f, .468f, a);
-    t = txt_linha(TXT_ILHA_FORTE, i18n("Editar estilo  →"), 237, 246, 255, 255);
-    txt_desenhar_alpha(t, btn.x+20.0f, btn.y+(btn.h-(float)t.h)*.5f, a);
-    if (pont) ponteiro_alvo(btn.x,btn.y,btn.w,btn.h,NULL,ponteiroAbaEstilo,0,0);
-  }
-}
 void legendasui_corpo(GfxRect c, float a) {
   float x0 = c.x + LU_PAD_X, w = c.w - LU_PAD_X * 2.0f, y = c.y + LU_PAD_Y;
   int vis = luVis(), fim, i;
   montarLinhas();
   pont = !menu && a > 0.99f && ponteiro_ativo();
   plrui_kicker(tituloSessao(), x0 + 10.0f, y, 115, 115, 113, a);
-  { TxtLinha t = txt_linha(TXT_ILHA_PERGUNTA, ver ? nomeIdioma(verIdioma) : i18n("Legendas"), 243, 242, 239, 255);
-    float ty = y + 22.0f;
-    const char *rot[2] = { "Faixas", "Estilo" };
-    int cont[2] = { nCand, -1 };
-    float sw = plrui_seg(rot, cont, 2, 0, 0, -1.0f, 0, a);
-    txt_desenhar_alpha(t, x0 + 10.0f, ty, a);
-    plrui_seg(rot, cont, 2, 0, 0, x0 + w - 10.0f - sw, ty + (float)t.h - 54.0f, a);
-    if (pont) {   // a aba "Estilo": o que sobra depois do primeiro segmento
-      float w0 = plrui_seg(rot, cont, 1, 0, 0, -1.0f, 0, a);
-      ponteiro_alvo(x0 + w - 10.0f - sw + w0, ty + (float)t.h - 54.0f, sw - w0, 54.0f, NULL, ponteiroAbaEstilo, 0, 0);
-    } }
+  { const char *titulo = emIdiomas ? i18n("Idiomas disponíveis") : pagina == 1 ? i18n("Sincronização") :
+        pagina == 2 ? i18n("Legenda secundária") : soExternas ? i18n("Buscar legenda") : i18n("Legendas");
+    TxtLinha t = txt_linha(TXT_ILHA_PERGUNTA, titulo, 243, 242, 239, 255);
+    txt_desenhar_alpha(t, x0 + 10.0f, y + 22.0f, a); }
   y += LU_TIT_H + 14.0f;
   atualizarIdiomas();
-  // Divisao visual do Nuvio original: idiomas, lista e estilo no mesmo vidro.
-  // O conteudo e o foco existentes continuam sendo controlados pelo seletor.
-  { float sep1 = x0 + LU_IDIOMAS_LARG + LU_IDIOMAS_ESP * 0.5f;
-    float sep2 = c.x + c.w - LU_PAD_X - LU_EST_RESUMO_W - LU_EST_GAP * 0.5f;
-    float alto = 505.0f;
-    gfx_cor((GfxRect){sep1, y + 8.0f, 1.0f, alto}, 0.0f, 1, 1, 1, 0.12f * a);
-    gfx_cor((GfxRect){sep2, y + 8.0f, 1.0f, alto}, 0.0f, 1, 1, 1, 0.12f * a);
+  if (emIdiomas) {
+    desenharIdiomas(x0, y, w, a);
+    return;
   }
-  desenharIdiomas(x0, y, LU_IDIOMAS_LARG, a);
-  desenharEstiloResumo(c.x + c.w - LU_PAD_X - LU_EST_RESUMO_W,
-                       y, LU_EST_RESUMO_W, a);
-  x0 += LU_IDIOMAS_LARG + LU_IDIOMAS_ESP;
-  w -= LU_IDIOMAS_LARG + LU_IDIOMAS_ESP + LU_EST_RESUMO_W + LU_EST_GAP;
 #ifdef NV_TOUCH_UI
   if (telefoneui_ativo()) {
     if (!toquerol_livre(&toqueLegendas)) {
@@ -1304,15 +1313,6 @@ void legendasui_corpo(GfxRect c, float a) {
       desenharLinha(&linhas[i], i, i == foco, x0, y + (i - rolagem) * (LU_LN_H + LU_LN_VAO), w, a);
     y += (fim - rolagem) * LU_LN_H + (fim - rolagem > 0 ? (fim - rolagem - 1) * LU_LN_VAO : 0.0f) + 14.0f;
   }
-  // O rodape vem DEPOIS da coluna mais alta. Numa fonte com apenas uma
-  // legenda, a coluna de idiomas nao pode atravessar o rodape nem o painel.
-  { int linhasIdioma = nIdiomas + 1 < LU_IDIOMAS_VIS ? nIdiomas + 1 : LU_IDIOMAS_VIS;
-    float rodapeMin = c.y + LU_PAD_Y + LU_TIT_H + 14.0f +
-                      38.0f + linhasIdioma * LU_IDIOMA_LINHA + 14.0f;
-    float estiloMin = c.y + LU_PAD_Y + LU_TIT_H + 14.0f +
-                      507.0f + 14.0f;
-    if (rodapeMin < estiloMin) rodapeMin = estiloMin;
-    if (y < rodapeMin) y = rodapeMin; }
   gfx_cor((GfxRect){ x0, y, w, 1.0f }, 0.0f, 1, 1, 1, 0.07f * a);
   { float yc = y + 16.0f + 15.0f;
     if (aviso[0] && (Sint32)(avisoAte - SDL_GetTicks()) > 0) {
@@ -1321,8 +1321,8 @@ void legendasui_corpo(GfxRect c, float a) {
     } else {
       char q[32];
       // "Segure OK" saiu daqui: a linha em foco ja diz (Mais opcoes).
-      const char *k[3] = { "OK", "\xe2\x86\x92", "Voltar" };
-      const char *rt[3] = { "Usar", "Estilo", mais || ver ? "Voltar" : "Fechar" };
+      const char *k[3] = { "OK", "\xe2\x86\x90", "Voltar" };
+      const char *rt[3] = { "Selecionar", "Idiomas", pagina || soExternas || ver ? "Voltar" : "Fechar" };
       const char *km[2] = { "OK", "Voltar" }, *rm[2] = { "Usar", "Fechar" };
       int naSync = nLinhasV && linhas[foco].tipo == LR_SYNC, nf = 0, pf = 0;
       // The AutoSync row is not a choice: it is left out of "N de M", which

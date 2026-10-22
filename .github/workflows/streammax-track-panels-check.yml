@@ -1,0 +1,33 @@
+name: StreamMax separate audio and subtitle panel checks
+on:
+  push:
+    branches: [feature/streammax-audio-subtitle-panels]
+    paths:
+      - 'legacy-source/src/**'
+      - 'legacy-source/tests/**'
+      - '.github/workflows/streammax-track-panels-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libgles2-mesa-dev libegl1-mesa-dev zlib1g-dev
+      - name: UI navigation integration test
+        run: bash legacy-source/tests/streammax-track-panels.sh
+      - name: Preserve track regions and player behavior
+        run: |
+          bash legacy-source/tests/streammax-source-ptbr.sh
+          bash legacy-source/tests/streammax-ui-brand.sh
+          bash legacy-source/tests/streammax-updater.sh
+          python3 legacy-source/tests/streammax-111-image-preview-check.py
+          python3 migration/check-player-original-engine.py
+      - name: Full native compilation
+        working-directory: legacy-source
+        run: bash tools/linux.sh --build

@@ -1,0 +1,302 @@
+name: StreamMax 1.0.11 separate track menus test APK
+
+# APK da base Legacy, contendo o player Media3 e as atualizacoes TCL.
+# RC 1.0.11: assina o candidato para testes; nao publica OTA nem GitHub Release.
+# Nao confundir com o APK Kotlin/fullDebug da branch feature/reproducao-idiomas-nuvio.
+# Mantem login por e-mail e bibliotecas nativas completas.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/streammax-audio-subtitle-panels
+    paths:
+      - '.github/workflows/streammax-track-panels-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  apk-experimental:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Baixar código da PR de reprodução
+        uses: actions/checkout@v4
+        # Em pull_request, checkout usa o merge-ref da PR com as mudancas
+        # reais do player. No despacho manual, usa a branch escolhida.
+      - name: Confirmar origem Legacy e marca StreamMax antes de compilar
+        shell: bash
+        run: |
+          set -euo pipefail
+          # env.sh exige as duas versões idênticas para qualquer build Android.
+          grep -Fq '"version": "2.0.18"' legacy-source/deploy/app/appinfo.json
+          grep -Fq 'version="2.0.18"' legacy-source/tools/tizen-config.xml
+          grep -Fq '#define SM_UPDATE_VERSION "1.0.11"' legacy-source/src/streammax_update.h
+          test -f legacy-source/src/login.c
+          test -f legacy-source/android/app/src/main/AndroidManifest.xml
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+          if [[ "$GITHUB_REF_NAME" == "streammax/tcl-feedback-four-fixes-1018" ]]; then
+            grep -Fq 'semLinkReproduzivel++' legacy-source/src/stream_parse.c
+            grep -Fq 'desenharEstiloResumo' legacy-source/src/legendasui.c
+            grep -Fq 'gfx_furo_raio(pv, raio);' legacy-source/src/guia.c
+          fi
+          echo "Origem verificada: codigo Legacy, commit $(git rev-parse --short HEAD)"
+      - name: Verificar integracao visual das tres correcoes da TCL
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'if (temBR && temPT) mais = 1;' legacy-source/src/legendasui.c
+          grep -Fq 'melhorFolha = automaticoDaFolhaModo();' legacy-source/src/streams.c
+          grep -Fq 'primeiro quadro do MP4 exibido' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/StreamMaxAberturaVideo.kt
+          test -s legacy-source/art/marcas/streammax_abertura.mp4
+          echo "OK: abertura, lista regional e otimização de fontes integradas."
+      - name: Testar separacao regional de legendas e atualizador OTA
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash legacy-source/tests/streammax-updater.sh
+          cc -std=c11 -Wall -Wextra -I legacy-source/src             legacy-source/src/linguas.c legacy-source/tests/test_streammax_subtitle_regions.c             -o /tmp/test_streammax_subtitle_regions
+          /tmp/test_streammax_subtitle_regions
+
+      - name: Conferir o player Media3 e escolha manual desta revisao
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'player_definir_retomada_fonte(posTroca)' legacy-source/src/app.c
+          grep -Fq 't == epTrocaT && e == epTrocaE' legacy-source/src/app.c
+          grep -Fq 'val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt
+          grep -Fq 'val vigiaPrimeiroQuadro = Runnable' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt
+          grep -Fq 'streammax_should_ask_episode_source(' legacy-source/src/detail.c
+          python3 migration/check-player-original-engine.py
+          bash legacy-source/tests/streammax-first-source.sh
+          bash legacy-source/tests/streammax-startup-stage.sh
+          bash legacy-source/tests/streammax-hero-trailer.sh
+          bash legacy-source/tests/streammax-home-visual.sh
+          bash legacy-source/tests/streammax-next-prefetch.sh
+          bash legacy-source/tests/streammax-source-ptbr.sh
+          bash legacy-source/tests/streammax-livetv-columns.sh
+          bash legacy-source/tests/streammax-ui-brand.sh
+          echo "Revisao StreamMax do player e TV ao vivo: $(git rev-parse --short HEAD)"
+          python3 migration/check-playback-contracts.py legacy-source
+      - name: Configurar Nuvio Cloud oficial para login por e-mail
+        shell: bash
+        env:
+          # Dados PUBLICOS do NuvioMedia/self-host/.env.example.
+          NUVIO_CLOUD_URL: https://api.nuvio.tv
+          NUVIO_CLOUD_PUBLISHABLE_KEY: sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+        run: |
+          set -euo pipefail
+          [[ "$NUVIO_CLOUD_URL" == "https://api.nuvio.tv" ]]
+          [[ "$NUVIO_CLOUD_PUBLISHABLE_KEY" == sb_publishable_* ]]
+          umask 077
+          {
+            printf 'NUVIO_SUPABASE_URL=%s\n' "$NUVIO_CLOUD_URL"
+            printf 'NUVIO_SUPABASE_ANON_KEY=%s\n' "$NUVIO_CLOUD_PUBLISHABLE_KEY"
+            printf 'TV_LOGIN_WEB_BASE_URL=%s\n' "https://nuvio.tv/tv-login"
+          } > legacy-source/local.properties
+          echo "Configuracao publica do Nuvio Cloud registrada somente no arquivo temporario de build."
+      - name: Validar configuracao obrigatoria de autenticacao
+        working-directory: legacy-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools/env.sh --require-core >/dev/null
+          test -s local.properties
+          echo "URL e chave publica presentes: build liberada para verificacao remota."
+      - name: Verificar servidor de autenticacao antes do build
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(sed -n 's/^NUVIO_SUPABASE_ANON_KEY=//p' legacy-source/local.properties)"
+          # Nunca realizar login sem credenciais do usuario.
+          curl --fail --silent --show-error --retry 2 --connect-timeout 10 --max-time 30 \
+            -H "apikey: $key" "https://api.nuvio.tv/auth/v1/health" > /dev/null
+          echo "Servidor respondeu ao health check. Login de usuario e sincronizacao ainda exigem teste real."
+      - name: Validate HD enhancement admission and fallback contracts
+        run: |
+          python3 legacy-source/tests/streammax-111-image-preview-check.py
+          python3 legacy-source/tests/streammax-110-check.py
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK pelo ambiente do runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          test -d "${ANDROID_HOME:?ANDROID_HOME nao definido no runner}"
+          test -d "$ANDROID_HOME/cmdline-tools" || { echo "Ferramentas Android ausentes no runner"; exit 1; }
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          "$SDKMANAGER" --version
+      - name: Instalar SDK e ferramentas nativas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          echo "NDKs instalados:"
+          ls -la "$ANDROID_HOME/ndk" || true
+          test -d "$ANDROID_HOME/ndk/27.2.12479018" || { echo "::error::NDK 27.2.12479018 nao foi instalado"; exit 1; }
+          test -d "$ANDROID_HOME/cmake/3.22.1" || { echo "::error::CMake 3.22.1 ausente"; exit 1; }
+      - name: Dependências de compilação
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Compilar bibliotecas nativas de rede e imagens
+        working-directory: legacy-source
+        shell: bash
+        env:
+          NUVIO_ANDROID_JOBS: '2'
+        run: |
+          set -euo pipefail
+          # Sem libcurl o APK nao tem o caminho de rede completo. O modo sem curl
+          # foi util para validar a primeira compilacao, mas nao para testar playback.
+          bash tools/android/deps.sh arm64-v8a armeabi-v7a
+          for abi in arm64-v8a armeabi-v7a; do
+            for lib in curl jpeg webp; do
+              test -s "$HOME/.cache/nuvio-android/prefix/$abi/lib/lib$lib.so" || {
+                echo "::error::Falta lib$lib.so em $abi"
+                exit 1
+              }
+            done
+          done
+      - name: Validar contratos da migração
+        run: |
+          set -euo pipefail
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+          # Regressao de arte dos cards, especialmente Continuar assistindo.
+          bash legacy-source/tests/streammax-cw-art.sh
+      - name: Compilar candidato 1.0.11 assinado com chave permanente
+        working-directory: legacy-source
+        env:
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+          STREAMMAX_RELEASE_KEYSTORE_B64: ${{ secrets.STREAMMAX_RELEASE_KEYSTORE_B64 }}
+          NUVIO_KEYSTORE_PASS: ${{ secrets.STREAMMAX_RELEASE_STORE_PASSWORD }}
+          NUVIO_KEY_ALIAS: ${{ secrets.STREAMMAX_RELEASE_KEY_ALIAS }}
+          NUVIO_KEY_PASS: ${{ secrets.STREAMMAX_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$STREAMMAX_RELEASE_KEYSTORE_B64" || { echo 'Falta secret STREAMMAX_RELEASE_KEYSTORE_B64'; exit 1; }
+          test -n "$NUVIO_KEYSTORE_PASS" && test -n "$NUVIO_KEY_ALIAS" && test -n "$NUVIO_KEY_PASS" || { echo 'Faltam secrets de assinatura'; exit 1; }
+          export NUVIO_KEYSTORE="$RUNNER_TEMP/streammax-111-rc.jks"
+          umask 077
+          printf '%s' "$STREAMMAX_RELEASE_KEYSTORE_B64" | base64 --decode > "$NUVIO_KEYSTORE"
+          test -s "$NUVIO_KEYSTORE"
+          bash tools/android.sh --release-only
+      - name: Testar limpeza de APKs antigos (Kotlin/JUnit)
+        working-directory: legacy-source
+        env:
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+        run: |
+          set -euo pipefail
+          test -s build/android/media3-ffmpeg-16kb.aar
+          android/gradlew -p android --console=plain \
+            -Pnuvio.sdlSrc="$HOME/.cache/nuvio-android/src" \
+            -Pnuvio.estagio="$PWD/build/android" \
+            -Pnuvio.ffmpegAar="$PWD/build/android/media3-ffmpeg-16kb.aar" \
+            testReleaseUnitTest --tests space.nuvio.nativelegacy.StreamMaxApkCacheTest --tests '*StreamMaxImagePreviewTest'
+
+      - name: Conferir servidor incorporado no APK e instalacao isolada
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import glob
+
+          configs = {}
+          for line in Path("legacy-source/local.properties").read_text(encoding="utf-8").splitlines():
+              if "=" in line and not line.lstrip().startswith("#"):
+                  k, v = line.split("=", 1)
+                  configs[k.strip()] = v.strip()
+          values = [configs.get("NUVIO_SUPABASE_URL", ""), configs.get("NUVIO_SUPABASE_ANON_KEY", "")]
+          if not all(values):
+              raise SystemExit("ERRO: configuracao do servidor incompleta")
+          paths = glob.glob("legacy-source/build/android/*-android.apk")
+          if len(paths) != 1:
+              raise SystemExit(f"ERRO: esperado um APK release, encontrados {len(paths)}")
+          with ZipFile(paths[0]) as apk:
+              for abi in ("arm64-v8a", "armeabi-v7a"):
+                  entry = f"lib/{abi}/libmain.so"
+                  if entry not in apk.namelist():
+                      raise SystemExit(f"ERRO: biblioteca principal ausente em {abi}")
+                  data = apk.read(entry)
+                  for lib in ("curl", "jpeg", "webp"):
+                      bundled = f"lib/{abi}/lib{lib}.so"
+                      if bundled not in apk.namelist():
+                          raise SystemExit(f"ERRO: {bundled} ausente no APK")
+                  for name, value in zip(("URL", "chave publica"), values):
+                      if value.encode("utf-8") not in data:
+                          raise SystemExit(f"ERRO: {name} do servidor nao incorporada em {abi}")
+          print("OK: URL e chave publica incorporadas nas duas arquiteturas; valores nao exibidos.")
+          PY
+          apk=(legacy-source/build/android/*-android.apk)
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          test -x "$aapt"
+          "$aapt" dump badging "${apk[0]}" | grep -q "^package: name='com.streammax.tv'"
+          "$aapt" dump badging "${apk[0]}" | grep -Fq "application-label:'StreamMax'"
+          # O alias do launcher experimental tem nome StreamMax Teste.
+          grep -Fq 'android:label="StreamMax"' legacy-source/android/app/src/main/AndroidManifest.xml
+          "$aapt" dump badging "${apk[0]}" | grep -q "versionCode='20018'"
+          echo "OK: pacote oficial com.streammax.tv versionCode=20018 e launcher StreamMax."
+          {
+            printf 'Projeto: StreamMax Legacy - TCL\n'
+            printf 'Branch: %s\n' "$GITHUB_REF_NAME"
+            printf 'Commit: %s\n' "$GITHUB_SHA"
+            printf 'GitHub Actions run: %s\n' "$GITHUB_RUN_ID"
+            printf 'Android package: com.streammax.tv\n'
+            printf 'Instalacao: atualizacao do pacote oficial; sem publicacao automatica\n'
+            # Agora o MP4 e obrigatorio, com igualdade dos bytes do asset.
+            # "Arquivo no ZIP" sozinho nao detecta video errado/corrompido.
+            test -s legacy-source/art/marcas/streammax_abertura.mp4 || { echo '::error::MP4 aprovado nao encontrado'; exit 1; }
+            unzip -Z1 "${apk[0]}" | grep -Fxq 'assets/streammax_abertura.mp4' || { echo '::error::MP4 ausente no APK'; exit 1; }
+            origem="$(sha256sum legacy-source/art/marcas/streammax_abertura.mp4 | cut -d ' ' -f1)"
+            empacotado="$(unzip -p "${apk[0]}" assets/streammax_abertura.mp4 | sha256sum | cut -d ' ' -f1)"
+            test "$origem" = "$empacotado" || { echo '::error::MP4 do APK difere do MP4 aprovado'; exit 1; }
+            printf 'Video de abertura: incluido (SHA-256 conferido)\n'
+            printf 'Base: legacy-source (Android C/SDL e Media3)\n'
+            printf 'StreamMax 1.0.11 candidata assinada; aguarda validacao real na TCL P7K.\n'
+          } > legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
+      - name: Verificar assinatura comparada com StreamMax 1.0.9 oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=(legacy-source/build/android/*-android.apk)
+          test ${#apk[@]} -eq 1
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$signer"
+          base="$RUNNER_TEMP/StreamMax-1.0.9-android.apk"
+          curl -fLsS --retry 2 --connect-timeout 10 --max-time 180 \
+            "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.9/StreamMax-1.0.9-android.apk" \
+            -o "$base"
+          test -s "$base"
+          cert_base="$("$signer" verify --print-certs "$base" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+          cert_rc="$("$signer" verify --print-certs "${apk[0]}" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+          test -n "$cert_base" && test -n "$cert_rc"
+          test "$cert_base" = "$cert_rc" || { echo "::error::Assinatura incompativel com o APK 1.0.8 oficial"; exit 1; }
+          echo "OK: assinatura de atualizacao compativel com a versao publica 1.0.8."
+
+      - name: Name the track-panel test APK
+        run: mv legacy-source/build/android/*-android.apk legacy-source/build/android/StreamMax-1.0.11-new-menus-android.apk
+      - name: Disponibilizar RC assinada para validacao na TCL
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-1.0.11-new-menus
+          path: |
+            legacy-source/build/android/*-android.apk
+            legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
+          if-no-files-found: error
+          retention-days: 30

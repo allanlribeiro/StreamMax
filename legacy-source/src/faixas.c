@@ -477,11 +477,7 @@ static int velFocavel(void) { return velVisivel() && !video_velocidade_bloqueada
 void faixas_abrir(void) { faixas_abrir_em(0); }
 
 // Abre JA NA COLUNA que o botao pediu. O player tem um icone de audio e um de
-// legenda, e os dois abriam esta folha do mesmo jeito, com o foco no audio:
-// apertar "legendas" e cair no audio faz os dois botoes parecerem o mesmo
-// botao — foi exatamente o que o dono relatou. O painel continua sendo UM so,
-// com as duas colunas lado a lado (comparar o par escolhido e o motivo dele
-// existir); o que muda e onde o foco comeca.
+// Audio e legendas abrem paineis separados; nenhum botao muda para o outro.
 void faixas_abrir_em(int col) {
   int n;
   aberta = 1;
@@ -1168,7 +1164,7 @@ static int estiloTecla(SDL_Keycode k, int rep) {
     }
     return 1;
   }
-  if (voltar) return 0;
+  if (voltar) { coluna = 1; return 1; }
   // A grade de FX_BARRA_COLS colunas: as quatro setas andam nela; a esquerda da
   // primeira coluna volta para a lista de legendas.
   if (dx < 0) { if (*f % FX_BARRA_COLS) (*f)--; else coluna = 1; }
@@ -1515,6 +1511,7 @@ static void linhaLista(int col, int i, float x, float y, float w, float a) {
     const VideoFaixa *f = video_audio(i);
     partirRotulo(f ? f->rotulo : "", nome, sizeof nome, sub, sizeof sub);
     idioma = f ? f->idioma : NULL;
+    if (idioma && idioma[0]) snprintf(nome, sizeof nome, "%s", i18n(ling_nome(idioma)));
   } else if (i == 0) {
     snprintf(nome, sizeof nome, "%s", i18n("Nenhuma"));
     snprintf(sub, sizeof sub, "%s", i18n(player_id_canal()[0] && !nLegendas()
@@ -1533,11 +1530,11 @@ static void linhaLista(int col, int i, float x, float y, float w, float a) {
   ativo = col == 0 ? i == video_audio_atual() : legDaLinha(i - 1) == legendaAtiva();
   { float tx = x + 22.0f + 52.0f + 18.0f, tw = w - (tx - x) - 22.0f - (ativo ? 46.0f : 0.0f);
     int c = sel ? 255 : 219, cs = 122;
-    TxtLinha ln = txt_linha_corta(TXT_ILHA_FORTE, nome, c, c, c - 2, 255, tw);
+    float nh = txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, 0, tw, 1.0f, 0, 0);
     TxtLinha ls = txt_linha_corta(TXT_ILHA_GENERO, sub, cs, cs, cs - 2, 255, tw);
-    float th = (float)ln.h + (sub[0] ? 5.0f + (float)ls.h : 0.0f), ty = y + (IL_LN_H - th) * 0.5f;
-    txt_desenhar_alpha(ln, tx, ty, a);
-    if (sub[0]) txt_desenhar_alpha(ls, tx, ty + (float)ln.h + 5.0f, a); }
+    float th = nh + (sub[0] ? 5.0f + (float)ls.h : 0), ty = y + (IL_LN_H - th) * .5f;
+    txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, ty, tw, 1.0f, a, 0);
+    if (sub[0]) txt_desenhar_alpha(ls, tx, ty + nh + 5.0f, a); }
   if (ativo) {
     float ar, ag, ab;
     ajustes_acento(&ar, &ag, &ab);
@@ -2045,7 +2042,7 @@ static void corpoEstilo(GfxRect c, float a) {
   float pad = estiloPadX(), x0 = c.x + pad, w = c.w - pad * 2.0f, y = c.y + IL_PAD_Y;
   float cw = (w - 4.0f * 6.0f) / FX_BARRA_COLS;
   int i, assentada = a > 0.99f && ponteiro_ativo();
-  { TxtLinha t = txt_linha(TXT_G30B, "Legendas", 243, 242, 239, 255);
+  { TxtLinha t = txt_linha(TXT_G30B, i18n("Aparência da legenda"), 243, 242, 239, 255);
     const char *rot[2] = { "Faixas", "Estilo" };
     int cont[2] = { nLinhas(1), -1 };
     float yc = y + IL_EST_TOPO * 0.5f;
@@ -2061,7 +2058,7 @@ static void corpoEstilo(GfxRect c, float a) {
         rt[0] = t0 == 1 ? "Ajustar" : "Escolher"; rt[1] = "Pronto"; rt[2] = "Voltar";
         if (t0 == 3) k[0] = "\xe2\x86\x91 \xe2\x86\x93 \xe2\x86\x90 \xe2\x86\x92";
       } else {
-        rt[0] = "Op\xc3\xa7\xc3\xa3o"; rt[1] = estTipo(foco[FX_COL_ESTILO]) ? "Abrir" : "Mudar"; rt[2] = "Fechar";
+        rt[0] = "Op\xc3\xa7\xc3\xa3o"; rt[1] = estTipo(foco[FX_COL_ESTILO]) ? "Abrir" : "Mudar"; rt[2] = "Voltar";
       }
       plrui_dicas(k, rt, n, x0 + w - 10.0f, yc, 1, a); } }
   y += IL_EST_TOPO + 14.0f;
@@ -2110,7 +2107,7 @@ static void faixas_desenharCorpo_(Uint32 agora) {
     if (!aberta) return;   // fechando: o painel anterior sai pela mesma animacao
     { PlrIlhaPedido p;
       memset(&p, 0, sizeof p);
-      p.w = est ? NV_TELA_W - 192.0f : modo ? NV_TELA_W - 270.0f : 1030.0f;
+      p.w = est ? NV_TELA_W - 192.0f : 1000.0f;
       p.h = est ? alturaEstilo() : modo ? legendasui_altura() : alturaLista(0);
       p.corpo = corpoIlha;
       p.centro = 1;
