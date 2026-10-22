@@ -79,7 +79,8 @@ checks = {
         "static char idiomas[LEGUI_MAX_CAND][16];",
     ],
     "src/abertura.c": [
-        "streammax_splash.jpg",
+        "logoapp_streammax_simbolo(",
+        "AB_SIMBOLO_W",
         "abSaida(p, &veu, &alfaMarca)",
     ],
     "src/main.c": [
@@ -108,36 +109,50 @@ checks = {
 
 }
 errors = []
-# A APK nao deve sair com splash generico se a arte aprovada nao entrou.
-splash = root / "art/marcas/streammax_splash.jpg"
-if not splash.is_file():
-    errors.append("Arte de abertura ausente: art/marcas/streammax_splash.jpg")
-elif splash.stat().st_size < 1024:
-    errors.append("Arte de abertura invalida ou vazia")
-else:
-    with splash.open("rb") as arquivo:
-        if arquivo.read(3) != bytes((0xFF, 0xD8, 0xFF)):
-            errors.append("A abertura final deve ser JPEG valido")
-# A janela Android e o primeiro quadro GLES devem exibir a mesma arte.
-# Sem isso aparece a tela vazia que o teste na TCL identificou.
-launch = root / "android/app/src/main/res/drawable-nodpi/streammax_launch.jpg"
-if not launch.is_file() or (splash.is_file() and launch.read_bytes() != splash.read_bytes()):
-    errors.append("Janela Android nao usa exatamente a imagem aprovada do splash")
+# A abertura aprovada exibe somente o S oficial: sem JPEG, MP4 ou wordmark.
+# Verificar a origem identica do PNG no SDL e na janela Android, protegendo
+# o primeiro frame contra flash da arte antiga.
+icon = root / "deploy/app/art/marcas/streammax_icon.png"
+launch = root / "android/app/src/main/res/drawable-nodpi/streammax_icon.png"
+if not icon.is_file() or not launch.is_file():
+    errors.append("S oficial nao encontrado no SDL ou na janela Android")
+elif icon.stat().st_size < 1024 or not icon.read_bytes().startswith(bytes((137, 80, 78, 71, 13, 10, 26, 10))):
+    errors.append("PNG da marca StreamMax invalido ou vazio")
+elif icon.read_bytes() != launch.read_bytes():
+    errors.append("Icone Android nao corresponde aos pixels oficiais da marca SDL")
 janela = root / "android/app/src/main/res/drawable/abertura.xml"
-if not janela.is_file() or '@drawable/streammax_launch' not in janela.read_text(encoding="utf-8"):
-    errors.append("A janela Android nao exibe o splash antes do primeiro quadro")
+if not janela.is_file():
+    errors.append("Drawable da abertura nao encontrado")
+else:
+    import xml.etree.ElementTree as ET
+    try:
+        a = ET.parse(janela).getroot()
+        android_ns = "{http://schemas.android.com/apk/res/android}"
+        bitmaps = a.findall("./item/bitmap")
+        if (a.tag != "layer-list" or len(bitmaps) != 1
+                or bitmaps[0].get(android_ns + "src") != "@drawable/streammax_icon"
+                or bitmaps[0].get(android_ns + "gravity") != "center"):
+            errors.append("Janela Android deve centralizar somente o PNG S oficial")
+        if "@drawable/streammax_launch" in janela.read_text(encoding="utf-8"):
+            errors.append("Drawable da abertura ainda referencia JPEG antigo")
+    except ET.ParseError:
+        errors.append("Drawable de abertura XML invalido")
 tema31 = root / "android/app/src/main/res/values-v31/themes.xml"
 if not tema31.is_file() or 'name="Tema.StreamMax"' not in tema31.read_text(encoding="utf-8"):
     errors.append("O Android 12+ nao esta usando o tema de abertura StreamMax")
 abertura = root / "src/abertura.c"
 if abertura.is_file():
     conteudo_abertura = abertura.read_text(encoding="utf-8")
-    if '"/marcas/streammax_splash.jpg"' not in conteudo_abertura:
-        # A string no codigo inclui o prefixo de formato %s.
-        if '"%s/marcas/streammax_splash.jpg"' not in conteudo_abertura:
-            errors.append("Codigo de abertura nao referencia splash oficial")
+    for antigo in ("streammax_splash.jpg", "logoapp_streammax_wordmark(", "IMG_Load("):
+        if antigo in conteudo_abertura:
+            errors.append(f"Abertura nativa referencia arte antiga: {antigo}")
     if "veu = q * q * (3.0f - 2.0f * q);" not in conteudo_abertura:
         errors.append("Fade suave da abertura para perfis ausente")
+activity = root / "android/app/src/main/java/space/nuvio/nativelegacy/NuvioActivity.kt"
+if activity.is_file() and "StreamMaxAberturaVideo" in activity.read_text(encoding="utf-8"):
+    errors.append("Activity ainda tenta executar a vinheta MP4 removida")
+if (root / "android/app/src/main/java/space/nuvio/nativelegacy/StreamMaxAberturaVideo.kt").exists():
+    errors.append("Classe de video antiga nao foi removida")
 for name, needles in checks.items():
     path = root / name
     if not path.is_file():

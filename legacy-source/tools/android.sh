@@ -53,26 +53,12 @@ done
 echo "[2/5] arte e fontes -> $EST/assets"
 rm -rf "$EST/assets"; mkdir -p "$EST/assets"
 NUVIO_ARTE_ESTAGIO="build/android/assets/art" bash tools/tizen-art.sh >/dev/null
-# A abertura oficial do StreamMax vive em art/marcas, fora da arvore
-# deploy/app/art usada pelo estagio comum de Tizen. Empacotar explicitamente
-# no Android para que a tela aprovada nao seja substituida pelo fallback.
-install -Dm644 "$RAIZ/art/marcas/streammax_splash.jpg" \
-  "$EST/assets/art/marcas/streammax_splash.jpg"
-# Garante que a abertura aprovada foi realmente copiada para o pacote Android.
-# Verificar apenas a presenca na arvore fonte nao impede uma APK sem a arte.
-test -s "$EST/assets/art/marcas/streammax_splash.jpg" || {
-  echo "android.sh: abertura cinematografica StreamMax nao entrou no estagio Android" >&2
+# A abertura estatica reutiliza os pixels do S oficial do icone, ja
+# empacotado por tizen-art.sh. Nao incluir MP4 ou JPEG antigo de splash.
+test -s "$EST/assets/art/marcas/streammax_icon.png" || {
+  echo "android.sh: S oficial do StreamMax ausente no estagio Android" >&2
   exit 1
 }
-# Video de abertura opcional, sem conversao nem buffer extra no aplicativo.
-# O arquivo aprovado deve vir como art/marcas/streammax_abertura.mp4.
-if [ -s "$RAIZ/art/marcas/streammax_abertura.mp4" ]; then
-  install -Dm644 "$RAIZ/art/marcas/streammax_abertura.mp4" \
-    "$EST/assets/streammax_abertura.mp4"
-  echo "  abertura StreamMax: MP4 incluido nos assets"
-else
-  echo "  aviso: MP4 da abertura ausente; fallback estatico preservado"
-fi
 mkdir -p "$EST/assets/fonts"
 cp deploy/app/fonts/* "$EST/assets/fonts/"
 mkdir -p "$EST/assets/licencas"

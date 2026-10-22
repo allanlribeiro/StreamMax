@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A janela mostra a MESMA arte cinematografica antes do primeiro quadro GLES.
-     Isso evita o fundo vazio entre o launcher e a abertura StreamMax. -->
+<!-- Mesmo S oficial do icone StreamMax antes do primeiro quadro GLES.
+     Imagem central e estatica; sem video nem palavra STREAMMAX. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/streammax_fundo" />
     <item>
-        <bitmap android:src="@drawable/streammax_launch" android:gravity="fill" />
+        <bitmap android:src="@drawable/streammax_icon" android:gravity="center" />
     </item>
 </layer-list>

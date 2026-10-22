@@ -1,4 +1,4 @@
-name: StreamMax 1.0.11 separate track menus test APK
+name: StreamMax 1.0.11 static S splash test APK
 
 # APK da base Legacy, contendo o player Media3 e as atualizacoes TCL.
 # RC 1.0.11: assina o candidato para testes; nao publica OTA nem GitHub Release.
@@ -9,8 +9,10 @@ on:
   push:
     branches:
       - feature/streammax-audio-subtitle-panels
+      - feature/streammax-static-s-splash-20261022
     paths:
       - '.github/workflows/streammax-track-panels-apk.yml'
+      - 'migration/check-playback-contracts.py'
 
 permissions:
   contents: read
@@ -48,9 +50,8 @@ jobs:
           set -euo pipefail
           grep -Fq 'if (temBR && temPT) mais = 1;' legacy-source/src/legendasui.c
           grep -Fq 'melhorFolha = automaticoDaFolhaModo();' legacy-source/src/streams.c
-          grep -Fq 'primeiro quadro do MP4 exibido' legacy-source/android/app/src/main/java/space/nuvio/nativelegacy/StreamMaxAberturaVideo.kt
-          test -s legacy-source/art/marcas/streammax_abertura.mp4
-          echo "OK: abertura, lista regional e otimização de fontes integradas."
+          bash legacy-source/tests/streammax-static-s-splash.sh
+          echo "OK: S estatico, idiomas regionais e otimizacao de fontes integrados."
       - name: Testar separacao regional de legendas e atualizador OTA
         shell: bash
         run: |
@@ -266,14 +267,12 @@ jobs:
             printf 'GitHub Actions run: %s\n' "$GITHUB_RUN_ID"
             printf 'Android package: com.streammax.tv\n'
             printf 'Instalacao: atualizacao do pacote oficial; sem publicacao automatica\n'
-            # Agora o MP4 e obrigatorio, com igualdade dos bytes do asset.
-            # "Arquivo no ZIP" sozinho nao detecta video errado/corrompido.
-            test -s legacy-source/art/marcas/streammax_abertura.mp4 || { echo '::error::MP4 aprovado nao encontrado'; exit 1; }
-            unzip -Z1 "${apk[0]}" | grep -Fxq 'assets/streammax_abertura.mp4' || { echo '::error::MP4 ausente no APK'; exit 1; }
-            origem="$(sha256sum legacy-source/art/marcas/streammax_abertura.mp4 | cut -d ' ' -f1)"
-            empacotado="$(unzip -p "${apk[0]}" assets/streammax_abertura.mp4 | sha256sum | cut -d ' ' -f1)"
-            test "$origem" = "$empacotado" || { echo '::error::MP4 do APK difere do MP4 aprovado'; exit 1; }
-            printf 'Video de abertura: incluido (SHA-256 conferido)\n'
+            # A abertura deve usar o S do icone e nao pode carregar MP4.
+            test -s legacy-source/deploy/app/art/marcas/streammax_icon.png
+            if unzip -Z1 "${apk[0]}" | grep -Fxq 'assets/streammax_abertura.mp4'; then
+              echo '::error::MP4 antigo encontrado no APK'; exit 1
+            fi
+            printf 'Abertura: S original estatico, sem MediaPlayer ou MP4\n'
             printf 'Base: legacy-source (Android C/SDL e Media3)\n'
             printf 'StreamMax 1.0.11 candidata assinada; aguarda validacao real na TCL P7K.\n'
           } > legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
@@ -297,12 +296,12 @@ jobs:
           echo "OK: assinatura de atualizacao compativel com a versao publica 1.0.8."
 
       - name: Name the track-panel test APK
-        run: mv legacy-source/build/android/*-android.apk legacy-source/build/android/StreamMax-1.0.11-new-menus-android.apk
+        run: mv legacy-source/build/android/*-android.apk legacy-source/build/android/StreamMax-1.0.11-static-S-android.apk
       - name: Disponibilizar RC assinada para validacao na TCL
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-1.0.11-new-menus
+          name: StreamMax-1.0.11-static-S-test
           path: |
             legacy-source/build/android/*-android.apk
             legacy-source/build/android/STREAMMAX-BUILD-INFO.txt
