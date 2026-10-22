@@ -26,3 +26,15 @@ test('preserves service subpath when constructing device login RPC URL',async()=
  });
  assert.equal(called,'https://example.org/backend/rest/v1/rpc/poll_tv_login_session');
 });
+
+test('uses the Android edge function for login exchange',async()=>{
+ let url;
+ await callLoginRpc({
+  transport:async u=>{url=u;return {ok:true};},
+  endpoint:'https://example.org',
+  publicKey:'public',
+  method:RPC.exchange,
+  options:{code:'ABC',deviceNonce:'nonce'}
+ });
+ assert.equal(url,'https://example.org/functions/v1/tv-logins-exchange');
+});
