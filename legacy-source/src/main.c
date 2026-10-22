@@ -112,6 +112,7 @@
 #include "logoapp.h"
 #ifdef NV_WINDOWS_DESKTOP
 #include "winstartup.h"
+#include "windows_mpv.h"
 #endif
 // O idioma AUTOMATICO da interface mudou depois do arranque (a conta chegou, ou
 // a TV respondeu o locale). Titulos e generos das fileiras saem no idioma novo,
@@ -2309,7 +2310,14 @@ int main(int argc, char **argv) {
     gputempo_quadro_fim();
     t0 = NV_T0();
     if (!nvPrimeiroQuadroFeito) arranque_etapa("primeiro SwapWindow");
+#ifdef NV_WINDOWS_DESKTOP
+    // O video vai SOB a UI nativa: so preenche os furos alfa do player/hero.
+    sm_mpv_composite();
+#endif
     SDL_GL_SwapWindow(win);
+#ifdef NV_WINDOWS_DESKTOP
+    sm_mpv_report_swap();
+#endif
     swapint_marca(&swapInt, (double)SDL_GetPerformanceCounter() * 1000.0 / perFreq);
 #ifdef NV_ANDROID
     android_quadro();   // todo quadro apresentado, de qualquer tela (vigia #266)
