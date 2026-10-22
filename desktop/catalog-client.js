@@ -43,12 +43,14 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
  if(!apiKey)throw new TypeError('Public client key required');
  let registered=[];
  let catalogs=new Map();
+ let generation=0;
  async function readJson(url,opts={},client=transport){
   const response=await client(url,{...opts,redirect:'error',signal:AbortSignal.timeout(14000)});
   if(!response.ok)throw new Error('Catalog service returned HTTP '+response.status);
   return response.json();
  }
  async function reload(){
+  const myGeneration=generation;
   // Fetch owner ID and user-specific add-ons with same RLS-backed database as Android.
   const addons=await sessionClient.withAccessToken(async token=>{
    const headers={apikey:apiKey,Authorization:'Bearer '+token,Accept:'application/json'};
@@ -88,6 +90,7 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
     }
     nextRegistered.push(entry);
   }
+  if(myGeneration!==generation)throw new Error('Catalog request cancelled');
   registered=nextRegistered;
   catalogs=nextCatalogs;
   return {addons:registered.map(x=>({...x})),catalogs:Array.from(catalogs,( [key,v] )=>({
@@ -95,6 +98,7 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
   }))};
  }
  async function page(key,skip=0,extraArgs={}){
+  const myGeneration=generation;
   const item=catalogs.get(key);
   if(!item)throw new Error('Unknown catalog');
   const args=catalogRequest({
@@ -104,6 +108,7 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
   });
   const url=catalogUrl(args.addonBaseUrl,args.type,args.catalogId,args.skip,args.extraArgs);
   const body=await readJson(url,{headers:{Accept:'application/json'}},addonTransport);
+  if(myGeneration!==generation)throw new Error('Catalog request cancelled');
   if(!body||!Array.isArray(body.metas))throw new Error('Invalid catalog response');
   const seen=new Set();
   const items=body.metas.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string')
@@ -119,6 +124,6 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
     catalogName:args.catalogName,type:args.type,items,
     hasMore:item.supportsSkip&&body.metas.length>0,nextSkip:skip+body.metas.length};
  }
- return {reload,page};
+ return {reload,page,clear(){generation++;registered=[];catalogs=new Map();}};
 }
 module.exports={createCatalogClient,catalogUrl,manifestUrl,safeAddonUrl};
