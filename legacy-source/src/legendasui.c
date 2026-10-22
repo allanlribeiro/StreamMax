@@ -1157,10 +1157,11 @@ static void desenharLinha(const LuiLinha *l, int idx, int sel, float x, float y,
   }
   { float tx = x + 22.0f + 52.0f + 18.0f, tw = dir - tx;
     int c = sel ? 255 : 219, cs = 122;
-    float nh = txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, 0, tw, 1.0f, 0, 0);
+    float lh = (float)txt_linha(TXT_ILHA_FORTE, nome, c, c, c - 2, 255).h + 2.0f;
+    float nh = txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, 0, tw, lh, 0, 0);
     TxtLinha ls = txt_linha_corta(TXT_ILHA_GENERO, sub, cs, cs, cs - 2, 255, tw);
     float th = nh + (sub[0] ? 5.0f + (float)ls.h : 0.0f), ty = y + (LU_LN_H - th) * 0.5f;
-    txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, ty, tw, 1.0f, aL, 0);
+    txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, ty, tw, lh, aL, 0);
     if (sub[0]) txt_desenhar_alpha(ls, tx, ty + nh + 5.0f, aL); }
 }
 
@@ -1254,9 +1255,10 @@ static void desenharIdiomas(float x, float y, float w, float a) {
     row = (GfxRect){ x, yy, w, LU_IDIOMA_LINHA - 6.0f };
     if (focado) plrui_linha_foco(row, 18.0f, a);
     else if (escolhido) gfx_cor(row, 18.0f / row.h, .11f, .23f, .35f, .78f * a);
-    { float h = txt_bloco(TXT_ILHA_FORTE, rot, 238, 241, 249, x + 16, 0, w - 38, 1.0f, 0, 0);
+    { float lh = (float)txt_linha(TXT_ILHA_FORTE, rot, 238, 241, 249, 255).h + 2.0f;
+      float h = txt_bloco(TXT_ILHA_FORTE, rot, 238, 241, 249, x + 16, 0, w - 38, lh, 0, 0);
       txt_bloco(TXT_ILHA_FORTE, rot, 238, 241, 249, x + 16,
-                yy + (row.h - h) * .5f, w - 38, 1.0f, a, 0); }
+                yy + (row.h - h) * .5f, w - 38, lh, a, 0); }
     if (pont) ponteiro_alvo(row.x, row.y, row.w, row.h,
                             ponteiroIdioma, ponteiroIdiomaAbrir, i, 0);
   }

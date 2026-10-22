@@ -1531,10 +1531,11 @@ static void linhaLista(int col, int i, float x, float y, float w, float a) {
   ativo = col == 0 ? i == video_audio_atual() : legDaLinha(i - 1) == legendaAtiva();
   { float tx = x + 22.0f + 52.0f + 18.0f, tw = w - (tx - x) - 22.0f - (ativo ? 46.0f : 0.0f);
     int c = sel ? 255 : 219, cs = 122;
-    float nh = txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, 0, tw, 1.0f, 0, 0);
+    float lh = (float)txt_linha(TXT_ILHA_FORTE, nome, c, c, c - 2, 255).h + 2.0f;
+    float nh = txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, 0, tw, lh, 0, 0);
     TxtLinha ls = txt_linha_corta(TXT_ILHA_GENERO, sub, cs, cs, cs - 2, 255, tw);
     float th = nh + (sub[0] ? 5.0f + (float)ls.h : 0), ty = y + (IL_LN_H - th) * .5f;
-    txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, ty, tw, 1.0f, a, 0);
+    txt_bloco(TXT_ILHA_FORTE, nome, c, c, c - 2, tx, ty, tw, lh, a, 0);
     if (sub[0]) txt_desenhar_alpha(ls, tx, ty + nh + 5.0f, a); }
   if (ativo) {
     float ar, ag, ab;
