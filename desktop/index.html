@@ -40,7 +40,13 @@
  <div class="detail__body">
    <button id="detail-close" type="button" class="secondary detail__close" aria-label="Fechar">Fechar</button>
    <h2 id="detail-name"></h2><p id="detail-description"></p>
-   <p class="error-text">A navegação para detalhes e a seleção de fontes ainda estão sendo portadas do Android.</p>
+   <section class="detail__sources" aria-label="Fontes de reprodução">
+    <h3>Fontes disponíveis</h3>
+    <p id="sources-status" role="status">Consultando addons…</p>
+    <progress id="sources-progress" max="1" value="0"></progress>
+    <ul id="sources-list" class="sources-list"></ul>
+    <p class="error-text">O player nativo ainda não foi integrado. Esta tela permite conferir as fontes encontradas, sem iniciar uma reprodução incompatível.</p>
+   </section>
  </div>
 </section>
 <script src="home-view.js"></script>
