@@ -17,13 +17,17 @@ function createSourceDiscovery({transport=fetch,timeoutMs=10000}={}) {
  const sourceUrls=new Map();
  let generation=0;
  function reset(){generation++;sourceUrls.clear();}
- function getPlayableUrl(sourceId) {
+ function getPlayableSource(sourceId){
   const entry=sourceUrls.get(sourceId);
-  return entry&&entry.generation===generation?entry.url:null;
+  return entry&&entry.generation===generation?{...entry}:null;
+ }
+ function getPlayableUrl(sourceId){
+  return getPlayableSource(sourceId)?.url||null;
  }
  async function search({type,id,providers,onUpdate=()=>{}}) {
   reset();
   const requestGeneration=generation;
+  const idOfVideo=id;
   const eligible=(Array.isArray(providers)?providers:[]).filter(p=>p&&p.enabled!==false&&p.supportsStream!==false).slice(0,35);
   let completed=0,available=0;
   onUpdate({phase:'starting',total:eligible.length,completed,available,streams:[]});
@@ -53,7 +57,7 @@ function createSourceDiscovery({transport=fetch,timeoutMs=10000}={}) {
      }
      const id=randomBytes(16).toString('hex');
      if(playable&&requestGeneration===generation)
-      sourceUrls.set(id,{url:playable,generation:requestGeneration});
+      sourceUrls.set(id,{url:playable,generation:requestGeneration,type,videoId:idOfVideo});
      // Do not send sensitive stream URLs, infoHash or debrid query credentials to renderer.
      return {id,title,description,addonName:name,playable:Boolean(playable),kind:playable?'direct':'unsupported'};
     }).filter(Boolean);
@@ -72,6 +76,6 @@ function createSourceDiscovery({transport=fetch,timeoutMs=10000}={}) {
    ?{phase:'complete',total:eligible.length,completed,available}
    :{phase:'cancelled',total:eligible.length,completed,available:0};
  }
- return {search,reset,getPlayableUrl};
+ return {search,reset,getPlayableUrl,getPlayableSource};
 }
 module.exports={createSourceDiscovery,streamUrl};
