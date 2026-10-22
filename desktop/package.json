@@ -21,7 +21,8 @@
       "index.html",
       "renderer.js",
       "assets/**/*",
-      "home-state.js"
+      "home-state.js",
+      "catalog-contract.js"
     ],
     "win": {
       "target": [
