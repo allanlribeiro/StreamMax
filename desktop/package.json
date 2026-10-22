@@ -35,7 +35,8 @@
       "mpv-player.js",
       "track-language.js",
       "watch-progress-store.js",
-      "playback-coordinator.js"
+      "playback-coordinator.js",
+      "remote-progress-client.js"
     ],
     "win": {
       "target": [
