@@ -16,10 +16,10 @@ function normalizeHomeState(payload) {
   const seen = new Set();
   const normalizedRows = rows.map((row, i) => {
     if (!row || typeof row !== 'object' || !Array.isArray(row.items)) throw new TypeError('Invalid catalog row at '+i);
-    const id = String(row.id ?? '').trim();
+    const id = String(row.id ?? row.key ?? (row.addonId && row.catalogId && (row.rawType || row.type) ? [row.addonId,row.addonBaseUrl || '',row.rawType || row.type,row.catalogId].join('::') : '')).trim();
     if (!id || seen.has(id)) throw new TypeError('Missing or duplicate catalog ID');
     seen.add(id);
-    return { id, title: String(row.title ?? ''), items: row.items.slice() };
+    return { ...row, id, title: String(row.title ?? row.catalogName ?? ''), items: row.items.slice() };
   });
   return {
     homeLayout: layout,
