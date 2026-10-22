@@ -191,7 +191,6 @@ void sm_mpv_pump(VideoSimulacao *s) {
   s->bufferFim=s->pos+smDouble("demuxer-cache-duration");
   s->largura=(int)smInt("video-params/w",0);
   s->altura=(int)smInt("video-params/h",0);
-  smPaused=smInt("pause",smPaused)!=0; // enum? MPV_FORMAT_FLAG checked separately below
   int paused=smPaused;
   if(mpv_get_property(smPlayer,"pause",MPV_FORMAT_FLAG,&paused)>=0)smPaused=paused;
   s->bufferandoMs=0;s->reconectando=0;
