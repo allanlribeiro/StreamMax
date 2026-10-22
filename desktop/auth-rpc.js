@@ -31,7 +31,7 @@ async function callLoginRpc({transport,endpoint,publicKey,method,options}){
  if(base.protocol!=='https:'||base.username||base.password||base.search||base.hash)throw new TypeError('Invalid service endpoint');
  if(typeof publicKey!=='string'||!publicKey)throw new TypeError('Public client key required');
  // Network call lives in the trusted main process, not the renderer.
- const url=new URL('/rest/v1/rpc/'+method,base.origin);
+ const url=new URL('rest/v1/rpc/'+method,base.href.endsWith('/')?base.href:base.href+'/');
  if(!Object.values(RPC).includes(method))throw new TypeError('Invalid RPC');
  return transport(url.toString(),{method:'POST',headers:{'content-type':'application/json',apikey:publicKey},body:JSON.stringify(rpcBody(method,options))});
 }
