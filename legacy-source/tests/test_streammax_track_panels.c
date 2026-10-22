@@ -45,7 +45,9 @@ static void painelCapturas(void) {
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
   SDL_Window *janela = SDL_CreateWindow("StreamMax UI preview", 0, 0, 1920, 1080, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
   assert(janela);
-  SDL_GLContext contexto = SDL_GL_CreateContext(janela); assert(contexto);
+  SDL_GLContext contexto = SDL_GL_CreateContext(janela);
+  if (!contexto) fprintf(stderr, "Preview EGL context: %s\n", SDL_GetError());
+  assert(contexto);
   gfx_tamanho_alvo(1920, 1080); assert(gfx_iniciar());
   assert(txt_iniciar("deploy/app", 1.f)); gfx_icones_dir("deploy/app/art");
   faixas_abrir_em(0); painelCaptura("build/tests/audio.bmp");
