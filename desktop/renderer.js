@@ -325,6 +325,49 @@ async function loadContinueWatching(){
  }
 }
 $('continue-refresh').addEventListener('click',loadContinueWatching);
+let remoteHistoryGeneration=0;
+async function loadRemoteHistory(){
+ const generation=++remoteHistoryGeneration;
+ const list=$('remote-progress-list');
+ list.replaceChildren();
+ $('remote-progress-refresh').disabled=true;
+ $('remote-progress-status').textContent='Consultando histórico sincronizado…';
+ try{
+  const records=await api.listRemoteProgress();
+  if(generation!==remoteHistoryGeneration||!authorized)return;
+  $('remote-progress-status').textContent=records.length
+   ?records.length+' título(s) disponíveis na prévia da conta.'
+   :'Nenhum conteúdo em andamento foi encontrado no histórico da TV.';
+  for(const record of records){
+   // Remote sync RPC returns IDs and watch positions, not names or artwork.
+   // Preserve that distinction; do not invent titles or imply local import.
+   const card=document.createElement('div');
+   card.className='continue-card remote-progress-entry';
+   const metadata=document.createElement('div');
+   const title=document.createElement('strong');
+   title.textContent=record.contentId;
+   const details=document.createElement('span');
+   details.textContent=record.contentType==='series'
+    ?'Série · T'+record.season+' E'+record.episode
+    :'Filme';
+   const label=document.createElement('small');
+   label.textContent=formatTime(record.position)+' de '+formatTime(record.duration);
+   const progress=document.createElement('progress');
+   progress.max=100;
+   progress.value=Math.min(100,Math.round(100*record.position/record.duration));
+   metadata.append(title,details,label,progress);
+   card.append(metadata);
+   list.append(card);
+  }
+ }catch(error){
+  if(generation===remoteHistoryGeneration&&authorized)
+   $('remote-progress-status').textContent='Histórico da TV indisponível: '+String(error.message||error);
+ }finally{
+  if(generation===remoteHistoryGeneration)$('remote-progress-refresh').disabled=false;
+ }
+}
+$('remote-progress-refresh').addEventListener('click',loadRemoteHistory);
+
 
 let authorized=false;
 let activePage='home';
@@ -467,6 +510,9 @@ document.querySelectorAll('[data-page]').forEach(button=>button.addEventListener
  if(button.dataset.page==='continue'&&authorized)void loadContinueWatching();
 }));
 $('signout').addEventListener('click',async()=>{
+ ++remoteHistoryGeneration;
+ $('remote-progress-list').replaceChildren();
+ $('remote-progress-status').textContent='';
  stopPolling();
  await api.authSignOut();
  authorized=false;
