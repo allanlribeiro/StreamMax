@@ -54,7 +54,7 @@ int sm_mpv_init(void) {
     mpv_terminate_destroy(smPlayer); smPlayer=NULL;
     return 0;
   }
-  mpv_opengl_init_params init={smGetGl,NULL,NULL};
+  mpv_opengl_init_params init={smGetGl,NULL};
   mpv_render_param args[]={
     {MPV_RENDER_PARAM_API_TYPE,(void *)MPV_RENDER_API_TYPE_OPENGL},
     {MPV_RENDER_PARAM_OPENGL_INIT_PARAMS,&init},
@@ -65,6 +65,11 @@ int sm_mpv_init(void) {
     smFailed=1; mpv_terminate_destroy(smPlayer); smPlayer=NULL;
     return 0;
   }
+  // Observar propriedades de track, em vez de inventar eventos nao existentes
+  // na API libmpv. NONE notifica apenas que os dados mudaram.
+  mpv_observe_property(smPlayer,1,"track-list",MPV_FORMAT_NONE);
+  mpv_observe_property(smPlayer,2,"aid",MPV_FORMAT_NONE);
+  mpv_observe_property(smPlayer,3,"sid",MPV_FORMAT_NONE);
   return 1;
 }
 void sm_mpv_headers(const char *headers) {
@@ -180,8 +185,12 @@ void sm_mpv_pump(VideoSimulacao *s) {
     if(ev->event_id==MPV_EVENT_FILE_LOADED) {
       smReady=1;smFailed=0;smEnded=0;atualizarFaixas=1;
     }
-    if(ev->event_id==MPV_EVENT_TRACKS_CHANGED ||
-       ev->event_id==MPV_EVENT_TRACK_SWITCHED)atualizarFaixas=1;
+    if(ev->event_id==MPV_EVENT_PROPERTY_CHANGE) {
+      mpv_event_property *prop=(mpv_event_property *)ev->data;
+      if(prop && prop->name &&
+         (!strcmp(prop->name,"track-list") || !strcmp(prop->name,"aid") ||
+          !strcmp(prop->name,"sid"))) atualizarFaixas=1;
+    }
     if(ev->event_id==MPV_EVENT_END_FILE && smPlaying) {
       mpv_event_end_file *end=(mpv_event_end_file *)ev->data;
       if(end && end->reason==MPV_END_FILE_REASON_ERROR) {
