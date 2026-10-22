@@ -8,6 +8,7 @@ const {createSessionClient}=require('./session-client');
 const {createCatalogClient}=require('./catalog-client');
 const {createSourceDiscovery}=require('./source-discovery');
 const {createMpvPlayer}=require('./mpv-player');
+const {findMpvExecutable}=require('./mpv-discovery');
 const {createWatchProgressStore}=require('./watch-progress-store');
 const {createPlaybackCoordinator}=require('./playback-coordinator');
 const {createRemoteProgressClient}=require('./remote-progress-client');
@@ -43,7 +44,12 @@ function savedMpvPath(){
   return typeof saved.executable==='string'?saved.executable:null;
  }catch{return null;}
 }
-const mpvPlayer=createMpvPlayer({executable:savedMpvPath()||process.env.STREAMMAX_MPV_PATH||null});
+const foundMpv=findMpvExecutable({
+ resourcesPath:process.resourcesPath,appDir:path.dirname(process.execPath)
+});
+const customMpv=savedMpvPath()||process.env.STREAMMAX_MPV_PATH||null;
+const mpvPlayer=createMpvPlayer({executable:customMpv||foundMpv.executable});
+let mpvPathSource=customMpv?'user':foundMpv.source;
 const watchProgressStore=createWatchProgressStore({
  safeStorage,filePath:path.join(app.getPath('userData'),'watch-progress.enc')
 });
@@ -193,7 +199,9 @@ ipcMain.handle('streammax:metadata',(_event,key,type,id)=>{
  if(typeof key!=='string'||key.length>128)throw new TypeError('Invalid catalog key');
  return catalogClient.meta(key,type,id);
 });
-ipcMain.handle('streammax:player-availability',()=>mpvPlayer.availability());
+ipcMain.handle('streammax:player-availability',()=>({
+ ...mpvPlayer.availability(),source:mpvPathSource
+}));
 ipcMain.handle('streammax:player-select',async()=>{
  const result=await dialog.showOpenDialog(window,{
   title:'Selecione mpv.exe',properties:['openFile'],
@@ -202,6 +210,7 @@ ipcMain.handle('streammax:player-select',async()=>{
  if(result.canceled||!result.filePaths.length)return mpvPlayer.availability();
  const exe=result.filePaths[0];
  const changed=mpvPlayer.setExecutable(exe);
+ mpvPathSource='user';
  const tmp=mpvSettingsFile+'.tmp';
  fs.mkdirSync(path.dirname(mpvSettingsFile),{recursive:true});
  try{
