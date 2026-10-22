@@ -93,3 +93,50 @@ test('does not expose playback URL in player events',async()=>{
   assert.ok(statuses.every(p=>!JSON.stringify(p).includes('top-secret')));
  }finally{player.stop();fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('mpv reports time, duration, cache and completion without leaking media URLs',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'streammax-mpv-'));
+ const exe=path.join(dir,'mpv.exe');
+ fs.writeFileSync(exe,'dummy');
+ let socket;
+ const player=createMpvPlayer({
+  executable:exe,platform:'win32',
+  spawnProcess(){
+   const child=new EventEmitter();
+   child.exitCode=null;child.kill=()=>{child.killed=true;};
+   return child;
+  },
+  connect(){
+   socket=new EventEmitter();
+   socket.destroyed=false;socket.write=()=>{};
+   socket.destroy=()=>{socket.destroyed=true;};
+   queueMicrotask(()=>socket.emit('connect'));
+   return socket;
+  }
+ });
+ const timeline=[],states=[],finished=[];
+ player.onProgress(p=>timeline.push(p));
+ player.onStatus(p=>states.push(p.state));
+ player.onFinished(p=>finished.push(p));
+ try{
+  await player.play('https://cdn.example/film.mkv?secret=private');
+  socket.emit('data',Buffer.from([
+   JSON.stringify({event:'property-change',name:'duration',data:140.5}),
+   JSON.stringify({event:'property-change',name:'time-pos',data:31.25}),
+   JSON.stringify({event:'property-change',name:'demuxer-cache-duration',data:9.4}),
+   JSON.stringify({event:'property-change',name:'paused-for-cache',data:true}),
+   JSON.stringify({event:'property-change',name:'paused-for-cache',data:false}),
+   JSON.stringify({event:'end-file',reason:'eof'})
+  ].join('\n')+'\n'));
+  assert.equal(timeline.at(-1).positionMs,31250);
+  assert.equal(timeline.at(-1).durationMs,140500);
+  assert.equal(timeline.at(-1).bufferedSeconds,9.4);
+  assert.ok(states.includes('buffering'));
+  assert.equal(states.at(-2),'playing');
+  assert.equal(states.at(-1),'ended');
+  assert.equal(finished[0].reason,'eof');
+  assert.ok(!JSON.stringify(timeline).includes('secret=private'));
+  assert.deepEqual(player.seekTo(12.5),{sent:true});
+  assert.throws(()=>player.seekTo(-2),/Posição/);
+ }finally{player.stop();fs.rmSync(dir,{recursive:true,force:true});}
+});
