@@ -4,12 +4,20 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 const {createAuthService}=require('./auth-service');
 const {createSessionStore}=require('./session-store');
+const {createSessionClient}=require('./session-client');
 const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
+const sessionClient=(process.env.STREAMMAX_SUPABASE_URL&&process.env.STREAMMAX_SUPABASE_PUBLIC_KEY)
+  ?createSessionClient({
+    endpoint:process.env.STREAMMAX_SUPABASE_URL,
+    publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
+    store:sessionStore
+  }):null;
 const authService=createAuthService({
  endpoint:process.env.STREAMMAX_SUPABASE_URL,
  publicKey:process.env.STREAMMAX_SUPABASE_PUBLIC_KEY,
  redirectUrl:process.env.STREAMMAX_LOGIN_REDIRECT_URL,
- sessionStore
+ sessionStore,
+ sessionClient
 });
 app.setAppUserModelId('com.streammax.desktop');
 let window;
