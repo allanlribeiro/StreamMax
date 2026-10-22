@@ -1,0 +1,67 @@
+name: StreamMax Home TX6 signed bridge APK
+on:
+  push:
+    branches:
+      - feature/streammax-home-tx6-bridge
+    paths:
+      - 'streammax-home-rc3/standalone/**'
+      - '.github/workflows/streammax-home-tx6-signed.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-tx6-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: streammax-home-rc3/standalone
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Check TX6 target and original-home fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "applicationId 'com.streammax.home.tx6'" app/build.gradle
+          grep -Fq 'com.oranth.tvlauncher' app/src/main/java/com/streammax/tvdetox/HomeRedirectService.java
+          grep -Fq 'if (!originalAvailable()) return false;' app/src/main/java/com/streammax/tvdetox/HomeRedirectService.java
+          grep -Fq 'com.streammax.home.rc2' app/src/main/java/com/streammax/tvdetox/MainActivity.java
+          grep -Fq 'android:packageNames="com.oranth.tvlauncher"' app/src/main/res/xml/accessibility.xml
+          test -s app/src/main/res/drawable-nodpi/streammax_metal_waves.jpg
+      - name: Require permanent signing key
+        shell: bash
+        env:
+          STREAMMAX_KEYSTORE_B64: ${{ secrets.STREAMMAX_HOME_KEYSTORE_B64 }}
+          STREAMMAX_KEYSTORE_PASSWORD: ${{ secrets.STREAMMAX_HOME_STORE_PASSWORD }}
+          STREAMMAX_KEY_ALIAS: ${{ secrets.STREAMMAX_HOME_KEY_ALIAS }}
+          STREAMMAX_KEY_PASSWORD: ${{ secrets.STREAMMAX_HOME_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in STREAMMAX_KEYSTORE_B64 STREAMMAX_KEYSTORE_PASSWORD STREAMMAX_KEY_ALIAS STREAMMAX_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then echo "Missing required signing input: $name" >&2; exit 1; fi
+          done
+          keystore_path="$RUNNER_TEMP/streammax-home-tx6-release.jks"
+          printf '%s' "$STREAMMAX_KEYSTORE_B64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+          echo "STREAMMAX_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
+      - name: Compile signed standalone TX6 bridge
+        env:
+          STREAMMAX_KEYSTORE_PASSWORD: ${{ secrets.STREAMMAX_HOME_STORE_PASSWORD }}
+          STREAMMAX_KEY_ALIAS: ${{ secrets.STREAMMAX_HOME_KEY_ALIAS }}
+          STREAMMAX_KEY_PASSWORD: ${{ secrets.STREAMMAX_HOME_KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --no-daemon
+      - name: Verify signed output exists
+        run: test -s app/build/outputs/apk/release/app-release.apk
+      - name: Attach private validation APK (no OTA)
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Home-TX6-bridge-signed
+          path: streammax-home-rc3/standalone/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
