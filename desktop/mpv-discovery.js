@@ -19,6 +19,10 @@ function candidatePaths({resourcesPath='',appDir='',env=process.env,pathModule=p
  add(env.LOCALAPPDATA,['Microsoft','WinGet','Links','mpv.exe'],'installed');
  add(env.USERPROFILE,['scoop','apps','mpv','current','mpv.exe'],'installed');
  add(env.ChocolateyInstall,['bin','mpv.exe'],'installed');
+ // Portable installs frequently advertise their directory via Windows PATH.
+ const paths=typeof env.Path==='string'?env.Path:(typeof env.PATH==='string'?env.PATH:'');
+ for(const directory of paths.split(';').filter(Boolean).slice(0,160))
+  add(directory.trim(),['mpv.exe'],'path');
  return entries;
 }
 function findMpvExecutable({resourcesPath='',appDir='',env=process.env,fsModule=fs,pathModule=path}={}){
