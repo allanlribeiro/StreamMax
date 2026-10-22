@@ -23,6 +23,18 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessi
  }
  return {
   status(){return {configured,pending:!!pending};},
+  async restore(){
+   if(!sessionStore)return {authenticated:false,reason:'session_storage_unavailable'};
+   const saved=await sessionStore.load();
+   if(!saved)return {authenticated:false,reason:'no_saved_session'};
+   // Do not trust an unverified access token to grant catalog access.
+   return {authenticated:false,reason:'remote_session_validation_required',hasSavedSession:true};
+  },
+  async signOut(){
+   pending=null;
+   if(sessionStore)await sessionStore.clear();
+   return {authenticated:false};
+  },
   async start(){
    if(!configured)throw new Error('Servidor de autenticação ainda não configurado para Windows');
    const nonce=randomBytes(32).toString('hex');
