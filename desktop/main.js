@@ -111,11 +111,13 @@ function createWindow() {
             auth:!!document.getElementById('auth-panel'),
             setup:!!document.getElementById('server-config-panel'),
             watch:!!document.getElementById('continue-panel'),
-            renderer:!!window.StreamMaxHomeView
+            renderer:!!window.StreamMaxHomeView,
+            defaultBackend:await window.streammaxDesktop.authStatus()
           })
         `);
         if(result.title!=='StreamMax'||!result.api||!result.root||
-           !result.auth||!result.setup||!result.watch||!result.renderer)
+           !result.auth||!result.setup||!result.watch||!result.renderer||
+           !result.defaultBackend?.configured)
           throw new Error('Missing UI or preload bridge: '+JSON.stringify(result));
         finish(0,'renderer and bridge loaded');
       }catch(error){finish(1,String(error.message||error));}
