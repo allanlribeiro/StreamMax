@@ -7,6 +7,7 @@ const {createSessionStore}=require('./session-store');
 const {createSessionClient}=require('./session-client');
 const {createCatalogClient}=require('./catalog-client');
 const {createSourceDiscovery}=require('./source-discovery');
+const {createMpvPlayer}=require('./mpv-player');
 const sessionStore=createSessionStore({safeStorage,filePath:path.join(app.getPath('userData'),'session.enc')});
 const sessionClient=(process.env.STREAMMAX_SUPABASE_URL&&process.env.STREAMMAX_SUPABASE_PUBLIC_KEY)
   ?createSessionClient({
@@ -28,6 +29,17 @@ const catalogClient=sessionClient?createCatalogClient({
   profileId:1
 }):null;
 const sourceDiscovery=createSourceDiscovery();
+const mpvSettingsFile=path.join(app.getPath('userData'),'mpv-settings.json');
+function savedMpvPath(){
+ try{
+  const saved=JSON.parse(fs.readFileSync(mpvSettingsFile,'utf8'));
+  return typeof saved.executable==='string'?saved.executable:null;
+ }catch{return null;}
+}
+const mpvPlayer=createMpvPlayer({executable:savedMpvPath()||process.env.STREAMMAX_MPV_PATH||null});
+mpvPlayer.onStatus(event=>{
+ if(window&&!window.isDestroyed())window.webContents.send('streammax:player-status',event);
+});
 app.setAppUserModelId('com.streammax.desktop');
 let window;
 function createWindow() {
@@ -84,6 +96,32 @@ ipcMain.handle('streammax:metadata',(_event,key,type,id)=>{
  if(typeof key!=='string'||key.length>128)throw new TypeError('Invalid catalog key');
  return catalogClient.meta(key,type,id);
 });
+ipcMain.handle('streammax:player-availability',()=>mpvPlayer.availability());
+ipcMain.handle('streammax:player-select',async()=>{
+ const result=await dialog.showOpenDialog(window,{
+  title:'Selecione mpv.exe',properties:['openFile'],
+  filters:[{name:'mpv para Windows',extensions:['exe']}]
+ });
+ if(result.canceled||!result.filePaths.length)return mpvPlayer.availability();
+ const exe=result.filePaths[0];
+ const changed=mpvPlayer.setExecutable(exe);
+ const tmp=mpvSettingsFile+'.tmp';
+ fs.mkdirSync(path.dirname(mpvSettingsFile),{recursive:true});
+ try{
+  fs.writeFileSync(tmp,JSON.stringify({executable:exe}),{encoding:'utf8',mode:0o600});
+  fs.renameSync(tmp,mpvSettingsFile);
+ }catch(error){try{fs.rmSync(tmp,{force:true});}catch{}throw error;}
+ return changed;
+});
+ipcMain.handle('streammax:player-play',(_event,sourceId)=>{
+ if(typeof sourceId!=='string'||!/^[0-9a-f]{32}$/.test(sourceId))
+  throw new TypeError('Identificador da fonte inválido');
+ const url=sourceDiscovery.getPlayableUrl(sourceId);
+ if(!url)throw new Error('A fonte expirou. Atualize a busca.');
+ return mpvPlayer.play(url);
+});
+ipcMain.handle('streammax:player-command',(_event,command)=>mpvPlayer.command(command));
+ipcMain.handle('streammax:player-stop',()=>mpvPlayer.stop());
 ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
  if(!catalogClient)throw new Error('Catalog provider unavailable');
  if(typeof requestId!=='string'||requestId.length>72)throw new TypeError('Invalid request identifier');
@@ -95,4 +133,4 @@ ipcMain.handle('streammax:source-search',(_event,type,id,requestId)=>{
  });
 });
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
-app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
+app.on('window-all-closed',()=>{mpvPlayer.stop();if(process.platform!=='darwin')app.quit();});
