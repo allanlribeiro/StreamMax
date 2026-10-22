@@ -16,7 +16,9 @@ icon = Path("tools/windows-icon.py").read_text(encoding="utf-8")
 assert "SDL_WINDOW_RESIZABLE" in src
 assert "SDL_SetWindowMinimumSize(win, 960, 540)" in src
 assert "SDLK_F11" in src and "SDL_WINDOW_FULLSCREEN_DESKTOP" in src
-assert "SDLK_ESCAPE || e.key.keysym.sym == SDLK_BACKSPACE" in src
+assert "SDLK_ESCAPE" in src and "SDLK_BACKSPACE" in src
+assert "SDLK_LEFT && (e.key.keysym.mod & KMOD_ALT)" in src
+assert "SDLK_f && (e.key.keysym.mod & KMOD_CTRL)" in src
 assert "gfx_tamanho_alvo(dw, dh)" in src
 assert "ponteiro_evento(&e, app_evento)" in src
 assert "sm_mpv_composite()" in src and "sm_mpv_report_swap()" in src
