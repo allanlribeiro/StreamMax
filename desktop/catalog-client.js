@@ -74,34 +74,54 @@ function createCatalogClient({sessionClient,endpoint,publicKey,profileId=1,trans
   const nextCatalogs=new Map();
   const nextRegistered=[];
   const nextProviders=[];
-  for(let i=0;i<addons.length;i++){
+  // Cap concurrent manifest downloads. A slow addon does not delay every
+  // subsequent addon; assembling after download preserves user row order.
+  let cursor=0;
+  const results=new Array(addons.length);
+  await Promise.all(Array.from({length:Math.min(5,addons.length)},async()=>{
+   while(cursor<addons.length){
+    const i=cursor++;
     const item=addons[i];
     if(!item||typeof item.url!=='string')continue;
     const identifier='addon-'+i;
     const enabled=item.enabled!==false;
     const entry={id:identifier,name:String(item.name||''),enabled,catalogCount:0};
+    const rows=[];
+    let sourceProvider=null;
     if(enabled){
-      try{
-        const url=manifestUrl(item.url);
-        // No Authorization or Supabase API key on addon requests.
-        const m=await readJson(url,{headers:{Accept:'application/json'}},addonTransport);
-        if(!m||typeof m!=='object')throw new Error('Invalid addon manifest');
-        const descriptors=Array.isArray(m.catalogs)?m.catalogs:[];
-        entry.name=entry.name||String(m.name||'');
-        const supportsStream=Array.isArray(m.resources)&&m.resources.some(r=>r==='stream'||(r&&typeof r==='object'&&r.name==='stream'));
-        if(supportsStream)nextProviders.push({name:entry.name,baseUrl:item.url,enabled:true,supportsStream:true});
-        for(let j=0;j<descriptors.length;j++){
-          const desc=descriptors[j];
-          if(!desc||typeof desc.id!=='string'||typeof desc.type!=='string')continue;
-          if(desc.showInHome===false)continue;
-          const key=identifier+'-catalog-'+j;
-          const caption=String(desc.name||desc.id);
-          nextCatalogs.set(key,{addonId:String(m.id||identifier),addonName:entry.name,baseUrl:item.url,catalogId:desc.id,catalogName:caption,type:desc.type,supportsSkip:Array.isArray(desc.extraSupported)&&desc.extraSupported.includes('skip')||Array.isArray(desc.extra)&&desc.extra.some(x=>x&&x.name==='skip')});
-        }
-        entry.catalogCount=Array.from(nextCatalogs.keys()).filter(k=>k.startsWith(identifier+'-')).length;
-      }catch{ entry.error='manifest_unavailable'; }
+     try{
+      const url=manifestUrl(item.url);
+      // Public addon manifest request; never forward account bearer tokens.
+      const m=await readJson(url,{headers:{Accept:'application/json'}},addonTransport);
+      if(!m||typeof m!=='object')throw new Error('Invalid addon manifest');
+      const descriptors=Array.isArray(m.catalogs)?m.catalogs:[];
+      entry.name=entry.name||String(m.name||'');
+      const supportsStream=Array.isArray(m.resources)&&m.resources.some(r=>
+       r==='stream'||(r&&typeof r==='object'&&r.name==='stream'));
+      if(supportsStream)sourceProvider={name:entry.name,baseUrl:item.url,enabled:true,supportsStream:true};
+      for(let j=0;j<descriptors.length;j++){
+       const desc=descriptors[j];
+       if(!desc||typeof desc.id!=='string'||typeof desc.type!=='string')continue;
+       if(desc.showInHome===false)continue;
+       const key=identifier+'-catalog-'+j;
+       rows.push([key,{
+        addonId:String(m.id||identifier),addonName:entry.name,
+        baseUrl:item.url,catalogId:desc.id,catalogName:String(desc.name||desc.id),
+        type:desc.type,supportsSkip:Array.isArray(desc.extraSupported)&&desc.extraSupported.includes('skip')||
+          Array.isArray(desc.extra)&&desc.extra.some(x=>x&&x.name==='skip')
+       }]);
+      }
+      entry.catalogCount=rows.length;
+     }catch{entry.error='manifest_unavailable';}
     }
-    nextRegistered.push(entry);
+    results[i]={entry,rows,sourceProvider};
+   }
+  }));
+  for(const result of results){
+   if(!result)continue;
+   nextRegistered.push(result.entry);
+   for(const [key,meta] of result.rows)nextCatalogs.set(key,meta);
+   if(result.sourceProvider)nextProviders.push(result.sourceProvider);
   }
   if(myGeneration!==generation)throw new Error('Catalog request cancelled');
   registered=nextRegistered;
