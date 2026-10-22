@@ -61,7 +61,21 @@
     <p id="sources-status" role="status">Consultando addons…</p>
     <progress id="sources-progress" max="1" value="0"></progress>
     <ul id="sources-list" class="sources-list"></ul>
-    <p class="error-text">O player nativo ainda não foi integrado. Esta tela permite conferir as fontes encontradas, sem iniciar uma reprodução incompatível.</p>
+    <div class="player-actions">
+      <button id="mpv-select" type="button" class="secondary">Configurar mpv.exe</button>
+      <span id="mpv-status" role="status">Verificando player…</span>
+    </div>
+    <section id="player-controls" class="player-controls" hidden aria-label="Controles do player externo">
+      <h3>Reprodutor nativo</h3>
+      <button type="button" data-player-command="pause" class="secondary">Pausar / Retomar</button>
+      <button type="button" data-player-command="seekBack" class="secondary">−10s</button>
+      <button type="button" data-player-command="seekForward" class="secondary">+10s</button>
+      <button type="button" data-player-command="nextAudio" class="secondary">Trocar áudio</button>
+      <button type="button" data-player-command="nextSubtitle" class="secondary">Trocar legenda</button>
+      <button type="button" data-player-command="subtitleToggle" class="secondary">Exibir legenda</button>
+      <button id="player-stop" type="button" class="secondary">Encerrar player</button>
+    </section>
+    <p class="error-text">Reprodução experimental com mpv externo. O mpv deve ser instalado separadamente; nem todos os formatos e fontes são compatíveis. O suporte ao player integrado continua em desenvolvimento.</p>
    </section>
  </div>
 </section>
