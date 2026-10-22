@@ -121,6 +121,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
     implementation("androidx.media3:media3-exoplayer-dash:1.8.0")
+    // 1.0.11 POC: GL sharpening only in debuggable strictdebug app with explicit ADB opt-in.
+    implementation("androidx.media3:media3-effect:1.8.0")
     // SubtitleView only for image-based PGS/VobSub cues; native SDL retains text/OSD.
     implementation("androidx.media3:media3-ui:1.8.0")
     // Decodificador de AUDIO por FFmpeg (DTS, DTS-HD, TrueHD, E-AC-3...) para
