@@ -25,6 +25,7 @@ static void painelCaptura(const char *nome) {
     glClearColor(.07f, .10f, .15f, 1); glClear(GL_COLOR_BUFFER_BIT);
     faixas_atualizar(1.f / 60.f, agora);
     faixas_desenhar(agora); plrilha_desenhar(agora);
+    tex_bombear(6); SDL_Delay(1);
   }
   glFinish();
   SDL_Surface *img = SDL_CreateRGBSurfaceWithFormat(0, 1920, 1080, 32, SDL_PIXELFORMAT_RGBA32);
@@ -49,13 +50,14 @@ static void painelCapturas(void) {
   if (!contexto) fprintf(stderr, "Preview EGL context: %s\n", SDL_GetError());
   assert(contexto);
   gfx_tamanho_alvo(1920, 1080); assert(gfx_iniciar());
+  IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG); assert(tex_iniciar(64));
   assert(txt_iniciar("deploy/app", 1.f)); gfx_icones_dir("deploy/app/art");
   faixas_abrir_em(0); painelCaptura("build/tests/audio.bmp");
   faixas_abrir_em(1); painelCaptura("build/tests/legendas.bmp");
   painelAcao("filtro"); painelCaptura("build/tests/idiomas.bmp"); painelTecla(SDLK_ESCAPE);
   painelAcao("sincronia"); painelCaptura("build/tests/sincronia.bmp"); painelTecla(SDLK_ESCAPE);
   painelAcao("aparencia"); painelCaptura("build/tests/aparencia.bmp");
-  txt_encerrar(); gfx_encerrar(); SDL_GL_DeleteContext(contexto); SDL_DestroyWindow(janela);
+  tex_encerrar(); IMG_Quit(); txt_encerrar(); gfx_encerrar(); SDL_GL_DeleteContext(contexto); SDL_DestroyWindow(janela);
 }
 int main(void) {
   int col, vol, vel, idiomas, alvo;
