@@ -35,3 +35,17 @@ test('falls back to legacy TV login only for an unavailable device RPC',async()=
  assert.deepEqual(challenge,{userCode:'LEGACY',verificationUrl:'https://example.org/legacy',legacy:true});
  assert.equal(calls.length,2);
 });
+
+test('approved device is not treated as signed in without secure token exchange',async()=>{
+ let count=0;
+ const transport=async()=>{
+  count++;
+  return {ok:true,json:async()=>count===1
+   ? [{device_code:'device',user_code:'ABCD',verification_uri_complete:'https://example.org/login'}]
+   : [{status:'approved'}]};
+ };
+ const service=createAuthService({endpoint:'https://example.org',publicKey:'public',redirectUrl:'https://example.org/login',transport});
+ await service.start();
+ const result=await service.poll();
+ assert.deepEqual(result,{status:'awaiting_secure_session',authenticated:false});
+});
