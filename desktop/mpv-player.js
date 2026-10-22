@@ -28,6 +28,14 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
  platform=process.platform}={}){
  const events=new EventEmitter();
  let child=null,socket=null,activeId=null,opening=false,buffer='',state='idle';
+ let positionSeconds=0,durationSeconds=0,cacheSeconds=null;
+ function timeline(){
+  return {positionMs:Math.round(positionSeconds*1000),durationMs:Math.round(durationSeconds*1000),
+   bufferedSeconds:cacheSeconds};
+ }
+ function numericSeconds(value){
+  return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;
+ }
  let targetExe=executable;
  const publish=(next)=>{state=next;events.emit('status',{state:next});};
  function configured(){
@@ -53,11 +61,25 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
    const line=buffer.slice(0,newline);buffer=buffer.slice(newline+1);
    let event;
    try{event=JSON.parse(line);}catch{continue;}
-   if(event.event==='file-loaded')publish('playing');
+   if(event.event==='file-loaded'){publish('playing');events.emit('progress',timeline());}
    else if(event.event==='start-file')publish('loading');
-   else if(event.event==='end-file')publish('ended');
+   else if(event.event==='end-file'){
+    events.emit('finished',{reason:String(event.reason||''),...timeline()});publish('ended');
+   }
    else if(event.event==='property-change'){
     if(event.name==='track-list')events.emit('tracks',{tracks:safeTracks(event.data)});
+    if(event.name==='time-pos'){
+     const time=numericSeconds(event.data);
+     if(time!==null){positionSeconds=time;events.emit('progress',timeline());}
+    }
+    if(event.name==='duration'){
+     const time=numericSeconds(event.data);
+     if(time!==null){durationSeconds=time;events.emit('progress',timeline());}
+    }
+    if(event.name==='demuxer-cache-duration'){
+     cacheSeconds=numericSeconds(event.data);
+     events.emit('progress',timeline());
+    }
     if(event.name==='paused-for-cache'&&event.data===true)publish('buffering');
     else if(event.name==='pause'&&event.data===true)publish('paused');
     else if(event.name==='pause'&&event.data===false&&state!=='loading')publish('playing');
@@ -101,6 +123,7 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
    const binary=validateExecutable(targetExe);
    opening=true;
    clearState();
+   positionSeconds=0;durationSeconds=0;cacheSeconds=null;
    const id=randomId();
    const pipe=String.raw`\\.\pipe\streammax-`+id;
    activeId=id;
@@ -121,6 +144,9 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
     send(['observe_property',1,'pause']);
     send(['observe_property',2,'paused-for-cache']);
     send(['observe_property',3,'track-list']);
+    send(['observe_property',4,'time-pos']);
+    send(['observe_property',5,'duration']);
+    send(['observe_property',6,'demuxer-cache-duration']);
     send(['loadfile',url,'replace']);
     publish('loading');
     return {started:true,engine:'mpv',state:'loading'};
@@ -128,6 +154,14 @@ function createMpvPlayer({executable=null,spawnProcess=spawn,connect=net.createC
    finally{opening=false;}
   },
   onTracks(listener){events.on('tracks',listener);return ()=>events.off('tracks',listener);},
+  onProgress(listener){events.on('progress',listener);return ()=>events.off('progress',listener);},
+  onFinished(listener){events.on('finished',listener);return ()=>events.off('finished',listener);},
+  progress(){return timeline();},
+  seekTo(seconds){
+   if(typeof seconds!=='number'||!Number.isFinite(seconds)||seconds<0||seconds>60*60*24)
+    throw new TypeError('Posição de reprodução inválida');
+   send(['seek',seconds,'absolute']);return {sent:true};
+  },
   selectTrack(kind,id){
    if(!['audio','sub'].includes(kind))throw new TypeError('Tipo de faixa inválido');
    if(id!=='no'&&(!Number.isInteger(id)||id<0||id>1000000))
