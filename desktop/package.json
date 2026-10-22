@@ -31,7 +31,8 @@
       "catalog-client.js",
       "home-view.js",
       "ui.css",
-      "source-discovery.js"
+      "source-discovery.js",
+      "mpv-player.js"
     ],
     "win": {
       "target": [
