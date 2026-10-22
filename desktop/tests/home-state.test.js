@@ -16,3 +16,26 @@ test('rejects made-up layout or duplicated catalog identities', () => {
   assert.throws(()=>normalizeHomeState({homeLayout:'FANTASY'}));
   assert.throws(()=>normalizeHomeState({homeLayout:'GRID',catalogRows:[{id:'x',items:[]},{id:'x',items:[]}]}));
 });
+
+test('preserves home row order, grid items and poster/trailer preferences', () => {
+  const source = {
+    homeLayout: 'MODERN',
+    homeRows: [{kind:'Catalog',row:{id:'first'}},{kind:'PlaceholderCatalog',catalogKey:'next'}],
+    gridItems: [{kind:'Hero',items:[]}],
+    heroSectionEnabled: false,
+    modernLandscapePostersEnabled: true,
+    focusedPosterBackdropTrailerEnabled: true,
+    focusedPosterBackdropTrailerMuted: false,
+    posterCardWidthDp: 140,
+    posterCardHeightDp: 210
+  };
+  const state = normalizeHomeState(source);
+  assert.deepEqual(state.homeRows, source.homeRows);
+  assert.deepEqual(state.gridItems, source.gridItems);
+  assert.equal(state.heroSectionEnabled, false);
+  assert.equal(state.modernLandscapePostersEnabled, true);
+  assert.equal(state.focusedPosterBackdropTrailerEnabled, true);
+  assert.equal(state.focusedPosterBackdropTrailerMuted, false);
+  assert.equal(state.posterCardWidthDp, 140);
+  assert.equal(state.posterCardHeightDp, 210);
+});
