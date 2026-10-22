@@ -43,7 +43,7 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch,sessi
    const nonce=randomBytes(32).toString('hex');
    let result, legacy=false;
    try {
-     result=await request(RPC.startDevice,{deviceNonce:nonce,redirectBaseUrl:redirectUrl,deviceType:'windows',deviceName:'StreamMax Windows'});
+     result=await request(RPC.startDevice,{deviceNonce:nonce,redirectBaseUrl:redirectUrl,deviceType:'mobile',deviceName:'StreamMax Windows'});
    } catch(error) {
      if(!error.legacyFallback)throw error;
      result=await request(RPC.startLegacy,{deviceNonce:nonce,redirectBaseUrl:redirectUrl,deviceName:'StreamMax Windows'});
