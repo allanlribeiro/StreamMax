@@ -6,7 +6,13 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch}){
  const configured=Boolean(endpoint&&publicKey&&redirectUrl);
  async function request(method,options){
   const response=await callLoginRpc({transport,endpoint,publicKey,method,options});
-  if(!response.ok)throw new Error('Falha no serviço de autenticação ('+response.status+')');
+  if(!response.ok) {
+    const detail=await response.text().catch(()=>'');
+    const missingFunction=response.status===404 && /could not find the function/i.test(detail) && /start_device_login_session/i.test(detail);
+    const error=new Error('Falha no serviço de autenticação ('+response.status+')');
+    error.legacyFallback=missingFunction;
+    throw error;
+  }
   const body=await response.json();
   if(!Array.isArray(body)||!body[0])throw new Error('Resposta de autenticação vazia');
   return body[0];
@@ -16,13 +22,20 @@ function createAuthService({endpoint,publicKey,redirectUrl,transport=fetch}){
   async start(){
    if(!configured)throw new Error('Servidor de autenticação ainda não configurado para Windows');
    const nonce=randomBytes(32).toString('hex');
-   const result=await request(RPC.startDevice,{deviceNonce:nonce,redirectBaseUrl:redirectUrl,deviceType:'windows',deviceName:'StreamMax Windows'});
-   const code=String(result.device_code||result.deviceCode||'');
-   const userCode=String(result.user_code||result.userCode||'');
-   const verificationUrl=String(result.verification_uri_complete||result.verificationUriComplete||'');
+   let result, legacy=false;
+   try {
+     result=await request(RPC.startDevice,{deviceNonce:nonce,redirectBaseUrl:redirectUrl,deviceType:'windows',deviceName:'StreamMax Windows'});
+   } catch(error) {
+     if(!error.legacyFallback)throw error;
+     result=await request(RPC.startLegacy,{deviceNonce:nonce,redirectBaseUrl:redirectUrl,deviceName:'StreamMax Windows'});
+     legacy=true;
+   }
+   const code=String(result.device_code||result.deviceCode||result.code||'');
+   const userCode=String(result.user_code||result.userCode||result.code||'');
+   const verificationUrl=String(result.verification_uri_complete||result.verificationUriComplete||result.web_url||result.webUrl||'');
    if(!code||!userCode||new URL(verificationUrl).protocol!=='https:')throw new Error('Resposta de login inválida');
    pending={nonce,code};
-   return {userCode,verificationUrl};
+   return {userCode,verificationUrl,legacy};
   },
   async poll(){
    if(!pending)throw new Error('Nenhum login pendente');
