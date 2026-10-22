@@ -69,3 +69,15 @@ a{color:#60c5ff;overflow-wrap:anywhere}
 .track-controls{width:100%;display:flex;gap:12px;flex-wrap:wrap;margin:2px 0 12px}
 .track-controls label{display:flex;flex-direction:column;gap:7px;flex:1 1 180px;font-size:12px;color:#aacce7}
 .track-controls select{width:100%;border-radius:9px;padding:10px;background:#122c4a;color:#f6fbff;border:1px solid #2d5679}
+
+.continue-list{display:grid;gap:13px;margin:18px 0 24px}
+.continue-card{display:flex;width:100%;gap:18px;align-items:center;text-align:left;
+ border:1px solid #244c73;color:#e8f5ff;background:#0f223a;padding:13px;border-radius:12px}
+.continue-card:hover,.continue-card:focus-visible{background:#163957;border-color:#4daeee}
+.continue-card__image{width:76px;height:112px;object-fit:cover;border-radius:6px;flex-shrink:0}
+.continue-card div{display:flex;flex:1;flex-direction:column;gap:7px;min-width:0}
+.continue-card strong{font-size:16px}
+.continue-card span{font-size:13px;color:#a1c6e2}
+.continue-card small{font-size:12px;color:#9ed0f7}
+.continue-card progress{width:100%;height:7px;accent-color:#249be6}
+#playback-timeline{font-size:12px;color:#96c7e7}
