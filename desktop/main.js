@@ -103,7 +103,7 @@ function createWindow() {
     window.webContents.once('did-finish-load',async()=>{
       try{
         const result=await window.webContents.executeJavaScript(`
-          ({
+          window.streammaxDesktop.authStatus().then(config=>({
             title:document.title,
             api:typeof window.streammaxDesktop?.authStatus==='function'&&
               typeof window.streammaxDesktop?.saveServerConfig==='function',
@@ -112,8 +112,8 @@ function createWindow() {
             setup:!!document.getElementById('server-config-panel'),
             watch:!!document.getElementById('continue-panel'),
             renderer:!!window.StreamMaxHomeView,
-            defaultBackend:await window.streammaxDesktop.authStatus()
-          })
+            defaultBackend:config
+          }))
         `);
         if(result.title!=='StreamMax'||!result.api||!result.root||
            !result.auth||!result.setup||!result.watch||!result.renderer||
