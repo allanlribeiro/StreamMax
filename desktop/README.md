@@ -40,12 +40,12 @@ A tela de detalhes **já busca metadados reais do addon de origem e lista fontes
 
 ## Configuração de desenvolvimento
 Instale Node.js LTS. Em `desktop/`, use `npm install`, `npm test`, `npm start`.
-Para consultar a mesma conta que o Android, é necessário configurar **por um método local seguro**, sem fazer commit de credenciais, as variáveis públicas e de servidor:
+Para consultar a mesma conta que o Android, o aplicativo agora permite **configurar a conexão na primeira abertura** se não houver variáveis do Windows. Essa opção registra apenas o endpoint HTTPS, a chave pública/anon e a URL de autorização, reinicia o StreamMax e limpa sessões antigas caso a conexão seja alterada. Para desenvolvedores, também é possível usar as variáveis:
 - `STREAMMAX_SUPABASE_URL`: URL HTTPS do backend usado pelo Android;
 - `STREAMMAX_SUPABASE_PUBLIC_KEY`: chave **publicável** (nunca service role);
 - `STREAMMAX_LOGIN_REDIRECT_URL`: endereço HTTPS compatível de autorização de dispositivo no backend.
 
-Não envie segredos por chat nem em issues. As credenciais de sessão devem permanecer no armazenamento protegido do Windows. A versão Windows ainda não implementa a descoberta automática da configuração de servidor do Android.
+Não envie segredos por chat nem em issues. As credenciais de sessão devem permanecer no armazenamento protegido do Windows. A edição Windows ainda não descobre automaticamente o servidor configurado na TV. As variáveis têm prioridade sobre o arquivo local de configuração; nunca forneça `service_role`, chaves privadas ou tokens de sessão.
 
 ## Ícone e instalador
 A arte S aprovada deve estar em `desktop/assets/streammax-s.png` (quadrada, 256 px ou maior); o workflow converte para ICO multirresolução. Sem essa arte, o workflow **não** gera instalador para não usar ícone diferente. Instaladores experimentais não são assinados.
