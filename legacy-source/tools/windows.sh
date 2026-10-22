@@ -35,7 +35,16 @@ read -r -a DEP_CFLAGS <<< "$(pkg-config --cflags "${DEPS[@]}")"
 read -r -a DEP_LIBS <<< "$(pkg-config --libs "${DEPS[@]}")"
 
 mkdir -p build/windows
-"$CC" src/*.c src/dts/*.c -Isrc -o build/windows/StreamMax.exe -O1 -g   "${DEFINES[@]}" "${DEP_CFLAGS[@]}" "${DEP_LIBS[@]}"   -ldl -lws2_32 -lole32 -lshell32 -pthread -lm
+python3 tools/windows-icon.py
+cat > build/windows/streammax.rc <<'RC'
+1 ICON "build/windows/streammax.ico"
+RC
+windres --input build/windows/streammax.rc --output build/windows/streammax-icon.o --output-format=coff
+"$CC" src/*.c src/dts/*.c build/windows/streammax-icon.o -Isrc -o build/windows/StreamMax.exe -O1 -g \
+  "${DEFINES[@]}" "${DEP_CFLAGS[@]}" "${DEP_LIBS[@]}" \
+  -ldl -lws2_32 -lole32 -lshell32 -pthread -lm
+test -s build/windows/StreamMax.exe
+test -s build/windows/streammax.ico
 
 echo "Windows UI build: $PWD/build/windows/StreamMax.exe"
 if [ "$BUILD_ONLY" = 1 ]; then exit 0; fi
