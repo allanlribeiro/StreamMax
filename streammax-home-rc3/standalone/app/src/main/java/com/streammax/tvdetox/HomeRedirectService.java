@@ -11,6 +11,7 @@ import android.view.accessibility.AccessibilityEvent;
 public final class HomeRedirectService extends AccessibilityService {
     private static final String TAG = "StreamMaxHomeRedirect";
     private static final String GOOGLE_HOME = "com.google.android.apps.tv.launcherx";
+    // Critical: NEVER launch the re-created RC3/RC4 layout. Open unmodified RC2.
     private long lastRedirect;
 
     private boolean enabled() {
@@ -43,11 +44,12 @@ public final class HomeRedirectService extends AccessibilityService {
         long now = SystemClock.elapsedRealtime();
         if (now - lastRedirect < 2500) return;
         lastRedirect = now;
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.setClassName("com.streammax.home.rc2", "com.streammax.tvdetox.MainActivity");
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         try {
             startActivity(intent);
-            Log.i(TAG, "Redirect requested trigger=" + trigger);
+            Log.i(TAG, "Original RC2 launch requested trigger=" + trigger);
         } catch (RuntimeException ex) {
             Log.e(TAG, "Redirect failed trigger=" + trigger, ex);
         }
