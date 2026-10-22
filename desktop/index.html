@@ -12,7 +12,17 @@
   <span class="status" id="app-status" role="status">Iniciando…</span>
 </header>
 <main class="page">
-  <section id="auth-panel" class="state" aria-live="polite">
+  <section id="auth-panel" class="state cinematic-auth" aria-live="polite">
+    <div class="login-brand">
+      <div class="login-brand__content">
+        <div class="login-brand__mark" aria-hidden="true">S</div>
+        <p class="login-brand__eyebrow">STREAMMAX PARA WINDOWS</p>
+        <h2>Sua próxima sessão começa aqui.</h2>
+        <p>Seus filmes, séries e episódios em uma experiência feita para mouse e teclado.</p>
+        <div class="login-brand__indicators"><span>Catálogos organizados</span><span>Continuar assistindo</span><span>Reprodução nativa</span></div>
+      </div>
+    </div>
+    <div class="login-pane">
     <h1 id="auth-title">Conectando ao StreamMax…</h1>
     <p id="auth-description">Verificando a sessão da sua conta.</p>
     <p id="login-code" hidden><code id="login-code-value"></code></p>
@@ -24,6 +34,9 @@
     </div>
     <p class="state__message" id="auth-message"></p>
     <section id="server-config-panel" class="server-config" hidden aria-label="Configurar conexão">
+      <details class="advanced-connection">
+        <summary>Configuração avançada de conexão</summary>
+        <div class="advanced-connection__content">
       <h2>Conectar ao mesmo servidor do StreamMax Android</h2>
       <p>Informe somente os dados públicos do servidor. Não insira chaves secretas, tokens de sessão ou credenciais de administrador.</p>
       <label for="server-endpoint">Endereço HTTPS do backend
@@ -37,7 +50,10 @@
       </label>
       <button type="button" class="primary" id="server-save">Salvar conexão e reiniciar</button>
       <p id="server-config-message" role="status"></p>
+        </div>
+      </details>
     </section>
+    </div>
   </section>
   <section id="home-panel" hidden aria-label="Tela inicial">
     <div id="home-viewport"></div>
