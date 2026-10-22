@@ -19,6 +19,7 @@ let polling=false;
 let catalogs=[];
 let nextRowIndex=0;
 let booting=false;
+let renderGeneration=0;
 function showPage(page){
  activePage=page==='account'?'account':'home';
  document.querySelectorAll('[data-page]').forEach(b=>{
@@ -45,6 +46,7 @@ function stopPolling(){
  loginTimer=null;polling=false;
 }
 async function loadNextRows(){
+ const currentGeneration=renderGeneration;
  const button=$('load-more-rows');
  button.disabled=true;button.hidden=true;
  const batch=catalogs.slice(nextRowIndex,nextRowIndex+8);
@@ -53,6 +55,7 @@ async function loadNextRows(){
  feedback(view.hasContent()?'':'Carregando as linhas da sua conta…');
  // Preserve Android row ordering even when remote providers respond out of order.
  const pages=await Promise.allSettled(batch.map(row=>api.catalogPage(row.key,0)));
+ if(currentGeneration!==renderGeneration)return;
  for(let i=0;i<pages.length;i++){
   if(pages[i].status==='fulfilled')view.addRow({...pages[i].value,key:batch[i].key,title:batch[i].catalogName});
  }
@@ -60,12 +63,14 @@ async function loadNextRows(){
  button.disabled=false;button.hidden=nextRowIndex>=catalogs.length;
 }
 async function loadHome(){
+ const currentGeneration=++renderGeneration;
  showPage('home');
  $('app-status').textContent='Carregando catálogos…';
  view.clear();
  feedback('Sincronizando os catálogos da conta…');
  try{
   const response=await api.reloadCatalogs();
+  if(currentGeneration!==renderGeneration)return;
   catalogs=Array.isArray(response.catalogs)?response.catalogs:[];
   nextRowIndex=0;
   if(!catalogs.length){
