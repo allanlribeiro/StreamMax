@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('streammaxDesktop', Object.freeze({
   platform: 'windows', prototype: true,
   authStatus: () => ipcRenderer.invoke('streammax:auth-status'),
+  saveServerConfig: settings => ipcRenderer.invoke('streammax:server-save',settings),
   authRestore: () => ipcRenderer.invoke('streammax:auth-restore'),
   authSignOut: () => ipcRenderer.invoke('streammax:auth-signout'),
   reloadCatalogs: () => ipcRenderer.invoke('streammax:catalogs-reload'),
