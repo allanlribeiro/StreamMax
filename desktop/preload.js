@@ -20,10 +20,24 @@ contextBridge.exposeInMainWorld('streammaxDesktop', Object.freeze({
   },
   playerAvailability: () => ipcRenderer.invoke('streammax:player-availability'),
   selectMpv: () => ipcRenderer.invoke('streammax:player-select'),
-  playSource: id => ipcRenderer.invoke('streammax:player-play',id),
+  playSource: (id,metadata) => ipcRenderer.invoke('streammax:player-play',id,metadata),
+  listWatchProgress: () => ipcRenderer.invoke('streammax:progress-list'),
+  playerProgress: () => ipcRenderer.invoke('streammax:player-progress'),
   playerCommand: command => ipcRenderer.invoke('streammax:player-command',command),
   playerTrack: (type,id) => ipcRenderer.invoke('streammax:player-track',type,id),
   stopPlayer: () => ipcRenderer.invoke('streammax:player-stop'),
+  onPlayerProgress: callback => {
+    if(typeof callback!=='function')throw new TypeError('Callback required');
+    const listener=(_event,payload)=>callback(payload);
+    ipcRenderer.on('streammax:player-progress',listener);
+    return ()=>ipcRenderer.removeListener('streammax:player-progress',listener);
+  },
+  onPlayerWarning: callback => {
+    if(typeof callback!=='function')throw new TypeError('Callback required');
+    const listener=(_event,payload)=>callback(payload);
+    ipcRenderer.on('streammax:player-warning',listener);
+    return ()=>ipcRenderer.removeListener('streammax:player-warning',listener);
+  },
   onPlayerTracks: callback => {
     if(typeof callback!=='function')throw new TypeError('Callback required');
     const listener=(_event,payload)=>callback(payload);
