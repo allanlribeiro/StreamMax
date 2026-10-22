@@ -12,11 +12,11 @@ android {
     namespace 'com.streammax.tvdetox'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.streammax.home.rc3'
+        applicationId 'com.streammax.home.tx6'
         minSdk 23
         targetSdk 32
-        versionCode 8
-        versionName '1.0.4-RC2-direct-boot-fix'
+        versionCode 1
+        versionName '1.0.0-TX6-bridge'
     }
     signingConfigs {
         if (signingConfigured) {
