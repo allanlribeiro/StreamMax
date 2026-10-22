@@ -25,7 +25,7 @@ function createSessionClient({endpoint,publicKey,store,transport=fetch}) {
     if(response.status===401||response.status===403)return {valid:false,invalid:true};
     if(!response.ok)throw new Error('Falha temporária na validação da sessão');
     const user=await response.json();
-    return {valid:!!(user&&typeof user.id==='string'&&typeof user.email==='string'&&user.email),invalid:false};
+    return {valid:!!(user&&typeof user.id==='string'&&user.id.trim()),invalid:false};
   }
   async function restoreOnce() {
     const saved=await store.load();
