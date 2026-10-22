@@ -71,9 +71,7 @@ android {
             versionNameSuffix = "-strictdebug"
         }
         release {
-            // Somente nesta branch de testes: instala em paralelo ao StreamMax principal.
-            applicationIdSuffix = ".experimental"
-            versionNameSuffix = "-experimental"
+            // Release candidate oficial: atualiza o mesmo com.streammax.tv, sem publicar OTA.
             isMinifyEnabled = false
             if (ks != null) signingConfig = signingConfigs.getByName("release")
         }
