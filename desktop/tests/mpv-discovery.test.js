@@ -29,3 +29,16 @@ test('does not pretend to have a player when mpv is missing',()=>{
   fsModule:{statSync:()=>{throw Error('missing');}}});
  assert.deepEqual(result,{executable:null,source:'missing'});
 });
+
+test('portable mpv available in Windows PATH is detected',()=>{
+ const result=findMpvExecutable({
+  env:{Path:'C:\\Tools\\mpv;C:\\Tools\\other'},
+  pathModule:path.win32,
+  fsModule:{statSync:p=>{
+   if(p==='C:\\Tools\\mpv\\mpv.exe')return {isFile:()=>true};
+   throw Error('missing');
+  }}
+ });
+ assert.equal(result.source,'path');
+ assert.equal(result.executable,'C:\\Tools\\mpv\\mpv.exe');
+});
