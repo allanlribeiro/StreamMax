@@ -1,11 +1,13 @@
 package space.nuvio.nativelegacy
 
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 /** Policy checks only. Real EGL/GL quality and frame drops require TCL tests. */
+@androidx.annotation.OptIn(UnstableApi::class)
 class StreamMaxImagePreviewTest {
     @Test fun acceptsSdrHdCandidates() {
         assertNull(StreamMaxImagePreview.refusal(1280, 720, C.COLOR_TRANSFER_SDR, 24f, false))
