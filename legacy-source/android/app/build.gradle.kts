@@ -29,7 +29,9 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = vx * 10000 + vy * 100 + vz
-        versionName = versao
+        // StreamMax commercial version; internal Legacy version only determines Android's monotonic code.
+        versionName = Regex("SM_UPDATE_VERSION\\s+\"([^\"]+)\"")
+            .find(File(raiz, "src/streammax_update.h").readText())!!.groupValues[1]
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
         externalNativeBuild {
             cmake {
@@ -121,7 +123,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
     implementation("androidx.media3:media3-exoplayer-dash:1.8.0")
-    // 1.0.11 POC: GL sharpening only in debuggable strictdebug app with explicit ADB opt-in.
+    // Optional guarded HD enhancement, OFF by default; Media3 versions stay aligned.
     implementation("androidx.media3:media3-effect:1.8.0")
     // SubtitleView only for image-based PGS/VobSub cues; native SDL retains text/OSD.
     implementation("androidx.media3:media3-ui:1.8.0")

@@ -1,66 +1,29 @@
-# StreamMax 1.0.11 — protótipo de imagem para fontes dubladas
+# StreamMax 1.0.11 — melhoria leve da ampliação HD
 
-**Status:** experimental (sem APK oficial, sem OTA, sem alteração da 1.0.10).
-**Base:** `feature/streammax-1.0.10-legacy-208` (1.0.10 RC-2 pendente de validação TCL).
-**Alvo:** TCL P7K, Android TV de 2 GB RAM. Preservar reprodução 4K, HDR/DV e controles atuais.
+Candidata Android assinada, baseada no trabalho 1.0.10 e no piloto 1.0.11. Não foi homologada em TV real. Não publica OTA automaticamente.
 
-## Problema observado
-O mesmo vídeo 1080p com arquivo pequeno e dublagem brasileira aparenta mais borrões
-e artefatos que uma fonte 1080p de maior tamanho. O YouTube 1080p apresenta boa nitidez
-na TCL e a imagem do StreamMax e do Nuvio original é semelhante. As configurações
-de nitidez e redução MPEG da TV não resolveram. Dublagem deve continuar prioridade.
+## Uso
+Ajustes → Reprodução → Imagem e som → **Upscaling: melhoria de imagem HD**.
+Opções: **Desativado** (padrão) e **Automático (experimental)**. Vale no próximo vídeo.
 
-## Experimento implementado no código
-- `StreamMaxImagePreview.kt`: um shader GLES2 de **uma passagem e cinco amostras**
-  suavemente adaptativo a bordas. É **sharpen**, NÃO é IA, aumento real de resolução
-  nem recuperação de detalhes inexistentes. Mantém a geometria de entrada.
-- `media3-effect:1.8.0`, mesma versão do restante do Media3, por `setVideoEffects`.
-- Em produção, **zero mudança de renderização**: o recurso exige aplicativo
-  debuggable `com.streammax.tv.strictdebug` E ativação manual no Android.
-- A seleção de faixa pode desligar o filtro quando detectar HDR/HLG, DRM,
-  mais de 1920×1080 ou mais de 30 fps; tamanho real acima de 1080p também desliga.
-  Se houver >=4 quadros perdidos em dois intervalos seguidos, o filtro é retirado.
-  *Limitação técnica:* retirar o filtro durante o vídeo não necessariamente
-  remove o caminho GL até uma nova sessão. Logo, **não equivale a garantia
-  de recuperação de FPS**, precisa comparar on/off no mesmo hardware.
-- Se Media3 detectar HDR na criação do shader, usa `PassthroughShaderProgram`.
-  Não é uma garantia de pass-through HDR nativo se o pipeline GL já tiver iniciado.
-  Não usar HDR/Dolby Vision neste piloto; validar depois que toda a detecção ocorre
-  a tempo, ou mudar para uma estratégia sem GL.
-- Não modifica seleção de fontes ou preferência de áudio PT-BR; nenhuma alteração IPTV.
+A melhoria é nitidez leve em resolução de origem para ajudar o scaler nativo da tela. Não é IA, super-resolução ou recuperação de detalhe perdido pela compressão. O shader tem uma passagem, cinco amostras e uma textura de saída na resolução de origem; não aloca intermediário 4K.
 
-## Ativar somente para desenvolvedor
+## Admissão antes de criar GL
+Media3 1.8.0 recebe todos os formatos selecionáveis em `Renderer.enable`. `StreamMaxImageRenderer` verifica esses formatos antes de delegar ao renderer real e só então configura efeitos. A produção nunca chama `ExoPlayer.setVideoEffects`, nem com uma lista vazia: essa chamada tornaria a lista de efeitos não nula e poderia criar um VideoSink GL para conteúdo protegido.
 
-Compilar **debug** e instalar ao lado da versão oficial (pacote
-`com.streammax.tv.strictdebug`; necessita ferramentas Android e backend de login).
-ADB conectado à TCL:
+Só permite SDR explicitamente identificado, 1280–1920 de largura e 480–1080 de altura (inclui HD com barras cortadas), FPS conhecido até 30, pixels quadrados, sem rotação/DRM e tela maior nos dois eixos. Exclui Dolby Vision por MIME e codecs dvhe/dvh1/dvav/dva1, PQ, HLG, BT.2020, UHD e metadados desconhecidos. Todos os formatos adaptativos selecionáveis precisam passar. Tunneling nunca ativa o efeito. A seleção de decoder, áudio e fonte segue a política existente.
 
-```sh
-adb shell settings put global streammax_image_preview 1
-# fechar e reabrir StreamMax strictdebug antes do novo filme SDR 720p/1080p
-adb logcat -s NvPlayer:I '*:S'  # procurar [imagem-preview]
-adb shell settings delete global streammax_image_preview
-```
+`onStreamChanged`, `onInputFormatChanged`, `maybeInitializeProcessingPipeline` e `onOutputFormatChanged` verificam mudanças antes de enviar o novo formato ao processamento. Uma mudança incompatível interrompe o renderer antes do processamento e aciona nova sessão nativa.
 
-O ajuste é global da TV e persiste até ser excluído; não guarda dados do filme.
-**Desligar novamente após o teste**, especialmente antes de abrir conteúdo 4K/HDR.
-A 1.0.10 oficial ignora a chave, pois a verificação exige APK debuggable.
+## Desempenho e recuperação
+O monitor por sessão recua após duas janelas consecutivas com pelo menos quatro quadros perdidos por segundo. Pausa, contador reiniciado e amostras atrasadas reiniciam a sequência. Pressão térmica moderada ou modo de economia impedem a ativação e provocam recuo se já ativo.
 
-## Portas de qualidade antes de qualquer inclusão definitiva
+O recuo libera o player e sua superfície GL e reabre a mesma fonte na posição atual, preservando parâmetros de faixas, velocidade, ganho e pausa. Não apenas remove o filtro. O efeito permanece bloqueado nessa fonte até uma nova abertura solicitada pelo usuário, evitando ciclos. Pode haver uma breve interrupção durante o recuo. Próximos episódios preparados são descartados ao mudar a opção ou recuar, para não adotar uma sessão antiga com GL.
 
-1. Compilar `compileDebugKotlin` e rodar `StreamMaxImagePreviewTest`;
-   as verificações Kotlin/C devem passar e o APK strictdebug não pode substituir a 1.0.10 oficial.
-2. Mesma cena/same file em SDR 720p e 1080p, com chave 0 versus 1.
-   Medir FPS, quedas de quadro, PSS/memória, temperatura, tempos de abertura, seek.
-   Desligar se imagem piorar, se ocorrer erro de GL ou perda de fluidez.
-3. Garantir que 4K/HDR/DV usem o caminho nativo **sem inicializar o pipeline GL**.
-   O protótipo ainda não pode demonstrar isso, pois dimensões/HDR podem ser
-   conhecidos apenas depois do prepare.
-4. Guardar capturas da TCL em cenas com textura, rosto e movimento.
-   Se melhorar, pensar em controle de usuário no app (Desligado / Suave / Automático),
-   por categoria de fonte e opção de desligar instantaneamente. Só então avaliar release.
+## Validação
+- Testes Kotlin de admissão SDR, HDR/DV/UHD, formatos adaptativos mistos, dados desconhecidos, display, tunneling, queda sustentada, pausa e pressão térmica.
+- Contratos de integração e regressões existentes de atualização, Home, seleção de fonte e legendas regionais.
+- Workflow da candidata compila APK nativo completo, roda testes Kotlin, verifica pacote, versão, bibliotecas e assinatura compatível com 1.0.9.
+- Pendente na TCL P7K: comparar a mesma cena com OFF/Automático, medir FPS, PSS, temperatura, seek e tempos de abertura; testar transições SDR→HDR/DV/4K e vice-versa, áudio, legendas e retomada. Compilação não comprova melhoria visual nem impacto zero.
 
-## Referências
-- https://developer.android.com/reference/androidx/media3/exoplayer/ExoPlayer#setVideoEffects(java.util.List)
-- https://developer.android.com/reference/androidx/media3/effect/BaseGlShaderProgram
-- https://developer.android.com/media/grow/hdr-playback
+Versão comercial: 1.0.11; Android versionCode: 20018. O número interno Legacy 2.0.18 só mantém o versionCode crescente.

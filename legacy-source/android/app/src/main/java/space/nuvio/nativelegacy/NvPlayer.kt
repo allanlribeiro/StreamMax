@@ -160,34 +160,51 @@ object NvPlayer {
     private var ultAtmos = -1
     private var avisouSemAudio = false
     private var quadrosPerdidos = 0L
-    // Prototipo 1.0.11: associado ao player, inclusive quando foi pre-preparado.
-    // Nunca afeta o caminho de producao: exige app debuggable + ADB opt-in.
-    private val imagemPreviewAtivos = java.util.WeakHashMap<ExoPlayer, Boolean>()
-    private var imagemPreviewUltimaQueda = 0L
-    private var imagemPreviewAmostrasRuins = 0
-    private fun desligarImagemPreview(p: ExoPlayer, motivo: String) {
-        if (imagemPreviewAtivos.remove(p) != true) return
-        Log.w(TAG, "[imagem-preview] desativado motivo=$motivo")
-        // Com Media3 a volta total ao decoder->Surface sem GL ocorre na proxima abertura.
-        // Aqui so removemos o filtro, sem reiniciar/recarregar a fonte do usuario.
-        try { p.setVideoEffects(emptyList()) }
-        catch (error: Exception) { Log.w(TAG, "[imagem-preview] limpar efeito: " + error.javaClass.simpleName) }
-    }
-    private fun checarImagemPreview(tracks: Tracks) {
-        val p = player ?: return
-        if (imagemPreviewAtivos[p] != true) return
-        for (g in tracks.groups) if (g.type == C.TRACK_TYPE_VIDEO) {
-            for (i in 0 until g.length) if (g.isTrackSelected(i)) {
-                val f = g.getTrackFormat(i)
-                val recusa = StreamMaxImagePreview.refusal(
-                    f.width, f.height, f.colorInfo?.colorTransfer ?: C.INDEX_UNSET,
-                    f.frameRate, f.drmInitData != null)
-                if (recusa != null) {
-                    desligarImagemPreview(p, recusa)
-                    return
-                }
+    @Volatile private var imagemAutomatica = false
+    @Volatile private var imagemBloqueadaNestaFonte = false
+
+    @JvmStatic fun imagemUpscaling(modo: Int) {
+        val novo = modo == 1
+        principal.post {
+            if (imagemAutomatica != novo) {
+                imagemAutomatica = novo
+                soltarPreparo() // Never adopt a player built with a different image preference.
             }
         }
+    }
+
+    private fun voltarImagemNativa(p: ExoPlayer, motivo: String): Boolean {
+        val imagem = recursosAtuais?.imagem ?: return false
+        if (!imagem.active || imagem.disabled || imagemBloqueadaNestaFonte) return false
+        imagem.disabled = true
+        imagemBloqueadaNestaFonte = true
+        Log.w(TAG, "[imagem] voltando ao caminho nativo motivo=$motivo")
+        val minha = sessao
+        val url = urlAtual
+        val cab = cabAtual
+        val inicio = p.currentPosition.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+        val geracao = geracaoNative
+        val pedido = pedidoAtivo
+        val fracao = if (inicio > 0) 0 else fracaoAtual
+        val pausado = pausaPedida
+        val parametros = p.trackSelectionParameters
+        val velocidade = p.playbackParameters
+        val ganho = ganhoPct
+        // A full rebuild destroys the old GL sink. Removing effects alone does not.
+        principal.post {
+            if (!atual(minha) || player !== p) return@post
+            soltarPreparo()
+            abrirMain(url, cab, true, inicio, geracao, pedido, fracao)
+            player?.let { novo ->
+                novo.trackSelectionParameters = parametros
+                novo.playbackParameters = velocidade
+                pausaPedida = pausado
+                novo.playWhenReady = !pausado && !atividadeOculta
+                ganhoPct = ganho
+                aplicarGanho()
+            }
+        }
+        return true
     }
     private var statsTiques = 0
     private var bufferAlvoMs = androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
@@ -667,6 +684,7 @@ object NvPlayer {
         var liberado = false
         @Volatile var adotado = carga.adotada
         @Volatile var audioFormato = AudioSyncTap.FMT_NENHUM
+        var imagem: StreamMaxImageSession? = null
         val proc = GanhoAudioProcessor()
         val tap = AudioSyncTap(
             { pcm, n, pts -> if (adotado) try { nativeAudioPcm(pcm, n, pts) } catch (_: UnsatisfiedLinkError) {} },
@@ -1323,6 +1341,29 @@ object NvPlayer {
             // ON: platform decoder/passthrough first, FFmpeg only as fallback.
             // F06 tap is at the sink input; F07 gain stays in its processors.
             r.renderizadores = object : androidx.media3.exoplayer.DefaultRenderersFactory(act) {
+                override fun buildVideoRenderers(context: Context, extensionRendererMode: Int,
+                    mediaCodecSelector: androidx.media3.exoplayer.mediacodec.MediaCodecSelector,
+                    enableDecoderFallback: Boolean, eventHandler: Handler,
+                    eventListener: androidx.media3.exoplayer.video.VideoRendererEventListener,
+                    allowedVideoJoiningTimeMs: Long, out: ArrayList<Renderer>) {
+                    if (!imagemAutomatica || imagemBloqueadaNestaFonte || StreamMaxImagePreview.thermalLimited(act)) {
+                        super.buildVideoRenderers(context, extensionRendererMode, mediaCodecSelector,
+                            enableDecoderFallback, eventHandler, eventListener, allowedVideoJoiningTimeMs, out)
+                        return
+                    }
+                    val image = StreamMaxImageSession(true)
+                    r.imagem = image
+                    val mode = act.windowManager.defaultDisplay.mode
+                    val video = GuardedImageVideoRenderer(
+                        androidx.media3.exoplayer.video.MediaCodecVideoRenderer.Builder(context)
+                            .setCodecAdapterFactory(getCodecAdapterFactory())
+                            .setMediaCodecSelector(mediaCodecSelector)
+                            .setAllowedJoiningTimeMs(allowedVideoJoiningTimeMs)
+                            .setEnableDecoderFallback(enableDecoderFallback)
+                            .setEventHandler(eventHandler).setEventListener(eventListener)
+                            .setMaxDroppedFramesToNotify(1), image)
+                    out.add(StreamMaxImageRenderer(video, image, mode.physicalWidth, mode.physicalHeight))
+                }
                 override fun buildAudioSink(context: Context, enableFloatOutput: Boolean,
                                             enableAudioTrackPlaybackParams: Boolean): AudioSink =
                     AudioSyncSink(DefaultAudioSink.Builder(context).setEnableFloatOutput(enableFloatOutput)
@@ -1365,17 +1406,7 @@ object NvPlayer {
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), false)
         r.p.trackSelectionParameters = r.p.trackSelectionParameters.buildUpon()
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
-        // Opt-in EXCLUSIVAMENTE no APK strictdebug. Nenhum novo estagio GL na release.
-        // Antes do prepare e necessario para o pipeline de efeitos do Media3.
-        if (StreamMaxImagePreview.requested(act)) {
-            try {
-                r.p.setVideoEffects(StreamMaxImagePreview.effect())
-                imagemPreviewAtivos[r.p] = true
-                Log.i(TAG, "[imagem-preview] shader suave preparado (experimental)")
-            } catch (error: Exception) {
-                Log.w(TAG, "[imagem-preview] indisponivel: " + error.javaClass.simpleName)
-            }
-        }
+
     }
 
     private fun abrirMain(url: String, cabecalhos: String, reabrindo: Boolean,
@@ -1393,6 +1424,7 @@ object NvPlayer {
         }
         val espera = if (esperaInicio < 0) SystemClock.elapsedRealtime() else esperaInicio
         if (esperaInicio < 0) {
+            if (!reabrindo) imagemBloqueadaNestaFonte = false
             liberar()
             // O C envia ganho/pausa depois de abrir; a espera nao pode apaga-los.
             ganhoPct = 100
@@ -1443,8 +1475,6 @@ object NvPlayer {
             val p = r.p
             recursosAtuais = r
             player = p
-            imagemPreviewUltimaQueda = quadrosPerdidos
-            imagemPreviewAmostrasRuins = 0
             processador = r.proc
             r.tap.ligado = tap.ligado
             tap = r.tap
@@ -1687,11 +1717,12 @@ object NvPlayer {
     // alem da string do host (que o JNI copia).
     private fun relatarStats(p: ExoPlayer) {
         val e = ParaleloDataSource.Estat
-        if (imagemPreviewAtivos[p] == true) {
-            val novas = (quadrosPerdidos - imagemPreviewUltimaQueda).coerceAtLeast(0)
-            imagemPreviewUltimaQueda = quadrosPerdidos
-            imagemPreviewAmostrasRuins = if (novas >= 4) imagemPreviewAmostrasRuins + 1 else 0
-            if (imagemPreviewAmostrasRuins >= 2) desligarImagemPreview(p, "quadros_perdidos")
+        recursosAtuais?.imagem?.let { image ->
+            if (image.sample(SystemClock.elapsedRealtime(), quadrosPerdidos,
+                    p.isPlaying && !recriando,
+                    activity?.let { StreamMaxImagePreview.thermalLimited(it) } != false)) {
+                voltarImagemNativa(p, "desempenho_ou_temperatura")
+            }
         }
         val buf = (p.bufferedPosition - p.currentPosition).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
         var quadros = -1L
@@ -2145,10 +2176,6 @@ object NvPlayer {
             // Pixel anamorfico entra na largura: e a proporcao que o zoom do C usa.
             videoW = (v.width * v.pixelWidthHeightRatio + 0.5f).toInt()
             videoH = v.height
-            // Nao executar o shader na resolucao 4K mesmo com o piloto ligado.
-            if (StreamMaxImagePreview.refusal(videoW, videoH, C.INDEX_UNSET, -1f, false) != null) {
-                player?.let { desligarImagemPreview(it, "resolucao") }
-            }
             ev(EV_TAMANHO, videoW, videoH)
             if (temJanela) calcularJanela() else aplicarEncaixe()
         }
@@ -2156,7 +2183,6 @@ object NvPlayer {
         override fun onTracksChanged(tracks: Tracks) {
             if (!atual(minha)) return
             publicarFaixas(tracks)
-            checarImagemPreview(tracks)
             if (!quadroVisto && player?.playbackState == Player.STATE_READY) agendarVigiaPrimeiroQuadro()
             for (g in tracks.groups) if (g.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until g.length) if (g.isTrackSelected(i)) {
@@ -2197,6 +2223,11 @@ object NvPlayer {
             if (!atual(minha)) return
             val exo = error as? ExoPlaybackException
             val p = player
+            val imageFailure = generateSequence<Throwable>(error) { it.cause }.any { it is StreamMaxImageBypass } ||
+                error.errorCode == PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSOR_INIT_FAILED ||
+                error.errorCode == PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSING_FAILED ||
+                (exo?.type == ExoPlaybackException.TYPE_RENDERER && exo.rendererFormat?.sampleMimeType?.startsWith("video/") == true)
+            if (p != null && imageFailure && voltarImagemNativa(p, "formato_ou_erro_video")) return
             val timeout = generateSequence(error.cause) { it.cause }
                 .filterIsInstance<androidx.media3.exoplayer.ExoTimeoutException>().firstOrNull()
             if (p != null && !recuperouSuperficie && RecriaHdr.timeoutRecuperavel(error.errorCode,
