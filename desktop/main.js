@@ -91,8 +91,21 @@ ipcMain.handle('streammax:open-video', async () => {
     filters:[{name:'Vídeos',extensions:['mp4','m4v','webm','mov','mkv']}]});
   return response.canceled ? null : pathToFileURL(response.filePaths[0]).href;
 });
+let remoteWarmup=null;
+function warmRemoteHistory(){
+ if(!remoteProgress||remoteWarmup)return;
+ // Fetch in parallel with UI catalog loading. Failure never blocks login.
+ const pending=remoteProgress.list().catch(()=>{}).finally(()=>{
+  if(remoteWarmup===pending)remoteWarmup=null;
+ });
+ remoteWarmup=pending;
+}
 ipcMain.handle('streammax:auth-status',()=>authService.status());
-ipcMain.handle('streammax:auth-restore',()=>authService.restore());
+ipcMain.handle('streammax:auth-restore',async()=>{
+ const result=await authService.restore();
+ if(result.authenticated)warmRemoteHistory();
+ return result;
+});
 ipcMain.handle('streammax:auth-signout',async()=>{
  catalogClient?.clear();
  sourceDiscovery.reset();
@@ -101,7 +114,11 @@ ipcMain.handle('streammax:auth-signout',async()=>{
  return authService.signOut();
 });
 ipcMain.handle('streammax:auth-start',()=>authService.start());
-ipcMain.handle('streammax:auth-poll',()=>authService.poll());
+ipcMain.handle('streammax:auth-poll',async()=>{
+ const result=await authService.poll();
+ if(result.authenticated)warmRemoteHistory();
+ return result;
+});
 ipcMain.handle('streammax:auth-cancel',()=>authService.cancel());
 ipcMain.handle('streammax:open-login',async()=>{
  const target=authService.verificationPage();
