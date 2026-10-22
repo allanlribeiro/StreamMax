@@ -15,7 +15,8 @@ public final class HomeRedirectService extends AccessibilityService {
     private long lastRedirect;
 
     private boolean enabled() {
-        // Enabling the AccessibilityService in Android settings is the explicit opt-in.\n        return true;
+        // Android Accessibility settings is the explicit opt-in.
+        return true;
     }
 
     @Override public void onServiceConnected() {
