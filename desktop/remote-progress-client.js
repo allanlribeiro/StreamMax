@@ -33,10 +33,12 @@ function createRemoteProgressClient({sessionClient,endpoint,publicKey,profileId=
  let cache=[];
  let cacheUntil=0;
  let generation=0;
+ let inFlight=null;
  async function list({limit=200}={}){
   if(!Number.isInteger(limit)||limit<1||limit>500)throw new TypeError('Invalid history limit');
+  if(limit===200&&inFlight)return inFlight;
   const requestGeneration=generation;
-  return sessionClient.withAccessToken(async token=>{
+  const request=sessionClient.withAccessToken(async token=>{
    const response=await transport(rpcUrl,{
     method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),
     headers:{apikey:key,Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},
@@ -59,6 +61,12 @@ function createRemoteProgressClient({sessionClient,endpoint,publicKey,profileId=
    cacheUntil=Date.now()+5*60*1000;
    return filtered;
   });
+  if(limit!==200)return request;
+  const pending=Promise.resolve(request).finally(()=>{
+   if(inFlight===pending)inFlight=null;
+  });
+  inFlight=pending;
+  return pending;
  }
  return {
   list,
@@ -68,7 +76,7 @@ function createRemoteProgressClient({sessionClient,endpoint,publicKey,profileId=
    const entry=cache.find(x=>x.contentId===contentId&&x.videoId===videoId);
    return entry?{positionMs:entry.position,durationMs:entry.duration}:null;
   },
-  clear(){generation++;cache=[];cacheUntil=0;}
+  clear(){generation++;cache=[];cacheUntil=0;inFlight=null;}
  };
 }
 module.exports={normalizeRemoteEntry,createRemoteProgressClient};
