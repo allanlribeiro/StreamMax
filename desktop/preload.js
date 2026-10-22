@@ -18,5 +18,16 @@ contextBridge.exposeInMainWorld('streammaxDesktop', Object.freeze({
     ipcRenderer.on('streammax:sources-progress',listener);
     return ()=>ipcRenderer.removeListener('streammax:sources-progress',listener);
   },
+  playerAvailability: () => ipcRenderer.invoke('streammax:player-availability'),
+  selectMpv: () => ipcRenderer.invoke('streammax:player-select'),
+  playSource: id => ipcRenderer.invoke('streammax:player-play',id),
+  playerCommand: command => ipcRenderer.invoke('streammax:player-command',command),
+  stopPlayer: () => ipcRenderer.invoke('streammax:player-stop'),
+  onPlayerStatus: callback => {
+    if(typeof callback!=='function')throw new TypeError('Callback required');
+    const listener=(_event,payload)=>callback(payload);
+    ipcRenderer.on('streammax:player-status',listener);
+    return ()=>ipcRenderer.removeListener('streammax:player-status',listener);
+  },
   openLocalVideo: () => ipcRenderer.invoke('streammax:open-video')
 }));
