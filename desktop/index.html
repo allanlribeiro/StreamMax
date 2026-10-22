@@ -6,6 +6,7 @@
   <div class="app-brand" aria-label="StreamMax">STREAM<strong>MAX</strong></div>
   <nav aria-label="Menu do aplicativo">
     <button type="button" data-page="home" aria-current="page">Início</button>
+    <button type="button" data-page="continue">Continuar Assistindo</button>
     <button type="button" data-page="account">Conta</button>
   </nav>
   <span class="status" id="app-status" role="status">Iniciando…</span>
@@ -29,6 +30,13 @@
     <div class="state__actions" style="justify-content:center">
       <button type="button" class="secondary" id="load-more-rows" hidden>Carregar outras linhas</button>
     </div>
+  </section>
+  <section id="continue-panel" class="account" hidden>
+    <h1>Continuar Assistindo</h1>
+    <p>Progresso salvo neste computador. Escolha um título para buscar uma fonte e retomar.</p>
+    <p id="continue-message" role="status"></p>
+    <div id="continue-list" class="continue-list"></div>
+    <button id="continue-refresh" type="button" class="secondary">Atualizar histórico</button>
   </section>
   <section id="account-panel" class="account" hidden>
     <h1>Conta e perfis</h1>
@@ -64,6 +72,7 @@
     <div class="player-actions">
       <button id="mpv-select" type="button" class="secondary">Configurar mpv.exe</button>
       <span id="mpv-status" role="status">Verificando player…</span>
+      <span id="playback-timeline" aria-live="off"></span>
     </div>
     <section id="player-controls" class="player-controls" hidden aria-label="Controles do player externo">
       <h3>Reprodutor nativo</h3>
