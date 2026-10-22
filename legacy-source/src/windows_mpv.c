@@ -175,8 +175,13 @@ static void smTracks(VideoSimulacao *s) {
 void sm_mpv_pump(VideoSimulacao *s) {
   if(!smPlayer || !s)return;
   mpv_event *ev;
+  int atualizarFaixas=0;
   while((ev=mpv_wait_event(smPlayer,0))->event_id!=MPV_EVENT_NONE) {
-    if(ev->event_id==MPV_EVENT_FILE_LOADED) {smReady=1;smFailed=0;smEnded=0;}
+    if(ev->event_id==MPV_EVENT_FILE_LOADED) {
+      smReady=1;smFailed=0;smEnded=0;atualizarFaixas=1;
+    }
+    if(ev->event_id==MPV_EVENT_TRACKS_CHANGED ||
+       ev->event_id==MPV_EVENT_TRACK_SWITCHED)atualizarFaixas=1;
     if(ev->event_id==MPV_EVENT_END_FILE && smPlaying) {
       mpv_event_end_file *end=(mpv_event_end_file *)ev->data;
       if(end && end->reason==MPV_END_FILE_REASON_ERROR) {
@@ -195,7 +200,9 @@ void sm_mpv_pump(VideoSimulacao *s) {
   int paused=smPaused;
   if(mpv_get_property(smPlayer,"pause",MPV_FORMAT_FLAG,&paused)>=0)smPaused=paused;
   s->bufferandoMs=0;s->reconectando=0;
-  if(smReady)smTracks(s);
+  // Reconsultar a lista de faixas somente quando o pipeline a modifica.
+  // A consulta em todo frame criava centenas de comandos libmpv/segundo.
+  if(smReady && atualizarFaixas)smTracks(s);
 }
 int sm_mpv_failed(void){return smFailed;}
 int sm_mpv_ended(void){return smEnded;}
