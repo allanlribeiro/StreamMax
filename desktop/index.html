@@ -1,18 +1,20 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; media-src 'self' blob: https:; connect-src 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; media-src 'self' blob: file:; connect-src 'none';">
 <title>StreamMax</title>
 <style>
 :root{font-family:system-ui,'Segoe UI',sans-serif;color:#eef5ff;background:#080e1b;color-scheme:dark}
-*{box-sizing:border-box}body{margin:0}header{display:flex;align-items:center;justify-content:space-between;padding:17px 30px;background:#0b1527;border-bottom:1px solid #18375d}
-.brand{font-weight:800;letter-spacing:2px;font-size:22px}.brand b{color:#38b7ff}
-nav{display:flex;gap:8px}button{background:#172a43;color:#eaf3ff;border:1px solid #345477;padding:11px 15px;border-radius:10px;cursor:pointer}
+*{box-sizing:border-box}body{margin:0}header{display:flex;align-items:center;justify-content:space-between;padding:17px 30px;background:#0b1527;border-bottom:1px solid #18375d;gap:16px}
+.brand{font-weight:800;letter-spacing:2px;font-size:22px;white-space:nowrap}.brand b{color:#38b7ff}
+nav{display:flex;gap:8px;flex-wrap:wrap}button{background:#172a43;color:#eaf3ff;border:1px solid #345477;padding:11px 15px;border-radius:10px;cursor:pointer}
 button:hover,button:focus-visible{background:#195a94;outline:2px solid #46c8ff;outline-offset:1px}button.active{background:#126eae}
 main{max-width:1200px;margin:auto;padding:34px}h1{font-size:32px}p{color:#acc3dc;line-height:1.6}
 .panel{border:1px solid #25476d;border-radius:18px;padding:24px;background:linear-gradient(125deg,#0d223d,#101524)}
 small{color:#91aac5}.tip{margin-top:26px}kbd{padding:3px 6px;border-radius:4px;background:#26364c}
+#player-section{margin-top:20px}video{width:100%;max-height:65vh;background:black;border-radius:12px} [hidden]{display:none!important}
 </style></head><body>
 <header><div class="brand">STREAM<b>MAX</b></div><nav aria-label="Navegação"><button class="active" data-view="home">Início</button><button data-view="continue">Continuar assistindo</button><button data-view="settings">Configurações</button></nav></header>
-<main><section class="panel"><small>PRÉVIA PARA WINDOWS · INTERFACE DESKTOP</small><h1 id="title">Bem-vindo ao StreamMax</h1><p id="description">Estrutura inicial para adaptar o StreamMax ao Windows com mouse, teclado e janelas. O catálogo, login e player ainda precisam ser integrados à base existente.</p></section>
-<p class="tip">Atalhos: <kbd>F11</kbd> tela cheia (Electron), <kbd>Tab</kbd> navegar, <kbd>Enter</kbd> selecionar e <kbd>Esc</kbd> voltar ao início.</p></main>
+<main><section class="panel"><small>PRÉVIA PARA WINDOWS · INTERFACE DESKTOP</small><h1 id="title">Bem-vindo ao StreamMax</h1><p id="description">Versão experimental para Windows. A integração dos catálogos, fontes e contas do aplicativo Android ainda está em desenvolvimento.</p><button id="open-video">Abrir vídeo do computador</button></section>
+<section id="player-section" hidden><h2>Reprodutor local</h2><video id="player" controls playsinline></video><p id="playback-status" aria-live="polite"></p></section>
+<p class="tip">Atalhos: <kbd>F11</kbd> tela cheia, <kbd>Espaço</kbd> reproduzir/pausar, <kbd>←</kbd>/<kbd>→</kbd> retroceder/avançar 5s, <kbd>Tab</kbd> navegar e <kbd>Esc</kbd> início.</p></main>
 <script src="renderer.js"></script></body></html>
