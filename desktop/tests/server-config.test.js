@@ -48,3 +48,17 @@ test('environment-managed configuration remains unchanged by user interface',()=
   assert.throws(()=>config.save(publicSettings),/gerenciada/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('an invalid environment config fails closed without crashing startup',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'streammax-invalid-'));
+ try{
+  const config=createServerConfigStore({
+   filePath:path.join(dir,'config.json'),
+   env:{STREAMMAX_SUPABASE_URL:'http://insecure.example',
+    STREAMMAX_SUPABASE_PUBLIC_KEY:'public',
+    STREAMMAX_LOGIN_REDIRECT_URL:'https://example.org'}
+  });
+  assert.deepEqual(config.load(),{value:null,source:'invalid_environment'});
+  assert.throws(()=>config.save(publicSettings),/gerenciada/);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
