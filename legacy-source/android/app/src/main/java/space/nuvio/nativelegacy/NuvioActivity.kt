@@ -432,7 +432,33 @@ class NuvioActivity : SDLActivity() {
     // nao foi queda, e o modo seguro nao desfaz ajustes por causa dela.
     private fun despedida() = File(filesDir, "dados/despedida.txt")
 
-    private var instalando = false
+    @Volatile private var instalando = false
+
+    // Limpa apenas APKs antigos e reconhecidos da pasta privada de atualização,
+    // sem ler o arquivo grande no fio da interface e sem tocar em dados/sessões.
+    private fun podarApksAntigos() {
+        val dir = File(filesDir, "dados/atualizacao")
+        if (!dir.isDirectory) return
+        Thread({
+            try {
+                if (!instalando) {
+                    @Suppress("DEPRECATION")
+                    val instalado = packageManager.getPackageInfo(packageName, 0)
+                    val codigo = if (Build.VERSION.SDK_INT >= 28)
+                        instalado.longVersionCode else instalado.versionCode.toLong()
+                    StreamMaxApkCache.prune(dir, codigo, null) { file ->
+                        @Suppress("DEPRECATION")
+                        val archive = packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+                        if (archive?.packageName != packageName) null
+                        else if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode
+                        else archive.versionCode.toLong()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("StreamMax", "Nao foi possivel limpar APKs antigos", e)
+            }
+        }, "StreamMax-Apk-Prune").start()
+    }
 
     // Inspeciona o APK assinado ANTES de abrir permissoes ou o instalador.
     // Nao aceita pacote estranho, downgrade, certificado diferente ou caminho
@@ -693,6 +719,7 @@ class NuvioActivity : SDLActivity() {
     // super.onCreate: o SDL abre o main numa thread logo depois.
     private fun prepararAmbiente() {
         val dados = File(filesDir, "dados").apply { mkdirs() }
+        podarApksAntigos()
         val uiMode = (getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager)?.currentModeType
         val automaticMobile = InterfaceMode.automaticMobile(
             uiMode == Configuration.UI_MODE_TYPE_TELEVISION,
