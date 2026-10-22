@@ -1,0 +1,16 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const {RPC,rpcBody,callLoginRpc}=require('../auth-rpc');
+test('matches Android device and legacy start payload fields',()=>{
+ const a=rpcBody(RPC.startDevice,{deviceNonce:'random',redirectBaseUrl:'https://example.org/login',deviceType:'windows'});
+ assert.equal(a.p_device_type,'windows');
+ const b=rpcBody(RPC.startLegacy,{deviceNonce:'random',redirectBaseUrl:'https://example.org/login'});
+ assert.equal(b.p_device_type,undefined);
+});
+test('matches Android poll and exchange payloads',()=>{
+ assert.deepEqual(rpcBody(RPC.poll,{deviceNonce:'random',code:'XYZ'}),{p_code:'XYZ',p_device_nonce:'random'});
+ assert.deepEqual(rpcBody(RPC.exchange,{deviceNonce:'random',code:'XYZ'}),{code:'XYZ',device_nonce:'random'});
+});
+test('requires trusted transport and blocks insecure service origin',async()=>{
+ await assert.rejects(()=>callLoginRpc({transport:async()=>{},endpoint:'http://example.org',publicKey:'public',method:RPC.poll,options:{code:'X',deviceNonce:'a'}}));
+});
