@@ -1,0 +1,42 @@
+name: StreamMax Windows Desktop Checks
+on:
+  push:
+    branches:
+      - feature/streammax-windows-desktop
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/streammax-windows-checks.yml'
+  workflow_dispatch:
+jobs:
+  desktop-checks:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript and JSON
+        shell: pwsh
+        run: |
+          node --check main.js
+          node --check preload.js
+          node --check renderer.js
+          node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check desktop package
+        shell: pwsh
+        run: |
+          node -e "const p=require('./package.json');if(p.build.nsis.createDesktopShortcut!==true||p.build.nsis.createStartMenuShortcut!==true)process.exit(1)"
+          Write-Output 'Atalhos Windows configurados.'
+      - name: Check official icon availability
+        shell: pwsh
+        run: |
+          if (Test-Path assets/streammax.ico) {
+            Write-Output 'Logo ICO disponivel para empacotamento.'
+          } else {
+            Write-Output 'Logo ICO oficial ainda pendente. Instalador nao sera criado.'
+          }
