@@ -15,8 +15,8 @@ async function refreshPlayerStatus(){
  try{
   const status=await api.playerAvailability();
   $('mpv-status').textContent=status.available
-   ?(PLAYER_LABELS[status.state]||'mpv disponível')
-   :'Selecione o mpv.exe para reproduzir.';
+   ?(PLAYER_LABELS[status.state]||'mpv detectado automaticamente')
+   :'O reprodutor mpv não está instalado. Selecione um mpv.exe confiável.';
   $('player-controls').hidden=!status.available||status.state==='idle';
  }catch(error){
   $('mpv-status').textContent='Não foi possível verificar o mpv: '+String(error.message||error);
