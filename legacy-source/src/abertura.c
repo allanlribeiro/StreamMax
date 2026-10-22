@@ -75,7 +75,7 @@ int abertura_ativa(void) { return estado < 3; }
 
 static void acabar(void) {
   estado = 3;
-  printf("[abertura] fim em %u ms\\n", (unsigned)(SDL_GetTicks() - inicio));
+  printf("[abertura] fim em %u ms\n", (unsigned)(SDL_GetTicks() - inicio));
   fflush(stdout);
 }
 
