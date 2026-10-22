@@ -48,3 +48,18 @@ test('rejects private hosts and unknown catalog requests',async()=>{
  const client=createCatalogClient({endpoint:'https://backend.example',publicKey:'public',sessionClient:{withAccessToken:fn=>fn('private')}});
  await assert.rejects(client.page('unknown',0),/Unknown catalog/);
 });
+
+test('removes prior profile catalogs when session signs out',async()=>{
+ const client=createCatalogClient({
+  endpoint:'https://backend.example',publicKey:'public',
+  sessionClient:{withAccessToken:fn=>fn('private')},
+  transport:async url=>({ok:true,json:async()=>url.includes('get_sync_owner')?'owner-id':[
+    {url:'https://addon.example/base',name:'Addon',enabled:true,sort_order:0}
+  ]}),
+  addonTransport:async()=>({ok:true,json:async()=>({id:'addon',name:'Addon',catalogs:[{id:'popular',type:'movie'}]})})
+ });
+ const list=await client.reload();
+ assert.equal(list.catalogs.length,1);
+ client.clear();
+ await assert.rejects(client.page(list.catalogs[0].key),/Unknown catalog/);
+});
