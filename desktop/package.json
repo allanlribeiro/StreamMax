@@ -26,7 +26,8 @@
       "auth-flow.js",
       "auth-rpc.js",
       "auth-service.js",
-      "session-store.js"
+      "session-store.js",
+      "session-client.js"
     ],
     "win": {
       "target": [
