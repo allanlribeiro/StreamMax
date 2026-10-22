@@ -28,6 +28,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # env.sh exige as duas versões idênticas para qualquer build Android.
+          grep -Fq '"version": "2.0.17"' legacy-source/deploy/app/appinfo.json
+          grep -Fq 'version="2.0.17"' legacy-source/tools/tizen-config.xml
+          grep -Fq '#define SM_UPDATE_VERSION "1.0.10"' legacy-source/src/streammax_update.h
           test -f legacy-source/src/login.c
           test -f legacy-source/android/app/src/main/AndroidManifest.xml
           python3 migration/check-legacy-auth.py legacy-source
