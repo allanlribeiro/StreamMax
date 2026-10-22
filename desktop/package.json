@@ -27,7 +27,8 @@
       "auth-rpc.js",
       "auth-service.js",
       "session-store.js",
-      "session-client.js"
+      "session-client.js",
+      "catalog-client.js"
     ],
     "win": {
       "target": [
