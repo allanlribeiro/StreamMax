@@ -36,6 +36,18 @@ assert "val v = versions[apk] ?: continue" in apks
 assert "if (v <= installed || (newest != null && apk != newest)) apk.delete()" in apks
 assert "deleteRecursively" not in apks
 
+# Subtitle reuse keeps one cached download for the current playback session,
+# and resets the cache at the next play. Downloaded bytes stay owned by cache.
+subtitle = (root / "src/legenda.c").read_text()
+assert "static PreDownload *downloadsSessao;" in subtitle
+assert "static PreDownload *downloadSessao(const char *url)" in subtitle
+assert "while (downloadsSessao)" in subtitle
+assert "p->refs = 3;" in subtitle
+assert "p->pre = downloadSessao(url);" in subtitle
+assert "bruto = p->pre->bruto ? malloc((size_t)nb + 1) : NULL;" in subtitle
+assert "p->pre->bruto = NULL;" not in subtitle
+assert "if (!strcmp(p->url, url) && (!p->terminou || p->bruto))" in subtitle
+
 # Do not break official in-app OTA: the feature branch is not yet v1.0.10.
 assert '#define SM_UPDATE_VERSION "1.0.9"' in version
 assert "apkOficialParaAtualizar(arq)" in activity
