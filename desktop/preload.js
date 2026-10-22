@@ -9,5 +9,6 @@ contextBridge.exposeInMainWorld('streammaxDesktop', Object.freeze({
   authStart: () => ipcRenderer.invoke('streammax:auth-start'),
   authPoll: () => ipcRenderer.invoke('streammax:auth-poll'),
   authCancel: () => ipcRenderer.invoke('streammax:auth-cancel'),
+  openLoginPage: () => ipcRenderer.invoke('streammax:open-login'),
   openLocalVideo: () => ipcRenderer.invoke('streammax:open-video')
 }));
