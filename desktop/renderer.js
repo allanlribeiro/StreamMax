@@ -2,6 +2,53 @@
 const api=window.streammaxDesktop;
 const $=id=>document.getElementById(id);
 const auth=$('auth-panel'),home=$('home-panel'),account=$('account-panel');
+let activeSourceRequest=null;
+let requestSerial=0;
+function closeDetails(){
+ activeSourceRequest=null;
+ $('detail-panel').hidden=true;
+}
+function openSources(item){
+ activeSourceRequest='sources-'+Date.now()+'-'+(++requestSerial);
+ const requestId=activeSourceRequest;
+ $('sources-list').replaceChildren();
+ $('sources-status').textContent='Buscando fontes nos seus addons…';
+ $('sources-progress').value=0;
+ $('sources-progress').max=1;
+ api.searchSources(item.type,item.id,requestId).catch(error=>{
+  if(activeSourceRequest===requestId)
+    $('sources-status').textContent='Não foi possível buscar as fontes: '+String(error.message||error);
+ });
+}
+api.onSourcesProgress(update=>{
+ if(!activeSourceRequest||update.requestId!==activeSourceRequest||$('detail-panel').hidden)return;
+ $('sources-progress').max=Math.max(1,update.total||1);
+ $('sources-progress').value=Math.min(update.completed||0,Math.max(1,update.total||1));
+ const count=Number(update.available)||0;
+ const total=Number(update.total)||0;
+ const completed=Number(update.completed)||0;
+ $('sources-status').textContent= total===0
+  ?'Nenhum addon de fontes foi encontrado na conta.'
+  :update.phase==='complete'
+   ?count+' fonte(s) encontrada(s) em '+total+' addon(s).'
+   :'Fontes encontradas: '+count+' · Addons consultados: '+completed+'/'+total;
+ if(Array.isArray(update.streams)){
+  for(const source of update.streams){
+   const row=document.createElement('li');
+   const label=document.createElement('strong');
+   label.textContent=source.title;
+   const provider=document.createElement('span');
+   provider.textContent=' · '+source.addonName+(source.playable?'':' · reprodução direta indisponível');
+   row.append(label,provider);
+   if(source.description){
+    const description=document.createElement('p');
+    description.textContent=source.description;
+    row.append(description);
+   }
+   $('sources-list').append(row);
+  }
+ }
+});
 const view=window.StreamMaxHomeView.createHomeView({
  root:$('home-viewport'),
  onOpenDetails(item){
@@ -9,6 +56,7 @@ const view=window.StreamMaxHomeView.createHomeView({
    $('detail-description').textContent=item.description||'';
    $('detail-panel').hidden=false;
    $('detail-close').focus();
+   openSources(item);
  }
 });
 let authorized=false;
@@ -154,10 +202,10 @@ $('signout').addEventListener('click',async()=>{
  $('app-status').textContent='Sem sessão';
  showPage('home');
 });
-$('detail-close').addEventListener('click',()=>{$('detail-panel').hidden=true;});
-$('detail-panel').addEventListener('click',e=>{if(e.target===$('detail-panel'))$('detail-panel').hidden=true;});
+$('detail-close').addEventListener('click',closeDetails);
+$('detail-panel').addEventListener('click',e=>{if(e.target===$('detail-panel'))closeDetails();});
 document.addEventListener('keydown',event=>{
- if(event.key==='Escape'&&!$('detail-panel').hidden){$('detail-panel').hidden=true;event.preventDefault();}
+ if(event.key==='Escape'&&!$('detail-panel').hidden){closeDetails();event.preventDefault();}
 });
 async function boot(){
  if(booting)return;
