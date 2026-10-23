@@ -117,6 +117,18 @@ assert "addons_adicionar(" in ui
 assert '"Adicionar addon por URL"' in layout
 assert "ajSubLista(L, n + 2, foco" in layout
 assert "addonslocal_combinar(nova, n, lista, ADDONS_MAX)" in addons
+# Regressão observada na TCL: antes o botão ficava depois de todos os
+# addons e parecia desativado. Acesso deve aparecer em PRIMEIRO lugar.
+tela = layout.split("static void ajDesenharAddons(int foco) {", 1)[1].split("// PONTEIRO",1)[0]
+assert 'L[0] = (AjSubLinha){ "Adicionar addon por URL"' in tela
+assert 'L[1] = (AjSubLinha){ "Sincronizar addons"' in tela
+assert tela.index('L[0] =') < tela.index('for (i = 0; i < n; i++) {')
+assert 'L[i + 2] = (AjSubLinha)' in tela
+assert 'if (foco == 0) { adicionarPorUrl(); break; }' in ui
+assert 'if (foco == 1) { sincronizar(); break; }' in ui
+assert 'int idx = indiceAddon(foco, n);' in ui
+assert 'foco = 0; sair = 0;' in ui
+print("OK: opção de cadastro sempre primeiro foco, inclusive com addons existentes")
 print("OK: integração da UI, teclado e mesclagem verificada")
 PY
 cc -std=c11 -Wall -Wextra -Werror -Wno-unused-function -I src "$tmp/merged.c" -o "$tmp/test"
