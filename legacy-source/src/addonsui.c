@@ -13,6 +13,7 @@
 #include "ilha.h"
 #include "sessao.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define LINHA_H   96.0f
@@ -24,6 +25,7 @@
 #define RAIO       0.13f
 
 static int   foco, sair, pediuRelogio, aguardandoUrl;
+static char  confirmarRemocao[NV_ADDON_URL_MAX];
 // 1 quando alguem ligou ou desligou algum addon nesta visita. Ver a nota em
 // addonsui_quer_sair.
 static int   mexeu;
@@ -31,7 +33,7 @@ static float scrollY;
 static float animFoco[128];
 
 void addonsui_abrir(void) {
-  foco = 0; sair = 0; pediuRelogio = 0; mexeu = 0; aguardandoUrl = 0; scrollY = 0.0f;
+  foco = 0; sair = 0; pediuRelogio = 0; mexeu = 0; aguardandoUrl = 0; confirmarRemocao[0] = 0; scrollY = 0.0f;
   // Sonda aqui e nao no arranque: sao N viagens de rede, e elas so interessam
   // a quem abriu esta tela. Quem ja respondeu nao e consultado de novo.
   addons_sondar_manifestos();
@@ -57,6 +59,7 @@ int addonsui_quer_sair(void) {
 }
 
 int addonsui_pediu_relogio(void) { int v = pediuRelogio; pediuRelogio = 0; return v; }
+int addonsui_confirmando_remocao(void) { return confirmarRemocao[0] != 0; }
 
 // SINCRONIZAR ADDONS (#360): a ultima linha da lista (foco == n). Pede a volta
 // da conta ja, pelo mesmo ciclo de sempre (sync.c, fora do fio do quadro); o
@@ -81,6 +84,38 @@ static void adicionarPorUrl(void) {
                     alfabeto, NULL);
   aguardandoUrl = 1;
 }
+/* Remover apenas a instalação local, mantendo a lista da conta. Reconstrói
+ * após alterar o ficheiro privado, para não deixar o addon no estado atual. */
+static void removerLocalConfirmado(void) {
+  AddonRemoto *todos;
+  char url[NV_ADDON_URL_MAX];
+  int n, i, k;
+  snprintf(url, sizeof url, "%s", confirmarRemocao);
+  confirmarRemocao[0] = 0;
+  todos = calloc(ADDONS_MAX, sizeof *todos);
+  if (!todos) return;
+  n = addons_exportar(todos, ADDONS_MAX);
+  if (!addonslocal_remover(url)) {
+    ilha_avisar("addon-remocao-falhou", ILHA_INFO, "aj_puzzle",
+                "Não foi possível remover o addon local.", 4000u, 0);
+    free(todos);
+    return;
+  }
+  for (i = 0, k = 0; i < n; i++) {
+    char a[NV_ADDON_URL_MAX], b[NV_ADDON_URL_MAX];
+    nv_addon_chave(todos[i].url, a, sizeof a);
+    nv_addon_chave(url, b, sizeof b);
+    if (strcmp(a, b)) todos[k++] = todos[i];
+  }
+  if (k > 0) addons_definir_lista(todos, k);
+  else addons_esquecer();
+  free(todos);
+  mexeu = 1;
+  foco = addons_n();
+  ilha_avisar("addon-removido", ILHA_INFO, "aj_puzzle",
+              "Addon local removido desta TV.", 4000u, 0);
+}
+
 void addonsui_evento(const SDL_Event *e) {
   if (aguardandoUrl && teclado_aberto()) {
     teclado_evento(e);
@@ -89,16 +124,36 @@ void addonsui_evento(const SDL_Event *e) {
   int n = addons_n();
   pediuRelogio = 0;
   if (e->type != SDL_KEYDOWN) return;
+  if (confirmarRemocao[0]) {
+    switch (e->key.keysym.sym) {
+      case SDLK_RETURN: case SDLK_KP_ENTER:
+        removerLocalConfirmado(); break;
+      case SDLK_AC_BACK: case SDLK_ESCAPE: case SDLK_BACKSPACE: case SDLK_LEFT:
+        confirmarRemocao[0] = 0; break;
+      default: break;
+    }
+    return;
+  }
   switch (e->key.keysym.sym) {
     case SDLK_UP:     if (foco > 0) foco--; else pediuRelogio = 1; break;
     case SDLK_DOWN:   if (foco < n + 1) foco++; break;
+    case SDLK_RIGHT:
+      if (foco < n && addonslocal_contem(addons_base(foco))) {
+        snprintf(confirmarRemocao, sizeof confirmarRemocao, "%s", addons_base(foco));
+      }
+      break;
     case SDLK_RETURN: case SDLK_KP_ENTER:
       if (foco == n) { adicionarPorUrl(); break; }
       if (foco > n) { sincronizar(); break; }
       if (n > 0) {
+        const char *url = addons_base(foco);
+        if (addonslocal_contem(url) &&
+            !addonslocal_ativar(url, !addons_ativo(foco))) {
+          ilha_avisar("addon-local-erro", ILHA_INFO, "aj_puzzle",
+                      "Não foi possível salvar a alteração.", 4000u, 0);
+          break;
+        }
         addons_alternar(foco);
-        // #360 mao unica: liga/desliga so nesta TV; o proximo pull da conta
-        // sobrescreve. O aviso da tela (inspetor) diz isso.
         mexeu = 1;
       }
       break;
@@ -113,7 +168,7 @@ void addonsui_evento(const SDL_Event *e) {
 // setas). O desenho mora em ajustes_ux_ilha.inc (ajSubLista).
 void addonsui_ponteiro(int i, int b) {
   (void)b;
-  if (sair || i < 0 || i > addons_n() + 1 || i == foco) return;
+  if (sair || confirmarRemocao[0] || i < 0 || i > addons_n() + 1 || i == foco) return;
   foco = i;
 }
 int addonsui_foco(void) { return foco; }
@@ -128,6 +183,9 @@ void addonsui_atualizar(float dt, Uint32 agora) {
       if (!gravou) {
         ilha_avisar("addon-url-invalida", ILHA_INFO, "aj_puzzle",
                     "URL inválida ou não foi possível salvar o addon.", 5000u, 0);
+      } else if (gravou == 2) {
+        ilha_avisar("addon-ja-cadastrado", ILHA_INFO, "aj_puzzle",
+                    "Addon já cadastrado nesta TV.", 4000u, 0);
       } else if (addons_adicionar("Addon local", url)) {
         mexeu = 1;
         addons_sondar_manifestos();
