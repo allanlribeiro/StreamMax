@@ -183,7 +183,7 @@ internal fun ModernHomeRowsList(
         }
             .distinctUntilChanged()
             .debounce(240L) // VERTICAL_PREFETCH_DEBOUNCE_MS
-            .collect { lastVisibleRowIndex ->
+            .collectLatest { lastVisibleRowIndex ->
                 withContext(Dispatchers.IO) {
                     for (rowOffset in 1..prefetchAheadRows) {
                         val row = latestCarouselRowsForImagePrefetch.value.list
