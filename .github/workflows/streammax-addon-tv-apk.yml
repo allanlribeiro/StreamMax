@@ -1,4 +1,4 @@
-name: StreamMax 1.0.12 addon URL APK TESTE
+name: StreamMax 1.0.13 addon URL APK TESTE
 
 # Experimental: não publica OTA, não cria release e não instala na TV.
 on:
@@ -22,9 +22,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq '"version": "2.0.19"' legacy-source/deploy/app/appinfo.json
-          grep -Fq 'version="2.0.19"' legacy-source/tools/tizen-config.xml
-          grep -Fq '#define SM_UPDATE_VERSION "1.0.12"' legacy-source/src/streammax_update.h
+          grep -Fq '"version": "2.0.20"' legacy-source/deploy/app/appinfo.json
+          grep -Fq 'version="2.0.20"' legacy-source/tools/tizen-config.xml
+          grep -Fq '#define SM_UPDATE_VERSION "1.0.13"' legacy-source/src/streammax_update.h
           grep -Fq 'applicationId = "com.streammax.tv"' legacy-source/android/app/build.gradle.kts
           bash legacy-source/tests/streammax-addon-cadastro-tv.sh
           bash legacy-source/tests/streammax-updater.sh
@@ -117,8 +117,8 @@ jobs:
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           "$aapt" dump badging "$apk" | grep -q "^package: name='com.streammax.tv'"
-          "$aapt" dump badging "$apk" | grep -q "versionCode='20019'"
-          "$aapt" dump badging "$apk" | grep -Fq "versionName='1.0.12'"
+          "$aapt" dump badging "$apk" | grep -q "versionCode='20020'"
+          "$aapt" dump badging "$apk" | grep -Fq "versionName='1.0.13'"
           "$signer" verify --verbose "$apk"
           for abi in arm64-v8a armeabi-v7a; do
             unzip -Z1 "$apk" | grep -Fxq "lib/$abi/libmain.so"
@@ -132,16 +132,16 @@ jobs:
           cert_novo="$("$signer" verify --print-certs "$apk" | grep -m1 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')"
           test -n "$cert_antigo" && test "$cert_antigo" = "$cert_novo"
           mkdir -p pacote
-          cp "$apk" pacote/StreamMax-1.0.12-addon-url-TESTE.apk
+          cp "$apk" pacote/StreamMax-1.0.13-addon-url-TESTE.apk
           sha256sum pacote/*.apk > pacote/SHA256.txt
-          printf 'StreamMax 1.0.12 (teste)\nBranch: %s\nCommit: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > pacote/BUILD-INFO.txt
+          printf 'StreamMax 1.0.13 (teste)\nBranch: %s\nCommit: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > pacote/BUILD-INFO.txt
           printf 'Não publicado. Teste real na TCL e TX6 pendente.\n' >> pacote/BUILD-INFO.txt
           echo "OK: package e assinatura preservados, versionCode maior."
 
       - name: Disponibilizar somente APK de teste
         uses: actions/upload-artifact@v4
         with:
-          name: StreamMax-1.0.12-Addon-URL-TESTE
+          name: StreamMax-1.0.13-Addon-URL-TESTE
           path: pacote/*
           if-no-files-found: error
           retention-days: 14
