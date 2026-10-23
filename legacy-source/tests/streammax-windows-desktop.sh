@@ -27,6 +27,9 @@ assert "ponteiro_evento(&e, app_evento)" in src
 # Regressao Windows: clicar escolhe campo, passar o cursor nao altera o foco.
 assert "static void mover(void) {\n#ifdef NV_WINDOWS_DESKTOP" in pointer
 assert "so o clique altera o foco" in pointer
+# Clique no campo nao deve simular Return, que enviaria o login ou mudaria de campo.
+assert "ponteiro_alvo(cx.x, y, cx.w, cx.h + 42.0f, ptFocoEmail, ptFocoEmail, i, 0);" in login
+assert "ponteiro_alvo(cx.x, y, cx.w, cx.h + 42.0f, ptFocoEmail, NULL, i, 0);" in login
 # Backspace tem de chegar ao editor de login (e ao teclado modal), nao ao Voltar.
 assert "!app_no_login() && !teclado_aberto()" in src
 assert "if (k == SDLK_BACKSPACE && !e->key.repeat) { winApagar(); return; }" in login
