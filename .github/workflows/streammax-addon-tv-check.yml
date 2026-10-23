@@ -1,0 +1,33 @@
+name: StreamMax addon URL direct entry checks
+
+on:
+  push:
+    branches:
+      - feature/streammax-addons-cadastro-tv-20261023
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  addon-url:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run local addon isolation / merge tests
+        run: bash legacy-source/tests/streammax-addon-cadastro-tv.sh
+      - name: Check source and UI wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          ui=Path("legacy-source/src/addonsui.c").read_text()
+          assert ui.count("void addonsui_evento(")==1
+          assert ui.count("void addonsui_atualizar(")==1
+          assert 'teclado_abrir_com("Adicionar addon por URL"' in ui
+          assert "addonslocal_guardar(url)" in ui
+          assert "teclado_resultado()" in ui
+          core=Path("legacy-source/src/addons.c").read_text()
+          assert "addonslocal_combinar(nova, n, lista, ADDONS_MAX)" in core
+          print("OK: wiring da UI sem duplicacao")
+          PY
