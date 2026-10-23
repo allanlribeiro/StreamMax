@@ -1577,8 +1577,8 @@ static const char *ajSyncAddonsApoio(void) {
   return "Busca agora os addons da sua conta, sem esperar a volta automática.";
 }
 static void ajDesenharAddons(int foco) {
-  static AjSubLinha L[129];
-  int n = addons_n(), i, lig = 0;
+  static AjSubLinha L[130];
+  int n = addons_n(), i, lig = 0, idx;
   char sub[96], val[64], k[160];
   montarTela();
   if (n > 128) n = 128;
@@ -1587,20 +1587,28 @@ static void ajDesenharAddons(int foco) {
   snprintf(val, sizeof val, i18n("%d de %d"), lig, n);
   snprintf(sub, sizeof sub, "%s", n ? i18n("Ligados nesta TV") : i18n("Nenhum addon nesta conta."));
   ajSubCabecalho("aj_puzzle", "Fontes e addons", "Addons", n ? val : "", sub);
-  if (foco > n) foco = n;
+  if (foco > n + 1) foco = n + 1;
   if (foco < 0) foco = 0;
+  // As AÇÕES vêm PRIMEIRO. No layout anterior, cadastrar aparecia
+  // abaixo de todos os addons; com dezenas deles parecia inexistente.
+  L[0] = (AjSubLinha){ "Adicionar addon por URL",
+    "Cadastrar pelo controle remoto, teclado da TV ou celular.", "aj_puzzle", -1, 0, 1 };
+  L[1] = (AjSubLinha){ "Sincronizar addons", ajSyncAddonsApoio(), "aj_rotate-cw", -1, 0, 1 };
   { static char apoio[128][96];
     for (i = 0; i < n; i++) {
-      snprintf(apoio[i], sizeof apoio[i], "%s", ajAddonFornece(i));   // ajAddonFornece devolve um buffer so
-      L[i] = (AjSubLinha){ addons_nome(i), apoio[i], NULL, addons_ativo(i), 0, 0 };
-    } }
-  L[n] = (AjSubLinha){ "Sincronizar addons", ajSyncAddonsApoio(), "aj_rotate-cw", -1, 0, 1 };
-  { AjDica d[3] = { { "OK", foco == n ? "Sincronizar addons" : "Mudar" }, { "↑ ↓", "Navegar" }, { "Voltar", "Fontes e addons" } };
-    ajSubLista(L, n + 1, foco, d, 3, NULL, addonsui_ponteiro); }
+      snprintf(apoio[i], sizeof apoio[i], "%s", ajAddonFornece(i));
+      L[i + 2] = (AjSubLinha){ addons_nome(i), apoio[i], NULL, addons_ativo(i), 0, 0 };
+    }
+  }
+  { AjDica d[3] = { { "OK", addonsui_confirmando_remocao() ? "Confirmar" : foco == 0 ? "Adicionar" : foco == 1 ? "Sincronizar" : "Ligar ou desligar" },
+                     { "↑ ↓", "Navegar" }, { "Voltar", addonsui_confirmando_remocao() ? "Cancelar remoção" : "Fontes e addons" } };
+    ajSubLista(L, n + 2, foco, d, 3, NULL, addonsui_ponteiro); }
   snprintf(k, sizeof k, "%s · %s", i18n("Fontes e addons"), i18n("Addons"));
-  if (foco == n) ajSubInspetor(AJ_ADDONS, k, "Sincronizar addons", i18n(ajSyncAddonsApoio()));
-  else if (n > 0) {
-    const char *base0 = addons_base(foco);
+  if (foco == 0) ajSubInspetor(AJ_ADDONS, k, "Adicionar addon por URL",
+    "Digite ou cole a URL do manifesto diretamente na TV, sem sair do StreamMax.");
+  else if (foco == 1) ajSubInspetor(AJ_ADDONS, k, "Sincronizar addons", i18n(ajSyncAddonsApoio()));
+  else if ((idx = foco - 2) >= 0 && idx < n) {
+    const char *base0 = addons_base(idx);
     char host[160] = "", forn[200];
     GfxRect ir = aj2InspR();
     float y;
@@ -1609,11 +1617,13 @@ static void ajDesenharAddons(int foco) {
       p = p ? p + 3 : base0;
       snprintf(host, sizeof host, "%.*s", (int)strcspn(p, "/"), p);
     }
-    snprintf(forn, sizeof forn, "%s", ajAddonFornece(foco));
-    y = ajSubInspetor(AJ_ADDONS, k, addons_nome(foco), i18n("Os addons vêm da sua conta Nuvio. Ligar e desligar aqui vale só nesta TV, até a próxima sincronização."));
+    snprintf(forn, sizeof forn, "%s", ajAddonFornece(idx));
+    y = ajSubInspetor(AJ_ADDONS, k, addons_nome(idx),
+      addonsui_confirmando_remocao() ? "Remover este addon somente desta TV? OK confirma; Voltar cancela." :
+      i18n("OK liga/desliga. → solicita remoção de addons cadastrados na TV; a conta continua preservada."));
     if (y + 3 * 57.0f <= ir.y + ir.h) {
       y += aj2Meta(i18n("Fornece"), forn, ir.x, y, ir.w, 1);
-      y += aj2Meta(i18n("Nesta TV"), i18n(addons_ativo(foco) ? "Ligado" : "Desligado"), ir.x, y, ir.w, 1);
+      y += aj2Meta(i18n("Nesta TV"), i18n(addons_ativo(idx) ? "Ligado" : "Desligado"), ir.x, y, ir.w, 1);
       aj2Meta(i18n("Endereço"), host, ir.x, y, ir.w, 1);
     }
   } else ajSubInspetor(AJ_ADDONS, k, "Addons", i18n("Nenhum addon nesta conta."));

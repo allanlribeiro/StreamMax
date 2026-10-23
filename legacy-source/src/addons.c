@@ -1,4 +1,5 @@
 #include "addons.h"
+#include "addonslocal.h"
 #include "idbase.h"
 #include "idcanal.h"
 #include "idioma.h"
@@ -3562,17 +3563,31 @@ AddonIdentidadeEstado addons_identidade_estado(const char *id) {
 // Published configuration is copied before starting asynchronous requests.
 int addons_carregar(const char *dirArte) {
   int r;
+  /* Inicializa a base do APK, depois aplica os addons desta TV, mesmo offline.
+   * A conta, quando chegar, substitui a base sem apagar esses extras locais. */
   pthread_mutex_lock(&addonTrava);
   r = carregarSemTrava(dirArte);
   pthread_mutex_unlock(&addonTrava);
+  {
+    AddonRemoto *origem = calloc(ADDONS_MAX, sizeof *origem);
+    if (origem) {
+      int n = addons_exportar(origem, ADDONS_MAX);
+      addons_definir_lista(origem, n);
+      free(origem);
+    }
+  }
   return r;
 }
 
 int addons_definir_lista(const AddonRemoto *nova, int n) {
-  int r;
+  int r, total;
+  AddonRemoto *lista = calloc(ADDONS_MAX, sizeof *lista);
+  if (!lista) return 0;
+  total = addonslocal_combinar(nova, n, lista, ADDONS_MAX);
   pthread_mutex_lock(&addonTrava);
-  r = definirListaSemTrava(nova, n);
+  r = definirListaSemTrava(lista, total);
   pthread_mutex_unlock(&addonTrava);
+  free(lista);
   return r;
 }
 
