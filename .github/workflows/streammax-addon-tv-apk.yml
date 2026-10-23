@@ -5,7 +5,9 @@ on:
   workflow_dispatch:
   push:
     branches: [feature/streammax-addons-cadastro-tv-20261023]
-    paths: ['.github/workflows/streammax-addon-tv-apk.yml']
+    paths:
+      - '.github/workflows/streammax-addon-tv-apk.yml'
+      - 'legacy-source/tests/test_streammax_update.c'
 
 permissions:
   contents: read
