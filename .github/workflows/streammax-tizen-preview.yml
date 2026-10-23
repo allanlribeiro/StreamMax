@@ -1,0 +1,61 @@
+name: StreamMax Tizen Preview (WGT sem assinatura)
+
+on:
+  push:
+    branches:
+      - feature/streammax-tizen-preview-20261023
+    paths:
+      - ".github/workflows/streammax-tizen-preview.yml"
+      - "tizen/**"
+      - "assets/brand/app_logo_mark.png"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout StreamMax sources and branding
+        uses: actions/checkout@v4
+
+      - name: Verify packaging code
+        run: python3 -m py_compile tizen/repack_preview.py
+
+      - name: Download pinned open-source Tizen runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --show-error --silent --retry 3 \
+            https://github.com/iqui27/nuvio-native-legacy/releases/download/v2.0.8/NuvioTV-2.0.8-tizen.wgt \
+            --output NuvioTV-2.0.8-tizen.wgt
+          echo "455af423eeedec619e52ef433d57427f9c57f5cbfe9d1f557cdb5913d904107a  NuvioTV-2.0.8-tizen.wgt" | sha256sum -c -
+
+      - name: Create separate StreamMax Tizen preview package (unsigned)
+        run: |
+          python3 tizen/repack_preview.py \
+            NuvioTV-2.0.8-tizen.wgt \
+            dist/StreamMax-Tizen-Preview-0.1.0-unsigned.wgt \
+            assets/brand/app_logo_mark.png
+
+      - name: Validate WGT structure and SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -t dist/StreamMax-Tizen-Preview-0.1.0-unsigned.wgt | tail -n 3
+          (cd dist && sha256sum -c StreamMax-Tizen-Preview-0.1.0-unsigned.wgt.sha256)
+          unzip -p dist/StreamMax-Tizen-Preview-0.1.0-unsigned.wgt config.xml \
+            | grep -q "StreamMax1.StreamMax"
+          unzip -l dist/StreamMax-Tizen-Preview-0.1.0-unsigned.wgt | grep -q "index.wasm"
+
+      - name: Publish unsigned test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: streammax-tizen-preview-unsigned
+          path: |
+            dist/StreamMax-Tizen-Preview-0.1.0-unsigned.wgt
+            dist/StreamMax-Tizen-Preview-0.1.0-unsigned.wgt.sha256
+          if-no-files-found: error
+          retention-days: 14
