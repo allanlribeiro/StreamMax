@@ -1,13 +1,15 @@
 # StreamMax - cadastro de addons na TV (experimental)
 
 Base: StreamMax 1.0.11 Android TV aprovada, Legacy C/SDL/Media3.
-Candidato experimental: StreamMax 1.0.12 (Android 2.0.19 / code 20019).
+Candidato experimental com correção visual: StreamMax 1.0.13 (Android 2.0.20 / code 20020).
 Branch de desenvolvimento: feature/streammax-addons-cadastro-tv-20261023.
 Estado: implementação preliminar com testes offline; NÃO publicada em APK ou OTA.
 
 ## Uso previsto
 
-Ajustes > Fontes e addons > Addons > Adicionar addon por URL.
+Ajustes > Fontes e addons > Addons. A PRIMEIRA linha, já focada, é
+Adicionar addon por URL; a segunda é Sincronizar addons. Abaixo aparecem
+os addons instalados. Evita esconder o botão quando há muitas instalações.
 Pressione OK e digite/cole a URL do manifesto pelo teclado da TV ou pelo
 recurso de digitação pelo celular. Formatos: https://, http:// e stremio://;
 este último vira https://. Uma URL terminada em /manifest.json também funciona.
@@ -63,3 +65,12 @@ retornou GitHub API 410 (Issues desativadas no repositório). O pedido foi
 aprovado pelo proprietário durante a conversa, mas a PR #40 deve permanecer
 **draft** até existir forma adequada de vincular a aprovação e a comparação
 visual antes/depois. Não contornar artificialmente o teste de política.
+
+## Correção reportada pela TCL em 23/10/2026
+
+Na 1.0.12 o botão existia no código e foi encontrado no libmain.so de ambas
+as arquiteturas, mas aparecia **depois de toda a lista de addons**, fora da
+área visível. O relato foi que a opção não estava habilitada. A 1.0.13
+move o cadastro ao topo, com foco inicial já no botão, e mantém a sincronização
+logo abaixo. O teste host verifica essa ordem e os índices reais do controle.
+Ainda depende de validação visual em TV real.
