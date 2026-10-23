@@ -2,6 +2,8 @@
 #include "idioma.h"
 #include "descoberta.h"
 #include "addons.h"
+#include "addonslocal.h"
+#include "teclado.h"
 #include "gfx.h"
 #include "text.h"
 #include "layout.h"
@@ -21,7 +23,7 @@
 #define BASE     (NV_TELA_H - NV_MARGEM_Y - 48.0f)
 #define RAIO       0.13f
 
-static int   foco, sair, pediuRelogio;
+static int   foco, sair, pediuRelogio, aguardandoUrl;
 // 1 quando alguem ligou ou desligou algum addon nesta visita. Ver a nota em
 // addonsui_quer_sair.
 static int   mexeu;
@@ -29,7 +31,7 @@ static float scrollY;
 static float animFoco[128];
 
 void addonsui_abrir(void) {
-  foco = 0; sair = 0; pediuRelogio = 0; mexeu = 0; scrollY = 0.0f;
+  foco = 0; sair = 0; pediuRelogio = 0; mexeu = 0; aguardandoUrl = 0; scrollY = 0.0f;
   // Sonda aqui e nao no arranque: sao N viagens de rede, e elas so interessam
   // a quem abriu esta tela. Quem ja respondeu nao e consultado de novo.
   addons_sondar_manifestos();
@@ -70,7 +72,120 @@ static void sincronizar(void) {
   sync_manual_addons();
 }
 
+static void adicionarPorUrl(void) {
+  /* Reutiliza a modal de texto do app, com IME Android e QR para digitar. */
+  const char *alfabeto = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/?&=._-%~@+#[]!
+  int n = addons_n();
+  pediuRelogio = 0;
+  if (e->type != SDL_KEYDOWN) return;
+  switch (e->key.keysym.sym) {
+    case SDLK_UP:     if (foco > 0) foco--; else pediuRelogio = 1; break;
+    case SDLK_DOWN:   if (foco < n + 1) foco++; break;
+    case SDLK_RETURN: case SDLK_KP_ENTER:
+      if (foco == n) { adicionarPorUrl(); break; }
+      if (foco > n) { sincronizar(); break; }
+      if (n > 0) {
+        addons_alternar(foco);
+        // #360 mao unica: liga/desliga so nesta TV; o proximo pull da conta
+        // sobrescreve. O aviso da tela (inspetor) diz isso.
+        mexeu = 1;
+      }
+      break;
+    // Voltar (qualquer tecla de voltar) e Esquerda: de volta a linha "Addons"
+    // em Ajustes › Fontes e addons (app.c chama ajustes_voltar_de_lista).
+    case SDLK_AC_BACK: case SDLK_ESCAPE: case SDLK_BACKSPACE: case SDLK_LEFT: sair = 1; break;
+    default: break;
+  }
+}
+
+// PONTEIRO (#99): a linha sob o cursor ganha o foco (a mesma variavel das
+// setas). O desenho mora em ajustes_ux_ilha.inc (ajSubLista).
+void addonsui_ponteiro(int i, int b) {
+  (void)b;
+  if (sair || i < 0 || i > addons_n() + 1 || i == foco) return;
+  foco = i;
+}
+int addonsui_foco(void) { return foco; }
+
+void addonsui_atualizar(float dt, Uint32 agora) {
+  int i, n = addons_n();
+  if (aguardandoUrl) {
+    int resultado = teclado_resultado();
+    if (resultado == TECLADO_PRONTO) {
+      const char *url = teclado_texto();
+      int gravou = addonslocal_guardar(url);
+      if (!gravou) {
+        ilha_avisar("addon-url-invalida", ILHA_INFO, "aj_puzzle",
+                    "URL inválida ou não foi possível salvar o addon.", 5000u, 0);
+      } else if (addons_adicionar("Addon local", url)) {
+        mexeu = 1;
+        addons_sondar_manifestos();
+        ilha_avisar("addon-cadastrado", ILHA_INFO, "aj_puzzle",
+                    "Addon adicionado nesta TV. Será verificado pelo manifesto.", 5000u, 0);
+      } else {
+        ilha_avisar("addon-ja-cadastrado", ILHA_INFO, "aj_puzzle",
+                    "Addon já instalado ou lista cheia.", 4500u, 0);
+      }
+      aguardandoUrl = 0;
+      foco = addons_n();
+    } else if (resultado == TECLADO_CANCELOU) {
+      aguardandoUrl = 0;
+    }
+  }
+  float alvo;
+  (void)agora;
+  for (i = 0; i < n && i < 128; i++)
+    animFoco[i] = anim_mola(animFoco[i], i == foco ? 1.0f : 0.0f, dt, NV_MOLA_FOCO);
+  // Rolagem que mantem a linha focada dentro da area util, como em Ajustes.
+  alvo = (float)foco * (LINHA_H + LINHA_GAP);
+  if (alvo - scrollY > BASE - TOPO - LINHA_H) scrollY = alvo - (BASE - TOPO - LINHA_H);
+  if (alvo - scrollY < 0.0f) scrollY = alvo;
+}
+
+// "catalogo · fontes · legendas" com o que o manifesto respondeu. Enquanto a
+// sonda nao voltou, dizer "nao fornece" seria afirmar o que nao se sabe.
+static const char *capacidades(int i) {
+  static char buf[96];
+  // CADA PEDACO PASSA POR i18n(): a linha montada ("Catálogo  ·  Fontes")
+  // nunca casa com chave nenhuma, e foi assim que a tela de addons ficou em
+  // portugues no meio da interface em ingles (captura de 16/09).
+  if (!addons_sondado(i)) return i18n("conferindo o manifesto…");
+  buf[0] = 0;
+  if (addons_fornece(i, ADD_CATALOGO)) strcat(buf, i18n("Catálogo"));
+  if (addons_fornece(i, ADD_STREAM)) {
+    if (buf[0]) strcat(buf, "  ·  ");
+    strcat(buf, i18n("Fontes"));
+  }
+  if (addons_fornece(i, ADD_LEGENDA)) {
+    if (buf[0]) strcat(buf, "  ·  ");
+    strcat(buf, i18n("Legendas"));
+  }
+  if (!buf[0]) snprintf(buf, sizeof buf, "%s", i18n("não fornece nada que este app use"));
+  return buf;
+}
+
+// A TELA DE ADDONS NO GLASS UI (mockup de Ajustes, quadro "addons"): o mesmo
+// arranjo de ilhas de Ajustes, desenhado por ajustes.c (que tem as pecas).
+void addonsui_desenhar(Uint32 agora) {
+  (void)agora;
+  ajustes_desenhar_addons(foco);
+}
+
+#ifdef AJUSTES_TESTE
+void addonsui_teste_foco(int f) { foco = f; }
+#endif
+()*+,;";
+  teclado_contexto("Fontes e addons");
+  teclado_abrir_com("Adicionar addon por URL",
+                    "Digite ou cole a URL do manifesto do addon.", TECLADO_LONGO,
+                    alfabeto, NULL);
+  aguardandoUrl = 1;
+}
 void addonsui_evento(const SDL_Event *e) {
+  if (aguardandoUrl && teclado_aberto()) {
+    teclado_evento(e);
+    return;
+  }
   int n = addons_n();
   pediuRelogio = 0;
   if (e->type != SDL_KEYDOWN) return;
