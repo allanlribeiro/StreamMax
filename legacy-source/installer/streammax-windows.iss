@@ -1,7 +1,7 @@
 ; StreamMax Windows - instalador por usuario (sem privilegios administrativos)
 ; Preview W0: janela e navegacao em validacao; player de video ainda pendente.
 #define MyAppName "StreamMax"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.2.0"
 #define MyAppPublisher "StreamMax"
 
 [Setup]
@@ -21,13 +21,14 @@ OutputBaseFilename=StreamMax-Setup-Windows-x64
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\build\windows\streammax.ico
 SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
 MinVersion=10.0
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-VersionInfoVersion=0.1.0.0
+VersionInfoVersion=0.2.0.0
 DisableProgramGroupPage=no
 ShowLanguageDialog=no
 

@@ -2,9 +2,19 @@ name: StreamMax Windows experimental
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - streammax/windows-desktop
+    paths:
+      - 'legacy-source/src/**'
+      - 'legacy-source/tools/windows*'
+      - 'legacy-source/installer/**'
+      - 'legacy-source/tests/streammax-windows-desktop.sh'
+      - '.github/workflows/streammax-windows-experimental.yml'
   push:
     branches:
       - streammax/windows-desktop
+      - feature/streammax-windows-complete-test-20261022
 
 permissions:
   contents: read
@@ -36,6 +46,9 @@ jobs:
             mingw-w64-ucrt-x86_64-zlib
             mingw-w64-ucrt-x86_64-dlfcn
             mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-binutils
+            mingw-w64-ucrt-x86_64-mpv
+            mingw-w64-ucrt-x86_64-python-pillow
 
       - name: Criar configuracao publica temporaria
         run: |
@@ -44,6 +57,14 @@ jobs:
           NUVIO_SUPABASE_ANON_KEY=sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
           TV_LOGIN_WEB_BASE_URL=https://nuvio.tv/tv-login
           EOF
+
+      - name: Confirmar Pillow no Python UCRT64 da compilacao
+        shell: msys2 {0}
+        run: python3 -c 'from PIL import Image; print("Pillow do UCRT64 pronto")'
+
+      - name: Contratos de interface e player Windows
+        shell: msys2 {0}
+        run: bash legacy-source/tests/streammax-windows-desktop.sh
 
       - name: Compilar StreamMax.exe
         working-directory: legacy-source
@@ -58,18 +79,23 @@ jobs:
           # Descobrir dependencias pelo binario, nao por lista fixa de DLLs.
           # Impede builds verdes com ZIP que nao abre por falta de bibliotecas.
           bash tools/windows-bundle-dlls.sh build/windows/package
-          cp -r deploy/app/art build/windows/package/art
+          bash tools/windows-art.sh build/windows/package/art
           # Sem as fontes o layout abre, mas o teclado e o login ficam SEM
           # letras (reproduzido pelo relato do Windows).
           cp -r deploy/app/fonts build/windows/package/fonts
           test -s build/windows/package/StreamMax.exe
+          test -s build/windows/streammax.ico
+          if find build/windows/package/art -type f \( -iname '*.txt' -o -iname '*.bin' -o -iname '*.tmp' \) | grep -q .; then
+            echo "::error::Arte do pacote contem arquivos privados"; exit 1
+          fi
           test -d build/windows/package/art
           test -s build/windows/package/art/discord-ca.pem || { echo "::error::Bundle de certificados TLS ausente"; exit 1; }
-          test -s build/windows/package/libcurl-4.dll || { echo "::error::libcurl nao incluida no instalador"; exit 1; }
+          test -s build/windows/package/libcurl-4.dll
+          test -s build/windows/package/libmpv-2.dll || { echo "::error::libmpv ausente no pacote"; exit 1; }
           for fonte in InterDisplay-Regular.ttf InterDisplay-Bold.ttf Roboto-Regular.ttf Montserrat-Regular.ttf; do
             test -s "build/windows/package/fonts/$fonte" || { echo "::error::Fonte do teclado faltando: $fonte"; exit 1; }
           done
-          printf 'StreamMax para Windows (experimental W0)\nExtraia todo o ZIP antes de executar StreamMax.exe.\nNao mova o EXE para fora desta pasta.\nO player de video ainda nao esta implementado nesta fase.\n' > build/windows/package/LEIA-ME.txt
+          printf 'StreamMax para Windows (experimental W0)\nExtraia todo o ZIP antes de executar StreamMax.exe.\nNao mova o EXE para fora desta pasta.\nPlayer Windows experimental integrado via libmpv. Validar filmes, fontes, audio, legendas e performance no PC antes de distribuir.\n' > build/windows/package/LEIA-ME.txt
 
 
       - name: Testar HTTPS com libcurl empacotada e PATH limpo
@@ -199,7 +225,7 @@ jobs:
           $arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dest")
           $p = Start-Process -FilePath $setup -ArgumentList $arguments -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "Instalador retornou $($p.ExitCode)" }
-          foreach ($file in @("StreamMax.exe", "SDL2.dll", "libGLESv2.dll", "libdl.dll", "libcurl-4.dll", "art\discord-ca.pem")) {
+          foreach ($file in @("StreamMax.exe", "SDL2.dll", "libGLESv2.dll", "libdl.dll", "libcurl-4.dll", "libmpv-2.dll", "art\discord-ca.pem")) {
             if (-not (Test-Path (Join-Path $dest $file))) { throw "Instalacao incompleta: $file" }
           }
           if (-not (Test-Path (Join-Path $dest "art"))) { throw "Instalacao sem pasta art" }

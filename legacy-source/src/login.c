@@ -433,7 +433,13 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
   if (k > 0.01f)
     gfx_vidro_aro((GfxRect){ cx.x - 6, cx.y - 6, cx.w + 12, cx.h + 12 }, NV_RAIO_CARD, 2.5f,
                   ar, ag, ab, 0.95f * k);
+#ifdef NV_WINDOWS_DESKTOP
+  // Um clique no campo deve apenas ativar a edicao, sem simular Enter:
+  // Enter em e-mail mudaria para senha; Enter na senha tentaria fazer login.
+  ponteiro_alvo(cx.x, y, cx.w, cx.h + 42.0f, ptFocoEmail, ptFocoEmail, i, 0);
+#else
   ponteiro_alvo(cx.x, y, cx.w, cx.h + 42.0f, ptFocoEmail, NULL, i, 0);
+#endif
   if (valor[0]) {
     char pontos[TECLADO_LONGO * 3 + 1];
     TxtLinha t;

@@ -112,6 +112,8 @@
 #include "logoapp.h"
 #ifdef NV_WINDOWS_DESKTOP
 #include "winstartup.h"
+#include "windows_mpv.h"
+#include "teclado.h" // modal de entrada textual do desktop
 #endif
 // O idioma AUTOMATICO da interface mudou depois do arranque (a conta chegou, ou
 // a TV respondeu o locale). Titulos e generos das fileiras saem no idioma novo,
@@ -1345,8 +1347,9 @@ int main(int argc, char **argv) {
   // seta desenhada e a do proprio sistema (ponteiro.c nao desenha outra).
   // No Mac o cursor do sistema continua escondido e o app desenha o seu.
 #ifdef NV_WINDOWS_DESKTOP
-  // A versao de PC usa mouse de verdade: mostrar o cursor do Windows.
+  // Mouse do sistema + janela com tamanho minimo para evitar controles ilegíveis.
   SDL_ShowCursor(SDL_ENABLE);
+  SDL_SetWindowMinimumSize(win, 960, 540);
 #elif defined(NV_SEM_WEBOS)
   SDL_ShowCursor(SDL_DISABLE);
 #else
@@ -1919,6 +1922,22 @@ int main(int argc, char **argv) {
           interfaceViewport(win, &dw, &dh, &viewportModo);
         }
 #endif
+#ifdef NV_WINDOWS_DESKTOP
+        // Janela normal, maximizacao e F11 alteram o drawable dinamicamente.
+        if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
+            e.window.event == SDL_WINDOWEVENT_RESIZED) {
+          SDL_GL_GetDrawableSize(win, &dw, &dh);
+          if (dw > 0 && dh > 0) {
+            ponteiro_evento(&e, app_evento);
+            glViewport(0, 0, dw, dh);
+            gfx_tamanho_alvo(dw, dh);
+            gpun_redimensionar(dw, dh);
+            video_escala_definir(dw, dh);
+            capW = dw; capH = dh;
+            printf("[windows] viewport %dx%d\\n", dw, dh);
+          }
+        }
+#endif
         // Ultimo sinal de vida na marca de sessao (avisos_sinal): e o que diz,
         // na abertura seguinte, se a sessao que "nao se despediu" tinha ido
         // para segundo plano antes de morrer.
@@ -1968,6 +1987,31 @@ int main(int argc, char **argv) {
       // de cursor do webOS ficam la; o que ele traduz em tecla chega a
       // app_evento como se viesse do D-pad.
       if (ponteiro_evento(&e, app_evento)) continue;
+#ifdef NV_WINDOWS_DESKTOP
+      // Atalhos desktop sem alterar a logica de foco, mouse e formularios.
+      if (e.type == SDL_KEYDOWN && !e.key.repeat &&
+          (e.key.keysym.sym == SDLK_F11 ||
+           (e.key.keysym.sym == SDLK_RETURN && (e.key.keysym.mod & KMOD_ALT)))) {
+        const int cheia = !!(SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN_DESKTOP);
+        SDL_SetWindowFullscreen(win, cheia ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+        continue;
+      }
+      // Atalhos usuais de PC, usando as mesmas rotas de teclado da TV.
+      if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) &&
+          e.key.keysym.sym == SDLK_f && (e.key.keysym.mod & KMOD_CTRL)) {
+        e.key.keysym.sym = SDLK_F5; // Ctrl+F: busca Spotlight
+        e.key.keysym.scancode = SDL_SCANCODE_F5;
+      }
+      if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) &&
+          ((e.key.keysym.sym == SDLK_LEFT && (e.key.keysym.mod & KMOD_ALT)) ||
+            e.key.keysym.sym == SDLK_ESCAPE ||
+            (e.key.keysym.sym == SDLK_BACKSPACE &&
+             !app_no_login() && !teclado_aberto()))) {
+        // Backspace apaga caracteres em login/teclados; fora deles volta.
+        e.key.keysym.sym = SDLK_AC_BACK; // Esc/Backspace/Alt+Seta Esquerda: voltar
+        e.key.keysym.scancode = SDL_SCANCODE_AC_BACK;
+      }
+#endif
       // O BACK do webOS chega com scancode proprio (482), nao como AC_BACK, e
       // com KEYDOWN e KEYUP quase juntos — so o KEYDOWN conta. Isto ja tinha
       // sido resolvido uma vez e voltou a quebrar quando limpei os remendos
@@ -2277,7 +2321,14 @@ int main(int argc, char **argv) {
     gputempo_quadro_fim();
     t0 = NV_T0();
     if (!nvPrimeiroQuadroFeito) arranque_etapa("primeiro SwapWindow");
+#ifdef NV_WINDOWS_DESKTOP
+    // O video vai SOB a UI nativa: so preenche os furos alfa do player/hero.
+    sm_mpv_composite();
+#endif
     SDL_GL_SwapWindow(win);
+#ifdef NV_WINDOWS_DESKTOP
+    sm_mpv_report_swap();
+#endif
     swapint_marca(&swapInt, (double)SDL_GetPerformanceCounter() * 1000.0 / perFreq);
 #ifdef NV_ANDROID
     android_quadro();   // todo quadro apresentado, de qualquer tela (vigia #266)
