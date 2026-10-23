@@ -84,6 +84,12 @@ static void adicionarPorUrl(void) {
                     alfabeto, NULL);
   aguardandoUrl = 1;
 }
+/* Índices da lista: 0 = Adicionar; 1 = Sincronizar; 2... = addons.
+ * Os atalhos aparecem primeiro mesmo para quem tem dezenas de addons. */
+static int indiceAddon(int foco, int n) {
+  int idx = foco - 2;
+  return idx >= 0 && idx < n ? idx : -1;
+}
 /* Remover apenas a instalação local, mantendo a lista da conta. Reconstrói
  * após alterar o ficheiro privado, para não deixar o addon no estado atual. */
 static void removerLocalConfirmado(void) {
@@ -111,7 +117,7 @@ static void removerLocalConfirmado(void) {
   else addons_esquecer();
   free(todos);
   mexeu = 1;
-  foco = addons_n();
+  foco = 0;
   ilha_avisar("addon-removido", ILHA_INFO, "aj_puzzle",
               "Addon local removido desta TV.", 4000u, 0);
 }
@@ -137,24 +143,28 @@ void addonsui_evento(const SDL_Event *e) {
   switch (e->key.keysym.sym) {
     case SDLK_UP:     if (foco > 0) foco--; else pediuRelogio = 1; break;
     case SDLK_DOWN:   if (foco < n + 1) foco++; break;
-    case SDLK_RIGHT:
-      if (foco < n && addonslocal_contem(addons_base(foco))) {
-        snprintf(confirmarRemocao, sizeof confirmarRemocao, "%s", addons_base(foco));
+    case SDLK_RIGHT: {
+      int idx = indiceAddon(foco, n);
+      if (idx >= 0 && addonslocal_contem(addons_base(idx))) {
+        snprintf(confirmarRemocao, sizeof confirmarRemocao, "%s", addons_base(idx));
       }
-      break;
+      break; }
     case SDLK_RETURN: case SDLK_KP_ENTER:
-      if (foco == n) { adicionarPorUrl(); break; }
-      if (foco > n) { sincronizar(); break; }
-      if (n > 0) {
-        const char *url = addons_base(foco);
-        if (addonslocal_contem(url) &&
-            !addonslocal_ativar(url, !addons_ativo(foco))) {
-          ilha_avisar("addon-local-erro", ILHA_INFO, "aj_puzzle",
-                      "Não foi possível salvar a alteração.", 4000u, 0);
-          break;
+      if (foco == 0) { adicionarPorUrl(); break; }
+      if (foco == 1) { sincronizar(); break; }
+      {
+        int idx = indiceAddon(foco, n);
+        if (idx >= 0) {
+          const char *url = addons_base(idx);
+          if (addonslocal_contem(url) &&
+              !addonslocal_ativar(url, !addons_ativo(idx))) {
+            ilha_avisar("addon-local-erro", ILHA_INFO, "aj_puzzle",
+                        "Não foi possível salvar a alteração.", 4000u, 0);
+            break;
+          }
+          addons_alternar(idx);
+          mexeu = 1;
         }
-        addons_alternar(foco);
-        mexeu = 1;
       }
       break;
     // Voltar (qualquer tecla de voltar) e Esquerda: de volta a linha "Addons"
@@ -196,7 +206,7 @@ void addonsui_atualizar(float dt, Uint32 agora) {
                     "Addon já instalado ou lista cheia.", 4500u, 0);
       }
       aguardandoUrl = 0;
-      foco = addons_n();
+      foco = 0;
     } else if (resultado == TECLADO_CANCELOU) {
       aguardandoUrl = 0;
     }
@@ -204,7 +214,7 @@ void addonsui_atualizar(float dt, Uint32 agora) {
   float alvo;
   (void)agora;
   for (i = 0; i < n && i < 128; i++)
-    animFoco[i] = anim_mola(animFoco[i], i == foco ? 1.0f : 0.0f, dt, NV_MOLA_FOCO);
+    animFoco[i] = anim_mola(animFoco[i], i + 2 == foco ? 1.0f : 0.0f, dt, NV_MOLA_FOCO);
   // Rolagem que mantem a linha focada dentro da area util, como em Ajustes.
   alvo = (float)foco * (LINHA_H + LINHA_GAP);
   if (alvo - scrollY > BASE - TOPO - LINHA_H) scrollY = alvo - (BASE - TOPO - LINHA_H);
