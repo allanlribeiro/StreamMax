@@ -362,12 +362,18 @@ static void rastro(const char *o_que, const PonteiroAlvo *al, int n) {
 }
 
 static void mover(void) {
+#ifdef NV_WINDOWS_DESKTOP
+  // Desktop: so o clique altera o foco. Hover nao rouba a edicao do login.
+  // As TVs continuam com o comportamento Magic Remote original.
+  return;
+#else
   const PonteiroAlvo *v = lista[pronto];
   int i = ponteiro_achar(v, nLista[pronto], px, py);
   if (i < 0 || mesmo(&hover, &v[i])) return;
   if (conteudoMexeuEm && agoraMs() - conteudoMexeuEm < PONT_ASSENTA_MS) return;
   guardar(&hover, &v[i]);
   if (v[i].focar) { rastro("foco", &v[i], nLista[pronto]); v[i].focar(v[i].a, v[i].b); }
+#endif
 }
 
 static int dedoIndice(const SDL_TouchFingerEvent *e) {

@@ -113,6 +113,7 @@
 #ifdef NV_WINDOWS_DESKTOP
 #include "winstartup.h"
 #include "windows_mpv.h"
+#include "teclado.h" // modal de entrada textual do desktop
 #endif
 // O idioma AUTOMATICO da interface mudou depois do arranque (a conta chegou, ou
 // a TV respondeu o locale). Titulos e generos das fileiras saem no idioma novo,
@@ -2004,7 +2005,9 @@ int main(int argc, char **argv) {
       if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) &&
           ((e.key.keysym.sym == SDLK_LEFT && (e.key.keysym.mod & KMOD_ALT)) ||
             e.key.keysym.sym == SDLK_ESCAPE ||
-            e.key.keysym.sym == SDLK_BACKSPACE)) {
+            (e.key.keysym.sym == SDLK_BACKSPACE &&
+             !app_no_login() && !teclado_aberto()))) {
+        // Backspace apaga caracteres em login/teclados; fora deles volta.
         e.key.keysym.sym = SDLK_AC_BACK; // Esc/Backspace/Alt+Seta Esquerda: voltar
         e.key.keysym.scancode = SDL_SCANCODE_AC_BACK;
       }

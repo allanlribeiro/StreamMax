@@ -153,12 +153,18 @@ void dicascontrole_depois_novidades(void) {}
 // install/version after the screen stayed quiet for OCIOSO_S. The marker is
 // read once per idle entry (-1 = ainda nao conferido), nao a cada quadro.
 void dicascontrole_home_livre(int livre, float dt) {
+#ifdef NV_WINDOWS_DESKTOP
+  // Guia de botoes da TV nao pertence ao onboarding de mouse e teclado.
+  (void)livre; (void)dt;
+  return;
+#else
   static int visto = -1;
   if (!livre || dicascontrole_ocupado()) { ocioso = 0; visto = -1; return; }
   if (visto < 0) visto = jaVisto();
   if (visto) return;
   ocioso += dt;
   if (ocioso >= OCIOSO_S) { ocioso = 0; dicascontrole_abrir(); automatico = 1; }
+#endif
 }
 static void concluir(int a, int b) {
   (void)a; (void)b;
