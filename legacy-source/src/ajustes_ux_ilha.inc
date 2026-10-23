@@ -1597,8 +1597,8 @@ static void ajDesenharAddons(int foco) {
   L[n] = (AjSubLinha){ "Adicionar addon por URL",
     "Cadastrar pelo controle remoto, teclado da TV ou celular.", "aj_puzzle", -1, 0, 1 };
   L[n + 1] = (AjSubLinha){ "Sincronizar addons", ajSyncAddonsApoio(), "aj_rotate-cw", -1, 0, 1 };
-  { AjDica d[3] = { { "OK", foco == n ? "Adicionar" : foco == n + 1 ? "Sincronizar" : "Mudar" },
-                     { "↑ ↓", "Navegar" }, { "Voltar", "Fontes e addons" } };
+  { AjDica d[3] = { { "OK", addonsui_confirmando_remocao() ? "Confirmar" : foco == n ? "Adicionar" : foco == n + 1 ? "Sincronizar" : "Ligar ou desligar" },
+                     { "↑ ↓", "Navegar" }, { "Voltar", addonsui_confirmando_remocao() ? "Cancelar remoção" : "Fontes e addons" } };
     ajSubLista(L, n + 2, foco, d, 3, NULL, addonsui_ponteiro); }
   snprintf(k, sizeof k, "%s · %s", i18n("Fontes e addons"), i18n("Addons"));
   if (foco == n) ajSubInspetor(AJ_ADDONS, k, "Adicionar addon por URL",
@@ -1615,7 +1615,9 @@ static void ajDesenharAddons(int foco) {
       snprintf(host, sizeof host, "%.*s", (int)strcspn(p, "/"), p);
     }
     snprintf(forn, sizeof forn, "%s", ajAddonFornece(foco));
-    y = ajSubInspetor(AJ_ADDONS, k, addons_nome(foco), i18n("Addons da conta são sincronizados. Addons adicionados na TV permanecem locais ao perfil."));
+    y = ajSubInspetor(AJ_ADDONS, k, addons_nome(foco),
+      addonsui_confirmando_remocao() ? "Remover este addon somente desta TV? OK confirma; Voltar cancela." :
+      i18n("OK liga/desliga. → solicita remoção de addons cadastrados na TV; a conta continua preservada."));
     if (y + 3 * 57.0f <= ir.y + ir.h) {
       y += aj2Meta(i18n("Fornece"), forn, ir.x, y, ir.w, 1);
       y += aj2Meta(i18n("Nesta TV"), i18n(addons_ativo(foco) ? "Ligado" : "Desligado"), ir.x, y, ir.w, 1);
