@@ -110,7 +110,7 @@ addons = (root / "addons.c").read_text(encoding="utf-8")
 assert ui.count("void addonsui_evento(") == 1
 assert 'teclado_abrir_com("Adicionar addon por URL"' in ui
 assert "addonslocal_guardar(url)" in ui
-assert "addonslocal_ativar(url, !addons_ativo(foco))" in ui
+assert "addonslocal_ativar(url, !addons_ativo(idx))" in ui
 assert "addonslocal_remover(url)" in ui
 assert "addonsui_confirmando_remocao()" in layout
 assert "addons_adicionar(" in ui
