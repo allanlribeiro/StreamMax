@@ -8,13 +8,21 @@
 static void geometria(void) {
   const int tamanhos[][2] = {{1920,1080},{1920,804},{1080,1080},{720,1280},{0,0}};
   for (unsigned i = 0; i < sizeof tamanhos / sizeof tamanhos[0]; i++) {
-    float x,w,h,asp = i == 4 ? 16.0f/9.0f : (float)tamanhos[i][0]/tamanhos[i][1];
+    float x,w,h,vx,vy,vw,vh;
+    float asp = i == 4 ? 16.0f/9.0f : (float)tamanhos[i][0]/tamanhos[i][1];
+    float antigoW = fminf(1228.8f, 438 * asp), antigoH = antigoW / asp;
     sm_trailer_hero_area(1920,1228.8f,438,tamanhos[i][0],tamanhos[i][1],&x,&w,&h);
     assert(fabsf(x+w-1920) < 0.01f && x >= 0);
-    assert(w <= 1228.81f && h <= 438.01f && h > 0);
-    assert(fabsf(w/h-asp) < 0.001f);  // No stretch/crop even for square or portrait sources.
+    assert(fabsf(w/antigoW - 1.17f) < 0.001f);
+    assert(fabsf(h/antigoH - 1.03f) < 0.001f);
+    sm_trailer_hero_video(x,0,w,h,tamanhos[i][0],tamanhos[i][1],&vx,&vy,&vw,&vh);
+    assert(vx <= x + 0.01f && vy <= 0.01f);
+    assert(vx+vw >= x+w-0.01f && vy+vh >= h-0.01f);
+    assert(fabsf(vw/vh-asp) < 0.001f);  // Uniform scale: never squeeze or stretch.
   }
-  assert((1-SM_TRAILER_FADE_ESQUERDA)*SM_TRAILER_FADE_BASE > 0.72f);
+  assert(fabsf(SM_TRAILER_FADE_ESQUERDA/0.16f-1.14f) < 0.001f);
+  assert(fabsf((1-SM_TRAILER_FADE_BASE)/0.14f-1.14f) < 0.001f);
+  assert((1-SM_TRAILER_FADE_ESQUERDA)*SM_TRAILER_FADE_BASE > 0.68f);
 }
 
 static int reduzir(const char *m, int teto, char *dst, size_t cap) {
