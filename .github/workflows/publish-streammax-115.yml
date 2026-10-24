@@ -1,0 +1,62 @@
+name: Preparar download do StreamMax Legacy 1.0.15
+on:
+  push:
+    branches: [fix/streammax-trailers-menu-1015]
+    paths: [.github/workflows/publish-streammax-115-release.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: streammax-115-release-download
+  cancel-in-progress: false
+jobs:
+  upload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Confirmar compilação da origem correta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run watch 40091458120 --repo allanlribeiro/StreamMax --exit-status --interval 30
+          test "$(gh api repos/allanlribeiro/StreamMax/actions/runs/40091458120 --jq .head_sha)" = 214b3504e5781c4435b364f3b4bdb8a43f92c88d
+          test "$(gh api repos/allanlribeiro/StreamMax/actions/runs/40091458120 --jq .conclusion)" = success
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: allanlribeiro/StreamMax
+          run-id: 40091458120
+          name: StreamMax-1.0.15-Trailers-Menu-TESTE
+          path: pacote
+      - name: Conferir arquivo, pacote e assinatura
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          grep -Fxq 'Commit: 214b3504e5781c4435b364f3b4bdb8a43f92c88d' pacote/BUILD-INFO.txt
+          sha256sum --check pacote/SHA256.txt
+          apk=pacote/StreamMax-1.0.15-android.apk
+          aapt="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$aapt" dump badging "$apk" > badging.txt
+          grep -q "^package: name='com.streammax.tv'" badging.txt
+          grep -q "versionCode='20022'" badging.txt
+          grep -Fq "versionName='1.0.15'" badging.txt
+          mkdir approved
+          gh release download v1.0.11 --repo allanlribeiro/StreamMax --pattern StreamMax-1.0.11-android.apk --dir approved
+          "$signer" verify --print-certs "$apk" > new-cert.txt
+          "$signer" verify --print-certs approved/StreamMax-1.0.11-android.apk > old-cert.txt
+          test "$(awk '/Signer #1 certificate SHA-256 digest:/ {print $NF}' new-cert.txt)" = "$(awk '/Signer #1 certificate SHA-256 digest:/ {print $NF}' old-cert.txt)"
+          printf 'APK_SHA256=%s\n' "$(sha256sum "$apk" | awk '{print $1}')"
+          printf 'APK_BYTES=%s\n' "$(stat -c '%s' "$apk")"
+      - name: Enviar somente ao rascunho de teste
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: allanlribeiro/StreamMax
+        run: |
+          set -euo pipefail
+          test "$(gh release view v1.0.15 --json isDraft --jq .isDraft)" = true
+          gh release upload v1.0.15 pacote/StreamMax-1.0.15-android.apk pacote/SHA256.txt pacote/BUILD-INFO.txt
+          gh release view v1.0.15 --json assets --jq '.assets[] | {name,size,state}'
