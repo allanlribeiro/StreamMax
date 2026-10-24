@@ -26,10 +26,11 @@ int main(void) {
   assert(!sm_update_nova_versao("v1.0.11"));
   assert(!sm_update_nova_versao("v1.0.12"));
   assert(!sm_update_nova_versao("v1.0.13"));
-  assert(!sm_update_nova_versao("v1.0.16"));
+  assert(!sm_update_nova_versao("v1.0.17"));
   assert(!sm_update_nova_versao("v1.0.14"));
   assert(!sm_update_nova_versao("v1.0.15"));
-  assert(sm_update_nova_versao("v1.0.17"));
+  assert(!sm_update_nova_versao("v1.0.16"));
+  assert(sm_update_nova_versao("v1.0.18"));
   assert(sm_update_nova_versao("v1.1.0"));
   assert(sm_update_nova_versao("v2.0.0"));
   assert(!sm_update_nova_versao("v0.9.9"));

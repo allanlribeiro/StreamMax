@@ -5,6 +5,7 @@
 // principal.
 #ifndef NV_DEEPLINK_H
 #define NV_DEEPLINK_H
+#include <stdint.h>
 
 #define DL_URL_MAX 512
 
@@ -17,6 +18,7 @@ typedef struct {
   int serie;            // 1 = series, 0 = movie
   int temporada, episodio;  // so em DL_TOCAR; 0 = nao pedido
   char consulta[96];    // so em DL_BUSCA (UTF-8, sem controles)
+  uint64_t sessaoEsperada; // Watch Next only: reject after account/profile changes.
 } DeepLink;
 
 // 1 = URL valida e `out` preenchido; 0 = lixo (out zerado). Nunca escreve
@@ -25,6 +27,7 @@ int  deeplink_parse(const char *url, DeepLink *out);
 
 // Qualquer fio: valida e guarda o ultimo pedido (o mais novo vence).
 void deeplink_postar(const char *url);
+void deeplink_postar_sessao(const char *url, uint64_t sessao);
 // Laco principal: 1 e entrega o pedido pendente, uma vez so.
 int  deeplink_pegar(DeepLink *out);
 #endif

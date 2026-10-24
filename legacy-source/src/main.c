@@ -9,6 +9,7 @@
 #endif
 #include <SDL2/SDL.h>
 #include "tpkteclas.h"
+#include "watchnext.h"
 #include "central.h"
 #include "sdlcompat.h"
 #include <SDL2/SDL_image.h>
@@ -1830,6 +1831,11 @@ int main(int argc, char **argv) {
         fflush(stdout);
       }
       player_ciclo_evento(e.type);
+      if (e.type == SDL_APP_WILLENTERBACKGROUND || e.type == SDL_APP_DIDENTERBACKGROUND ||
+          e.type == SDL_APP_TERMINATING || e.type == SDL_QUIT) {
+        watchnext_sujar();
+        watchnext_atualizar(SDL_GetTicks(), !app_no_login() && !app_em_escolha_perfil());
+      }
       if (e.type == SDL_APP_DIDENTERFOREGROUND) atualizacao_retomou();
       // PONTEIRO (Magic Remote, issue #99): mouse, rodinha e os avisos 484/485
       // de cursor do webOS ficam la; o que ele traduz em tecla chega a
