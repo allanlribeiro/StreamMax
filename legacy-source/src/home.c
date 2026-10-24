@@ -3,6 +3,7 @@
 // hero no topo, rail fixa à esquerda e fileiras horizontais de posters. A
 // infraestrutura nativa cuida de cache assíncrono, foco e transições.
 #include "home.h"
+#include "trailerhero.h"
 #include "perfis.h"
 #include "botoes.h"
 #include "cwretido.h"
@@ -4686,21 +4687,14 @@ static void ponteiroHero(int a, int b);
 static GfxRect heroTrailerArea(GfxRect arte) {
 #ifdef NV_ANDROID
   if (layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone()) {
-    // A foto enviada da TCL mostrou o trailer 16:9 centralizado e uma area
-    // vazia a DIREITA. O SurfaceView Android faz aspect-fit numa janela muito
-    // larga ate receber o recorte de fonte (ver trailer.c). O destino do hero
-    // deve encostar no lado direito SEM cobrir logo/meta no esquerdo.
-    // Nao reutilizar o rect da arte de tela cheia, nem entrar nas fileiras.
-    // A rampa GFX_HERO (aplicada abaixo APOS o furo) dissolve a borda
-    // esquerda ate a ficha/logo, sem imagem escurecida no miolo.
-    float w = fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f);
-    float x = NV_TELA_W - w;
-    // A antiga altura parava em 422 px: o video parecia achatado e o
-    // degradê de base comecava aos 245 px. Agora o trailer ocupa a faixa
-    // superior até 558 px, sem passar da primeira fileira (topo > 660 px).
-    // Nao estender ate os 1080 do backdrop nem cortar em corteFileiras().
-    // O trailer termina ANTES dos cards, com fade suave nos 25% finais.
-    float h = fminf(NV_HERO_ARTE_H, homeShelfTop() + 60.0f);
+    // Quadro inteiro no canto superior direito. A proporcao vem do video,
+    // com 16:9 apenas durante o preparo; a mascara recebe o mesmo destino.
+    float w, h, x;
+    // Respeitar a primeira fileira. So os 16% da esquerda e 14% da base
+    // fazem a transicao; o restante do trailer permanece sem veu.
+    sm_trailer_hero_area(NV_TELA_W, fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f),
+                        fminf(NV_HERO_ARTE_H, homeShelfTop() + 60.0f),
+                        video_largura(), video_altura(), &x, &w, &h);
     return (GfxRect){x, 0.0f, w, h};
   }
   if (layoutHome() == HOME_LAYOUT_DINAMICA) {
@@ -5250,13 +5244,8 @@ static void desenhaHero(Uint32 agora, float saida) {
     aArte *= (1.0f - aTrailer);
   }
 #endif
-#ifdef NV_ANDROID
-  // Dissolver o backdrop quando o trailer assume o destaque.
-  // Preserva a camada de texto e as fileiras fora da arte.
-  if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA &&
-      !homeRetratoTelefone())
-    aArte *= (1.0f - aTrailer);
-#endif
+  // Android: manter o backdrop sob a mascara. O proprio furo faz o
+  // crossfade e dissolve as bordas para a arte, sem retangulo preto.
   if (deslizando) {
     // O que sai do retangulo da arte nao pinta: o shader corta a arte de tela,
     // e o recorte aqui corta o poster e o marcador, que andam o rect inteiro.
@@ -5345,7 +5334,7 @@ static void desenhaHero(Uint32 agora, float saida) {
   // Agora o recorte dissolve o ALFA do canvas em duas direcoes; o fundo que
   // ja estava desenhado continua aparecendo ate o ponto de transicao.
   if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
-    gfx_furo_hero_suave(furo, aTrailer, 0.40f, 0.75f);
+    gfx_furo_hero_suave(furo, aTrailer, SM_TRAILER_FADE_ESQUERDA, SM_TRAILER_FADE_BASE);
   else if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);
 #else
   if (aTrailer > 0.0f && aTrailer < 0.995f) gfx_furo_alfa(furo, aTrailer);

@@ -670,7 +670,8 @@ object NvPlayer {
         }
     }
 
-    private class RecursosPlayer(val carga: CargaPlayer, val alvoMs: Int, val idiomaAudio: String = "") {
+    private class RecursosPlayer(val carga: CargaPlayer, val alvoMs: Int, val idiomaAudio: String = "",
+                                 val trailerPortugues: Boolean = false) {
         lateinit var p: ExoPlayer
         lateinit var origem: OrigemPlayer
         lateinit var rede: (Long) -> DataSource.Factory
@@ -1290,7 +1291,9 @@ object NvPlayer {
         val backBufferMs = if (inicioOriginal && !preparando) 1_500 else 0
         val r = RecursosPlayer(
             CargaPlayer(minMs, maxMs, bytes, preparando, inicioMs, recuoBufferMs, backBufferMs),
-            maxMs, if (preparando) idiomaAudio else ""
+            maxMs, if (preparando) idiomaAudio else "",
+            // Scoped to the app's Brazilian trailer cache, never movie streams.
+            url.startsWith("file://") && Uri.parse(url).lastPathSegment?.endsWith("-apple-br-v2-play.m3u8") == true
         )
         try {
             val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
@@ -1405,7 +1408,14 @@ object NvPlayer {
         r.p.setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), false)
         r.p.trackSelectionParameters = r.p.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !r.trailerPortugues)
+            .apply {
+                if (r.trailerPortugues) {
+                    setPreferredAudioLanguages("pt-BR", "pt", "en")
+                    setPreferredTextLanguages("pt-BR", "pt")
+                    setSelectUndeterminedTextLanguage(false)
+                }
+            }.build()
 
     }
 
@@ -2183,6 +2193,7 @@ object NvPlayer {
         override fun onTracksChanged(tracks: Tracks) {
             if (!atual(minha)) return
             publicarFaixas(tracks)
+            configurarTrailerPortugues(tracks)
             if (!quadroVisto && player?.playbackState == Player.STATE_READY) agendarVigiaPrimeiroQuadro()
             for (g in tracks.groups) if (g.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until g.length) if (g.isTrackSelected(i)) {
@@ -2203,8 +2214,9 @@ object NvPlayer {
                     g.isTrackSelected(i) && g.getTrackFormat(i).sampleMimeType == MimeTypes.TEXT_SSA
                 }
             } == true
-            val imagens = if (usaAss) cueGroup.cues else cueGroup.cues.filter { it.bitmap != null }
-            val texto = if (usaAss) "" else cueGroup.cues.mapNotNull { it.text?.toString()?.trim() }
+            val legendaTrailer = recursosAtuais?.trailerPortugues == true
+            val imagens = if (usaAss || legendaTrailer) cueGroup.cues else cueGroup.cues.filter { it.bitmap != null }
+            val texto = if (usaAss || legendaTrailer) "" else cueGroup.cues.mapNotNull { it.text?.toString()?.trim() }
                 .filter { it.isNotEmpty() }.joinToString("\n")
             // O Media3 nao diz quando o cue acaba: estimativa pelo tamanho, e o
             // proximo grupo (inclusive o vazio) substitui antes disso.
@@ -2379,6 +2391,20 @@ object NvPlayer {
     // Lista para o C: audio com decoder e legenda de texto suportada. So manda
     // quando a LISTA muda; troca de selecao nao reenvia (o C reiniciaria a
     // legenda). Legenda sobe sempre desligada.
+    private fun configurarTrailerPortugues(tracks: Tracks) {
+        if (recursosAtuais?.trailerPortugues != true) return
+        val p = player ?: return
+        val dublado = tracks.groups.any { g ->
+            g.type == C.TRACK_TYPE_AUDIO && (0 until g.length).any { i ->
+                val idioma = g.getTrackFormat(i).language.orEmpty().lowercase().replace('_', '-')
+                g.isTrackSelected(i) && (idioma == "pt" || idioma.startsWith("pt-"))
+            }
+        }
+        val parametros = p.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, dublado).build()
+        if (parametros != p.trackSelectionParameters) p.trackSelectionParameters = parametros
+    }
+
     private fun publicarFaixas(tracks: Tracks) {
         val a = ArrayList<Pair<Tracks.Group, Int>>()
         val l = ArrayList<Pair<Tracks.Group, Int>>()
@@ -2417,7 +2443,7 @@ object NvPlayer {
         if (tinhaLegenda || l.isNotEmpty()) {
             versaoLegenda++
             limparLegendaBitmap()
-            player?.let {
+            player?.takeUnless { recursosAtuais?.trailerPortugues == true }?.let {
                 it.trackSelectionParameters = it.trackSelectionParameters.buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).clearOverridesOfType(C.TRACK_TYPE_TEXT).build()
             }

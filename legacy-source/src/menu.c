@@ -140,7 +140,7 @@ static int mostra(int i) {
     case MENU_EXPLORAR: return ajustes_menu_explorar();
     case MENU_GUIA:     return ajustes_menu_guia();
     case MENU_AGENDA:   return ajustes_menu_agenda();
-    case MENU_PERFIL:   return ajustes_menu_perfil();
+    case MENU_PERFIL:   return 0;  // StreamMax: retirar Perfil e Stats do menu.
     default:            return 1;
   }
 }

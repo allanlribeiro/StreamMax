@@ -1558,13 +1558,11 @@ static const char *FS_CORPO[GFX_NMODOS] = {
   // arte permanece intacto em x=0 e y=1; o miolo vai a alpha 0 para revelar
   // o video atras do canvas. Um unico quad; sem FBO, blur ou texture fetch.
   // uFoco = quanto o trailer entrou; uPar.x = largura do fade esquerdo;
-  // uPar.y = inicio do fade inferior. A borda superior ganha fade curto
-  // proprio: nao criar faixa dura no topo nem apagar o centro do trailer.
+  // uPar.y = inicio do fade inferior. Topo, direita e miolo ficam limpos.
   "void main(){\n"
   "  float e = smoothstep(0.0, max(uPar.x,0.02), vUv.x);\n"
-  "  float t = smoothstep(0.0, 0.085, vUv.y);\n"
   "  float b = 1.0-smoothstep(uPar.y, 1.0, vUv.y);\n"
-  "  float abertura = clamp(uFoco,0.0,1.0) * e * t * b;\n"
+  "  float abertura = clamp(uFoco,0.0,1.0) * e * b;\n"
   "  gl_FragColor = vec4(0.0,0.0,0.0,1.0-abertura);\n"
   "}\n",
 };
