@@ -425,10 +425,10 @@ static void ajcHomeFileiras(int A) {
 }
 // Barra lateral: o menu do app, com os itens que as opcoes ligam e desligam.
 static void ajcHomeBarra(int A) {
-  static const struct { const char *ico, *nome; int op; } IT[7] = {
+  static const struct { const char *ico, *nome; int op; } IT[6] = {
     { "aj_house", "Início", -1 }, { "aj_search", "Buscar", AJ_DESCOBRIR }, { "aj_compass", "Explorar", AJ_MENU_EXPLORAR },
     { "aj_tv-minimal-play", "Guia TV", AJ_MENU_GUIA }, { "aj_calendar", "Agenda", AJ_MENU_AGENDA },
-    { "aj_user-round", "Perfil", AJ_MENU_PERFIL }, { "aj_settings-2", "Ajustes", -1 } };
+    { "aj_settings-2", "Ajustes", -1 } };
   int larga = !ajustes_rail_recolhida() || ajustes_rail_moderna(), i;
   float rw = larga ? 200 : 64;
   ajCenaArte(ajArte(AJA_FUNDO, A), (GfxRect){ ajc.x, ajc.y, 640 * ajc.s, ajc.h }, 22, 0.15f);
@@ -437,7 +437,7 @@ static void ajcHomeBarra(int A) {
   CACC(rw + 70, 236, 104, 30, 1);
   if (ajustes_rail_moderna_blur() && ajustes_rail_moderna()) ajcBorrada(ajArte(AJA_FUNDO, A), CR(28, 24, rw, 312), 26 * ajc.s, 1);
   CVID(28, 24, rw, 312, 26);
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < 6; i++) {
     float iy = 44 + i * 40, al = IT[i].op == AJ_DESCOBRIR || IT[i].op < 0 ? 1.0f : ON(IT[i].op);
     if (i == 0) gfx_cor(CR(36, iy - 6, rw - 16, 32), 0.5f, 1, 1, 1, 0.14f);
     CICON(IT[i].ico, 48, iy, 20, 0.85f * al);

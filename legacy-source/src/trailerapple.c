@@ -1,4 +1,5 @@
 #include "trailerapple.h"
+#include "trailerhls.h"
 // O .tpk toca pelo mesmo servidor de midia do .wgt (muse-server), e o master
 // HLS da Apple o trava ("[DEADLOCK] ... 90 second", ver varianteMidia): la
 // vale o caminho da Samsung, a playlist de UMA variante, e nao o reduzido em
@@ -39,7 +40,13 @@ static int nTab, prox;
 static SDL_mutex *mtx;
 
 #define UTS_HOST "https://tv.apple.com/api/uts/v3"
+#ifdef NV_ANDROID
+#define UTS_QUERY "caller=web&sf=143503&v=76&pfm=appletv&locale=pt-BR&l=pt&utsk=6e3013c6d6fae3c2::::::235656c069bb0efb"
+#define APPLE_CACHE "-apple-br-v2"
+#else
 #define UTS_QUERY "caller=web&sf=143441&v=76&pfm=appletv&locale=en-US&l=en&utsk=6e3013c6d6fae3c2::::::235656c069bb0efb"
+#define APPLE_CACHE "-apple"
+#endif
 static const char *const CABS[] = { "Accept: application/json", "Origin: https://tv.apple.com", NULL };
 
 static void trancar(void)   { if (!mtx) mtx = SDL_CreateMutex(); SDL_LockMutex(mtx); }
@@ -65,7 +72,7 @@ static void caminhoDisco(const char *imdb, char *dst, unsigned tam) {
   dst[0] = 0;
   if (!dados_caminho(pasta, sizeof pasta, "trailer")) return;
   mkdir(pasta, 0755);
-  snprintf(dst, tam, "%s/%s-apple", pasta, imdb);
+  snprintf(dst, tam, "%s/%s%s", pasta, imdb, APPLE_CACHE);
 }
 static int lerDisco(Entrada *e) {
   char c[600], linha[1200];
@@ -101,7 +108,7 @@ static void caminhoMaster(const char *imdb, char *dst, unsigned tam, const char 
   char pasta[512];
   dst[0] = 0;
   if (!dados_caminho(pasta, sizeof pasta, "trailer")) return;
-  snprintf(dst, tam, "%s/%s-apple%s", pasta, imdb, sufixo);
+  snprintf(dst, tam, "%s/%s%s%s", pasta, imdb, APPLE_CACHE, sufixo);
 }
 
 // UMA VARIANTE, NAO O ABR. Medido na C9 (20/09/2026): entregue o master
@@ -132,6 +139,23 @@ static int atributo(const char *linha, const char *nome, char *dst, unsigned tam
 
 #ifndef NV_TRAILER_SAMSUNG   /* so a LG monta o reduzido em disco */
 static int montarReduzido(const char *imdb, int teto, char *saida, unsigned tam) {
+#ifdef NV_ANDROID
+  char cm[600], cr[600];
+  int largura = 0, ok;
+  FILE *f, *g;
+  caminhoMaster(imdb, cm, sizeof cm, ".m3u8");
+  caminhoMaster(imdb, cr, sizeof cr, "-play.m3u8");
+  if (!cm[0] || !cr[0] || !(f = fopen(cm, "r"))) return 0;
+  g = fopen(cr, "w");
+  if (!g) { fclose(f); return 0; }
+  ok = sm_trailer_hls_reduzir(f, g, teto, &largura);
+  if (fclose(g)) ok = 0;
+  fclose(f);
+  if (!ok) { remove(cr); return 0; }
+  snprintf(saida, tam, "file://%s", cr);
+  printf("[trailer] apple BR %s: variante fixa %dpx, audio/legenda pt preferidos\n", imdb, largura);
+  return 1;
+#else
   char cm[600], cr[600], linha[2048];
   char melhorInf[2048] = "", melhorUri[1024] = "", melhorAudio[128] = "";
   int melhorW = 0, melhorAvc = 0;
@@ -189,6 +213,7 @@ static int montarReduzido(const char *imdb, int teto, char *saida, unsigned tam)
   fflush(stdout);
   snprintf(saida, tam, "file://%s", cr);
   return 1;
+#endif
 }
 #endif  /* !NV_TRAILER_SAMSUNG */
 
@@ -580,6 +605,7 @@ void trailerapple_pedir(const char *imdb, const char *titulo, const char *meta, 
     (void)st; (void)cm; e->respondeu = !e->url[0] || e->toca[0];
 #else
     e->respondeu = !e->url[0] || (cm[0] && stat(cm, &st) == 0);
+    e->tocaQual = -1;  // Rebuild the local variant after a process restart.
 #endif
   }
   if (e->emVoo || valido(e)) { destrancar(); return; }

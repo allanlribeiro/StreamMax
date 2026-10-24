@@ -330,10 +330,8 @@ int trailer_suportado(void) {
 }
 static void nativoAplicar(void) {
   if (!aberto) return;
-  // Na TCL o trailer do HERO e uma SurfaceView debaixo do canvas. O fit
-  // inicial centralizava um quadro 16:9 numa janela muito larga, deixando
-  // um vazio preto no canto direito. Aplicar o cover assim que o quadro tem
-  // dimensoes, sem esperar os 800ms de estabilizacao do webOS/Tizen.
+  // Na TCL a Home calcula o destino pela proporcao original do video.
+  // Manter aspect-fit, sem o cover/zoom do player de filmes.
   // O player de filmes e o trailer da pagina de detalhes nao mudam.
 #if defined(NV_ANDROID)
   const int heroAndroid = dono == TRAILER_DONO_HOME && !noCartao && !cheia;
@@ -388,9 +386,15 @@ static void nativoAplicar(void) {
                     rect.w, rect.h, &sx, &sy, &sw, &sh);
     if (video_recorte_fonte_trailer() || noCartao)
 #else
-    trailer_recorte(video_largura(), video_altura(), ajustes_trailer_zoom(),
-                    rect.w, rect.h, &sx, &sy, &sw, &sh);
-    if (video_recorte_fonte_trailer())
+    if (heroAndroid) {
+      // Home already fits the ORIGINAL frame at the upper right. Applying
+      // the movie zoom/cover here would crop faces and recreate the square.
+      video_janela((int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
+    } else {
+      trailer_recorte(video_largura(), video_altura(), ajustes_trailer_zoom(),
+                      rect.w, rect.h, &sx, &sy, &sw, &sh);
+    }
+    if (!heroAndroid && video_recorte_fonte_trailer())
 #endif
       video_janela_fonte(sx, sy, sw, sh,
                          (int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
