@@ -1,0 +1,43 @@
+name: Publicar download do StreamMax TV 1072
+
+on:
+  push:
+    branches: [codex/streamax-tv-1072-download]
+    paths: [.github/workflows/streamax-tv-1072-download.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: streamax-tv-test-1072-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar e verificar o APK desta conversa
+        shell: bash
+        env:
+          APK_URL: https://streammax-atualizacoes.quickkiwi1024.chatgpt.site/downloads/StreamMax-1072-b0f69dbaf98d4a5085695d76150c947e4504d8d23645f773a596cfa29f835984.apk
+          APK_SHA256: b0f69dbaf98d4a5085695d76150c947e4504d8d23645f773a596cfa29f835984
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          apk=StreamMax-TV-1.1.0-streamax.3-TCL-P7K.apk
+          curl --fail --location --retry 3 --retry-delay 3 --max-time 360 --user-agent 'StreamMax-GitHub-Publisher/1.0' --output "dist/$apk" "$APK_URL"
+          printf '%s  %s\n' "$APK_SHA256" "$apk" > dist/StreamMax-TV-1.1.0-streamax.3-SHA256.txt
+          (cd dist && sha256sum --check --strict StreamMax-TV-1.1.0-streamax.3-SHA256.txt)
+          test "$(stat -c '%s' "dist/$apk")" = 156789449
+      - name: Enviar arquivos ao rascunho de download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: allanlribeiro/StreamMax
+        run: |
+          set -euo pipefail
+          test "$(gh release view streamax-tv-test-1072 --json isDraft --jq .isDraft)" = true
+          gh release upload streamax-tv-test-1072 dist/StreamMax-TV-1.1.0-streamax.3-TCL-P7K.apk dist/StreamMax-TV-1.1.0-streamax.3-SHA256.txt
+          gh release view streamax-tv-test-1072 --json assets --jq '.assets[] | {name, size, state}'
