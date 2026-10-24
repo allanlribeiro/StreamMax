@@ -117,7 +117,7 @@ EM_JS(double, nv_av, (const char *cmd, const char *txt,
   var desktop = G.smPlayer;
   if (desktop && op === "abrir") {
     desktop.stop();
-    if (G.__smFilme) { G.__smFilme = false; desktop.open(s); return 1; }
+    if (G.__smFilme) { G.__smFilme = false; fecharTudo(); desktop.open(s); return 1; }
   }
   if (desktop && desktop.active()) {
     if (op === "estado") { var vals = desktop.state(); for (var di=0; di<13; di++) HEAPF64[(dst>>3)+di]=vals[di]; return 1; }
@@ -1201,6 +1201,7 @@ void video_encerrar(void) {
 void video_escala_definir(int sw, int sh) { (void)sw; (void)sh; }
 void video_definir_reconexao(int sim) { (void)sim; }
 int  video_reconectando(void) { return 0; }
+int  video_recarregar(void) { return 0; }
 int  video_conflito_recurso(void) { return 0; }
 int  video_decoder_anunciou(void) { return 1; }
 const char *video_erro_texto(void) { return ""; }

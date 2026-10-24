@@ -805,7 +805,7 @@ static int cabeNaAltura(const Stream *s) {
   return !teto || !s->altura || s->altura <= teto;
 }
 
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
 // TABELA DE REGRAS DA VIDAA (Hisense) -----------------------------------------
 //
 // Fonte: medicoes de TERCEIROS contra o navegador dela (NoobyGains /
@@ -1292,7 +1292,7 @@ static long pontosDoAlvo(const Stream *s, const char *alvo) {
       { FonteNota nt; notaDe(s, &nt); p = fontenota_somar(p, &nt, 0); }
     } else p += qualidade(s, modo);
   }
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
   { unsigned k;
     for (k = 0; k < N_REGRAS_VIDAA; k++)
       if (REGRAS_VIDAA[k].bate(s)) p += REGRAS_VIDAA[k].pontos;
@@ -1567,7 +1567,7 @@ static void soltarConf(void *u) {
   if (atomic_fetch_sub(&d->refs, 1) == 1) free(d);
 }
 
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
 __attribute__((unused))
 #endif
 static int resolverUrl(const char *url, const char *cabecalhos, int segundos,
@@ -1661,7 +1661,7 @@ static int verificarUma(int i, Conferencia *c) {
     // bloqueio de conteudo misto ou de CORS e rotineiro ali, nao prova de fonte
     // morta. Mesma politica de playlistVazia: sem como conferir, presume viva.
     // Sem tipo/tamanho do corpo ali (mime vazio, corpo -1): naovideo_mime nao pega.
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
     int r = rede_url_final_vidaa(url, 10, fim, sizeof fim);
 #else
     int r = resolverUrl(url, cab, 10, fim, sizeof fim, mime, sizeof mime, &corpo);
@@ -2559,7 +2559,7 @@ int stream_primeira_boa_sessao(int tentativas, uint64_t sessao) {
          modo == FONTEAUTO_PRIMEIRA ? "primeira da lista" : "melhor fonte",
          tocadas, nf, c.abortou ? ", lista trocada no meio" : "");
   if (escolhida >= 0) { printf("[fonte] %d ok\n", escolhida); logarEscolha(escolhida, pref, modo == FONTEAUTO_PRIMEIRA); }
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
   // QUAIS REGRAS DA TABELA DA VIDAA PESARAM na fonte escolhida — sem isto a
   // pontuacao e uma caixa preta quando alguem perguntar "por que tocou este
   // MKV e nao aquele MP4 4K". So imprime as que BATERAM (a maioria das

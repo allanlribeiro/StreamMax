@@ -1,5 +1,8 @@
 name: StreamMax teste no emulador Samsung
 on:
+  push:
+    branches: [feat/streammax-windows-tizen-ports]
+    paths: [.github/workflows/streammax-tizen-emulator.yml]
   workflow_dispatch:
     inputs:
       build_run:
@@ -16,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: 22}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
       - name: Verificar virtualização
         run: |
           lscpu | grep -E 'Virtualization|Hypervisor' || true
@@ -36,8 +41,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run watch '${{ inputs.build_run }}' --exit-status --interval 30
-          gh run download '${{ inputs.build_run }}' --name StreamMax-Tizen --dir legacy-source
+          build_run='${{ inputs.build_run }}'
+          if [ -z "$build_run" ]; then build_run=$(gh run list --workflow streammax-ports.yml --branch feat/streammax-windows-tizen-ports --limit 1 --json databaseId --jq '.[0].databaseId'); fi
+          for attempt in $(seq 1 120); do
+            artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$build_run/artifacts" --jq '.artifacts[] | select(.name=="StreamMax-Tizen") | .id')
+            if [ -n "$artifact" ]; then break; fi
+            sleep 10
+          done
+          test -n "$artifact"
+          gh run download "$build_run" --name StreamMax-Tizen --dir legacy-source
           npm ci --prefix desktop --ignore-scripts
       - name: Instalar e testar no emulador
         env:
