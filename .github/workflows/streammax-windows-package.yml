@@ -8,7 +8,7 @@ on:
       wasm_run:
         description: Run da interface WASM compilada
         required: true
-        default: '40115725544'
+        default: '40116017095'
 permissions:
   contents: read
   actions: read
@@ -23,7 +23,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" > "$RUNNER_TEMP/streammax-source.tar.gz"
-          tar xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
+          tar --force-local -xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
 
       - uses: actions/setup-node@v4
         with: {node-version: 22}
@@ -32,7 +32,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SM_BUILD_RUN: ${{ inputs.wasm_run || '40115725544' }}
+          SM_BUILD_RUN: ${{ inputs.wasm_run || '40116017095' }}
         run: |
           for attempt in $(seq 1 120); do
             artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SM_BUILD_RUN/artifacts" --jq '.artifacts[] | select(.name=="StreamMax-portes-web") | .id')

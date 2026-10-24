@@ -23,7 +23,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" > "$RUNNER_TEMP/streammax-source.tar.gz"
-          tar xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
+          tar --force-local -xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
 
       - uses: actions/setup-node@v4
         with: {node-version: 22}
@@ -82,7 +82,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" > "$RUNNER_TEMP/streammax-source.tar.gz"
-          tar xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
+          tar --force-local -xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
 
       - uses: actions/setup-node@v4
         with: {node-version: 22}
