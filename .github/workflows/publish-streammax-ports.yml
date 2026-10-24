@@ -1,0 +1,97 @@
+name: Publicar prévia StreamMax Windows e Tizen
+on:
+  push:
+    branches: [feat/streammax-windows-tizen-ports]
+    paths: [.github/workflows/publish-streammax-ports.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SM_WINDOWS_RUN: '40142646100'
+      SM_WASM_RUN: '40116017095'
+      SM_TAG: v1.0.17-windows-tizen-preview.1
+    steps:
+      - name: Origem exata e resultados de compilação
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" > "$RUNNER_TEMP/source.tar.gz"
+          tar xzf "$RUNNER_TEMP/source.tar.gz" --strip-components=1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SM_WINDOWS_RUN" --jq .conclusion)" = success
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SM_WASM_RUN/jobs" --jq '.jobs[]|select(.name=="wasm")|.conclusion')" = success
+          gh run download "$SM_WINDOWS_RUN" --name StreamMax-Windows-x64 --dir publicar
+          gh run download "$SM_WINDOWS_RUN" --name testes-Windows --dir resultados/windows
+          gh run download "$SM_WASM_RUN" --name StreamMax-Tizen --dir publicar
+      - name: Preparar pacote Samsung e evidências
+        run: |
+          python3 tests/ports/repackage-tizen.py publicar/StreamMax-1.0.17-tizen.wgt
+          cp PORTAS-WINDOWS-TIZEN.md publicar/LEIA-ME.md
+          python3 - <<'PY'
+          import hashlib,json,os,shutil,zipfile
+          from pathlib import Path
+          r=Path('resultados/windows');out=Path('publicar')
+          reports={}
+          for name in ['entrada','formulario','reproducao','empacotamento']:
+            item=json.loads((r/(name+'.json')).read_text())
+            assert item['passed'] is True,name
+            reports[name]=item
+          assert 'Espaço' in reports['reproducao']['checks']
+          assert 'Escape para voltar' in reports['reproducao']['checks']
+          with zipfile.ZipFile(out/'StreamMax-1.0.17-tizen.wgt') as z:
+            assert not any('signature' in n.lower() for n in z.namelist())
+            assert 'StreamMax1.StreamMax' in z.read('config.xml').decode()
+            assert '$WEBAPIS/webapis/webapis.js' in z.read('index.html').decode()
+          reports['ambiente_windows']='Windows Server 2022 x64 em VM; alvo Windows 11 x64'
+          reports['windows_run']=os.environ['SM_WINDOWS_RUN']
+          reports['wasm_run']=os.environ['SM_WASM_RUN']
+          reports['source_commit']=os.environ['GITHUB_SHA']
+          reports['tizen']={'compilado':True,'emulador_iniciado':True,'execucao_validada':False,'motivo':'Emulador Samsung exige certificado Samsung; certificado genérico do SDK foi recusado.','politica':'https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-emulator/application-install-policy.html'}
+          (out/'TESTES.json').write_text(json.dumps(reports,ensure_ascii=False,indent=2)+'\n')
+          for src,dst in [('windows-empacotado.png','Windows-tela.png'),('edicao-mouse.png','Windows-edicao.png')]:
+            shutil.copyfile(r/src,out/dst)
+          lines=[]
+          for p in sorted(out.iterdir()):
+            if p.is_file():lines.append(hashlib.file_digest(p.open('rb'),'sha256').hexdigest()+'  '+p.name)
+          (out/'SHA256SUMS.txt').write_text('\n'.join(lines)+'\n')
+          PY
+          cd publicar
+          sha256sum --check SHA256SUMS.txt
+      - name: Criar pré-release sem alterar o canal Android
+        run: |
+          if gh release view "$SM_TAG" --json isDraft > "$RUNNER_TEMP/release-existing.json" 2>/dev/null; then
+            test "$(jq -r .isDraft "$RUNNER_TEMP/release-existing.json")" = true
+          else
+            cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          Primeira prévia do StreamMax 1.0.17 para Windows e Samsung Tizen.
+
+          - **Windows 11 x64:** executável portátil. Interface, mouse, digitação, acentos, Backspace, Delete, seleção de texto, reprodução, pausa, busca, Espaço e Escape verificados em VM Windows. O executável empacotado também foi aberto no teste.
+          - **Samsung Tizen:** WGT compilado, com nome, ícone e abertura do StreamMax. A execução ainda NÃO foi validada no emulador: os emuladores atuais exigem certificado Samsung e recusaram o certificado genérico do SDK. Para continuar, é necessário um WGT assinado com perfil Samsung; não envie senhas ou chaves privadas.
+
+          O filme abre numa janela do player incluído no Windows. Não é necessário instalar o mpv separadamente. O WGT é distribuído sem assinatura e deve ser assinado para o DUID da TV antes da instalação. O modelo/versão da Samsung ainda precisa ser confirmado.
+
+          Baixe o EXE para Windows ou o WGT para Samsung. Leia **LEIA-ME.md** para instalação e controles. **TESTES.json** e as imagens registram as verificações realizadas. Esta prévia não altera a versão estável nem o atualizador Android.
+          NOTES
+            gh release create "$SM_TAG" --draft --prerelease --target "$GITHUB_SHA" --title 'StreamMax 1.0.17 — Windows 11 e Tizen (prévia)' --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          gh release upload "$SM_TAG" publicar/* --clobber
+          gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[]|select(.tag_name==\"$SM_TAG\")" > "$RUNNER_TEMP/uploaded.json"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          release=json.loads((Path(os.environ['RUNNER_TEMP'])/'uploaded.json').read_text())
+          assert release['draft'] and release['prerelease']
+          assets={a['name']:a for a in release['assets']}
+          for p in Path('publicar').iterdir():
+            if not p.is_file():continue
+            a=assets[p.name]
+            assert a['size']==p.stat().st_size,p.name
+            assert a['digest']=='sha256:'+hashlib.file_digest(p.open('rb'),'sha256').hexdigest(),p.name
+          PY
+          gh release edit "$SM_TAG" --draft=false --prerelease --latest=false
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" != "$SM_TAG"
+          gh release view "$SM_TAG" --json url,assets --jq '{url,assets:[.assets[]|{name,size}]}'
