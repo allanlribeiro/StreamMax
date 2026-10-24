@@ -5,7 +5,7 @@ const {inputTests}=require('./input.cjs');
 const {loginInput}=require('./login-input.cjs');
 (async()=>{
  const out=path.resolve('output/windows');fs.mkdirSync(out,{recursive:true});
- const application=await _electron.launch({args:[path.resolve('desktop')],env:{...process.env,STREAMMAX_TEST_PROFILE:path.join(out,'profile')}});
+ const application=await _electron.launch({args:['--enable-unsafe-swiftshader',path.resolve('desktop')],env:{...process.env,STREAMMAX_TEST_PROFILE:path.join(out,'profile')}});
  try{
   const page=await application.firstWindow();let log=[];page.on('console',m=>log.push(m.text()));
   await page.waitForFunction(()=>window.__nvPrimeiroQuadro===1,{},{timeout:180000});

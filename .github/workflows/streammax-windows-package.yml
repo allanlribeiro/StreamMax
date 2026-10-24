@@ -69,6 +69,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) {throw ((Get-Content windows-player.log -Tail 40) -join "`n")}
       - name: Gerar executável portátil
         run: npm --prefix desktop run dist:win
+      - name: Abrir o executável empacotado
+        shell: pwsh
+        env:
+          NODE_PATH: ${{ github.workspace }}\desktop\node_modules
+        run: |
+          node tests/ports/windows-packed.cjs 2>&1 | Tee-Object -FilePath windows-packaged.log
+          if ($LASTEXITCODE -ne 0) {throw ((Get-Content windows-packaged.log -Tail 40) -join "`n")}
       - uses: actions/upload-artifact@v4
         with:
           name: StreamMax-Windows-x64
