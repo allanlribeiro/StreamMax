@@ -1615,7 +1615,7 @@ static void ajDesenharAddons(int foco) {
     if (base0) {
       const char *p = strstr(base0, "://");
       p = p ? p + 3 : base0;
-      snprintf(host, sizeof host, "%.*s", (int)strcspn(p, "/"), p);
+      snprintf(host, sizeof host, "%.*s", (int)strcspn(p, "/?#"), p);
     }
     snprintf(forn, sizeof forn, "%s", ajAddonFornece(idx));
     y = ajSubInspetor(AJ_ADDONS, k, addons_nome(idx),
@@ -2029,7 +2029,7 @@ static const char *ajPlugEstado(int i) {
 static void ajPlugHost(const char *url, char *dst, size_t tam) {
   const char *p = strstr(url, "://");
   p = p ? p + 3 : url;
-  snprintf(dst, tam, "%.*s", (int)strcspn(p, "/"), p);
+  snprintf(dst, tam, "%.*s", (int)strcspn(p, "/?#"), p);
 }
 static void ajDesenharPlugins(const AjPluginsVista *v);
 void ajustes_desenhar_plugins(const AjPluginsVista *v) {

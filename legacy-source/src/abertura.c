@@ -48,11 +48,10 @@ static void abSaida(float p, float *veu, float *alfaMarca) {
   *alfaMarca = (1.0f - pm) * (1.0f - pm);
 }
 
-// Splash StreamMax: somente o S OFICIAL, obtido da propria arte do icone.
-// A textura ja possui tratamento de fundo no logoapp.c. Nenhum video,
-// palavra STREAMMAX, JPEG de splash ou textura 16:9 sao decodificados aqui.
-#define AB_SIMBOLO_W 432.0f
-#define AB_SIMBOLO_H 540.0f
+// Nova identidade de abertura: arte estática em cache, sem vídeo nem zoom.
+// A mesma imagem é usada pelo fundo Android e pelo primeiro quadro nativo.
+#define AB_SIMBOLO_W 960.0f
+#define AB_SIMBOLO_H 640.0f
 static int fundoFica;
 static int estado; // 0 nao iniciou, 1 parado, 2 esmaecendo, 3 acabou
 static Uint32 inicio, saidaEm;
@@ -64,7 +63,7 @@ void abertura_iniciar(const char *dirArte) {
   estado = 0;
   fundoFica = 0;
   estiloAb = ajustes_abertura();
-  logoapp_iniciar(dirArte); // usa marcas/streammax_icon.png, ja empacotado
+  logoapp_iniciar(dirArte); // marcas/streammax_startup.png, carregada pelo cache
 }
 
 void abertura_tecla(void) {
@@ -82,7 +81,7 @@ static void acabar(void) {
 int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
   float veu = 1.0f, alfaMarca = 1.0f;
   const AbEstilo es = abEstilo(estiloAb, anim_politica_reduzida);
-  (void)dt; // O S permanece imovel enquanto o aplicativo inicializa.
+  (void)dt; // A logo permanece imóvel enquanto o aplicativo inicializa.
   if (estado == 3) return 0;
   if (estado == 0) { estado = 1; inicio = agora; }
   if (estado == 1) {
@@ -116,8 +115,8 @@ int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
   gfx_cor((GfxRect){0, 0, NV_TELA_W, NV_TELA_H}, 0,
           AB_FUNDO_R, AB_FUNDO_G, AB_FUNDO_B, veu);
   if (alfaMarca > 0.004f) {
-    // S original 432x540 no plano virtual 1920x1080, centro exato.
-    logoapp_streammax_simbolo(
+    // Logo completa centralizada, com proporção preservada.
+    logoapp_streammax_abertura(
         (GfxRect){(NV_TELA_W - AB_SIMBOLO_W) * 0.5f,
                   (NV_TELA_H - AB_SIMBOLO_H) * 0.5f,
                   AB_SIMBOLO_W, AB_SIMBOLO_H},
@@ -126,8 +125,7 @@ int abertura_desenhar(Uint32 agora, float dt, int pendentes) {
   return 1;
 }
 
-// PREVIA DOS AJUSTES: reproduz a mesma abertura so com o S, sem animacao
-// de zoom nem palavra; a configuracao de saida ainda controla o fade.
+// Prévia dos Ajustes: usa a mesma arte estática e o mesmo tempo de saída.
 void abertura_previa(GfxRect r, float raio, int estilo, int logo,
                      Uint32 agora, float alfa) {
   const AbEstilo es = abEstilo(estilo, 0);
@@ -152,7 +150,7 @@ void abertura_previa(GfxRect r, float raio, int estilo, int logo,
   w = h * (AB_SIMBOLO_W / AB_SIMBOLO_H);
   if (w > r.w * 0.8f) { w = r.w * 0.8f; h = w * (AB_SIMBOLO_H / AB_SIMBOLO_W); }
   if (am * alfa > 0.004f) {
-    logoapp_streammax_simbolo(
+    logoapp_streammax_abertura(
         (GfxRect){r.x + (r.w - w) * 0.5f,
                   r.y + (r.h - h) * 0.5f, w, h}, am * alfa);
   }

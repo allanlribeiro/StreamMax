@@ -167,3 +167,20 @@ int logoapp_streammax_simbolo(GfxRect r, float alpha) {
 int logoapp_streammax_wordmark(GfxRect r, float alpha) {
   return smMarcaDesenhar(1, r, alpha);
 }
+
+// Textura carregada pelo cache de imagens; nenhuma decodificação por quadro.
+int logoapp_streammax_abertura(GfxRect r, float alpha) {
+  char caminho[640];
+  if (alpha <= 0.004f || r.w <= 0 || r.h <= 0) return 0;
+  snprintf(caminho, sizeof caminho, "%s/marcas/streammax_startup.png", dirArteLg);
+  GLuint t = tex_obter_larg(caminho, r.w);
+  if (!t) return 0;
+  float asp = tex_aspecto(caminho);
+  if (asp <= 0) return 0;
+  float w = r.w, h = w / asp;
+  if (h > r.h) { h = r.h; w = h * asp; }
+  gfx_tex_aspect_atual = 0.0f;
+  gfx_rect((GfxRect){r.x + (r.w - w) * 0.5f, r.y + (r.h - h) * 0.5f, w, h},
+           t, GFX_TEXTO, 0, 0, 0, 0.0f, 1, 1, 1, alpha);
+  return 1;
+}
