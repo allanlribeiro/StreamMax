@@ -2,6 +2,13 @@ name: StreamMax Windows e Samsung Tizen
 on:
   push:
     branches: [feat/streammax-windows-tizen-ports]
+    paths:
+      - legacy-source/src/**
+      - legacy-source/tools/**
+      - legacy-source/android/app/src/main/res/drawable-nodpi/streammax_*.png
+      - desktop/**
+      - tests/ports/**
+      - .github/workflows/streammax-ports.yml
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,7 +33,7 @@ jobs:
         run: |
           python -m pip install cmake==4.4.4 meson==1.12.1 ninja==1.13.2
           sudo apt-get update -qq
-          sudo apt-get install -y imagemagick autoconf automake libtool pkg-config
+          sudo apt-get install -y imagemagick ffmpeg autoconf automake libtool pkg-config
           mkdir -p "$RUNNER_TEMP/emsdk"
           curl -fL https://github.com/emscripten-core/emsdk/archive/refs/tags/6.0.9.tar.gz | tar xz --strip-components=1 -C "$RUNNER_TEMP/emsdk"
           "$RUNNER_TEMP/emsdk/emsdk" install 6.0.9
