@@ -26,16 +26,20 @@ if [ -z "$serial" ]; then
  echo 'Emulador não se conectou ao SDB'; exit 1
 fi
 sdb -s "$serial" capability > output/tizen-emulador/capability.txt
-mkdir -p "$RUNNER_TEMP/sm-cert" "$RUNNER_TEMP/sm-widget"
-tizen certificate -a StreamMaxTest -p StreamMaxEmulator2026 -n StreamMax -- "$RUNNER_TEMP/sm-cert"
-author="$(find "$RUNNER_TEMP/sm-cert" -name '*.p12' -print -quit)"
-"$sdk/jdk/bin/keytool" -list -storetype PKCS12 -keystore "$author" -storepass StreamMaxEmulator2026 > output/tizen-emulador/certificado-teste.txt
-unzip -q legacy-source/StreamMax-1.0.17-tizen.wgt -d "$RUNNER_TEMP/sm-widget"
-mkdir -p "$RUNNER_TEMP/sm-sign-classes"
-"$sdk/jdk/bin/javac" -cp "$sdk/tools/ide/lib-ncli/*" -d "$RUNNER_TEMP/sm-sign-classes" tests/ports/SignEmulatorWidget.java
-"$sdk/jdk/bin/java" -Dlog4j.configurationFile="$PWD/tests/ports/tizen-log4j.xml" -cp "$RUNNER_TEMP/sm-sign-classes:$sdk/tools/ide/lib-ncli/*" SignEmulatorWidget "$sdk" "$author" "$RUNNER_TEMP/sm-widget" > output/tizen-emulador/assinatura.txt 2>&1
-pkg="$RUNNER_TEMP/StreamMax-emulador-assinado.wgt"
-(cd "$RUNNER_TEMP/sm-widget" && zip -q -r -X "$pkg" . -x .manifest.tmp .delta.lst)
+if [ -n "${SM_SIGNED_WIDGET_PATH:-}" ]; then
+  pkg="$SM_SIGNED_WIDGET_PATH"
+else
+  mkdir -p "$RUNNER_TEMP/sm-cert" "$RUNNER_TEMP/sm-widget"
+  tizen certificate -a StreamMaxTest -p StreamMaxEmulator2026 -n StreamMax -- "$RUNNER_TEMP/sm-cert"
+  author="$(find "$RUNNER_TEMP/sm-cert" -name '*.p12' -print -quit)"
+  "$sdk/jdk/bin/keytool" -list -storetype PKCS12 -keystore "$author" -storepass StreamMaxEmulator2026 > output/tizen-emulador/certificado-teste.txt
+  unzip -q legacy-source/StreamMax-1.0.17-tizen.wgt -d "$RUNNER_TEMP/sm-widget"
+  mkdir -p "$RUNNER_TEMP/sm-sign-classes"
+  "$sdk/jdk/bin/javac" -cp "$sdk/tools/ide/lib-ncli/*" -d "$RUNNER_TEMP/sm-sign-classes" tests/ports/SignEmulatorWidget.java
+  "$sdk/jdk/bin/java" -Dlog4j.configurationFile="$PWD/tests/ports/tizen-log4j.xml" -cp "$RUNNER_TEMP/sm-sign-classes:$sdk/tools/ide/lib-ncli/*" SignEmulatorWidget "$sdk" "$author" "$RUNNER_TEMP/sm-widget" > output/tizen-emulador/assinatura.txt 2>&1
+  pkg="$RUNNER_TEMP/StreamMax-emulador-assinado.wgt"
+  (cd "$RUNNER_TEMP/sm-widget" && zip -q -r -X "$pkg" . -x .manifest.tmp .delta.lst)
+fi
 tizen install -n "$pkg" -s "$serial" | tee output/tizen-emulador/instalacao.txt
 sdb -s "$serial" shell 'app_launcher -w -s StreamMax1.StreamMax' > output/tizen-emulador/debug.txt
 port="$(grep -ioE 'port[: ]+[0-9]+' output/tizen-emulador/debug.txt | grep -oE '[0-9]+' | head -1)"

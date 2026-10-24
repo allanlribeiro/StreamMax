@@ -1,21 +1,14 @@
 name: StreamMax teste no emulador Samsung
 on:
-  push:
-    branches: [feat/streammax-windows-tizen-ports]
-    paths:
-      - .github/workflows/streammax-tizen-emulator.yml
-      - .github/workflows/streammax-ports.yml
-      - tests/ports/install-tizen-emulator.py
-      - tests/ports/tizen-*
-      - tests/ports/SignEmulatorWidget.java
-      - tests/ports/repackage-tizen.py
-      - legacy-source/tools/streammax-tizen-webapi.py
   workflow_dispatch:
     inputs:
       build_run:
         description: Run contendo o WGT StreamMax-Tizen
         required: true
         default: '40116017095'
+      samsung_wgt_url:
+        description: URL HTTPS do WGT assinado com certificado Samsung (não envie P12 ou senha)
+        required: true
 permissions:
   contents: read
   actions: read
@@ -36,6 +29,12 @@ jobs:
         with: {node-version: 22}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
+      - name: Verificar certificado fornecido
+        env:
+          SM_SIGNED_WGT_URL: ${{ inputs.samsung_wgt_url }}
+        run: |
+          test -n "$SM_SIGNED_WGT_URL" || { echo '::error::O emulador Samsung exige um WGT assinado com certificado Samsung.'; exit 1; }
+          case "$SM_SIGNED_WGT_URL" in https://*) ;; *) exit 1;; esac
       - name: Verificar virtualização
         run: |
           lscpu | grep -E 'Virtualization|Hypervisor' || true
@@ -58,6 +57,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          SM_SIGNED_WGT_URL: ${{ inputs.samsung_wgt_url }}
         run: |
           build_run='${{ inputs.build_run || '40116017095' }}'
           if [ -z "$build_run" ]; then build_run=$(gh run list --workflow streammax-ports.yml --branch feat/streammax-windows-tizen-ports --limit 1 --json databaseId --jq '.[0].databaseId'); fi
@@ -71,11 +71,14 @@ jobs:
           python3 tests/ports/repackage-tizen.py legacy-source/StreamMax-1.0.17-tizen.wgt
           mkdir -p output/tizen-emulador
           printf 'Interface WASM: run %s\nPacote: commit %s\n' "$build_run" "$GITHUB_SHA" > output/tizen-emulador/BUILD-INFO.txt
+          curl -fL "$SM_SIGNED_WGT_URL" -o "$RUNNER_TEMP/StreamMax-samsung-assinado.wgt"
+          python3 tests/ports/check-signed-tizen.py legacy-source/StreamMax-1.0.17-tizen.wgt "$RUNNER_TEMP/StreamMax-samsung-assinado.wgt"
           npm ci --prefix desktop --ignore-scripts
       - name: Instalar e testar no emulador
         env:
           QT_X11_NO_MITSHM: 1
           LIBGL_ALWAYS_SOFTWARE: 1
+          SM_SIGNED_WIDGET_PATH: ${{ runner.temp }}/StreamMax-samsung-assinado.wgt
         run: |
           exec > >(tee "$RUNNER_TEMP/streammax-emulator.log") 2>&1
           trap 'python3 tests/ports/annotate-error.py "$RUNNER_TEMP/streammax-emulator.log"' ERR

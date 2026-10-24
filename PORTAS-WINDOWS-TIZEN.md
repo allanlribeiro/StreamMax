@@ -78,8 +78,17 @@ npm --prefix desktop run dist:win
 Os testes em `tests/ports/` verificam formulário SDL real, texto em português,
 exclusão, seleção com mouse e senha oculta. O teste Windows também reproduz
 uma mídia de teste gerada por FFmpeg, verifica cabeçalhos, pausa e busca.
-O roteiro Samsung instala o WGT assinado de teste em um emulador oficial
-Tizen 10.0 e executa as verificações via depurador do próprio emulador.
+O roteiro Samsung está preparado para instalar um WGT com certificado Samsung
+no emulador oficial Tizen 10.0 e executar as verificações via depurador.
+A execução do aplicativo nesse emulador ainda não foi validada: o emulador
+iniciou e respondeu ao SDB, mas recusou o certificado genérico do SDK.
+Desde TV Extension 7.0.1, a Samsung exige certificado Samsung também no emulador.
+[Política oficial](https://developer.samsung.com/smarttv/develop/getting-started/using-sdk/tv-emulator/application-install-policy.html).
+
+Para retomar, assine este WGT no seu computador com um perfil Samsung e
+forneça somente o aplicativo assinado. Nunca envie senha, arquivo P12/PFX ou
+chave privada. O workflow confere se o conteúdo do pacote corresponde ao
+WGT original antes do teste. A chave privada permanece no seu computador.
 O teste Chromium é uma bancada adicional, separada do teste no emulador.
 
 As versões de teste dos portes usam uma pré-release separada. A versão
