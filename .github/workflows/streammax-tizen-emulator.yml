@@ -91,3 +91,5 @@ jobs:
             output/tizen-emulador
             ${{ runner.temp }}/tizen-studio/PACKAGES.json
             ${{ runner.temp }}/tizen-studio/data/emulator/vms/StreamMaxTV/logs
+            ${{ runner.temp }}/tizen-studio/data/cli/logs
+            /home/runner/tizen-studio-data/cli/logs

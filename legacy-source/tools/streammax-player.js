@@ -8,8 +8,8 @@
    if(!external)return;
    var canvas=document.getElementById('canvas');if(canvas)canvas.focus();
    // Fechar a janela do player equivale a Voltar; preserva posição e duração.
-   window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',keyCode:27,bubbles:true}));
-   window.dispatchEvent(new KeyboardEvent('keyup',{key:'Escape',code:'Escape',keyCode:27,bubbles:true}));
+   (canvas||window).dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',keyCode:27,bubbles:true}));
+   (canvas||window).dispatchEvent(new KeyboardEvent('keyup',{key:'Escape',code:'Escape',keyCode:27,bubbles:true}));
  });
  window.smPlayer={
   active:function(){return external;},

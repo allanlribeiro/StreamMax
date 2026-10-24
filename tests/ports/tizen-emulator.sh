@@ -30,6 +30,7 @@ mkdir -p "$RUNNER_TEMP/sm-cert" "$RUNNER_TEMP/sm-widget"
 tizen certificate -a StreamMaxTest -p StreamMaxEmulator2026 -n StreamMax -- "$RUNNER_TEMP/sm-cert"
 author="$(find "$RUNNER_TEMP/sm-cert" -name '*.p12' -print -quit)"
 tizen security-profiles add -n StreamMaxEmulator -a "$author" -p StreamMaxEmulator2026
+tizen cli-config -g "profiles.path=$sdk/data/profile/profiles.xml"
 unzip -q legacy-source/StreamMax-1.0.17-tizen.wgt -d "$RUNNER_TEMP/sm-widget"
 tizen package -t wgt -s StreamMaxEmulator -- "$RUNNER_TEMP/sm-widget"
 pkg="$(find "$RUNNER_TEMP/sm-widget" -maxdepth 1 -name '*.wgt' -print -quit)"
