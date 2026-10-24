@@ -16,7 +16,7 @@ function headers(text) {
   });
 }
 class Player extends EventEmitter {
-  constructor(executable) { super(); this.executable = executable; this.serial = 0; this.reset(); }
+  constructor(executable, options={}) { super(); this.options=options; this.executable = executable; this.serial = 0; this.reset(); }
   reset() { this.state = {pos:0,duration:0,playing:false,ready:false,open:false,width:0,height:0,error:false,ended:false,tracks:[],message:''}; }
   publish() { this.emit('state', {...this.state}); }
   async open(url, cabecalhos = '') {
@@ -24,7 +24,7 @@ class Player extends EventEmitter {
     const generation = ++this.serial;
     const pipe = '\\\\.\\pipe\\streammax-' + crypto.randomUUID();
     this.state.open = true; this.publish();
-    const child = spawn(this.executable, ['--no-config','--idle=yes','--force-window=yes','--keep-open=no','--terminal=no','--ytdl=no','--title=StreamMax','--alang=pt-BR,por,pt','--slang=pt-BR,por,pt','--hwdec=auto-safe','--input-ipc-server='+pipe], {windowsHide:true, stdio:'ignore'});
+    const child = spawn(this.executable, ['--no-config','--idle=yes','--force-window=yes','--keep-open=no','--terminal=no','--ytdl=no','--title=StreamMax','--alang=pt-BR,por,pt','--slang=pt-BR,por,pt','--hwdec=auto-safe','--input-ipc-server='+pipe,...(this.options.logFile?['--log-file='+this.options.logFile]:[])], {windowsHide:true, stdio:'ignore'});
     this.child = child;
     child.once('error', () => this.fail(generation, 'Não foi possível iniciar o player.'));
     child.once('exit', () => {

@@ -2,7 +2,13 @@ name: StreamMax teste no emulador Samsung
 on:
   push:
     branches: [feat/streammax-windows-tizen-ports]
-    paths: [.github/workflows/streammax-tizen-emulator.yml, .github/workflows/streammax-ports.yml]
+    paths:
+      - .github/workflows/streammax-tizen-emulator.yml
+      - .github/workflows/streammax-ports.yml
+      - tests/ports/install-tizen-emulator.py
+      - tests/ports/tizen-*
+      - tests/ports/repackage-tizen.py
+      - legacy-source/tools/streammax-tizen-webapi.py
   workflow_dispatch:
     inputs:
       build_run:
