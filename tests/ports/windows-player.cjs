@@ -23,9 +23,12 @@ function until(fn,timeout=20000){return new Promise((resolve,reject)=>{const end
   await player.open('http://127.0.0.1:'+server.address().port+'/fixture.mp4','Authorization: Bearer teste-do-player');
   await until(()=>player.state.ready && player.state.pos>0.5);assert.ok(player.state.duration>10);assert.equal(player.state.width,640);
   phase='pausar';player.command('pause',true);await until(()=>!player.state.playing);
+  player.send(['keypress','SPACE']);await until(()=>player.state.playing);
+  player.command('pause',true);await until(()=>!player.state.playing);
   phase='buscar';player.command('seek',5);await until(()=>player.state.pos>=4.9);
   phase='retomar';player.command('pause',false);await until(()=>player.state.playing);
-  fs.mkdirSync('output/windows',{recursive:true});fs.writeFileSync('output/windows/reproducao.json',JSON.stringify({passed:true,checks:['vídeo e áudio','cabeçalho de autorização','metadados','posição','pausar','buscar','retomar'],width:player.state.width,duration:player.state.duration},null,2));
+  phase='voltar';player.send(['keypress','ESC']);await until(()=>!player.state.open);assert.equal(player.state.error,false);
+  fs.mkdirSync('output/windows',{recursive:true});fs.writeFileSync('output/windows/reproducao.json',JSON.stringify({passed:true,checks:['vídeo e áudio','cabeçalho de autorização','metadados','posição','pausar','Espaço','buscar','retomar','Escape para voltar'],width:player.state.width,duration:player.state.duration},null,2));
  }catch(e){console.error(JSON.stringify({phase,state:player.state,requests},null,2));if(fs.existsSync('output/windows/mpv-processo.log'))console.error(fs.readFileSync('output/windows/mpv-processo.log','utf8').slice(-3500));throw e;}
  finally{fs.writeFileSync('output/windows/requisicoes.json',JSON.stringify(requests,null,2));player.close();server.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

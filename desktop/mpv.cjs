@@ -56,6 +56,8 @@ class Player extends EventEmitter {
           try { this.message(JSON.parse(line),generation); } catch (_) {}
         }
       });
+      this.send(['define-section','streammax','ESC quit\n','force']);
+      this.send(['enable-section','streammax']);
       ['time-pos','duration','pause','width','height','track-list','eof-reached'].forEach((p,i) => this.send(['observe_property',i+1,p]));
       this.send(['set_property','http-header-fields',hs]);
       this.send(['loadfile',url,'replace']);
