@@ -6,8 +6,6 @@ on:
       - legacy-source/src/**
       - legacy-source/tools/**
       - legacy-source/android/app/src/main/res/drawable-nodpi/streammax_*.png
-      - desktop/**
-      - tests/ports/**
       - .github/workflows/streammax-ports.yml
   workflow_dispatch:
 permissions:

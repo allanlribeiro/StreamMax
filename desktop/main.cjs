@@ -39,7 +39,7 @@ app.whenReady().then(async () => {
    const responseHeaders={...details.responseHeaders};
    // APIs de addons são escolhidas pelo usuário. A liberação fica restrita a
    // respostas XHR/media da janela local; não desativa a segurança do Chromium.
-   if(details.webContentsId===win?.webContents.id && !details.url.startsWith(origin+'/')) {
+   if((details.webContentsId===win?.webContents.id || details.referrer?.startsWith(origin+'/') || details.initiator===origin) && !details.url.startsWith(origin+'/')) {
      if(['xhr','media','image'].includes(details.resourceType)) {
        for(const key of Object.keys(responseHeaders)) if(/^access-control-allow-origin$|^cross-origin-resource-policy$/i.test(key)) delete responseHeaders[key];
        responseHeaders['Access-Control-Allow-Origin']=[origin];responseHeaders['Access-Control-Allow-Headers']=['authorization,content-type,apikey,x-client-info,range'];responseHeaders['Access-Control-Allow-Methods']=['GET,POST,PUT,PATCH,DELETE,OPTIONS'];responseHeaders['Cross-Origin-Resource-Policy']=['cross-origin'];
@@ -47,14 +47,14 @@ app.whenReady().then(async () => {
    }
    callback({responseHeaders});
  });
- win=new BrowserWindow({width:1440,height:810,minWidth:960,minHeight:540,title:'StreamMax',icon:path.join(__dirname,'icon.ico'),backgroundColor:'#0e0f12',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ win=new BrowserWindow({width:1440,height:810,minWidth:960,minHeight:540,title:'StreamMax',icon:path.join(__dirname,'icon.ico'),backgroundColor:'#0e0f12',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
  win.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\//.test(url))shell.openExternal(url);return{action:'deny'};});
  win.webContents.on('will-navigate',(ev,url)=>{if(!url.startsWith(origin+'/'))ev.preventDefault();});
  win.webContents.on('before-input-event',(ev,input)=>{if(input.type==='keyDown'&&input.key==='F11'){ev.preventDefault();win.setFullScreen(!win.isFullScreen());}});
  player=new Player(mpv);
  player.on('state',s=>{if(!win.isDestroyed())win.webContents.send('player-state',s);});
  player.on('closed',s=>{if(!win.isDestroyed()){win.show();win.focus();win.webContents.send('player-closed',s);}});
- ipcMain.on('player-open',(ev,url,headers)=>{if(trusted(ev))player.open(url,headers).catch(()=>{});});
+ ipcMain.on('player-open',(ev,url,headers)=>{if(trusted(ev))player.open(url,headers).catch(()=>{if(!win.isDestroyed())win.webContents.send('player-state',{error:true,message:'Endereço ou cabeçalhos da fonte inválidos.'});});});
  ipcMain.on('player-close',ev=>{if(trusted(ev))player.close();});
  ipcMain.on('player-command',(ev,name,value)=>{if(trusted(ev))player.command(name,value);});
  await win.loadURL(origin+'/');

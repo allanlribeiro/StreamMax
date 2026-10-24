@@ -2,7 +2,12 @@ name: StreamMax Windows validar e empacotar
 on:
   push:
     branches: [feat/streammax-windows-tizen-ports]
-    paths: [.github/workflows/streammax-windows-package.yml]
+    paths:
+      - .github/workflows/streammax-windows-package.yml
+      - desktop/**
+      - tests/ports/windows*.cjs
+      - tests/ports/input.cjs
+      - tests/ports/login-input.cjs
   workflow_dispatch:
     inputs:
       wasm_run:
