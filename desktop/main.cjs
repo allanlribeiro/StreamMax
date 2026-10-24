@@ -15,7 +15,8 @@ if(!app.requestSingleInstanceLock())app.quit();
 app.whenReady().then(async () => {
  server=http.createServer((req,res)=>{
    if(req.headers.host!==new URL(origin).host) {res.writeHead(403);return res.end();}
-   const name=decodeURIComponent(new URL(req.url,origin).pathname);
+   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
+   let name;try{name=decodeURIComponent(new URL(req.url,origin).pathname);}catch(_){res.writeHead(400);return res.end();}
    const file=path.resolve(web,'.'+(name==='/'?'/index.html':name));
    if(!file.startsWith(web+path.sep)) {res.writeHead(403);return res.end();}
    res.setHeader('Cross-Origin-Opener-Policy','same-origin');res.setHeader('Cross-Origin-Embedder-Policy','require-corp');
@@ -57,5 +58,6 @@ app.whenReady().then(async () => {
  ipcMain.on('player-command',(ev,name,value)=>{if(trusted(ev))player.command(name,value);});
  await win.loadURL(origin+'/');
 });
+app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.show();win.focus();}});
 app.on('window-all-closed',()=>app.quit());
 app.on('before-quit',()=>{if(player)player.close();if(server)server.close();});

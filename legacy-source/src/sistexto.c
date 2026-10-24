@@ -52,7 +52,12 @@ static int teste(void) {
 // teclado; <input> escondido no .wgt; host .NET no .tpk canario). Este modulo
 // so traduz os avisos dele para a mesma fila do Android (st_evento).
 int st_teclado_modo(void) {
-#ifdef NV_TECLADO_SIS
+#ifdef __EMSCRIPTEN__
+  // No Windows e na Samsung, Automático abre o campo editável do sistema.
+  // O modo "Do app" continua disponível como alternativa para controles.
+  int modo = ajustes_teclado_android();
+  return modo == 0 ? 2 : modo;
+#elif defined(NV_TECLADO_SIS)
   return ajustes_teclado_android();
 #else
   return st_abre_sozinho() ? ajustes_teclado_android() : 0;   // teste() faz o papel do Android
@@ -74,7 +79,7 @@ int st_voz_disponivel(void) {
 #endif
 }
 int st_abre_sozinho(void) {
-#if defined(NV_ANDROID) || defined(NV_DESKTOP_WEB)
+#if defined(NV_ANDROID) || defined(__EMSCRIPTEN__)
   return 1;
 #else
   return teste();

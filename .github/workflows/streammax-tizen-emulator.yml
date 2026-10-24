@@ -16,7 +16,14 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      - name: Baixar a origem exata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" > "$RUNNER_TEMP/streammax-source.tar.gz"
+          tar xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
+
       - uses: actions/setup-node@v4
         with: {node-version: 22}
       - uses: actions/setup-python@v5
@@ -32,6 +39,8 @@ jobs:
           sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa libjpeg-turbo8 libsdl1.2debian libv4l-0 libxcb-icccm4 libxcb-image0 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxkbcommon-x11-0 libsm6 libnss3 libasound2 libpulse0 libfontconfig1 libxi6
       - name: SDK e imagem oficial Samsung
         run: |
+          exec > >(tee "$RUNNER_TEMP/streammax-sdk.log") 2>&1
+          trap 'python3 tests/ports/annotate-error.py "$RUNNER_TEMP/streammax-sdk.log"' ERR
           mkdir -p "$RUNNER_TEMP/tizen-installer" "$RUNNER_TEMP/tizen-studio"
           curl -fL https://download.tizen.org/sdk/Installer/tizen-studio_6.1/web-cli_Tizen_Studio_6.1_ubuntu-64.bin -o "$RUNNER_TEMP/tizen.bin"
           tail -n +171 "$RUNNER_TEMP/tizen.bin" | tar xzf - -C "$RUNNER_TEMP/tizen-installer"
@@ -55,7 +64,10 @@ jobs:
         env:
           QT_X11_NO_MITSHM: 1
           LIBGL_ALWAYS_SOFTWARE: 1
-        run: xvfb-run -a bash tests/ports/tizen-emulator.sh "$RUNNER_TEMP/tizen-studio"
+        run: |
+          exec > >(tee "$RUNNER_TEMP/streammax-emulator.log") 2>&1
+          trap 'python3 tests/ports/annotate-error.py "$RUNNER_TEMP/streammax-emulator.log"' ERR
+          xvfb-run -a bash tests/ports/tizen-emulator.sh "$RUNNER_TEMP/tizen-studio"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -3,6 +3,7 @@ const {chromium}=require('playwright');
 const fs=require('node:fs');
 const path=require('node:path');
 const {inputTests}=require('./input.cjs');
+const {loginInput}=require('./login-input.cjs');
 (async()=>{
  const out=path.resolve('output/navegador');fs.mkdirSync(out,{recursive:true});
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader']});
@@ -10,6 +11,7 @@ const {inputTests}=require('./input.cjs');
   const page=await browser.newPage({viewport:{width:1440,height:810}});
   if(process.env.STREAMMAX_URL){await page.goto(process.env.STREAMMAX_URL);await page.waitForFunction(()=>window.__nvPrimeiroQuadro===1,null,{timeout:180000});await page.waitForTimeout(2500);await page.screenshot({path:out+'/aplicativo.png'});}
   else {await page.setContent('<html lang="pt-BR"><head></head><body style="background:#0e0f12"><canvas id="canvas" tabindex="0"></canvas></body></html>');await page.addScriptTag({path:'legacy-source/tools/streammax-input.js'});}
+  if(process.env.STREAMMAX_URL){try{await loginInput(page,out);}catch(e){await page.screenshot({path:out+'/formulario-erro.png'});throw e;}}
   await inputTests(page,out);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

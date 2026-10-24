@@ -10,7 +10,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - name: Baixar a origem exata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" > "$RUNNER_TEMP/streammax-source.tar.gz"
+          tar xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
+
       - uses: actions/setup-node@v4
         with: {node-version: 22}
       - uses: actions/setup-python@v5
@@ -20,7 +27,8 @@ jobs:
           python -m pip install cmake==4.4.4 meson==1.12.1 ninja==1.13.2
           sudo apt-get update -qq
           sudo apt-get install -y imagemagick autoconf automake libtool pkg-config
-          git clone --depth 1 --branch 6.0.9 https://github.com/emscripten-core/emsdk "$RUNNER_TEMP/emsdk"
+          mkdir -p "$RUNNER_TEMP/emsdk"
+          curl -fL https://github.com/emscripten-core/emsdk/archive/refs/tags/6.0.9.tar.gz | tar xz --strip-components=1 -C "$RUNNER_TEMP/emsdk"
           "$RUNNER_TEMP/emsdk/emsdk" install 6.0.9
           "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.9
       - name: Configuração pública do backend
@@ -33,6 +41,8 @@ jobs:
       - name: Compilar bibliotecas e as duas plataformas
         working-directory: legacy-source
         run: |
+          exec > >(tee "$RUNNER_TEMP/streammax-build.log") 2>&1
+          trap 'python3 ../tests/ports/annotate-error.py "$RUNNER_TEMP/streammax-build.log"' ERR
           export EMSDK_DIR="$RUNNER_TEMP/emsdk"
           source "$EMSDK_DIR/emsdk_env.sh"
           bash tools/build-ass-wasm.sh
@@ -59,7 +69,14 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - name: Baixar a origem exata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" > "$RUNNER_TEMP/streammax-source.tar.gz"
+          tar xzf "$RUNNER_TEMP/streammax-source.tar.gz" --strip-components=1
+
       - uses: actions/setup-node@v4
         with: {node-version: 22}
       - uses: actions/download-artifact@v4
@@ -79,10 +96,10 @@ jobs:
         run: |
           node --test desktop/test/*.test.cjs
           if ($LASTEXITCODE -ne 0) {throw 'Testes unitários falharam'}
-          node tests/ports/windows.cjs
-          if ($LASTEXITCODE -ne 0) {throw 'Interface Windows falhou'}
-          node tests/ports/windows-player.cjs
-          if ($LASTEXITCODE -ne 0) {throw 'Reprodução Windows falhou'}
+          node tests/ports/windows.cjs 2>&1 | Tee-Object -FilePath windows-interface.log
+          if ($LASTEXITCODE -ne 0) {throw ((Get-Content windows-interface.log -Tail 40) -join "`n")}
+          node tests/ports/windows-player.cjs 2>&1 | Tee-Object -FilePath windows-player.log
+          if ($LASTEXITCODE -ne 0) {throw ((Get-Content windows-player.log -Tail 40) -join "`n")}
       - name: Gerar executável portátil
         run: npm --prefix desktop run dist:win
       - uses: actions/upload-artifact@v4

@@ -645,7 +645,14 @@ static void okBarra(void) {
 // que sao desenhados.
 static int teModos(const char **rot, int *col) {
   int k = 0;
-  if (imeOk()) { rot[k] = "Teclado da TV"; col[k++] = TE_B_IME; }
+  if (imeOk()) {
+#ifdef NV_DESKTOP_WEB
+    rot[k] = "Teclado";
+#else
+    rot[k] = "Teclado da TV";
+#endif
+    col[k++] = TE_B_IME;
+  }
   if (vozOk()) { rot[k] = "Falar"; col[k++] = TE_B_FALAR; }
   if (celOk()) { rot[k] = "Digitar pelo celular"; col[k++] = TE_B_CEL; }
   return k;

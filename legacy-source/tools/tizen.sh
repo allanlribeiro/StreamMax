@@ -585,7 +585,7 @@ chmod 600 "$SAIDA/.nuvio-build-stamp"
 # VIDAA: o site sai por Workers Static Assets, que recusa arquivo acima de
 # 25 MiB. index.data (fontes + arte) e o candidato; falhar aqui e melhor que no
 # wrangler deploy.
-if [ "$PLAT_VIDAA" = "1" ]; then
+if [ "$PLAT_VIDAA" = "1" ] && [ "$PLAT_DESKTOP" != "1" ]; then
   for f in "$SAIDA"/*; do
     [ -f "$f" ] || continue
     if [ "$(wc -c < "$f")" -gt 26214400 ]; then
