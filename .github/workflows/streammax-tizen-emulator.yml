@@ -7,6 +7,7 @@ on:
       - .github/workflows/streammax-ports.yml
       - tests/ports/install-tizen-emulator.py
       - tests/ports/tizen-*
+      - tests/ports/SignEmulatorWidget.java
       - tests/ports/repackage-tizen.py
       - legacy-source/tools/streammax-tizen-webapi.py
   workflow_dispatch:
@@ -43,7 +44,7 @@ jobs:
       - name: Bibliotecas do emulador
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y xvfb gnome-keyring dbus-x11 libgl1-mesa-dri libglu1-mesa libjpeg-turbo8 libsdl1.2debian libv4l-0 libxcb-icccm4 libxcb-image0 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxkbcommon-x11-0 libsm6 libnss3 libasound2 libpulse0 libfontconfig1 libxi6
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa libjpeg-turbo8 libsdl1.2debian libv4l-0 libxcb-icccm4 libxcb-image0 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxkbcommon-x11-0 libsm6 libnss3 libasound2 libpulse0 libfontconfig1 libxi6
       - name: SDK e imagem oficial Samsung
         run: |
           exec > >(tee "$RUNNER_TEMP/streammax-sdk.log") 2>&1
@@ -78,7 +79,7 @@ jobs:
         run: |
           exec > >(tee "$RUNNER_TEMP/streammax-emulator.log") 2>&1
           trap 'python3 tests/ports/annotate-error.py "$RUNNER_TEMP/streammax-emulator.log"' ERR
-          xvfb-run -a dbus-run-session -- bash tests/ports/tizen-emulator.sh "$RUNNER_TEMP/tizen-studio"
+          xvfb-run -a bash tests/ports/tizen-emulator.sh "$RUNNER_TEMP/tizen-studio"
       - uses: actions/upload-artifact@v4
         with:
           name: StreamMax-Tizen-verificado
