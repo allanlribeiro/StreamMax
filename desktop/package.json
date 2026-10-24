@@ -1,14 +1,59 @@
 {
-  "name": "streammax-desktop", "version": "1.0.17", "private": true,
-  "description": "StreamMax para Windows", "author": "StreamMax", "license": "GPL-3.0-or-later",
+  "name": "streammax-desktop",
+  "version": "1.0.17",
+  "private": true,
+  "description": "StreamMax para Windows",
+  "author": "StreamMax",
+  "license": "GPL-3.0-or-later",
   "main": "main.cjs",
-  "scripts": {"start": "electron .", "test": "node --test test/*.test.cjs", "dist:win": "electron-builder --win portable --x64"},
-  "devDependencies": {"electron": "39.8.10", "electron-builder": "26.0.12", "playwright": "1.56.1"},
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "dist:win": "electron-builder --win portable --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "39.8.10",
+    "electron-builder": "26.0.12",
+    "playwright": "1.56.1"
+  },
   "build": {
-    "appId": "com.streammax.desktop", "productName": "StreamMax", "asar": true,
-    "files": ["*.cjs", "LICENSE", "THIRD-PARTY-NOTICES.txt", "icon.ico"],
-    "extraResources": [{"from":"web", "to":"web"}, {"from":"mpv", "to":"mpv"}],
-    "win": {"icon": "icon.ico", "target":[{"target":"portable","arch":["x64"]}], "signAndEditExecutable": true},
-    "portable": {"artifactName":"StreamMax-1.0.17-Windows-x64.exe"}
+    "appId": "com.streammax.desktop",
+    "productName": "StreamMax",
+    "asar": true,
+    "files": [
+      "*.cjs",
+      "LICENSE",
+      "THIRD-PARTY-NOTICES.txt",
+      "icon.ico"
+    ],
+    "extraResources": [
+      {
+        "from": "web",
+        "to": "web"
+      },
+      {
+        "from": "mpv",
+        "to": "mpv"
+      }
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": true
+    },
+    "portable": {
+      "artifactName": "StreamMax-1.0.17-Windows-x64.exe"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/allanlribeiro/StreamMax.git"
   }
 }
