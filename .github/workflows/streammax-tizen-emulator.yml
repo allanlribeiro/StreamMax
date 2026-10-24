@@ -8,6 +8,7 @@ on:
       build_run:
         description: Run contendo o WGT StreamMax-Tizen
         required: true
+        default: '40116017095'
 permissions:
   contents: read
   actions: read
@@ -51,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          build_run='${{ inputs.build_run }}'
+          build_run='${{ inputs.build_run || '40116017095' }}'
           if [ -z "$build_run" ]; then build_run=$(gh run list --workflow streammax-ports.yml --branch feat/streammax-windows-tizen-ports --limit 1 --json databaseId --jq '.[0].databaseId'); fi
           for attempt in $(seq 1 120); do
             artifact=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$build_run/artifacts" --jq '.artifacts[] | select(.name=="StreamMax-Tizen") | .id')
@@ -60,6 +61,9 @@ jobs:
           done
           test -n "$artifact"
           gh run download "$build_run" --name StreamMax-Tizen --dir legacy-source
+          python3 tests/ports/repackage-tizen.py legacy-source/StreamMax-1.0.17-tizen.wgt
+          mkdir -p output/tizen-emulador
+          printf 'Interface WASM: run %s\nPacote: commit %s\n' "$build_run" "$GITHUB_SHA" > output/tizen-emulador/BUILD-INFO.txt
           npm ci --prefix desktop --ignore-scripts
       - name: Instalar e testar no emulador
         env:
@@ -69,6 +73,10 @@ jobs:
           exec > >(tee "$RUNNER_TEMP/streammax-emulator.log") 2>&1
           trap 'python3 tests/ports/annotate-error.py "$RUNNER_TEMP/streammax-emulator.log"' ERR
           xvfb-run -a bash tests/ports/tizen-emulator.sh "$RUNNER_TEMP/tizen-studio"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Tizen-verificado
+          path: legacy-source/StreamMax-1.0.17-tizen.wgt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

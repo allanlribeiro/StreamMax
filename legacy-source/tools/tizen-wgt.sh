@@ -92,6 +92,7 @@ mkdir -p "$ESTAGIO"
 cp "$ENTRADA"/index.html "$ENTRADA"/index.js "$ENTRADA"/index.wasm "$ENTRADA"/decodificador.js "$ESTAGIO"/
 [ -f "$ENTRADA/index.data" ] && cp "$ENTRADA/index.data" "$ESTAGIO"/
 cp "$ENTRADA/streammax-player.js" "$ENTRADA/streammax-input.js" "$ENTRADA/streammax-startup.png" "$ESTAGIO"/
+python3 tools/streammax-tizen-webapi.py "$ESTAGIO/index.html"
 CONFIG="${NUVIO_TIZEN_CONFIG:-tools/tizen-config.xml}"
 [ -s "$CONFIG" ] || { echo "tizen-wgt.sh: config ausente: $CONFIG" >&2; exit 2; }
 cp "$CONFIG" "$ESTAGIO"/config.xml
