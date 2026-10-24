@@ -2,6 +2,9 @@
 #define STREAMMAX_ADDONSLOCAL_H
 #include "addons.h"
 
+/* Normaliza a entrada inteira sem alterar caixa de caminhos ou tokens. */
+int addonslocal_normalizar(const char *entrada, char *saida, size_t capacidade);
+
 /* URLs locais privadas por conta/perfil. Nunca enviar ao backend.
  * 1 = gravou, 2 = já cadastrado, 0 = erro/URL inválida. */
 int addonslocal_guardar(const char *url);

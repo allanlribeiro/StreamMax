@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Mesmo S oficial do icone StreamMax antes do primeiro quadro GLES.
-     Imagem central e estatica; sem video nem palavra STREAMMAX. -->
+<!-- A mesma logo estática do SDL, inteira e centralizada, antes dos perfis. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/streammax_fundo" />
-    <item>
-        <bitmap android:src="@drawable/streammax_icon" android:gravity="center" />
+    <item android:width="480dp" android:height="320dp" android:gravity="center">
+        <bitmap android:src="@drawable/streammax_startup" android:gravity="fill" />
     </item>
 </layer-list>

@@ -1,0 +1,159 @@
+name: StreamMax 1.0.14 addons e nova abertura TESTE
+
+# Experimental: não publica OTA, não cria release e não instala na TV.
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/streammax-legacy-addons-logo-1014]
+    paths:
+      - '.github/workflows/streammax-114-addons-logo-apk.yml'
+      - 'legacy-source/src/**'
+      - 'legacy-source/android/**'
+      - 'legacy-source/deploy/app/art/marcas/streammax_startup.png'
+      - 'legacy-source/tests/test_streammax_update.c'
+      - 'legacy-source/tests/streammax-addon-cadastro-tv.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  native-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirmar escopo e executar testes
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '"version": "2.0.21"' legacy-source/deploy/app/appinfo.json
+          grep -Fq 'version="2.0.21"' legacy-source/tools/tizen-config.xml
+          grep -Fq '#define SM_UPDATE_VERSION "1.0.14"' legacy-source/src/streammax_update.h
+          grep -Fq 'applicationId = "com.streammax.tv"' legacy-source/android/app/build.gradle.kts
+          bash legacy-source/tests/streammax-addon-cadastro-tv.sh
+          bash legacy-source/tests/streammax-addon-install.sh
+          bash legacy-source/tests/streammax-static-s-splash.sh
+          python3 migration/check-playback-contracts.py legacy-source
+          bash legacy-source/tests/streammax-updater.sh
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+
+      - name: Configuração pública do backend de login
+        shell: bash
+        env:
+          CLOUD_URL: https://api.nuvio.tv
+          CLOUD_PUBLIC_KEY: sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+        run: |
+          set -euo pipefail
+          umask 077
+          printf 'NUVIO_SUPABASE_URL=%s\nNUVIO_SUPABASE_ANON_KEY=%s\nTV_LOGIN_WEB_BASE_URL=%s\n' \
+            "$CLOUD_URL" "$CLOUD_PUBLIC_KEY" "https://nuvio.tv/tv-login" \
+            > legacy-source/local.properties
+          cd legacy-source
+          tools/env.sh --require-core >/dev/null
+          curl --fail --silent --show-error --retry 2 --connect-timeout 10 --max-time 30 \
+            -H "apikey: $CLOUD_PUBLIC_KEY" "$CLOUD_URL/auth/v1/health" >/dev/null
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK e NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "${ANDROID_HOME:?ANDROID_HOME não encontrado}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
+            "platforms;android-35" "build-tools;35.0.0" \
+            "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Dependências nativas
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+
+      - name: Compilar bibliotecas nativas curl, JPEG, WebP
+        shell: bash
+        working-directory: legacy-source
+        env:
+          NUVIO_ANDROID_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android/deps.sh arm64-v8a armeabi-v7a
+          for abi in arm64-v8a armeabi-v7a; do
+            for lib in curl jpeg webp; do
+              test -s "$HOME/.cache/nuvio-android/prefix/$abi/lib/lib$lib.so"
+            done
+          done
+
+      - name: Compilar APK experimental assinado (não publicar)
+        shell: bash
+        working-directory: legacy-source
+        env:
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+          RELEASE_STORE_B64: ${{ secrets.STREAMMAX_RELEASE_KEYSTORE_B64 }}
+          NUVIO_KEYSTORE_PASS: ${{ secrets.STREAMMAX_RELEASE_STORE_PASSWORD }}
+          NUVIO_KEY_ALIAS: ${{ secrets.STREAMMAX_RELEASE_KEY_ALIAS }}
+          NUVIO_KEY_PASS: ${{ secrets.STREAMMAX_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_STORE_B64" && test -n "$NUVIO_KEYSTORE_PASS"
+          test -n "$NUVIO_KEY_ALIAS" && test -n "$NUVIO_KEY_PASS"
+          export NUVIO_KEYSTORE="$RUNNER_TEMP/streammax-114-addons-logo-rc.jks"
+          umask 077
+          printf '%s' "$RELEASE_STORE_B64" | base64 --decode > "$NUVIO_KEYSTORE"
+          bash tools/android.sh --release-only
+
+      - name: Verificar pacote e assinatura da versão oficial
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find legacy-source/build/android -maxdepth 1 -name '*-android.apk' -type f)
+          test "${#apks[@]}" -eq 1
+          apk="${apks[0]}"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$aapt" dump badging "$apk" > "$RUNNER_TEMP/streammax-badging.txt"
+          grep -q "^package: name='com.streammax.tv'" "$RUNNER_TEMP/streammax-badging.txt"
+          grep -q "versionCode='20021'" "$RUNNER_TEMP/streammax-badging.txt"
+          grep -Fq "versionName='1.0.14'" "$RUNNER_TEMP/streammax-badging.txt"
+          "$signer" verify --verbose "$apk"
+          unzip -Z1 "$apk" > "$RUNNER_TEMP/streammax-entries.txt"
+          for abi in arm64-v8a armeabi-v7a; do
+            grep -Fxq "lib/$abi/libmain.so" "$RUNNER_TEMP/streammax-entries.txt"
+          done
+          grep -Fxq "assets/art/marcas/streammax_startup.png" "$RUNNER_TEMP/streammax-entries.txt"
+          mkdir -p "$RUNNER_TEMP/approved"
+          gh release download v1.0.11 --repo "$GITHUB_REPOSITORY" \
+            --pattern StreamMax-1.0.11-android.apk --dir "$RUNNER_TEMP/approved"
+          anterior="$RUNNER_TEMP/approved/StreamMax-1.0.11-android.apk"
+          test -s "$anterior"
+          cert_antigo="$("$signer" verify --print-certs "$anterior" | grep -m1 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')"
+          cert_novo="$("$signer" verify --print-certs "$apk" | grep -m1 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')"
+          test -n "$cert_antigo" && test "$cert_antigo" = "$cert_novo"
+          mkdir -p pacote
+          cp "$apk" pacote/StreamMax-1.0.14-android.apk
+          sha256sum pacote/*.apk > pacote/SHA256.txt
+          printf 'StreamMax 1.0.14 (teste)\nBranch: %s\nCommit: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > pacote/BUILD-INFO.txt
+          printf 'Não publicado. Teste real na TCL e TX6 pendente.\n' >> pacote/BUILD-INFO.txt
+          echo "OK: package e assinatura preservados, versionCode maior."
+
+      - name: Disponibilizar somente APK de teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-1.0.14-Addons-Logo-TESTE
+          path: pacote/*
+          if-no-files-found: error
+          retention-days: 14

@@ -79,7 +79,7 @@ checks = {
         "static char idiomas[LEGUI_MAX_CAND][16];",
     ],
     "src/abertura.c": [
-        "logoapp_streammax_simbolo(",
+        "logoapp_streammax_abertura(",
         "AB_SIMBOLO_W",
         "abSaida(p, &veu, &alfaMarca)",
     ],
@@ -109,13 +109,13 @@ checks = {
 
 }
 errors = []
-# A abertura aprovada exibe somente o S oficial: sem JPEG, MP4 ou wordmark.
+# A nova abertura usa a logo solicitada, estática e sem vídeo ou zoom.
 # Verificar a origem identica do PNG no SDL e na janela Android, protegendo
 # o primeiro frame contra flash da arte antiga.
-icon = root / "deploy/app/art/marcas/streammax_icon.png"
-launch = root / "android/app/src/main/res/drawable-nodpi/streammax_icon.png"
+icon = root / "deploy/app/art/marcas/streammax_startup.png"
+launch = root / "android/app/src/main/res/drawable-nodpi/streammax_startup.png"
 if not icon.is_file() or not launch.is_file():
-    errors.append("S oficial nao encontrado no SDL ou na janela Android")
+    errors.append("Nova logo não encontrada no SDL ou na janela Android")
 elif icon.stat().st_size < 1024 or not icon.read_bytes().startswith(bytes((137, 80, 78, 71, 13, 10, 26, 10))):
     errors.append("PNG da marca StreamMax invalido ou vazio")
 elif icon.read_bytes() != launch.read_bytes():
@@ -130,9 +130,9 @@ else:
         android_ns = "{http://schemas.android.com/apk/res/android}"
         bitmaps = a.findall("./item/bitmap")
         if (a.tag != "layer-list" or len(bitmaps) != 1
-                or bitmaps[0].get(android_ns + "src") != "@drawable/streammax_icon"
-                or bitmaps[0].get(android_ns + "gravity") != "center"):
-            errors.append("Janela Android deve centralizar somente o PNG S oficial")
+                or bitmaps[0].get(android_ns + "src") != "@drawable/streammax_startup"
+                or bitmaps[0].get(android_ns + "gravity") != "fill"):
+            errors.append("Janela Android deve mostrar a nova logo completa e centralizada")
         if "@drawable/streammax_launch" in janela.read_text(encoding="utf-8"):
             errors.append("Drawable da abertura ainda referencia JPEG antigo")
     except ET.ParseError:

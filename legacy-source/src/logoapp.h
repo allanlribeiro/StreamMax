@@ -39,4 +39,6 @@ int  logoapp_marca(GfxRect r, float alpha);
 // StreamMax RC1: S oficial e escrita original sem fonte generica; so nas telas solicitadas.
 int  logoapp_streammax_simbolo(GfxRect r, float alpha);
 int  logoapp_streammax_wordmark(GfxRect r, float alpha);
+// Arte estática da abertura, independente do ícone escolhido pelo usuário.
+int logoapp_streammax_abertura(GfxRect r, float alpha);
 #endif

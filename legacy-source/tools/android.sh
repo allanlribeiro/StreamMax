@@ -53,10 +53,10 @@ done
 echo "[2/5] arte e fontes -> $EST/assets"
 rm -rf "$EST/assets"; mkdir -p "$EST/assets"
 NUVIO_ARTE_ESTAGIO="build/android/assets/art" bash tools/tizen-art.sh >/dev/null
-# A abertura estatica reutiliza os pixels do S oficial do icone, ja
-# empacotado por tizen-art.sh. Nao incluir MP4 ou JPEG antigo de splash.
-test -s "$EST/assets/art/marcas/streammax_icon.png" || {
-  echo "android.sh: S oficial do StreamMax ausente no estagio Android" >&2
+# Abertura estática em PNG compartilhada com o fundo da janela Android.
+# Não incluir MP4 ou JPEG antigo de splash.
+test -s "$EST/assets/art/marcas/streammax_startup.png" || {
+  echo "android.sh: Nova logo do StreamMax ausente no estagio Android" >&2
   exit 1
 }
 mkdir -p "$EST/assets/fonts"

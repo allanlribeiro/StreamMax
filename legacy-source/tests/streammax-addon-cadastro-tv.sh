@@ -50,6 +50,11 @@ int main(void) {
     assert(addonslocal_guardar("javascript:evil") == 0);
     assert(addonslocal_guardar("https://") == 0);
     assert(addonslocal_guardar("https://user:pass@host/manifest.json") == 0);
+    char normal[NV_ADDON_URL_MAX];
+    assert(addonslocal_normalizar("  stremio://addon.exemplo.com/AbC/manifest.json?token=XyZ  ", normal, sizeof normal));
+    assert(!strcmp(normal, "https://addon.exemplo.com/AbC?token=XyZ"));
+    assert(!addonslocal_normalizar("https://addon.exemplo.com/a#token", normal, sizeof normal));
+    assert(!addonslocal_normalizar("https://addon.exemplo.com/a\001b", normal, sizeof normal));
     assert(addonslocal_guardar("https://addon.exemplo.com/manifest.json") == 1);
     assert(addonslocal_guardar("https://addon.exemplo.com/") == 2);
     n = addonslocal_combinar(NULL, 0, saida, ADDONS_MAX);
@@ -98,6 +103,12 @@ int main(void) {
     assert(addonslocal_remover("https://outro-addon.exemplo") == 1);
     assert(addonslocal_remover("https://outro-addon.exemplo") == 0);
     assert(addonslocal_combinar(NULL, 0, saida, ADDONS_MAX) == 0);
+    perfil = 3;
+    assert(addonslocal_guardar("https://addon.exemplo.com/AbC?token=XyZ") == 1);
+    assert(addonslocal_guardar("https://addon.exemplo.com/abc?token=XyZ") == 1);
+    assert(addonslocal_guardar("https://addon.exemplo.com/AbC?token=xyz") == 1);
+    assert(addonslocal_guardar(" HTTPS://ADDON.EXEMPLO.COM/AbC/manifest.json?token=XyZ ") == 2);
+    assert(addonslocal_combinar(NULL, 0, saida, ADDONS_MAX) == 3);
     free(saida);
     puts("OK: URL, persistência, isolamento e sincronização");
     return 0;

@@ -3,6 +3,8 @@
 #include "descoberta.h"
 #include "addons.h"
 #include "addonslocal.h"
+#include "addoninst.h"
+#include "perfisessao.h"
 #include "teclado.h"
 #include "gfx.h"
 #include "text.h"
@@ -24,7 +26,8 @@
 #define BASE     (NV_TELA_H - NV_MARGEM_Y - 48.0f)
 #define RAIO       0.13f
 
-static int   foco, sair, pediuRelogio, aguardandoUrl;
+static int   foco, sair, pediuRelogio, aguardandoUrl, validandoUrl;
+static uint64_t sessaoCadastro;
 static char  confirmarRemocao[NV_ADDON_URL_MAX];
 // 1 quando alguem ligou ou desligou algum addon nesta visita. Ver a nota em
 // addonsui_quer_sair.
@@ -33,6 +36,7 @@ static float scrollY;
 static float animFoco[128];
 
 void addonsui_abrir(void) {
+  addoninst_cancelar(); validandoUrl = 0;
   foco = 0; sair = 0; pediuRelogio = 0; mexeu = 0; aguardandoUrl = 0; confirmarRemocao[0] = 0; scrollY = 0.0f;
   // Sonda aqui e nao no arranque: sao N viagens de rede, e elas so interessam
   // a quem abriu esta tela. Quem ja respondeu nao e consultado de novo.
@@ -76,6 +80,8 @@ static void sincronizar(void) {
 }
 
 static void adicionarPorUrl(void) {
+  if (validandoUrl) return;
+  sessaoCadastro = nv_perfil_sessao_ler();
   /* Reutiliza a modal de texto do app, com IME Android e QR para digitar. */
   const char *alfabeto = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/?&=._-%~@+#[]!$'()*+,;";
   teclado_contexto("Fontes e addons");
@@ -169,7 +175,9 @@ void addonsui_evento(const SDL_Event *e) {
       break;
     // Voltar (qualquer tecla de voltar) e Esquerda: de volta a linha "Addons"
     // em Ajustes › Fontes e addons (app.c chama ajustes_voltar_de_lista).
-    case SDLK_AC_BACK: case SDLK_ESCAPE: case SDLK_BACKSPACE: case SDLK_LEFT: sair = 1; break;
+    case SDLK_AC_BACK: case SDLK_ESCAPE: case SDLK_BACKSPACE: case SDLK_LEFT:
+      if (validandoUrl) ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", "Cadastro cancelado.", 2500u, 0);
+      addoninst_cancelar(); validandoUrl = aguardandoUrl = 0; sair = 1; break;
     default: break;
   }
 }
@@ -188,27 +196,68 @@ void addonsui_atualizar(float dt, Uint32 agora) {
   if (aguardandoUrl) {
     int resultado = teclado_resultado();
     if (resultado == TECLADO_PRONTO) {
-      const char *url = teclado_texto();
-      int gravou = addonslocal_guardar(url);
-      if (!gravou) {
-        ilha_avisar("addon-url-invalida", ILHA_INFO, "aj_puzzle",
-                    "URL inválida ou não foi possível salvar o addon.", 5000u, 0);
-      } else if (gravou == 2) {
-        ilha_avisar("addon-ja-cadastrado", ILHA_INFO, "aj_puzzle",
-                    "Addon já cadastrado nesta TV.", 4000u, 0);
-      } else if (addons_adicionar("Addon local", url)) {
-        mexeu = 1;
-        addons_sondar_manifestos();
-        ilha_avisar("addon-cadastrado", ILHA_INFO, "aj_puzzle",
-                    "Addon adicionado nesta TV. Será verificado pelo manifesto.", 5000u, 0);
+      char url[NV_ADDON_URL_MAX];
+      if (!nv_perfil_sessao_atual(sessaoCadastro)) {
+        ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle",
+                    "O perfil mudou. Abra novamente o cadastro do addon.", 4500u, 0);
+      } else if (!addonslocal_normalizar(teclado_texto(), url, sizeof url)) {
+        ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle",
+                    "URL inválida. Copie o link completo do manifesto do addon.", 4500u, 0);
+      } else if (addoninst_iniciar(url, sessaoCadastro)) {
+        validandoUrl = 1;
+        ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle",
+                    "Verificando o manifesto do addon…", 12000u, 0);
       } else {
-        ilha_avisar("addon-ja-cadastrado", ILHA_INFO, "aj_puzzle",
-                    "Addon já instalado ou lista cheia.", 4500u, 0);
+        ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle",
+                    "Não foi possível iniciar a verificação. Tente novamente.", 4500u, 0);
       }
       aguardandoUrl = 0;
       foco = 0;
     } else if (resultado == TECLADO_CANCELOU) {
       aguardandoUrl = 0;
+    }
+  }
+  if (validandoUrl) {
+    AddonInstResultado r = {0};
+    int estadoCadastro = addoninst_resultado(&r);
+    if (estadoCadastro == 1) {
+      validandoUrl = 0;
+      if (r.erro[0]) {
+        ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", r.erro, 6000u, 0);
+      } else if (!nv_perfil_sessao_travar(r.sessao)) {
+        ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle",
+                    "O perfil mudou. O addon não foi instalado.", 4500u, 0);
+      } else {
+        const char *url = r.url;
+        char chave[32]; int duplicado = 0;
+        nv_addon_chave(url, chave, sizeof chave);
+        for (int k = 0; k < addons_n(); k++) {
+          char existente[32]; nv_addon_chave(addons_base(k), existente, sizeof existente);
+          if (!strcmp(chave, existente)) { duplicado = 1; break; }
+        }
+        if (duplicado) {
+          ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", "Addon já instalado neste perfil.", 4000u, 0);
+        } else if (addons_n() >= ADDONS_MAX) {
+          ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", "Lista de addons cheia. Remova um antes de adicionar outro.", 4500u, 0);
+        } else {
+          int gravou = addonslocal_guardar(url);
+          if (!gravou) {
+            ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", "Não foi possível salvar o addon nesta TV.", 4500u, 0);
+          } else if (addons_adicionar(r.nome, url)) {
+            mexeu = 1;
+            addons_manifesto_recebido(url, addons_versao(), r.sessao, r.manifesto);
+            ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", "Addon verificado e adicionado a este perfil.", 4500u, 0);
+          } else {
+            if (gravou == 1) addonslocal_remover(url);
+            ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", "A lista mudou. Tente adicionar o addon novamente.", 4500u, 0);
+          }
+        }
+        nv_perfil_sessao_destravar();
+      }
+      addoninst_liberar(&r);
+    } else if (estadoCadastro < 0) {
+      validandoUrl = 0;
+      ilha_avisar("addon-cadastro", ILHA_INFO, "aj_puzzle", "Cadastro cancelado após mudança de perfil.", 4500u, 0);
     }
   }
   float alvo;
