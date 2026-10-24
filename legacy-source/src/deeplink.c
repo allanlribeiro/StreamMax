@@ -1,4 +1,5 @@
 #include "deeplink.h"
+#include "perfisessao.h"
 #include <pthread.h>
 #include <string.h>
 
@@ -156,8 +157,12 @@ static pthread_mutex_t trava = PTHREAD_MUTEX_INITIALIZER;
 static DeepLink pendente;
 
 void deeplink_postar(const char *url) {
+  deeplink_postar_sessao(url, 0);
+}
+void deeplink_postar_sessao(const char *url, uint64_t sessao) {
   DeepLink d;
   if (!deeplink_parse(url, &d)) return;
+  d.sessaoEsperada = sessao;
   pthread_mutex_lock(&trava); pendente = d; pthread_mutex_unlock(&trava);
 }
 
@@ -167,11 +172,23 @@ int deeplink_pegar(DeepLink *out) {
   ok = pendente.tipo != DL_NENHUM;
   if (ok) { *out = pendente; memset(&pendente, 0, sizeof pendente); }
   pthread_mutex_unlock(&trava);
+  if (ok && out->sessaoEsperada && !nv_perfil_sessao_atual(out->sessaoEsperada)) {
+    memset(out, 0, sizeof *out); return 0;
+  }
   return ok;
 }
 
 #ifdef NV_ANDROID
 #include <jni.h>
+JNIEXPORT void JNICALL
+Java_space_nuvio_nativelegacy_NuvioActivity_nativeWatchNextDeepLink(JNIEnv *env, jobject act, jstring url, jlong sessao) {
+  (void)act;
+  if (!url || sessao <= 0) return;
+  const char *s = (*env)->GetStringUTFChars(env, url, NULL);
+  if (!s) return;
+  deeplink_postar_sessao(s, (uint64_t)sessao);
+  (*env)->ReleaseStringUTFChars(env, url, s);
+}
 JNIEXPORT void JNICALL
 Java_space_nuvio_nativelegacy_NuvioActivity_nativeDeepLink(JNIEnv *env, jobject act, jstring url) {
   const char *s;

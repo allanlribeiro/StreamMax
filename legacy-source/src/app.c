@@ -18,6 +18,7 @@
 #include "teclado.h"
 #include "ponteiro.h"
 #include "app.h"
+#include "watchnext.h"
 #include "deeplink.h"
 #include "telefoneui.h"
 #include "descanso.h"
@@ -4125,6 +4126,7 @@ static void atualizarFolha(float dt, Uint32 agora) {
 }
 
 void app_atualizar(float dt, Uint32 agora) {
+  watchnext_atualizar(agora, tela != TELA_LOGIN && tela != TELA_ESCOLHA_PERFIL);
   relogioFocoValidar();
   { static int morno = -1; int ligado = ajustes_retomada_morna();
     if (morno != ligado) { morno = ligado; cacheboost_backend_morno(ligado); }

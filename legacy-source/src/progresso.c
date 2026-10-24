@@ -1,4 +1,5 @@
 #include "progresso.h"
+#include "watchnext.h"
 #include "idbase.h"
 #include "jfid.h"
 #include "dados.h"
@@ -168,6 +169,7 @@ static int gravar(void) {
     p += escrito;
   }
   ok = dados_gravar(ARQ, buf);
+  if (ok) watchnext_sujar();
   free(buf);
   return ok;
 }
@@ -409,6 +411,7 @@ static struct { int perfil; char obra[24]; long long ms; } removidos[PROG_REMOVI
 static int nRemovidos;
 
 void prog_marcar_removido(const char *imdb) {
+  watchnext_sujar();
   char obra[24];
   int i, alvo = -1, perfil = perfis_ativo();
   long long agora = prog_agora_ms();
@@ -579,6 +582,7 @@ int prog_oculto_soltar(const char *imdb, long long instanteMs) {
 }
 
 void prog_esquecer_tudo(void) {
+  watchnext_sujar();
   TRANCAR();
   dados_apagar(ARQ);
   dados_apagar(ARQ_OCULTO);

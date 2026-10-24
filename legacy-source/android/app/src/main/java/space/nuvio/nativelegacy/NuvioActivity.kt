@@ -266,10 +266,40 @@ class NuvioActivity : SDLActivity() {
 
     // LINK EXTERNO (docs/deeplink.md): o C valida; aqui so se limita o tamanho.
     private external fun nativeDeepLink(url: String)
+    private external fun nativeWatchNextRefresh()
+    private external fun nativeWatchNextDeepLink(url: String, session: Long)
+    private var watchNextPending: Pair<String, String>? = null
+
+    // Called from SDL with UTF-8 bytes (JNI NewStringUTF cannot carry every
+    // Unicode title). Provider I/O runs on the publisher's worker thread.
+    fun publicarContinuarAssistindo(payload: ByteArray) {
+        val activity = java.lang.ref.WeakReference(this)
+        StreamMaxWatchNext.sync(applicationContext, payload) { scope, session ->
+            val current = activity.get()
+            if (current != null && !current.isDestroyed && !current.isFinishing && scope.isNotEmpty()) {
+                val request = current.watchNextPending
+                current.watchNextPending = null
+                if (request != null) {
+                    if (WatchNextPolicy.sameScope(request.first, scope)) current.nativeWatchNextDeepLink(request.second, session)
+                    else android.widget.Toast.makeText(current,
+                        "Escolha o mesmo perfil do StreamMax usado para assistir a este conteúdo.",
+                        android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     private fun entregarDeepLink(i: Intent?) {
         if (mBrokenLibraries || i?.action != Intent.ACTION_VIEW) return
         val url = i.dataString ?: return
+        val scope = i.getStringExtra(StreamMaxWatchNext.EXTRA_SCOPE)
+        if (scope != null) {
+            if (scope.matches(Regex("[a-f0-9]{64}")) && url.length <= 512 && url.startsWith("streammax://play/")) {
+                watchNextPending = scope to url
+                try { nativeWatchNextRefresh() } catch (_: UnsatisfiedLinkError) {}
+            }
+            return
+        }
         if (url.length <= 512) nativeDeepLink(url)
     }
 

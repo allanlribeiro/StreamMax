@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <!-- Para a auto-atualizacao instalar o APK baixado (fase seguinte). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
@@ -56,6 +58,11 @@
         android:hasCode="true"
         android:extractNativeLibs="true"
         android:theme="@style/Tema.StreamMax">
+        <receiver android:name=".StreamMaxWatchNextReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.tv.action.WATCH_NEXT_PROGRAM_BROWSABLE_DISABLED" />
+            </intent-filter>
+        </receiver>
 
         <!-- configChanges cobre TODA mudanca que a Activity aguenta sem nascer de
              novo. O nucleo C nao sobrevive a uma recriacao: medido no emulador

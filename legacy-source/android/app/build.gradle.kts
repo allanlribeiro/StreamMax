@@ -119,6 +119,7 @@ val copiaSdlJava = tasks.register<Copy>("copiaSdlJava") {
 tasks.named("preBuild") { dependsOn(copiaSdlJava) }
 
 dependencies {
+    implementation("androidx.tvprovider:tvprovider:1.1.0")
     // Video (NvPlayer.kt, de outro agente): Media3 ExoPlayer.
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-exoplayer-hls:1.8.0")
