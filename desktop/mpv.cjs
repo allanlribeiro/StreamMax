@@ -24,11 +24,14 @@ class Player extends EventEmitter {
     const generation = ++this.serial;
     const pipe = '\\\\.\\pipe\\streammax-' + crypto.randomUUID();
     this.state.open = true; this.publish();
-    const child = spawn(this.executable, ['--no-config','--idle=yes','--force-window=yes','--keep-open=no','--terminal=no','--ytdl=no','--title=StreamMax','--alang=pt-BR,por,pt','--slang=pt-BR,por,pt','--hwdec=auto-safe','--input-ipc-server='+pipe,...(this.options.logFile?['--log-file='+this.options.logFile]:[])], {windowsHide:true, stdio:'ignore'});
+    const child = spawn(this.executable, ['--no-config','--idle=yes','--force-window=yes','--keep-open=no','--terminal=no','--ytdl=no','--title=StreamMax','--alang=pt-BR,por,pt','--slang=pt-BR,por,pt','--hwdec=auto-safe','--input-ipc-server='+pipe,...(this.options.logFile?['--log-file='+this.options.logFile]:[])], {windowsHide:true, stdio:this.options.diagnostics?['ignore','pipe','pipe']:'ignore'});
     this.child = child;
+    if(this.options.diagnostics){for(const stream of [child.stdout,child.stderr])if(stream)stream.on('data',data=>this.emit('diagnostic',data.toString()));}
     child.once('error', () => this.fail(generation, 'Não foi possível iniciar o player.'));
-    child.once('exit', () => {
+    child.once('exit', (code,signal) => {
       if (this.serial !== generation) return;
+      if(code && !this.state.ended){this.state.error=true;this.state.message='O player encerrou com código '+code;}
+      this.emit('diagnostic','Saída do player: '+code+' '+(signal||''));
       this.state.playing=false; this.state.open=false; this.publish();
       this.emit('closed', {ended:this.state.ended});
     });
@@ -56,7 +59,7 @@ class Player extends EventEmitter {
       ['time-pos','duration','pause','width','height','track-list','eof-reached'].forEach((p,i) => this.send(['observe_property',i+1,p]));
       this.send(['set_property','http-header-fields',hs]);
       this.send(['loadfile',url,'replace']);
-    } catch (_) { this.fail(generation,'Não foi possível conectar ao player.'); }
+    } catch (_) { if(!this.state.error)this.fail(generation,'Não foi possível conectar ao player.'); }
   }
   fail(generation, message) { if(generation!==this.serial) return; this.state.error=true;this.state.message=message;this.publish(); }
   message(m,generation) {

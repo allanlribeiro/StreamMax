@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 sdk="$1"
+export TERM="${TERM:-xterm}"
 export PATH="$sdk/tools/ide/bin:$sdk/tools:$sdk/tools/emulator/bin:$PATH"
 mkdir -p output/tizen-emulador "$sdk/data"
 printf 'TIZEN_SDK_INSTALLED_PATH=%s\nTIZEN_SDK_DATA_PATH=%s\nJDK_PATH=%s\n' "$sdk" "$sdk/data" "$sdk/jdk" > "$sdk/sdk.info"
 test -c /dev/kvm
 em-cli create -n StreamMaxTV -p tv-samsung-10.0-x86_64 -t HD1080-TV -w yes -g no -r 1024
+vm="$sdk/data/emulator/vms/StreamMaxTV"
+if [ ! -s "$vm/swap-StreamMaxTV.img" ]; then
+  truncate -s 512M "$vm/swap-StreamMaxTV.img"
+  chmod 600 "$vm/swap-StreamMaxTV.img"
+  mkswap "$vm/swap-StreamMaxTV.img"
+fi
 em-cli launch -n StreamMaxTV > output/tizen-emulador/boot.txt 2>&1
 sdb start-server
 serial=''

@@ -17,7 +17,8 @@ function until(fn,timeout=20000){return new Promise((resolve,reject)=>{const end
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  fs.mkdirSync('output/windows',{recursive:true});
  let phase='preparar';
- const player=new Player(path.resolve('desktop/mpv/mpv.exe'),{logFile:path.resolve('output/windows/mpv-teste.log')});
+ const player=new Player(path.resolve('desktop/mpv/mpv.exe'),{logFile:path.resolve('output/windows/mpv-teste.log'),diagnostics:true});
+ player.on('diagnostic',text=>{fs.appendFileSync('output/windows/mpv-processo.log',text);});
  try{
   await player.open('http://127.0.0.1:'+server.address().port+'/fixture.mp4','Authorization: Bearer teste-do-player');
   await until(()=>player.state.ready && player.state.pos>0.5);assert.ok(player.state.duration>10);assert.equal(player.state.width,640);
@@ -25,6 +26,6 @@ function until(fn,timeout=20000){return new Promise((resolve,reject)=>{const end
   phase='buscar';player.command('seek',5);await until(()=>player.state.pos>=4.9);
   phase='retomar';player.command('pause',false);await until(()=>player.state.playing);
   fs.mkdirSync('output/windows',{recursive:true});fs.writeFileSync('output/windows/reproducao.json',JSON.stringify({passed:true,checks:['vídeo e áudio','cabeçalho de autorização','metadados','posição','pausar','buscar','retomar'],width:player.state.width,duration:player.state.duration},null,2));
- }catch(e){console.error(JSON.stringify({phase,state:player.state,requests},null,2));throw e;}
+ }catch(e){console.error(JSON.stringify({phase,state:player.state,requests},null,2));if(fs.existsSync('output/windows/mpv-processo.log'))console.error(fs.readFileSync('output/windows/mpv-processo.log','utf8').slice(-3500));throw e;}
  finally{fs.writeFileSync('output/windows/requisicoes.json',JSON.stringify(requests,null,2));player.close();server.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
