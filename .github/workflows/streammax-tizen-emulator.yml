@@ -1,0 +1,54 @@
+name: StreamMax teste no emulador Samsung
+on:
+  workflow_dispatch:
+    inputs:
+      build_run:
+        description: Run contendo o WGT StreamMax-Tizen
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  samsung:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Verificar virtualização
+        run: |
+          lscpu | grep -E 'Virtualization|Hypervisor' || true
+          ls -l /dev/kvm
+          sudo chmod a+rw /dev/kvm
+      - name: Bibliotecas do emulador
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglu1-mesa libjpeg-turbo8 libsdl1.2debian libv4l-0 libxcb-icccm4 libxcb-image0 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxkbcommon-x11-0 libsm6 libnss3 libasound2 libpulse0 libfontconfig1 libxi6
+      - name: SDK e imagem oficial Samsung
+        run: |
+          mkdir -p "$RUNNER_TEMP/tizen-installer" "$RUNNER_TEMP/tizen-studio"
+          curl -fL https://download.tizen.org/sdk/Installer/tizen-studio_6.1/web-cli_Tizen_Studio_6.1_ubuntu-64.bin -o "$RUNNER_TEMP/tizen.bin"
+          tail -n +171 "$RUNNER_TEMP/tizen.bin" | tar xzf - -C "$RUNNER_TEMP/tizen-installer"
+          unzip -q "$RUNNER_TEMP/tizen-installer/tizen-sdk.zip" -d "$RUNNER_TEMP/tizen-studio"
+          python3 tests/ports/install-tizen-emulator.py "$RUNNER_TEMP/tizen-studio"
+      - name: Aguardar pacote compilado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run watch '${{ inputs.build_run }}' --exit-status --interval 30
+          gh run download '${{ inputs.build_run }}' --name StreamMax-Tizen --dir legacy-source
+          npm ci --prefix desktop --ignore-scripts
+      - name: Instalar e testar no emulador
+        env:
+          QT_X11_NO_MITSHM: 1
+          LIBGL_ALWAYS_SOFTWARE: 1
+        run: xvfb-run -a bash tests/ports/tizen-emulator.sh "$RUNNER_TEMP/tizen-studio"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: testes-emulador-Samsung
+          path: |
+            output/tizen-emulador
+            ${{ runner.temp }}/tizen-studio/PACKAGES.json
+            ${{ runner.temp }}/tizen-studio/data/emulator/vms/StreamMaxTV/logs

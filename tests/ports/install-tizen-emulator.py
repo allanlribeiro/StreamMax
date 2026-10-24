@@ -39,6 +39,6 @@ def install(name):
             if mode: dest.chmod(mode)
     filename.unlink()
     proof.append({'package':name,'version':p['Version'],'sha256':digest,'source':repo+p['Path']})
-for name in ['sdb','emulator-manager','10.0-emulator-qemu-x86','10.0-emulator-qemu-common','tv-samsung-emulator-qemu-x86','tv-samsung-emulator-qemu-common','tv-samsung-emulator-lib','tv-samsung-emulator-still-image','tv-samsung-emulator-control-panel-devices','tv-samsung-public-emulator-image-x86-64']:
+for name in ['sdb','emulator-manager','10.0-emulator-qemu-x86','10.0-emulator-qemu-common','tv-samsung-emulator-qemu-x86','tv-samsung-emulator-qemu-common','tv-samsung-emulator-lib','tv-samsung-emulator-still-image','tv-samsung-emulator-control-panel-devices','TV-SAMSUNG-Public-Emulator']:
     install(name)
 (root/'PACKAGES.json').write_text(json.dumps(proof,indent=2))

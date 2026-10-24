@@ -53,7 +53,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: StreamMax-Tizen
-          path: legacy-source/build/*.wgt
+          path: legacy-source/*.wgt
   windows:
     needs: wasm
     runs-on: windows-2022
