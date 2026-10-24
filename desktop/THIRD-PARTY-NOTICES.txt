@@ -9,3 +9,6 @@ As licenças e avisos do pacote original do mpv são mantidos em resources/mpv.
 Player principal: janela própria do mpv. Espaço pausa, setas buscam,
 F alterna tela cheia e Q/Esc retorna ao StreamMax. Clique direito abre controles
 quando disponíveis no player; a barra inferior oferece reprodução e busca.
+
+Vulkan-Loader: dependência do mpv, incluída a partir da distribuição Electron
+39.8.10. Os avisos de licença acompanham o Electron no pacote.

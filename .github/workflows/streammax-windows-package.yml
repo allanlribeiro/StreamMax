@@ -56,6 +56,7 @@ jobs:
           if ((Get-FileHash mpv.7z -Algorithm SHA256).Hash.ToLower() -ne '4a355f3e89c83fabc730d33fb4e759dfec747806ed2287b61a90d1681b83e8d3') { throw 'Hash mpv incorreto' }
           7z x mpv.7z -odesktop/mpv
           if ($LASTEXITCODE -ne 0) {throw 'Extração mpv falhou'}
+          Copy-Item desktop/node_modules/electron/dist/vulkan-1.dll desktop/mpv/vulkan-1.dll
       - name: Testar Windows real, mouse, teclado e reprodução
         shell: pwsh
         env:

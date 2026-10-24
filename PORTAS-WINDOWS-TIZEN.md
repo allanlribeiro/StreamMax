@@ -5,7 +5,7 @@ A interface usa o mesmo código C/SDL do StreamMax Android 1.0.17
 
 ## Windows
 
-Windows 10 ou 11 de 64 bits. Abra `StreamMax-1.0.17-Windows-x64.exe`.
+Alvo principal: Windows 11 de 64 bits; compatível também com Windows 10. Abra `StreamMax-1.0.17-Windows-x64.exe`.
 É portátil; os dados ficam no perfil do usuário, separados do Android.
 A primeira distribuição de testes não possui certificado comercial de assinatura.
 
@@ -64,7 +64,10 @@ EMSDK_DIR=/caminho/emsdk bash tools/tizen.sh --desktop
 
 Copie os arquivos finais de `build/windows-web/` para `desktop/web/`.
 Instale o mpv x64 identificado em `desktop/THIRD-PARTY-NOTICES.txt`, mantendo
-as licenças e conferindo o SHA-256 usado no workflow. No Windows:
+as licenças e conferindo o SHA-256 usado no workflow. Copie também
+`desktop/node_modules/electron/dist/vulkan-1.dll` para `desktop/mpv/` antes
+do empacotamento; o player necessita desse carregador mesmo com Direct3D.
+No Windows:
 
 ```sh
 npm ci --prefix desktop
