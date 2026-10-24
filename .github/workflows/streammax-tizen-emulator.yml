@@ -49,6 +49,7 @@ jobs:
       - name: Aguardar pacote compilado
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           build_run='${{ inputs.build_run }}'
           if [ -z "$build_run" ]; then build_run=$(gh run list --workflow streammax-ports.yml --branch feat/streammax-windows-tizen-ports --limit 1 --json databaseId --jq '.[0].databaseId'); fi

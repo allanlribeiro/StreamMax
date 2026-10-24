@@ -6,9 +6,9 @@
   "devDependencies": {"electron": "39.8.10", "electron-builder": "26.0.12", "playwright": "1.56.1"},
   "build": {
     "appId": "com.streammax.desktop", "productName": "StreamMax", "asar": true,
-    "files": ["*.cjs", "LICENSE", "THIRD-PARTY-NOTICES.txt"],
+    "files": ["*.cjs", "LICENSE", "THIRD-PARTY-NOTICES.txt", "icon.ico"],
     "extraResources": [{"from":"web", "to":"web"}, {"from":"mpv", "to":"mpv"}],
-    "win": {"icon": "icon.ico", "target":[{"target":"portable","arch":["x64"]}], "signAndEditExecutable": false},
+    "win": {"icon": "icon.ico", "target":[{"target":"portable","arch":["x64"]}], "signAndEditExecutable": true},
     "portable": {"artifactName":"StreamMax-1.0.17-Windows-x64.exe"}
   }
 }

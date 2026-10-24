@@ -43,8 +43,8 @@ jobs:
         run: |
           exec > >(tee "$RUNNER_TEMP/streammax-build.log") 2>&1
           trap 'python3 ../tests/ports/annotate-error.py "$RUNNER_TEMP/streammax-build.log"' ERR
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
           export EMSDK_DIR="$RUNNER_TEMP/emsdk"
-          source "$EMSDK_DIR/emsdk_env.sh"
           bash tools/build-ass-wasm.sh
           bash tools/build-webp-wasm.sh
           bash tools/tizen.sh

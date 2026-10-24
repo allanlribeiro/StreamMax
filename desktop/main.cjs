@@ -13,6 +13,7 @@ app.setName('StreamMax');
 if(process.env.STREAMMAX_TEST_PROFILE)app.setPath('userData',process.env.STREAMMAX_TEST_PROFILE);
 if(!app.requestSingleInstanceLock())app.quit();
 app.whenReady().then(async () => {
+ if(process.platform==='win32')app.setAppUserModelId('com.streammax.desktop');
  server=http.createServer((req,res)=>{
    if(req.headers.host!==new URL(origin).host) {res.writeHead(403);return res.end();}
    if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
@@ -46,7 +47,7 @@ app.whenReady().then(async () => {
    }
    callback({responseHeaders});
  });
- win=new BrowserWindow({width:1440,height:810,minWidth:960,minHeight:540,title:'StreamMax',backgroundColor:'#0e0f12',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ win=new BrowserWindow({width:1440,height:810,minWidth:960,minHeight:540,title:'StreamMax',icon:path.join(__dirname,'icon.ico'),backgroundColor:'#0e0f12',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\//.test(url))shell.openExternal(url);return{action:'deny'};});
  win.webContents.on('will-navigate',(ev,url)=>{if(!url.startsWith(origin+'/'))ev.preventDefault();});
  win.webContents.on('before-input-event',(ev,input)=>{if(input.type==='keyDown'&&input.key==='F11'){ev.preventDefault();win.setFullScreen(!win.isFullScreen());}});
