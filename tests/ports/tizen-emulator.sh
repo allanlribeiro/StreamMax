@@ -35,7 +35,7 @@ mkdir -p "$RUNNER_TEMP/sm-sign-classes"
 "$sdk/jdk/bin/javac" -cp "$sdk/tools/ide/lib-ncli/*" -d "$RUNNER_TEMP/sm-sign-classes" tests/ports/SignEmulatorWidget.java
 "$sdk/jdk/bin/java" -Dlog4j.configurationFile="$PWD/tests/ports/tizen-log4j.xml" -cp "$RUNNER_TEMP/sm-sign-classes:$sdk/tools/ide/lib-ncli/*" SignEmulatorWidget "$sdk" "$author" "$RUNNER_TEMP/sm-widget" > output/tizen-emulador/assinatura.txt 2>&1
 pkg="$RUNNER_TEMP/StreamMax-emulador-assinado.wgt"
-(cd "$RUNNER_TEMP/sm-widget" && zip -q -r -X "$pkg" .)
+(cd "$RUNNER_TEMP/sm-widget" && zip -q -r -X "$pkg" . -x .manifest.tmp .delta.lst)
 tizen install -n "$pkg" -s "$serial" | tee output/tizen-emulador/instalacao.txt
 sdb -s "$serial" shell 'app_launcher -w -s StreamMax1.StreamMax' > output/tizen-emulador/debug.txt
 port="$(grep -ioE 'port[: ]+[0-9]+' output/tizen-emulador/debug.txt | grep -oE '[0-9]+' | head -1)"
