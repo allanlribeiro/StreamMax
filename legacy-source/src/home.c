@@ -4687,11 +4687,10 @@ static void ponteiroHero(int a, int b);
 static GfxRect heroTrailerArea(GfxRect arte) {
 #ifdef NV_ANDROID
   if (layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone()) {
-    // Quadro inteiro no canto superior direito. A proporcao vem do video,
-    // com 16:9 apenas durante o preparo; a mascara recebe o mesmo destino.
+    // Viewport da 1.0.15 ampliado 17% a esquerda e 3% para baixo.
+    // O video cobre esta mascara com escala uniforme (trailer.c).
     float w, h, x;
-    // Respeitar a primeira fileira. So os 16% da esquerda e 14% da base
-    // fazem a transicao; o restante do trailer permanece sem veu.
+    // Transicoes 14% maiores que na 1.0.15; centro/topo/direita limpos.
     sm_trailer_hero_area(NV_TELA_W, fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f),
                         fminf(NV_HERO_ARTE_H, homeShelfTop() + 60.0f),
                         video_largura(), video_altura(), &x, &w, &h);

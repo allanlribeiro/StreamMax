@@ -1639,6 +1639,9 @@ object NvPlayer {
             view.isFocusableInTouchMode = false
             view.isClickable = false
             view.setViewType(SubtitleView.VIEW_TYPE_CANVAS)
+            // Keep Portuguese trailer captions above the bottom alpha fade
+            // after the wider 1.0.16 viewport crops the uniformly scaled frame.
+            if (recursosAtuais?.trailerPortugues == true) view.setBottomPaddingFraction(0.22f)
             val videoLp = superficie?.layoutParams as? FrameLayout.LayoutParams
             val lp = videoLp?.let { FrameLayout.LayoutParams(it) } ?: FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)

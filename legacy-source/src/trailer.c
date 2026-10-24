@@ -4,12 +4,14 @@
 #include "layout.h"
 #include "ajustes.h"
 #include "trailerfonte.h"
+#include "trailerhero.h"
 #include "extras.h"
 #include "linguas.h"
 #include "video.h"      // trailer_osd_desenhar reads video_pos/duracao on every target
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -330,8 +332,8 @@ int trailer_suportado(void) {
 }
 static void nativoAplicar(void) {
   if (!aberto) return;
-  // Na TCL a Home calcula o destino pela proporcao original do video.
-  // Manter aspect-fit, sem o cover/zoom do player de filmes.
+  // Na TCL a Home amplia o viewport 17% na largura e 3% na altura.
+  // Cobrir essa area com escala UNIFORME, sem herdar o zoom dos filmes.
   // O player de filmes e o trailer da pagina de detalhes nao mudam.
 #if defined(NV_ANDROID)
   const int heroAndroid = dono == TRAILER_DONO_HOME && !noCartao && !cheia;
@@ -387,9 +389,14 @@ static void nativoAplicar(void) {
     if (video_recorte_fonte_trailer() || noCartao)
 #else
     if (heroAndroid) {
-      // Home already fits the ORIGINAL frame at the upper right. Applying
-      // the movie zoom/cover here would crop faces and recreate the square.
-      video_janela((int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
+      if (ajustes_home_layout() == HOME_LAYOUT_MODERNA && NV_TELA_W > NV_TELA_H) {
+        float vx, vy, vw, vh;
+        sm_trailer_hero_video(rect.x, rect.y, rect.w, rect.h,
+                              video_largura(), video_altura(), &vx, &vy, &vw, &vh);
+        video_janela_fonte(0, 0, video_largura(), video_altura(),
+                           (int)lroundf(vx), (int)lroundf(vy),
+                           (int)lroundf(vw), (int)lroundf(vh));
+      } else video_janela((int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
     } else {
       trailer_recorte(video_largura(), video_altura(), ajustes_trailer_zoom(),
                       rect.w, rect.h, &sx, &sy, &sw, &sh);
