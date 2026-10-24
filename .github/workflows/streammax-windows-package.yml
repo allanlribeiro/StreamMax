@@ -46,6 +46,7 @@ jobs:
           done
           test -n "$artifact"
           gh run download "$SM_BUILD_RUN" --name StreamMax-portes-web --dir desktop/web
+          cp legacy-source/tools/streammax-input.js legacy-source/tools/streammax-player.js desktop/web/
           mkdir -p output/windows
           printf 'Interface WASM: run %s\nDesktop: commit %s\n' "$SM_BUILD_RUN" "$GITHUB_SHA" > output/windows/BUILD-INFO.txt
       - name: Dependências e player x64

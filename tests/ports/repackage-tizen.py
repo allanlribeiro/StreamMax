@@ -1,5 +1,5 @@
 """Atualiza apenas a inicialização Samsung, conservando o WASM compilado."""
-import hashlib, subprocess, sys, tempfile, zipfile
+import hashlib, shutil, subprocess, sys, tempfile, zipfile
 from pathlib import Path
 package=Path(sys.argv[1]).resolve()
 with tempfile.TemporaryDirectory() as tmp:
@@ -10,6 +10,8 @@ with tempfile.TemporaryDirectory() as tmp:
    if not (root/member.filename).resolve().is_relative_to(root):raise SystemExit('Caminho inválido')
   z.extractall(root)
  wasm=(root/'index.wasm').read_bytes()
+ for name in ['streammax-input.js','streammax-player.js']:
+  shutil.copyfile(Path('legacy-source/tools')/name,root/name)
  subprocess.run([sys.executable,'legacy-source/tools/streammax-tizen-webapi.py',str(root/'index.html')],check=True)
  with zipfile.ZipFile(package,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=9) as z:
   for path in sorted(root.rglob('*')):
