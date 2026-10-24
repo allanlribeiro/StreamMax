@@ -784,11 +784,21 @@ static void aplicar(void) {
 static void teclado_evento_(const SDL_Event *e) {
   SDL_Keycode k;
   if (aberto && st_evento(e)) return;   // teclado da TV: valor inteiro por sistexto
-  if (!aberto || e->type != SDL_KEYDOWN) return;
+  if (!aberto) return;
+  if (e->type == SDL_TEXTINPUT) {
+    char unido[TECLADO_LONGO + SDL_TEXTINPUTEVENT_TEXT_SIZE + 1];
+    snprintf(unido, sizeof unido, "%s%s", texto, e->text.text);
+    definirDoSistema(unido);
+    return;
+  }
+  if (e->type != SDL_KEYDOWN) return;
   k = e->key.keysym.sym;
-  if (k == SDLK_AC_BACK || k == SDLK_ESCAPE || k == SDLK_BACKSPACE ||
-      k == SDLK_DELETE || e->key.keysym.scancode == NV_SCANCODE_BACK) {
+  if (k == SDLK_AC_BACK || k == SDLK_ESCAPE || e->key.keysym.scancode == NV_SCANCODE_BACK) {
     fechar(TECLADO_CANCELOU);
+    return;
+  }
+  if (k == SDLK_BACKSPACE || k == SDLK_DELETE) {
+    if (n > 0) { do n--; while (n > 0 && (texto[n] & 0xC0) == 0x80); texto[n] = 0; }
     return;
   }
 #ifdef NV_TOUCH_UI

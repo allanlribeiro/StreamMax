@@ -114,6 +114,19 @@ EM_JS(double, nv_av, (const char *cmd, const char *txt,
     };
   }
   var S = G.__nvav;
+  var desktop = G.smPlayer;
+  if (desktop && op === "abrir") {
+    desktop.stop();
+    if (G.__smFilme) { G.__smFilme = false; desktop.open(s); return 1; }
+  }
+  if (desktop && desktop.active()) {
+    if (op === "estado") { var vals = desktop.state(); for (var di=0; di<13; di++) HEAPF64[(dst>>3)+di]=vals[di]; return 1; }
+    if (op === "parar" || op === "encerrar") { desktop.stop(); return 1; }
+    if (op === "erro_msg") { stringToUTF8(desktop.error(),dst,dstTam); return 1; }
+    if (op === "faixas") { stringToUTF8(desktop.tracks(),dst,dstTam); return desktop.state()[12]; }
+    if (op === "leg_texto") { if(dst)stringToUTF8("",dst,dstTam); return 0; }
+    desktop.command(op,s,a); return 1;
+  }
 
   function avAgora() {
     try {
@@ -708,6 +721,10 @@ int video_tocar(const char *url) {
   mkvPendente = !fonteMp4;
 #endif
 
+#ifdef NV_DESKTOP_WEB
+  extern int cacheboost_desktop_consumir(void);
+  EM_ASM({ window.__smFilme = !!$0; }, cacheboost_desktop_consumir());
+#endif
   r = AVS("abrir", url);
   if (r < 1) {
     marco("html5 video: abrir falhou");
@@ -1090,7 +1107,13 @@ void video_definir_dv(int dv) { dvPedido = dv ? 1 : 0; (void)dvPedido; }
 
 // Um <video src> nao manda cabecalho nenhum por requisicao (nem Referer):
 // stub de proposito, mesma limitacao documentada em video_tizen.c.
-void video_definir_cabecalhos(const char *cabs) { (void)cabs; }
+void video_definir_cabecalhos(const char *cabs) {
+#ifdef NV_DESKTOP_WEB
+  EM_ASM({ if(window.smPlayer) window.smPlayer.headers(UTF8ToString($0)); }, cabs ? cabs : "");
+#else
+  (void)cabs;
+#endif
+}
 
 void video_definir_mp4(int ehMp4) { fonteMp4 = ehMp4; }
 
@@ -1140,6 +1163,10 @@ int video_legenda_nativa(char *dst, int tam) {
 // mesma semantica do Tizen (video_legenda_externa la tambem recusa e conta
 // com o overlay GL).
 void video_legenda_externa(const char *url) {
+#ifdef NV_DESKTOP_WEB
+  if (url && *url) avChamar("subtitle-url", url, 0, 0, 0, 0, NULL, 0);
+  return;
+#endif
   char host[256];
   if (!url || !*url) return;
   hospedeApenas(url, host, sizeof host);

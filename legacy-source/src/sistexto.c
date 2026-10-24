@@ -16,6 +16,9 @@
 #ifdef NV_ANDROID
 #include "android.h"
 #endif
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,7 +74,7 @@ int st_voz_disponivel(void) {
 #endif
 }
 int st_abre_sozinho(void) {
-#ifdef NV_ANDROID
+#if defined(NV_ANDROID) || defined(NV_DESKTOP_WEB)
   return 1;
 #else
   return teste();
@@ -111,7 +114,11 @@ int st_ime_abrir(int d, const char *inicial, int max) {
   // O tipo vai nos bits altos do max: a assinatura JNI fica a mesma.
   ok = android_st_teclado(inicial ? inicial : "", (max & 0xFFFF) | (tipo << 16));
 #else
+#ifdef __EMSCRIPTEN__
+  EM_ASM({ if (window.nvTexto && window.nvTexto.configurar) window.nvTexto.configurar($0, $1); }, tipo, max);
+#else
   (void)max; (void)tipo;
+#endif
   if (pelaPlataforma()) { texto_sistema_abrir(inicial ? inicial : "", 0); ok = texto_sistema_aberto(); }
   else ok = 1;
 #endif

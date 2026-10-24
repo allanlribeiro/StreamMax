@@ -1,0 +1,11 @@
+StreamMax reutiliza o código C/SDL da versão Android, sob a licença do repositório.
+Interface: Emscripten, SDL2, FreeType, HarfBuzz, FriBidi, libass, libwebp,
+QuickJS e demais bibliotecas identificadas no código-fonte do projeto.
+Electron: MIT, inclui Chromium e seus avisos em LICENSES.chromium.html.
+Player Windows: mpv, compilação x86_64 (sem requisito AVX2) de shinchiro,
+https://github.com/shinchiro/mpv-winbuild-cmake/releases/tag/20261021
+Fonte mpv: https://github.com/mpv-player/mpv (commit e471496c56).
+As licenças e avisos do pacote original do mpv são mantidos em resources/mpv.
+Player principal: janela própria do mpv. Espaço pausa, setas buscam,
+F alterna tela cheia e Q/Esc retorna ao StreamMax. Clique direito abre controles
+quando disponíveis no player; a barra inferior oferece reprodução e busca.

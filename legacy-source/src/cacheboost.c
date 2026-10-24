@@ -154,7 +154,13 @@ int cacheboost_buffer_mb(int opcao, long livreMb) {
 
 #ifndef NV_ANDROID
 void cacheboost_backend_ganho(int pct) { (void)pct; }
+#ifdef NV_DESKTOP_WEB
+static int desktopFilme;
+int cacheboost_desktop_consumir(void) { int r = desktopFilme; desktopFilme = 0; return r; }
+void cacheboost_backend_cache(int mb) { (void)mb; desktopFilme = 1; }
+#else
 void cacheboost_backend_cache(int mb) { (void)mb; }
+#endif
 void cacheboost_backend_titulo(const char *id) { (void)id; }
 void cacheboost_backend_descartar(void) { }
 static volatile int bufferMb;

@@ -1,0 +1,96 @@
+name: StreamMax Windows e Samsung Tizen
+on:
+  push:
+    branches: [feat/streammax-windows-tizen-ports]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wasm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Instalar ferramentas
+        run: |
+          python -m pip install cmake==4.4.4 meson==1.12.1 ninja==1.13.2
+          sudo apt-get update -qq
+          sudo apt-get install -y imagemagick autoconf automake libtool pkg-config
+          git clone --depth 1 --branch 6.0.9 https://github.com/emscripten-core/emsdk "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 6.0.9
+          "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.9
+      - name: Configuração pública do backend
+        run: |
+          cat > legacy-source/local.properties <<'PROPERTIES'
+          NUVIO_SUPABASE_URL=https://api.nuvio.tv
+          NUVIO_SUPABASE_ANON_KEY=sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+          TV_LOGIN_WEB_BASE_URL=https://nuvio.tv/tv-login
+          PROPERTIES
+      - name: Compilar bibliotecas e as duas plataformas
+        working-directory: legacy-source
+        run: |
+          export EMSDK_DIR="$RUNNER_TEMP/emsdk"
+          source "$EMSDK_DIR/emsdk_env.sh"
+          bash tools/build-ass-wasm.sh
+          bash tools/build-webp-wasm.sh
+          bash tools/tizen.sh
+          bash tools/tizen-wgt.sh
+          bash tools/tizen.sh --desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-portes-web
+          path: |
+            legacy-source/build/windows-web/index.*
+            legacy-source/build/windows-web/fontes.*
+            legacy-source/build/windows-web/decodificador.js
+            legacy-source/build/windows-web/streammax-*.js
+            legacy-source/build/windows-web/streammax-startup.png
+            legacy-source/build/windows-web/hls.min.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Tizen
+          path: legacy-source/build/*.wgt
+  windows:
+    needs: wasm
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - uses: actions/download-artifact@v4
+        with: {name: StreamMax-portes-web, path: desktop/web}
+      - name: Dependências e player x64
+        shell: pwsh
+        run: |
+          npm ci --prefix desktop
+          Invoke-WebRequest https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261021/mpv-x86_64-20261021-git-e471496c56.7z -OutFile mpv.7z
+          if ((Get-FileHash mpv.7z -Algorithm SHA256).Hash.ToLower() -ne '4a355f3e89c83fabc730d33fb4e759dfec747806ed2287b61a90d1681b83e8d3') { throw 'Hash mpv incorreto' }
+          7z x mpv.7z -odesktop/mpv
+          if ($LASTEXITCODE -ne 0) {throw 'Extração mpv falhou'}
+      - name: Testar Windows real, mouse, teclado e reprodução
+        shell: pwsh
+        env:
+          NODE_PATH: ${{ github.workspace }}\desktop\node_modules
+        run: |
+          node --test desktop/test/*.test.cjs
+          if ($LASTEXITCODE -ne 0) {throw 'Testes unitários falharam'}
+          node tests/ports/windows.cjs
+          if ($LASTEXITCODE -ne 0) {throw 'Interface Windows falhou'}
+          node tests/ports/windows-player.cjs
+          if ($LASTEXITCODE -ne 0) {throw 'Reprodução Windows falhou'}
+      - name: Gerar executável portátil
+        run: npm --prefix desktop run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-Windows-x64
+          path: desktop/dist/StreamMax-1.0.17-Windows-x64.exe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: testes-Windows
+          path: output/windows

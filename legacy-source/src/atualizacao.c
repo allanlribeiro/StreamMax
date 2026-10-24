@@ -33,9 +33,9 @@
 #include "idiomacod.h"
 #include "plrui.h"
 #include "qr.h"
+#include "streammax_update.h"
 #ifdef NV_ANDROID
 #include "android.h"
-#include "streammax_update.h"   // RC1 -> 1.0.1: versao publica independente do Legacy
 #include <sys/stat.h>
 #endif
 #include <stdio.h>
@@ -130,8 +130,8 @@ static void at_sha256_hex(const unsigned char *buf, size_t n, char *hex65) {
 }
 #endif
 
-#ifdef NV_ANDROID
-// O StreamMax Android consulta SOMENTE releases estaveis oficiais do proprio app.
+#if defined(NV_ANDROID) || defined(__EMSCRIPTEN__)
+// O StreamMax consulta SOMENTE releases estaveis oficiais do proprio app.
 // As outras plataformas continuam usando o atualizador original (fora do escopo).
 #define AT_URL    SM_UPDATE_API
 #define AT_PAGINA SM_UPDATE_PAGE

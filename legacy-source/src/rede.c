@@ -503,7 +503,7 @@ void rede_avisar_saude(void (*f)(int codigo, const char *url, unsigned primeiraM
 static void (*avisoHost)(const char *url, int codigo, int http, unsigned ms);
 void rede_avisar_host(void (*f)(const char *url, int codigo, int http, unsigned ms)) { avisoHost = f; }
 
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
 // VAZIO E O PADRAO, como em todo outro arquivo que usa NV_REC_URL (ver
 // recomenda.c, xtream.c, avisos.c, noticias.c, tex_cache.c): tools/env.sh so
 // emite o -D quando o servico de recomendacoes esta configurado, e uma build
@@ -656,7 +656,7 @@ static char *vidaaUrlProxy(const char *url) {
 }
 #endif /* NV_VIDAA */
 
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
 // Cabecalho AUTHORIZATION presente (em `cab` ou no `extraCab` fixo de quem
 // chamou)? Se sim, esta chamada NUNCA vai para o /v1/proxy generico, nem
 // forcada (http://) nem por retry (https:// com status 0): rotaProxy so
@@ -686,7 +686,7 @@ static char *pedir2(const char *metodo, const char *url, const char *const *cab,
                     int *retryAfter) {
   char *cabs, *corpoResp;
   int n = 0, http = 0;
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
   char *urlProxiada = NULL;
   const char *urlEfetiva = url;
 #endif
@@ -695,7 +695,7 @@ static char *pedir2(const char *metodo, const char *url, const char *const *cab,
   if (retryAfter) *retryAfter = 0;
   if (!url || !*url) return NULL;
   if (!status && (!metodo || !strcmp(metodo, "GET")) && negcache_barra(url, (long)time(NULL))) return NULL;
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
   // http:// NUNCA SAI DIRETO: a pagina da TV e https, e o navegador bloqueia
   // conteudo misto antes mesmo de tentar a conexao. HOST JA CONHECIDO como
   // "so acessivel via proxy" (vidaaHostLembrar, mais abaixo) tambem entra
@@ -941,7 +941,7 @@ char *rede_postar_seguro_st(const char *url, int segundos, const char *const *ca
   return rede_postar_st(url, segundos, cab, corpo, status);
 }
 
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
 // HEAD never downloads a media body, including when Range would be ignored;
 // in --um-fio nv_http is fetch() and yields to the other fibers meanwhile.
 // 1 resolved, 0 dead (real HTTP error), -1 unknown (blocked, or HEAD refused:
@@ -1021,7 +1021,7 @@ int rede_url_final_tipo(const char *url, int segundos, const char *const *cab,
   // mas honram Range.
   cabs = juntarCabs(cab, NULL);
   if (cab && cab[0] && !cabs) return 0;
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
   // No type/size from HEAD (mime empty, corpo -1). Unknown is not dead: the
   // player tries the URL itself (same policy as verificarUma).
   ok = sondaVidaa(url, cabs, dst, tam, &http);
@@ -1040,7 +1040,7 @@ int rede_url_final(const char *url, int segundos, char *dst, unsigned tam) {
   return rede_url_final_cab(url, segundos, NULL, dst, tam, NULL);
 }
 
-#ifdef NV_VIDAA
+#if defined(NV_VIDAA) && !defined(NV_DESKTOP_WEB)
 // Ver rede.h. NUNCA passa pelo proxy (o proprio pedir2 evita isto por
 // vidaaPareceVideo — url de video sempre volta 415 do worker), entao esta
 // chamada e SEMPRE direta: um bloqueio de conteudo misto ou de CORS aqui e

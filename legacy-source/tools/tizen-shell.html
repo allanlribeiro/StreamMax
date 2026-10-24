@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1920,height=1080,user-scalable=no">
-<title>Nuvio</title>
+<title>StreamMax</title>
 <style>
   /* Fundo TRANSPARENTE de propriedade, nao por descuido. O AVPlay desenha num
      plano de hardware ATRAS da pagina; o que se ve dele e exatamente o que a
@@ -101,20 +101,15 @@
 <!-- A ABERTURA fica ANTES do painel no DOM so por leitura; quem manda na
      sobreposicao e o z-index (abertura 4, diag 5): com o painel aberto por
      tecla ou pelo cao de guarda, e ele que fica por cima. -->
-<div id="abertura"><div class="barra"><i></i></div></div>
+<div id="abertura"><img alt="StreamMax" src="streammax-startup.png" style="width:320px;max-height:240px;object-fit:contain"><div class="barra"><i></i></div></div>
 <!-- NASCE ESCONDIDO. Ver o cao de guarda no fim do arranque: ele volta sozinho
      quando o primeiro quadro NAO chega, que e o unico caso em que ele tinha de
      estar na tela. A tecla verde tambem continua trazendo-o a qualquer hora. -->
-<div id="diag" hidden>Nuvio: iniciando…</div>
+<div id="diag" hidden>StreamMax: iniciando…</div>
 <canvas id="canvas" width="1920" height="1080" tabindex="0"
         oncontextmenu="event.preventDefault()"></canvas>
-<!-- CAMPO DO IME (src/entrada_texto.c). Invisivel e fora do caminho do
-     ponteiro; so existe para o IME da Samsung ter onde escrever. -->
-<input id="nvTextoCampo" type="text" autocomplete="off" autocorrect="off"
-       spellcheck="false" aria-hidden="true" tabindex="-1"
-       style="position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;
-              border:0;padding:0;margin:0;color:transparent;background:transparent;
-              caret-color:transparent;pointer-events:none;z-index:0">
+<script src="streammax-input.js"></script>
+<script src="streammax-player.js"></script>
 <script>
   // DIAGNOSTICO DE ARRANQUE, e ele sai ANTES de qualquer coisa do app.
   //
@@ -496,80 +491,6 @@
   // e a letra entraria duas vezes (pelo IME e pelo KEYDOWN).
   // Este ouvinte de captura vem ANTES dos outros de keydown de proposito: o
   // Return (10009) com o IME aberto fecha so o IME, e nao o Spotlight.
-  (function () {
-    var t = { seq: 0, valor: "", fim: -1, aberto: false, microfone: -1 };
-    try {
-      if (window.tizen && tizen.systeminfo && tizen.systeminfo.getCapability)
-        t.microfone = tizen.systeminfo.getCapability("http://tizen.org/feature/microphone") ? 1 : 0;
-    } catch (e) { console.log("[texto] wgt: feature/microphone: " + e); }
-    console.log("[texto] wgt: feature/microphone = " + t.microfone);
-    var campo = function () { return document.getElementById("nvTextoCampo"); };
-    function devolverFoco() {
-      var c = document.getElementById("canvas");
-      if (c) c.focus();
-    }
-    function terminar(confirmou, falhou) {
-      if (!t.aberto) return;
-      t.aberto = false;
-      t.fim = falhou ? 2 : confirmou ? 1 : 0;
-      var el = campo();
-      if (el) el.blur();
-      devolverFoco();
-    }
-    function ler() {
-      var el = campo();
-      if (!el || !t.aberto) return;
-      if (el.value !== t.valor) { t.valor = el.value; t.seq++; }
-    }
-    t.abrir = function (atual, voz) {
-      var el = campo();
-      t.valor = atual || ""; t.fim = -1; t.aberto = true;
-      t.seq++;
-      if (el) {
-        el.value = t.valor;
-        try { el.focus(); } catch (e) { console.warn("[texto] wgt: focus: " + e); }
-      }
-      if (!el || document.activeElement !== el) {
-        console.warn("[voice] keyboard startup failed: input did not receive focus");
-        terminar(0, true); return;   // C ja abriu a sessao: devolve o cancelamento.
-      }
-      try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {}
-      console.log("[texto] wgt: campo focado (voz=" + (voz ? 1 : 0) + ")");
-    };
-    t.fechar = function () {
-      if (!t.aberto) return;
-      t.aberto = false;
-      var el = campo();
-      if (el) el.blur();
-      devolverFoco();
-    };
-    window.nvTexto = t;
-    window.addEventListener("load", function () {
-      var el = campo();
-      if (!el) return;
-      el.addEventListener("input", ler);
-      el.addEventListener("compositionend", ler);
-      el.addEventListener("change", ler);
-      // O teclado da Samsung fechou sozinho (sem Concluido nem Voltar): o que
-      // ja foi dito vale, como no .tpk.
-      el.addEventListener("blur", function () { ler(); terminar(t.valor.trim() ? 1 : 0); });
-      ["keydown", "keyup", "keypress"].forEach(function (tipo) {
-        el.addEventListener(tipo, function (ev) {
-          if (!t.aberto) return;
-          ev.stopPropagation();
-          if (tipo !== "keydown") return;
-          if (ev.keyCode === 65376 || ev.keyCode === 13) { ev.preventDefault(); ler(); terminar(1); }
-          else if (ev.keyCode === 65385 || ev.keyCode === 27) { ev.preventDefault(); ler(); terminar(0); }
-        });
-      });
-    });
-    window.addEventListener("keydown", function (ev) {
-      if (!t.aberto || ev.keyCode !== 10009) return;
-      ev.preventDefault();
-      ev.stopImmediatePropagation();
-      ler(); terminar(0);
-    }, true);
-  })();
 
   // Teclas do controle Samsung. Sem registrar, o firmware nao entrega nada alem
   // das setas e do OK — as coloridas, as de midia e o Return sao engolidas

@@ -29,7 +29,7 @@ cd "$(dirname "$0")/.."
 
 ENTRADA="${NUVIO_SAIDA:-build/tizen}"
 ESTAGIO="${NUVIO_WGT_ESTAGIO:-build/wgt-stage}"
-NOME="${NUVIO_WGT_NOME:-NuvioTV-native}"
+NOME="${NUVIO_WGT_NOME:-StreamMax-1.0.17-tizen}"
 
 [ -f "$ENTRADA/index.html" ] || { echo "tizen-wgt.sh: rode tools/tizen.sh antes" >&2; exit 2; }
 
@@ -91,6 +91,7 @@ rm -rf "$ESTAGIO"
 mkdir -p "$ESTAGIO"
 cp "$ENTRADA"/index.html "$ENTRADA"/index.js "$ENTRADA"/index.wasm "$ENTRADA"/decodificador.js "$ESTAGIO"/
 [ -f "$ENTRADA/index.data" ] && cp "$ENTRADA/index.data" "$ESTAGIO"/
+cp "$ENTRADA/streammax-player.js" "$ENTRADA/streammax-input.js" "$ENTRADA/streammax-startup.png" "$ESTAGIO"/
 CONFIG="${NUVIO_TIZEN_CONFIG:-tools/tizen-config.xml}"
 [ -s "$CONFIG" ] || { echo "tizen-wgt.sh: config ausente: $CONFIG" >&2; exit 2; }
 cp "$CONFIG" "$ESTAGIO"/config.xml
@@ -102,12 +103,7 @@ cp "$CONFIG" "$ESTAGIO"/config.xml
 # continua sendo o do outro alvo.) deploy/app/tizen/icon.png e o
 # store-assets/samsung/icon-512x423.png do app web, que e a arte oficial no
 # tamanho que a Samsung especifica para a grade (512 de largura).
-if [ -f deploy/app/tizen/icon.png ]; then
-  cp deploy/app/tizen/icon.png "$ESTAGIO"/icon.png
-else
-  echo "tizen-wgt.sh: AVISO — sem deploy/app/tizen/icon.png, usando o icone do LG" >&2
-  cp deploy/app/icon.png "$ESTAGIO"/icon.png
-fi
+cp android/app/src/main/res/drawable-nodpi/streammax_icon.png "$ESTAGIO/icon.png"
 
 # (A abertura em HTML e neutra desde o 2.0 N1b: sem icone do app nela, entao
 # nao ha mais icones-app/ solto no pacote.)

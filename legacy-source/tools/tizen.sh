@@ -13,6 +13,7 @@
 # e API de web app comum. O emcc de upstream produz WASM padrao, que o Chromium
 # da TV executa igual.
 set -e
+export npm_config_cache="${npm_config_cache:-$PWD/build/npm-cache}"
 cd "$(dirname "$0")/.."
 
 # --alto-cache: a mesma variante do tools/arm.sh --alto-cache, para quem tem
@@ -54,11 +55,13 @@ fi
 # Worker. Se o navegador da TV nao isolar a origem, a shell do mt/ pula para
 # st/: --um-fio compila sem -pthread, com o shim cooperativo de src/fio1.c.
 # Ninguem provou ainda qual dos dois a VIDAA aceita — e por isso os dois.
+PLAT_DESKTOP=0
 PLAT_VIDAA=0
 UM_FIO=0
 for arg in "$@"; do
   case "$arg" in
     --vidaa) PLAT_VIDAA=1 ;;
+    --desktop) PLAT_DESKTOP=1; PLAT_VIDAA=1 ;;
     --um-fio) UM_FIO=1 ;;
   esac
 done
@@ -75,6 +78,12 @@ if [ "$PLAT_VIDAA" = "1" ]; then
   export NUVIO_SAIDA="${NUVIO_SAIDA:-build/vidaa/$MODO_VIDAA}"
   export NUVIO_TIZEN_SHELL="${NUVIO_TIZEN_SHELL:-tools/vidaa-shell.html}"
   echo "tizen.sh: alvo VIDAA ($MODO_VIDAA) -> $NUVIO_SAIDA"
+fi
+if [ "$PLAT_DESKTOP" = "1" ]; then
+  VARIANTE="windows"
+  export NUVIO_EXTRA_CFLAGS="${NUVIO_EXTRA_CFLAGS} -DNV_DESKTOP_WEB=1"
+  export NUVIO_SAIDA="build/windows-web"
+  export NUVIO_TIZEN_SHELL="tools/tizen-shell.html"
 fi
 SAIDA="${NUVIO_SAIDA:-build/tizen}"
 mkdir -p "$SAIDA"
@@ -153,7 +162,7 @@ fi
 # Sem isto o app abre com retangulo preto no lugar de cada icone, botao, logo,
 # foto de elenco e miniatura de episodio: MEDIDO no navegador, com o log
 # repetindo "[tex] decode falhou ... No such file or directory".
-ARTE=$(bash tools/tizen-art.sh)
+ARTE=$(NUVIO_ARTE_ESTAGIO="$SAIDA/art-pacote" bash tools/tizen-art.sh)
 
 # SO png e jpg em SDL2_IMAGE_FORMATS, e NAO webp: o Emscripten nao tem port de
 # libwebp, e pedir "webp" quebra o build do proprio SDL_image ("webp/decode.h
@@ -440,6 +449,9 @@ fi
 # O WORKER DE DECODE (#72) e um arquivo a parte, carregado por index.html como
 # `decodificador.js`; sem ele o app roda, mas cada arte custa fio principal.
 cp tools/decodificador.js "$SAIDA/decodificador.js"
+cp tools/streammax-input.js "$SAIDA/streammax-input.js"
+cp tools/streammax-player.js "$SAIDA/streammax-player.js"
+cp android/app/src/main/res/drawable-nodpi/streammax_startup.png "$SAIDA/streammax-startup.png"
 # VIDAA: o Chromium da TV pode nao tocar .m3u8 no <video>; src/video_html5.c
 # carrega hls.js sob demanda, do mesmo diretorio da pagina.
 if [ "$PLAT_VIDAA" = "1" ]; then
