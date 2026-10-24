@@ -2,7 +2,7 @@ name: Preparar download do StreamMax Legacy 1.0.15
 on:
   push:
     branches: [fix/streammax-trailers-menu-1015]
-    paths: [.github/workflows/publish-streammax-115-release.yml]
+    paths: [.github/workflows/publish-streammax-115.yml]
   workflow_dispatch:
 permissions:
   contents: write
