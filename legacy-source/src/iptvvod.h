@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include "catalogo.h"
 void iptvvod_abrir_sessao(void);
+void iptvvod_esquecer_favoritos(void);
 void iptvvod_preparar(void);
 void iptvvod_atualizar(float dt, Uint32 agora);
 int iptvvod_ativo(void);

@@ -99,7 +99,15 @@ static void iniciar(int trabalho) {
   if (pthread_create(&fio, NULL, carregar, c)) { free(c); rodando = 0; erroLista = XV_REDE; return; }
   pthread_detach(fio);
 }
-static void nomeFav(char *out, size_t n) { snprintf(out, n, "iptv-vod-fav-p%d.txt", perfis_ativo()); }
+static void nomeFav(char *out, size_t n) { snprintf(out, n, "guia-fav-vod-p%d.txt", perfis_ativo()); }
+void iptvvod_esquecer_favoritos(void) {
+  char arq[64];
+  for (int i = 1; i <= 32; i++) {
+    snprintf(arq, sizeof arq, "guia-fav-vod-p%d.txt", i);
+    dados_apagar(arq);
+  }
+  nFavoritos = 0;
+}
 static void favLer(void) {
   char arq[64]; nomeFav(arq, sizeof arq); char *s = dados_ler(arq);
   nFavoritos = 0;
@@ -378,7 +386,7 @@ void iptvvod_desenhar(float a) {
     GfxRect r={lx+2,y+50+j*72,lw-4,68};
     GLuint tex=it->capa[0]?tex_obter_larg(it->capa,42):0;
     if(tex) gfx_rect((GfxRect){r.x+14,r.y+4,40,59},tex,GFX_CARD,0,0,0,.04f,1,1,1,a*transicao);
-    else gfx_icone((GfxRect){r.x+18,r.y+18,30,30},"pl_play",.7f,.77f,1,a);
+    else gfx_icone((GfxRect){r.x+18,r.y+18,30,30},"pl_play-f",.7f,.77f,1,a);
     texto(it->nome,r.x+70,r.y+7,lw-103,0,a*transicao);
     if(modoEpisodios) snprintf(aux,sizeof aux,"T%d · Episódio %d",it->temporada,it->episodio);
     else snprintf(aux,sizeof aux,"%s%s%s",it->ano,it->ano[0]?" · ":"",aba==XV_FILMES?"Filme sob demanda":"Ver episódios");
@@ -399,7 +407,7 @@ void iptvvod_desenhar(float a) {
     GfxRect capa={rx+24,y+25,185,278};
     GLuint tex=it->capa[0]?tex_obter_larg(it->capa,capa.w):0;
     if(tex) gfx_rect(capa,tex,GFX_CARD,0,0,0,.025f,1,1,1,a*transicao);
-    else { painel(capa,a); gfx_icone((GfxRect){capa.x+58,capa.y+102,70,70},"pl_play",.3f,.5f,.9f,a); }
+    else { painel(capa,a); gfx_icone((GfxRect){capa.x+58,capa.y+102,70,70},"pl_play-f",.3f,.5f,.9f,a); }
     float tx=capa.x+capa.w+22, tw=rx+rw-24-tx;
     txt_bloco_corta(TXT_G30B,it->nome,244,245,255,tx,y+30,tw,36.0f,a*transicao,5);
     snprintf(aux,sizeof aux,"%s%s%s",it->ano,it->nota[0]?" · Nota ":"",it->nota);

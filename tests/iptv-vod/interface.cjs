@@ -12,9 +12,19 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
   args:['--no-sandbox','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required']});
  const context=await browser.newContext({viewport:{width:1920,height:1080}});
  // Servicos externos sao substituidos por indisponibilidade, sem usar contas.
- await context.route('**/*',route=>route.request().url().startsWith('http://127.0.0.1:8788/')
-  ? route.continue() : route.fulfill({status:503,contentType:'application/json',body:'{}',
-    headers:{'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}}));
+ await context.route('**/*',async route=>{
+  const u=new URL(route.request().url());
+  if(u.origin==='http://127.0.0.1:8788')return route.continue();
+  // Provedor HTTPS ficticio: evita o proxy HTTP herdado do backend VIDAA.
+  if(u.origin==='https://fixture-iptv.example.invalid'){
+   const response=await context.request.get('http://127.0.0.1:8788'+u.pathname+u.search,
+    {headers:route.request().headers()});
+   return route.fulfill({response,headers:{...response.headers(),
+    'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}});
+  }
+  return route.fulfill({status:503,contentType:'application/json',body:'{}',
+    headers:{'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}});
+ });
  const page=await context.newPage();const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  const logs=[];page.on('console',m=>{if(m.type()==='log') logs.push(m.text());});
@@ -36,7 +46,7 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
      const files={
       'sessao.txt':jwt+'\nrefresh-fixture\n0\n','perfil.txt':'1\n',
       'perfis.txt':'1\t0\t1\t0\t#397BFF\tTeste VOD\t\t\n',
-      'xtream-p1.txt':'servidor\thttp://127.0.0.1:8788\nusuario\tfixture\nsenha\tteste-local\n',
+      'xtream-p1.txt':'servidor\thttps://fixture-iptv.example.invalid\nusuario\tfixture\nsenha\tteste-local\n',
       'telemetria-perguntado.txt':'0\n','novidades-20-guia.txt':'1\n',
       'novidades-180-ui.txt':'1\n','novidades-207.txt':'1\n',
       'diagnostico-otimizacao-intro.cfg':'1\n','salvos-intro.txt':'1\n',

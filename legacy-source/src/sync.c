@@ -13,6 +13,7 @@ void servidores_esquecer_todos(void);   // servidores.c: wipe every profile's to
 #include "debrid.h"
 #include "stalker.h"
 #include "xtream.h"
+#include "iptvvod.h"
 #include "colecoes.h"
 #include "colfileiras.h"
 #include "contalib.h"
@@ -2190,6 +2191,7 @@ void sync_esquecer_usuario(void) {
   // pessoa para a proxima que logasse nesta TV.
   stalker_esquecer();
   xtream_esquecer();   // mesma razao: usuario e senha sao a assinatura de quem saiu
+  iptvvod_esquecer_favoritos();
   servidores_esquecer_todos();   // personal-server tokens of every profile on this TV
   trakt_esquecer();
   // Os ajustes por perfil guardados nesta TV (e as pendencias deles) sao da

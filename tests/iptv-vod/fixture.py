@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BUILD = Path(os.environ.get('STREAMMAX_WEB_DIR', str(ROOT / 'legacy-source/build/iptv-vod-ui')))
 OUT = ROOT / 'output/iptv-vod'
 OUT.mkdir(parents=True, exist_ok=True)
-ORIGIN = 'http://127.0.0.1:8788'
+ORIGIN = 'https://fixture-iptv.example.invalid'
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -67,7 +67,7 @@ class Handler(SimpleHTTPRequestHandler):
                           'name': ('Série: ' if series else '') + name,
                           'category_id': cat, 'year': 2026, 'rating': '8.4',
                           'container_extension': 'mp4',
-                          ('cover' if series else 'stream_icon'): ORIGIN + '/poster.png',
+                          ('cover' if series else 'stream_icon'): ORIGIN + f'/poster-{i % 13:02d}.jpg',
                           'plot': 'Catálogo de demonstração para testar o StreamMax. '
                                   'Este título usa uma mídia sintética local; não representa um serviço IPTV real.'}
                     data.append(it)
@@ -89,11 +89,12 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 self.json({'user_info': {'auth': 1, 'status': 'Active', 'allowed_output_formats': ['ts', 'm3u8']}})
             return
-        if u.path == '/poster.png':
-            p = ROOT / 'legacy-source/android/app/src/main/res/drawable-nodpi/streammax_startup.png'
+        if u.path.startswith('/poster-') and u.path.endswith('.jpg'):
+            name = Path(u.path).name.removeprefix('poster-')
+            p = ROOT / 'legacy-source/deploy/app/art/poster' / name
             b = p.read_bytes()
             self.send_response(200)
-            self.send_header('Content-Type', 'image/png')
+            self.send_header('Content-Type', 'image/jpeg')
             self.send_header('Content-Length', str(len(b)))
             self.end_headers()
             self.wfile.write(b)
