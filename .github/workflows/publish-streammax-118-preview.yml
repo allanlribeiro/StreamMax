@@ -22,6 +22,8 @@ jobs:
       TAG: v1.0.18-iptv-vod-preview.1
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Conferir origem e testes
         run: |
           set -euo pipefail
