@@ -52,8 +52,9 @@ jobs:
           grep -Fxq 'Commit: 72e785edbb8d46cadcedaaae3e69d33866fa383e' pacote/BUILD-INFO.txt
           sha256sum --check pacote/SHA256.txt
           apk=pacote/StreamMax-1.0.18-android.apk
-          aapt="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
-          signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$aapt" && test -x "$signer"
           "$aapt" dump badging "$apk" > badging.txt
           grep -q "^package: name='com.streammax.tv'" badging.txt
           grep -q "versionCode='20025'" badging.txt
