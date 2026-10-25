@@ -39,6 +39,10 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
       'xtream-p1.txt':'servidor\thttp://127.0.0.1:8788\nusuario\tfixture\nsenha\tteste-local\n',
       'telemetria-perguntado.txt':'0\n','novidades-20-guia.txt':'1\n',
       'novidades-180-ui.txt':'1\n','novidades-207.txt':'1\n',
+      'diagnostico-otimizacao-intro.cfg':'1\n','salvos-intro.txt':'1\n',
+      'aviso-log.txt':'1\n','aviso-legal.txt':'1\n','pip-modo.txt':'0\n',
+      'recintro-social.txt':'1\n',
+      'dicas-controle-205.txt':'1\n',
      };
      for(const name of marks)files[name]='1\n';
      for(const [name,text]of Object.entries(files))s.put({timestamp:date,mode:33188,contents:enc.encode(text)},'/nuvio/'+name);
@@ -50,7 +54,12 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
   await page.waitForFunction(()=>window.__nvPrimeiroQuadro===1,null,{timeout:180000});
   await page.waitForTimeout(3500);
   await page.screenshot({path:out+'/00-inicial.png'});
-  await page.locator('#canvas').focus();await page.keyboard.press('F10');await page.waitForTimeout(1500);
+  await page.locator('#canvas').focus();
+  for(let tentativa=0;tentativa<8;tentativa++){
+   if(tentativa)await page.keyboard.press('Escape');
+   await page.keyboard.press('F10');await page.waitForTimeout(1200);
+   if(requests().some(r=>r.action==='get_vod_categories'))break;
+  }
   await page.keyboard.press('l');await page.waitForTimeout(2000);
   assert.ok(requests().some(r=>r.action==='get_vod_categories'),'O guia precisa consultar o Xtream');
   await page.screenshot({path:out+'/01-ao-vivo.png'});
@@ -60,7 +69,8 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
   await page.screenshot({path:out+'/02-filmes.png'});
   for(let i=0;i<7;i++)await page.keyboard.press('ArrowDown');
   await page.waitForTimeout(600);await page.screenshot({path:out+'/03-rolagem.png'});
-  await click(830,57);await page.keyboard.press('ArrowDown');await page.waitForTimeout(2500);
+  for(let i=0;i<8;i++)await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.waitForTimeout(2500);
   assert.ok(requests().some(r=>r.action==='get_series'),'Series deve consultar o provedor');
   await page.screenshot({path:out+'/04-series.png'});
   await page.keyboard.press('Enter');await page.waitForTimeout(2500);

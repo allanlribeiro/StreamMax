@@ -352,7 +352,7 @@ void iptvvod_desenhar(float a) {
   texto(aux,NV_TELA_W-NV_MARGEM_X-100,40,100,1,a);
   painel((GfxRect){x,y,cw,h},a); painel((GfxRect){lx,y,lw,h},a); painel((GfxRect){rx,y,rw,h},a);
   const char *menus[] = {"Buscar",soFavoritos ? "Todos os títulos" : "Favoritos", "Atualizar"};
-  const char *icones[] = {"aj_search","pl_star-f","aj_reload"};
+  const char *icones[] = {"aj_search","pl_star-f","aj_rotate-cw"};
   for (int i = 0; i < 3; i++) {
     GfxRect r={x+2,y+12+i*61,cw-4,57};
     if (coluna == -1 && menuLinha == i && !focoAbas) foco(r,1,a);
@@ -426,7 +426,7 @@ int iptvvod_pediu_tocar(CatItem *out, char *url, unsigned n) {
   tocar=0; XtreamVodItem *it=selecionado();
   if (!it || !out || !xtream_vod_url(aba,it,url,n,sessao,revisao)) return 0;
   memset(out,0,sizeof *out);
-  xtream_vod_identidade(modoEpisodios ? XV_EPISODIO : aba,it->id,out->imdb,sizeof out->imdb);
+  if (!xtream_vod_id_video(modoEpisodios ? XV_EPISODIO : aba,it,out->imdb,sizeof out->imdb)) return 0;
   // Cada episodio tem identidade propria: o ponto salvo nunca abre outro.
   snprintf(out->tipo,sizeof out->tipo,"movie");
   if (modoEpisodios) snprintf(out->titulo,sizeof out->titulo,"%.100s · T%d E%d",serieAtual.nome,it->temporada,it->episodio);

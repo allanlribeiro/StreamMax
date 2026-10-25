@@ -956,3 +956,32 @@ int xtream_vod_identidade(int tipo, const char *id, char *out, unsigned n) {
                    tipo == XV_FILMES ? 'm' : tipo == XV_SERIES ? 's' : 'e', id);
   return k > 0 && (unsigned)k < n;
 }
+int xtream_vod_id_video(int tipo, const XtreamVodItem *item, char *out, unsigned n) {
+  char base[64];
+  if (!item || !out || !n) return 0;
+  out[0] = 0;
+  const char *ext = item->extensao[0] ? item->extensao : "mp4";
+  if (strlen(ext) > 8) return 0;
+  for (const char *p = ext; *p; p++)
+    if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9'))) return 0;
+  if (!xtream_vod_identidade(tipo,item->id,base,sizeof base)) return 0;
+  int k = snprintf(out,n,"%s.%s",base,ext);
+  if (k < 0 || (unsigned)k >= n) { out[0] = 0; return 0; }
+  return 1;
+}
+int xtream_vod_resolver(const char *id, char *url, unsigned n) {
+  XtreamVodItem it = {0}; char esperado[64];
+  if (!url || !n) return 0;
+  url[0] = 0;
+  if (!id || strlen(id) < 26 || strncmp(id,"xtv:",4) ||
+      id[20] != ':' || id[22] != ':' || (id[21] != 'm' && id[21] != 'e')) return 0;
+  const char *ponto = strchr(id+23,'.');
+  if (!ponto || ponto-id-23 < 1 || ponto-id-23 >= (int)sizeof it.id) return 0;
+  memcpy(it.id,id+23,(size_t)(ponto-id-23));
+  if (strlen(ponto+1) >= sizeof it.extensao) return 0;
+  snprintf(it.extensao,sizeof it.extensao,"%s",ponto+1);
+  int tipo = id[21] == 'm' ? XV_FILMES : XV_EPISODIO;
+  NvPerfilSessao s = nv_perfil_sessao_ler(); uint64_t rev = xtream_revisao();
+  if (!xtream_vod_id_video(tipo,&it,esperado,sizeof esperado) || strcmp(id,esperado)) return 0;
+  return xtream_vod_url(tipo == XV_FILMES ? XV_FILMES : XV_SERIES,&it,url,n,s,rev);
+}

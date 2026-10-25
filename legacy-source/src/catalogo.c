@@ -2216,11 +2216,13 @@ int cat_acrescentar(const CatItem *item) {
   // Mesma regra de cat_acrescentar_lote: `n` so com a trava.
   CAT_TESTE_ANTES_TRAVA();
   catTravar();
-  if (n < 1 || n >= CAT_MAX) { pthread_mutex_unlock(&pubTrava); return -1; }
+  // IPTV pode ser a unica fonte da conta: o primeiro VOD/canal precisa
+  // criar o catalogo, mesmo sem nenhum addon de filmes instalado.
+  if (n >= CAT_MAX) { pthread_mutex_unlock(&pubTrava); return -1; }
   novoN = n + 1;
   novo = malloc(sizeof(CatItem) * (size_t)novoN);
   if (!novo) { pthread_mutex_unlock(&pubTrava); return -1; }
-  memcpy(novo, itens, sizeof(CatItem) * (size_t)n);
+  if (n > 0) memcpy(novo, itens, sizeof(CatItem) * (size_t)n);
   memcpy(&novo[n], item, sizeof(CatItem));
   aposentar(itens);
   __atomic_store_n(&itens, novo, __ATOMIC_RELEASE);

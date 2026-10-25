@@ -5314,7 +5314,9 @@ void app_atualizar(float dt, Uint32 agora) {
       // pergunta quando nao ha escolha lembrada que sirva para esta lista;
       // trocar de fonte continua a um hold de distancia (menu do episodio,
       // hold no botao primario).
-      if (streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)) {
+      const CatItem *vodIPTV = cat_item(player_indice());
+      if (!(vodIPTV && !strncmp(vodIPTV->imdb, "xtv:", 4)) &&
+          streammax_should_ask_first_source(ajustes_fonte_manual(), stream_n(), lembrada)) {
         // A escolha e obrigatoria ate a pessoa confirmar uma fonte.
         // Invalida tambem resultados tardios de verificadores antigos.
         aguardandoFonte = 0;
@@ -5881,13 +5883,10 @@ void app_atualizar(float dt, Uint32 agora) {
         if (player_aberto() || player_retido()) player_encerrar();
         diagnostico_cancelar_vazao(); p2pmotor_parar_fundo();
         novaGeracaoFonte(); limparFontePendente(); aguardandoFonte = 0;
-        Stream fonte = {0};
-        snprintf(fonte.url, sizeof fonte.url, "%s", url);
-        snprintf(fonte.provedor, sizeof fonte.provedor, "Xtream VOD");
-        snprintf(fonte.rotulo, sizeof fonte.rotulo, "Lista IPTV · VOD");
-        stream_definir_alvo(it.imdb); stream_definir_lista(&fonte, 1);
-        stream_definir_atual(0); video_definir_cabecalhos(""); video_definir_dv(0);
-        player_abrir(ni, NULL); player_definir_fonte(url);
+        stream_definir_alvo(it.imdb); video_definir_cabecalhos(""); video_definir_dv(0);
+        player_abrir(ni, NULL);
+        addons_definir_origem(NULL); addons_buscar(it.imdb, "movie");
+        aguardandoFonte = 1;
       }
     }
   }

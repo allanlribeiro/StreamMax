@@ -26,4 +26,8 @@ int xtream_vod_episodios(const char *serie, XtreamVodItem *out, int max,
 int xtream_vod_url(int tipo, const XtreamVodItem *item, char *url, unsigned n,
                    NvPerfilSessao sessao, uint64_t revisao);
 int xtream_vod_identidade(int tipo, const char *id, char *out, unsigned n);
+// IDs persistidos so contem conta opaca, tipo, id numerico e extensao.
+// A URL com a credencial e reconstruida para o perfil atual ao retomar.
+int xtream_vod_id_video(int tipo, const XtreamVodItem *item, char *out, unsigned n);
+int xtream_vod_resolver(const char *id, char *url, unsigned n);
 #endif

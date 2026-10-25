@@ -2,6 +2,7 @@
 #include "addonslocal.h"
 #include "idbase.h"
 #include "idcanal.h"
+#include "xtreamvod.h"
 #include "idioma.h"
 #include "linguas.h"
 #include "streams.h"
@@ -3183,6 +3184,17 @@ int addons_consulta_consultar(const AddonsConsulta *snapshot, const char *id, co
   if (!out) return -1;
   *out = NULL;
   if (!snapshot || !id || !*id || !tipo || !*tipo) return -1;
+  if (!strncmp(id, "xtv:", 4)) {
+    if (cancelado && cancelado(ctx)) return -1;
+    Stream *fonte = calloc(1, sizeof *fonte);
+    if (!fonte) return -1;
+    int ok = xtream_vod_resolver(id, fonte->url, sizeof fonte->url);
+    if (cancelado && cancelado(ctx)) { free(fonte); return -1; }
+    if (!ok) { free(fonte); return 0; }
+    snprintf(fonte->provedor, sizeof fonte->provedor, "Xtream VOD");
+    snprintf(fonte->rotulo, sizeof fonte->rotulo, "Lista IPTV · VOD");
+    *out = fonte; return 1;
+  }
   ConsultaCapturada c = {0};
   c.snapshot = snapshot; c.id = id; c.tipo = tipo; c.cancelado = cancelado; c.ctx = ctx;
   if (cancelaConsultaCapturada(&c)) return -1;
@@ -3375,6 +3387,28 @@ static void buscarPedido(const char *imdb, const char *tipo, int forcar) {
   int serie, renovar;
   char id[sizeof alvoId];
   if (!imdb || !*imdb) return;
+  if (!strncmp(imdb, "xtv:", 4)) {
+    // Inclui Retomar/Continuar assistindo: reconstruir a fonte com o
+    // cadastro atual, sem mandar IDs privados ao TMDB ou a outros addons.
+    if (fioVivo) {
+      snprintf(pendId, sizeof pendId, "%s", imdb);
+      snprintf(pendTipo, sizeof pendTipo, "movie");
+      pendRenovar = forcar; pendBase[0] = 0;
+      stream_invalidar("pending IPTV VOD target");
+      return;
+    }
+    Stream fonte = {0};
+    resumo.valido = 0; adotado = 0; jfAlvo = 0;
+    snprintf(alvoId, sizeof alvoId, "%s", imdb);
+    snprintf(alvoTipo, sizeof alvoTipo, "movie"); alvoBase[0] = 0;
+    int ok = xtream_vod_resolver(imdb, fonte.url, sizeof fonte.url);
+    snprintf(fonte.provedor, sizeof fonte.provedor, "Xtream VOD");
+    snprintf(fonte.rotulo, sizeof fonte.rotulo, "Lista IPTV · VOD");
+    stream_definir_alvo(imdb);
+    stream_definir_lista(ok ? &fonte : NULL, ok ? 1 : 0);
+    estado = ok ? ADD_PRONTO : ADD_VAZIO;
+    return;
+  }
   if (jfid_e(imdb)) {
     // PERSONAL SERVER ITEM. No addon, no source cache, no "where to watch":
     // the target is already the exact movie/episode item on that server.

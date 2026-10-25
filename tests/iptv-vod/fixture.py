@@ -6,7 +6,7 @@ import json
 import os
 
 ROOT = Path(__file__).resolve().parents[2]
-BUILD = ROOT / 'legacy-source/build/windows-web'
+BUILD = Path(os.environ.get('STREAMMAX_WEB_DIR', str(ROOT / 'legacy-source/build/iptv-vod-ui')))
 OUT = ROOT / 'output/iptv-vod'
 OUT.mkdir(parents=True, exist_ok=True)
 ORIGIN = 'http://127.0.0.1:8788'

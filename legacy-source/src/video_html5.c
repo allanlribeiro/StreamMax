@@ -690,6 +690,9 @@ int video_iniciar(void) {
 int video_iniciar_auto(void) { return video_iniciar(); }
 // Sem hub LS2 neste alvo: nada aqui pode negar registro por permissao.
 int video_registro_negado(void) { return 0; }
+// Este backend nao oferece recarga nativa sem reabrir a fonte. O app usa
+// o caminho comum de reabertura quando devolvemos 0 (igual ao contrato Android).
+int video_recarregar(void) { return 0; }
 
 int video_tocar(const char *url) {
   double r;

@@ -65,6 +65,15 @@ int main(void) {
   assert(!strcmp(itens[1].sinopse,"Sinopse do episódio"));
   assert(xtream_vod_url(XV_SERIES,&itens[0],url,sizeof url,s,rev));
   assert(strstr(url,"/series/teste%20usuario/teste%2Fsenha/801.mkv"));
+  assert(xtream_vod_id_video(XV_EPISODIO,&itens[0],id,sizeof id));
+  assert(xtream_vod_resolver(id,url,sizeof url));
+  assert(strstr(url,"/801.mkv"));
+  xtream_definir_senha("nova-senha");
+  assert(xtream_vod_resolver(id,url,sizeof url));
+  assert(strstr(url,"/nova-senha/801.mkv"));
+  xtream_definir_usuario("outra conta");
+  assert(!xtream_vod_resolver(id,url,sizeof url));
+  credenciais(); rev=xtream_revisao();
   resposta = "{\"episodes\":[]}";
   assert(xtream_vod_episodios("71",itens,5,&total,s,rev)==0);
 
