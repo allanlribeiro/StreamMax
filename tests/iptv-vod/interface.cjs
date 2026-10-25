@@ -100,12 +100,29 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
   fs.writeFileSync(out+'/console.txt',logs.join('\n'));
   assert.equal(errors.length,0);
   assert.ok(video.some(v=>v.src.includes('/series/')&&v.src.includes('/902.mp4')&&v.time>0),'O episodio selecionado precisa reproduzir');
+  await page.keyboard.press('Escape');await page.waitForTimeout(1800);
+  await page.screenshot({path:out+'/08-retorno-ao-guia.png'});
+  await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');await page.waitForTimeout(1800);
+  const favorito=await page.evaluate(()=>new Promise((resolve,reject)=>{
+   const req=indexedDB.open('/nuvio',21);req.onerror=()=>reject(req.error);
+   req.onsuccess=()=>{
+    const db=req.result,tx=db.transaction('FILE_DATA','readonly');
+    const r=tx.objectStore('FILE_DATA').get('/nuvio/guia-fav-vod-p1.txt');
+    r.onsuccess=()=>{resolve(r.result?new TextDecoder().decode(r.result.contents):'');db.close();};
+    r.onerror=()=>reject(r.error);
+   };
+  }));
+  assert.ok(favorito.includes(':e:902'),'O favorito deve persistir no perfil atual');
+  assert.ok(!favorito.includes('://')&&!favorito.includes('teste-local'),'O favorito nao pode guardar URL ou senha');
+  await page.screenshot({path:out+'/09-favorito-salvo.png'});
   fs.writeFileSync(out+'/TESTES.json',JSON.stringify({passed:true,
    base:'StreamMax Android 1.0.17 — 5dea61bf27c300f32b12b7318dfea8add5b0f224',
    ambiente:'Interface C compilada para WASM, Chromium com video sintetico e provedor Xtream HTTPS local simulado. Hardware TCL nao testado.',
    checks:['categorias reais da API de teste','clique na aba Filmes','rolagem por controle',
     'aba Series pelo teclado','consulta de episodios','selecao da temporada 2',
-    'nenhum VOD inicia por navegar','episodio T2 E1 abre /902.mp4 e avanca','nenhum erro JavaScript'],
+    'nenhum VOD inicia por navegar','episodio T2 E1 abre /902.mp4 e avanca','nenhum erro JavaScript',
+    'Voltar retorna ao guia','favorito persistido no perfil sem URL nem senha'],
    reproducao:{temporada:2,episodio:1,segundos:video.find(v=>v.src.includes('/902.mp4')).time},
   },null,2));
  }finally{fs.writeFileSync(out+'/console.txt',logs.join('\n'));await page.screenshot({path:out+'/estado-final.png'}).catch(()=>{});await browser.close();}

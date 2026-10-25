@@ -56,18 +56,26 @@ class Handler(SimpleHTTPRequestHandler):
             elif action in ('get_vod_streams', 'get_series'):
                 series = action == 'get_series'
                 cat = q.get('category_id', ['10'])[0]
-                names = ['Horizonte azul', 'Uma nova jornada', 'Cidade em silêncio',
-                         'Além das montanhas', 'O último verão', 'Caminhos do mar',
-                         'Luzes da cidade', 'De volta para casa', 'Sob o mesmo céu',
-                         'Depois da tempestade', 'Um novo começo', 'O tempo de amar',
-                         'Encontro inesperado']
+                movies = [('Perdido em Marte', 12, 2015), ('O Grande Truque', 2, 2006),
+                          ('Os Suspeitos', 9, 2013), ('O Astronauta', 10, ''),
+                          ('Devoradores de Estrelas', 13, ''), ('Mercy', 16, ''),
+                          ('O Nevoeiro', 19, ''), ('Off the Grid', 26, ''),
+                          ('A Filha do Rei do Pântano', 28, ''), ('June & John', 30, ''),
+                          ('Último Suspiro', 32, ''), ('1992', 34, ''),
+                          ('Extermínio: A Evolução', 36, '')]
+                shows = [('Fallout', 0, ''), ('Origem', 4, ''), ('Frequência', 5, ''),
+                         ('O Problema dos 3 Corpos', 15, ''), ('Extrapolações', 17, ''),
+                         ('Lost', 21, ''), ('A Lista Terminal', 23, ''), ('Nancy Drew', 25, ''),
+                         ('Locke & Key', 27, ''), ('It: Bem-vindos a Derry', 29, ''),
+                         ('WandaVision', 31, ''), ('O Dia do Chacal', 33, ''),
+                         ('The Umbrella Academy', 35, '')]
                 data = []
-                for i, name in enumerate(names):
+                for i, (name, poster, year) in enumerate(shows if series else movies):
                     it = {('series_id' if series else 'stream_id'): 51 + i,
-                          'name': ('Série: ' if series else '') + name,
-                          'category_id': cat, 'year': 2026, 'rating': '8.4',
+                          'name': name,
+                          'category_id': cat, 'year': year, 'rating': '8.4',
                           'container_extension': 'mp4',
-                          ('cover' if series else 'stream_icon'): ORIGIN + f'/poster-{i % 13:02d}.jpg',
+                          ('cover' if series else 'stream_icon'): ORIGIN + f'/poster-{poster:02d}.jpg',
                           'plot': 'Catálogo de demonstração para testar o StreamMax. '
                                   'Este título usa uma mídia sintética local; não representa um serviço IPTV real.'}
                     data.append(it)

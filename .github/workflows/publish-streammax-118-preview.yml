@@ -1,0 +1,113 @@
+name: Publicar previa StreamMax 1.0.18 IPTV VOD
+on:
+  push:
+    branches: [feat/streammax-iptv-vod]
+    paths: [.github/workflows/publish-streammax-118-preview.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: streammax-118-iptv-preview
+  cancel-in-progress: false
+jobs:
+  publicar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_REPO: allanlribeiro/StreamMax
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.18-iptv-vod-preview.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir origem e testes
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/actions/runs/40183279406 --jq .head_sha)" = 72e785edbb8d46cadcedaaae3e69d33866fa383e
+          test "$(gh api repos/$GH_REPO/actions/runs/40183279406 --jq .conclusion)" = success
+          git merge-base --is-ancestor 5dea61bf27c300f32b12b7318dfea8add5b0f224 HEAD
+          git merge-base --is-ancestor 72e785edbb8d46cadcedaaae3e69d33866fa383e HEAD
+          python3 - <<'PY'
+          import json
+          report = json.load(open('docs/iptv-vod/TESTES.json'))
+          assert report['passed'] is True
+          assert report['reproducao']['temporada'] == 2
+          assert report['reproducao']['episodio'] == 1
+          assert report['reproducao']['segundos'] > 0
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: allanlribeiro/StreamMax
+          run-id: 40183279406
+          name: StreamMax-1.0.18-IPTV-VOD-TESTE
+          path: pacote
+      - name: Verificar APK e assinatura
+        run: |
+          set -euo pipefail
+          grep -Fxq 'Commit: 72e785edbb8d46cadcedaaae3e69d33866fa383e' pacote/BUILD-INFO.txt
+          sha256sum --check pacote/SHA256.txt
+          apk=pacote/StreamMax-1.0.18-android.apk
+          aapt="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$aapt" dump badging "$apk" > badging.txt
+          grep -q "^package: name='com.streammax.tv'" badging.txt
+          grep -q "versionCode='20025'" badging.txt
+          grep -Fq "versionName='1.0.18'" badging.txt
+          "$signer" verify --verbose "$apk"
+          "$signer" verify --print-certs "$apk" > cert.txt
+          test "$(awk '/Signer #1 certificate SHA-256 digest:/ {print $NF}' cert.txt)" = a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5
+          cp docs/iptv-vod/*.png docs/iptv-vod/TESTES.json pacote/
+          cp IPTV-VOD.md pacote/LEIA-ME.md
+          rm pacote/SHA256.txt
+          (cd pacote && sha256sum *.apk *.png *.json *.md BUILD-INFO.txt > SHA256SUMS.txt)
+      - name: Preparar notas da previa
+        run: |
+          cat > notas.md <<'EOF'
+          Prévia Android baseada no StreamMax **1.0.17**, com VOD da própria lista Xtream e interface inspirada na referência UniTV enviada.
+
+          - Abas Ao vivo, Filmes e Séries quando o provedor oferece VOD.
+          - Categorias, capas, detalhes, temporadas e episódios do provedor.
+          - Busca e favoritos na categoria carregada.
+          - Navegação por controle e mouse; VOD inicia ao confirmar.
+          - Retomada do filme/episódio pela conta Xtream atual.
+          - Carregamento por categoria, linhas virtualizadas e capas sob demanda.
+
+          **Instalação:** baixe `StreamMax-1.0.18-android.apk` nos arquivos abaixo e instale como atualização do StreamMax. O pacote é `com.streammax.tv`, com a mesma assinatura da versão oficial e versionCode 20025.
+
+          A compilação Android e a assinatura passaram. A bancada Chromium executou o código C da interface com um provedor simulado e vídeo sintético, incluindo seleção e reprodução de T2/E1. As capturas usam conteúdo de demonstração e capas ilustrativas. **Teste real na TCL e com sua lista IPTV pendente.**
+
+          A versão estável e o canal OTA continuam na 1.0.17. Esta prévia é instalada manualmente para teste.
+
+          ![Filmes](https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.18-iptv-vod-preview.1/Layout-Filmes.png)
+          ![Series](https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.18-iptv-vod-preview.1/Layout-Series.png)
+          ![Temporadas e episodios](https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.18-iptv-vod-preview.1/Layout-Episodios.png)
+
+          Base estável: 5dea61bf27c300f32b12b7318dfea8add5b0f224. Código do APK: 72e785edbb8d46cadcedaaae3e69d33866fa383e. Compilação: https://github.com/allanlribeiro/StreamMax/actions/runs/40183279406.
+          EOF
+      - name: Publicar previa com arquivos conferidos
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = v1.0.17
+          if gh release view "$TAG" --json isDraft --jq .isDraft > existe.txt 2>/dev/null; then
+            test "$(cat existe.txt)" = true
+          else
+            gh release create "$TAG" --draft --prerelease --latest=false --target "$GITHUB_SHA" \
+              --title 'StreamMax 1.0.18 — IPTV VOD (teste)' --notes-file notas.md
+          fi
+          gh release upload "$TAG" pacote/* --clobber
+          gh api "repos/$GH_REPO/releases/tags/$TAG" > release.json
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          r = json.load(open('release.json'))
+          assert r['draft'] is True and r['prerelease'] is True
+          assets = {a['name']: a for a in r['assets']}
+          for p in Path('pacote').iterdir():
+              a = assets[p.name]
+              assert a['state'] == 'uploaded' and a['size'] == p.stat().st_size
+              assert a['digest'] == 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()
+          PY
+          gh release edit "$TAG" --draft=false --prerelease --latest=false --notes-file notas.md
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = v1.0.17
+          gh release view "$TAG" --json url,assets --jq '{url:.url,arquivos:[.assets[]|{name,size}]}'
