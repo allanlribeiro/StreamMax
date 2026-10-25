@@ -109,11 +109,14 @@ jobs:
               --title 'StreamMax 1.0.18 — IPTV VOD (teste)' --notes-file notas.md
           fi
           gh release upload "$TAG" pacote/* --clobber
-          gh api "repos/$GH_REPO/releases/tags/$TAG" > release.json
+          release_id="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '.[] | select(.tag_name == "v1.0.18-iptv-vod-preview.1") | .id')"
+          test -n "$release_id"
+          gh api "repos/$GH_REPO/releases/$release_id" > release.json
           python3 - <<'PY'
           import hashlib, json
           from pathlib import Path
           r = json.load(open('release.json'))
+          assert r['tag_name'] == 'v1.0.18-iptv-vod-preview.1'
           assert r['draft'] is True and r['prerelease'] is True
           assets = {a['name']: a for a in r['assets']}
           for p in Path('pacote').iterdir():
