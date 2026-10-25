@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "base": "StreamMax Android 1.0.17 — 5dea61bf27c300f32b12b7318dfea8add5b0f224",
+  "ambiente": "Interface C compilada para WASM, Chromium com video sintetico e provedor Xtream HTTPS local simulado. Hardware TCL nao testado.",
+  "checks": [
+    "categorias reais da API de teste",
+    "clique na aba Filmes",
+    "rolagem por controle",
+    "aba Series pelo teclado",
+    "consulta de episodios",
+    "selecao da temporada 2",
+    "nenhum VOD inicia por navegar",
+    "episodio T2 E1 abre /902.mp4 e avanca",
+    "nenhum erro JavaScript",
+    "Voltar retorna ao guia",
+    "favorito persistido no perfil sem URL nem senha"
+  ],
+  "reproducao": {
+    "temporada": 2,
+    "episodio": 1,
+    "segundos": 3.154494
+  }
+}

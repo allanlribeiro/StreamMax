@@ -2,7 +2,9 @@ name: Publicar previa StreamMax 1.0.18 IPTV VOD
 on:
   push:
     branches: [feat/streammax-iptv-vod]
-    paths: [.github/workflows/publish-streammax-118-preview.yml]
+    paths:
+      - '.github/workflows/publish-streammax-118-preview.yml'
+      - 'docs/iptv-vod/**'
   workflow_dispatch:
 permissions:
   contents: write
