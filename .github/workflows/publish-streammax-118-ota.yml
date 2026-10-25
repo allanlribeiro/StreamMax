@@ -1,0 +1,130 @@
+name: Publicar atualizacao automatica StreamMax 1.0.18
+on:
+  push:
+    branches: [feat/streammax-iptv-vod]
+    paths:
+      - '.github/workflows/publish-streammax-118-ota.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: streammax-118-android-ota
+  cancel-in-progress: false
+jobs:
+  publicar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_REPO: allanlribeiro/StreamMax
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Conferir origem e testes
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/actions/runs/40183279406 --jq .head_sha)" = 72e785edbb8d46cadcedaaae3e69d33866fa383e
+          test "$(gh api repos/$GH_REPO/actions/runs/40183279406 --jq .conclusion)" = success
+          git merge-base --is-ancestor 5dea61bf27c300f32b12b7318dfea8add5b0f224 HEAD
+          git merge-base --is-ancestor 72e785edbb8d46cadcedaaae3e69d33866fa383e HEAD
+          python3 - <<'PY'
+          import json
+          report = json.load(open('docs/iptv-vod/TESTES.json'))
+          assert report['passed'] is True
+          assert report['reproducao']['temporada'] == 2
+          assert report['reproducao']['episodio'] == 1
+          assert report['reproducao']['segundos'] > 0
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: allanlribeiro/StreamMax
+          run-id: 40183279406
+          name: StreamMax-1.0.18-IPTV-VOD-TESTE
+          path: pacote
+      - name: Verificar APK e assinatura
+        run: |
+          set -euo pipefail
+          grep -Fxq 'Commit: 72e785edbb8d46cadcedaaae3e69d33866fa383e' pacote/BUILD-INFO.txt
+          sha256sum --check pacote/SHA256.txt
+          apk=pacote/StreamMax-1.0.18-android.apk
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$aapt" && test -x "$signer"
+          "$aapt" dump badging "$apk" > badging.txt
+          grep -q "^package: name='com.streammax.tv'" badging.txt
+          grep -q "versionCode='20025'" badging.txt
+          grep -Fq "versionName='1.0.18'" badging.txt
+          "$signer" verify --verbose "$apk"
+          "$signer" verify --print-certs "$apk" > cert.txt
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('cert.txt').read_text()
+          matches = re.findall(r'^Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)\s*$', text, re.MULTILINE)
+          print('Certificados SHA-256 recebidos:', matches)
+          assert len(matches) == 1
+          assert matches[0].lower() == 'a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5'
+          PY
+          cp docs/iptv-vod/*.png docs/iptv-vod/TESTES.json pacote/
+          cp IPTV-VOD.md pacote/LEIA-ME.md
+          rm pacote/SHA256.txt
+          (cd pacote && sha256sum *.apk *.png *.json *.md BUILD-INFO.txt > SHA256SUMS.txt)
+      - name: Preparar notas da atualizacao
+        run: |
+          cat > notas.md <<'EOF'
+          Atualização Android baseada no StreamMax **1.0.17**, com VOD da própria lista Xtream e interface inspirada na referência UniTV enviada.
+
+          - Abas Ao vivo, Filmes e Séries quando o provedor oferece VOD.
+          - Categorias, capas, detalhes, temporadas e episódios do provedor.
+          - Busca e favoritos na categoria carregada.
+          - Navegação por controle e mouse; VOD inicia ao confirmar.
+          - Retomada do filme/episódio pela conta Xtream atual.
+          - Carregamento por categoria, linhas virtualizadas e capas sob demanda.
+
+          **Atualização pelo aplicativo:** no StreamMax, abra Ajustes → Sobre e ajuda → Procurar atualização, selecione Atualizar agora e confirme a instalação na TV. Se solicitado, permita que o StreamMax instale atualizações. Também é possível baixar o APK nos arquivos abaixo. O pacote é `com.streammax.tv`, com a mesma assinatura da versão oficial e versionCode 20025.
+
+          A compilação Android e a assinatura passaram. A bancada Chromium executou o código C da interface com um provedor simulado e vídeo sintético, incluindo seleção e reprodução de T2/E1. As capturas usam conteúdo de demonstração e capas ilustrativas. **Teste real na TCL e com sua lista IPTV pendente.**
+
+          Esta versão está disponível no canal oficial de atualização do aplicativo. A confirmação da instalação é feita pelo Android/Google TV.
+
+          ![Filmes](https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.18/Layout-Filmes.png)
+          ![Series](https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.18/Layout-Series.png)
+          ![Temporadas e episodios](https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.18/Layout-Episodios.png)
+
+          Base estável: 5dea61bf27c300f32b12b7318dfea8add5b0f224. Código do APK: 72e785edbb8d46cadcedaaae3e69d33866fa383e. Compilação: https://github.com/allanlribeiro/StreamMax/actions/runs/40183279406.
+          EOF
+      - name: Publicar no canal de atualizacao do aplicativo
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = v1.0.17
+          if gh release view "$TAG" --json isDraft --jq .isDraft > existe.txt 2>/dev/null; then
+            test "$(cat existe.txt)" = true
+          else
+            gh release create "$TAG" --draft --prerelease=false --latest=false --target "$GITHUB_SHA" \
+              --title 'StreamMax 1.0.18 — Filmes e séries da IPTV' --notes-file notas.md
+          fi
+          gh release upload "$TAG" pacote/* --clobber
+          release_id="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '.[] | select(.tag_name == "v1.0.18") | .id')"
+          test -n "$release_id"
+          gh api "repos/$GH_REPO/releases/$release_id" > release.json
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          r = json.load(open('release.json'))
+          assert r['tag_name'] == 'v1.0.18'
+          assert r['draft'] is True and r['prerelease'] is False
+          assets = {a['name']: a for a in r['assets']}
+          for p in Path('pacote').iterdir():
+              a = assets[p.name]
+              assert a['state'] == 'uploaded' and a['size'] == p.stat().st_size
+              assert a['digest'] == 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()
+          PY
+          python3 legacy-source/tests/check-streammax-ota-release.py release.json pacote/StreamMax-1.0.18-android.apk
+          gh release edit "$TAG" --draft=false --prerelease=false --latest=true --notes-file notas.md
+          gh api "repos/$GH_REPO/releases/latest" > latest.json
+          python3 legacy-source/tests/check-streammax-ota-release.py latest.json
+          gh release view "$TAG" --json url,assets --jq '{url:.url,arquivos:[.assets[]|{name,size}]}'

@@ -1,6 +1,6 @@
 # Filmes e séries da lista IPTV
 
-O StreamMax 1.0.18 de teste parte da versão Android estável **1.0.17**,
+O StreamMax 1.0.18 parte da versão Android estável **1.0.17**,
 commit `5dea61bf27c300f32b12b7318dfea8add5b0f224`.
 
 Em **TV ao vivo**, as abas **Ao vivo**, **Filmes** e **Séries** usam o
@@ -53,4 +53,6 @@ workflow `streammax-118-iptv-vod-apk.yml`, com assinatura e identidade conferida
 5. Confira pausa, busca no vídeo, áudio e legendas com as mídias do seu provedor.
 
 O funcionamento e os formatos disponíveis dependem da lista e do aparelho.
-A versão estável/OTA continua separada da distribuição de teste.
+A publicação `v1.0.18` usa o APK já conferido da prévia e o disponibiliza pelo
+atualizador do aplicativo. O Android/Google TV solicita confirmação para instalar.
+Em Ajustes → Sobre e ajuda → Procurar atualização é possível consultar na hora.
