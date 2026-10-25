@@ -83,7 +83,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.json([{'category_id': 1, 'category_name': 'Canais de teste'}])
             elif action == 'get_live_streams':
                 self.json([{'stream_id': 101, 'name': 'Canal de teste', 'category_id': 1,
-                            'stream_icon': ORIGIN + '/poster.png'}])
+                            'stream_icon': ORIGIN + '/poster-00.jpg'}])
             elif action == 'get_short_epg':
                 self.json({'epg_listings': []})
             else:
@@ -100,6 +100,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.wfile.write(b)
             return
         if u.path.startswith(('/movie/', '/series/', '/live/')):
+            with (OUT / 'requests.jsonl').open('a') as log:
+                log.write(json.dumps({'media': u.path.split('/')[1], 'arquivo': Path(u.path).name}) + '\n')
             p = ROOT / 'tests/iptv-vod/midia-teste.mp4'
             size = p.stat().st_size
             start, end = 0, size-1

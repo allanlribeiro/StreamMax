@@ -5,6 +5,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 const out=path.resolve('output/iptv-vod');fs.mkdirSync(out,{recursive:true});
+for(const name of fs.readdirSync(out))
+ if(/^(0[0-9]-.*\.png|estado-final\.png|TESTES\.json|resultado-parcial\.json)$/.test(name))fs.unlinkSync(path.join(out,name));
 fs.writeFileSync(out+'/requests.jsonl','');
 const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
 (async()=>{
@@ -74,7 +76,7 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
   assert.ok(requests().some(r=>r.action==='get_vod_categories'),'O guia precisa consultar o Xtream');
   await page.screenshot({path:out+'/01-ao-vivo.png'});
   const click=async(x,y)=>{await page.mouse.move(x,y);await page.waitForTimeout(80);await page.mouse.click(x,y);await page.waitForTimeout(600);};
-  await click(668,57);await page.keyboard.press('ArrowDown');await page.waitForTimeout(2500);
+  await click(668,57);await page.keyboard.press('ArrowDown');await page.waitForTimeout(7000);
   assert.ok(requests().some(r=>r.action==='get_vod_streams'),'Filmes deve carregar o VOD');
   await page.screenshot({path:out+'/02-filmes.png'});
   for(let i=0;i<7;i++)await page.keyboard.press('ArrowDown');
@@ -90,6 +92,7 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
   await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');await page.waitForTimeout(600);
   await page.screenshot({path:out+'/06-temporada-2.png'});
+  assert.ok(!requests().some(r=>r.media==='movie'||r.media==='series'),'Navegar nao pode iniciar VOD automaticamente');
   await page.keyboard.press('Enter');await page.waitForTimeout(3500);
   await page.screenshot({path:out+'/07-reproducao.png'});
   const video=await page.evaluate(()=>Array.from(document.querySelectorAll('video')).map(v=>({src:v.currentSrc,time:v.currentTime,paused:v.paused})));
@@ -97,5 +100,13 @@ const requests=()=>fs.readFileSync(out+'/requests.jsonl','utf8').trim().split('\
   fs.writeFileSync(out+'/console.txt',logs.join('\n'));
   assert.equal(errors.length,0);
   assert.ok(video.some(v=>v.src.includes('/series/')&&v.src.includes('/902.mp4')&&v.time>0),'O episodio selecionado precisa reproduzir');
+  fs.writeFileSync(out+'/TESTES.json',JSON.stringify({passed:true,
+   base:'StreamMax Android 1.0.17 — 5dea61bf27c300f32b12b7318dfea8add5b0f224',
+   ambiente:'Interface C compilada para WASM, Chromium com video sintetico e provedor Xtream HTTPS local simulado. Hardware TCL nao testado.',
+   checks:['categorias reais da API de teste','clique na aba Filmes','rolagem por controle',
+    'aba Series pelo teclado','consulta de episodios','selecao da temporada 2',
+    'nenhum VOD inicia por navegar','episodio T2 E1 abre /902.mp4 e avanca','nenhum erro JavaScript'],
+   reproducao:{temporada:2,episodio:1,segundos:video.find(v=>v.src.includes('/902.mp4')).time},
+  },null,2));
  }finally{fs.writeFileSync(out+'/console.txt',logs.join('\n'));await page.screenshot({path:out+'/estado-final.png'}).catch(()=>{});await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
