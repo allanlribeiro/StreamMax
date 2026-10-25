@@ -60,7 +60,15 @@ jobs:
           grep -Fq "versionName='1.0.18'" badging.txt
           "$signer" verify --verbose "$apk"
           "$signer" verify --print-certs "$apk" > cert.txt
-          test "$(awk '/Signer #1 certificate SHA-256 digest:/ {print $NF}' cert.txt)" = a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path('cert.txt').read_text()
+          matches = re.findall(r'^Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)\s*$', text, re.MULTILINE)
+          print('Certificados SHA-256 recebidos:', matches)
+          assert len(matches) == 1
+          assert matches[0].lower() == 'a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5'
+          PY
           cp docs/iptv-vod/*.png docs/iptv-vod/TESTES.json pacote/
           cp IPTV-VOD.md pacote/LEIA-ME.md
           rm pacote/SHA256.txt
