@@ -112,7 +112,7 @@ jobs:
           test -n "$release_id"
           gh api "repos/$GH_REPO/releases/$release_id" > release.json
           python3 - <<'PY'
-          import hashlib, json
+          import hashlib, json, re
           from pathlib import Path
           r = json.load(open('release.json'))
           assert r['tag_name'] == 'v1.0.18'
@@ -122,8 +122,14 @@ jobs:
               a = assets[p.name]
               assert a['state'] == 'uploaded' and a['size'] == p.stat().st_size
               assert a['digest'] == 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()
+          # Rascunhos recebem um endereço temporário do GitHub. Ensaie o
+          # endereço final e confira o JSON público sem alterações após publicar.
+          apk = assets['StreamMax-1.0.18-android.apk']
+          assert re.fullmatch(r'https://github\.com/allanlribeiro/StreamMax/releases/download/(?:untagged-[0-9a-f]+|v1\.0\.18)/StreamMax-1\.0\.18-android\.apk', apk['browser_download_url'])
+          apk['browser_download_url'] = 'https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.18/StreamMax-1.0.18-android.apk'
+          Path('release-prevista.json').write_text(json.dumps(r))
           PY
-          python3 legacy-source/tests/check-streammax-ota-release.py release.json pacote/StreamMax-1.0.18-android.apk
+          python3 legacy-source/tests/check-streammax-ota-release.py release-prevista.json pacote/StreamMax-1.0.18-android.apk
           gh release edit "$TAG" --draft=false --prerelease=false --latest=true --notes-file notas.md
           gh api "repos/$GH_REPO/releases/latest" > latest.json
           python3 legacy-source/tests/check-streammax-ota-release.py latest.json
