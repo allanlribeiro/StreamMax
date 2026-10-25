@@ -59,6 +59,7 @@
 #include "descoberta.h"  /* desc_repetir: addon novo so entra com ciclo novo */
 #include "stalker.h"
 #include "xtream.h"
+#include "iptvvod.h"
 #include "guiacorte.h"   /* tetos e o aviso "Mostrando N de M" */
 #include "xtepg.h"     /* grade curta por canal do Xtream (#158) */
 #include "dados.h"
@@ -1664,6 +1665,7 @@ static void dicaTalvez(void) {
 }
 
 void guia_abrir(void) {
+  iptvvod_preparar();
 #ifdef NV_TOUCH_UI
   toqueLimpar();
   rolVazio = 0.0f;
@@ -1687,6 +1689,7 @@ void guia_abrir(void) {
 // fica sabendo quem esta tocando, foca a linha dele e para de seguir o foco.
 void guia_adotar_canal(const char *id) {
   if (!id || !id[0]) return;
+  iptvvod_ao_vivo();
   snprintf(previewId, sizeof previewId, "%s", id);
   // No guia classico o canal trazido da tela cheia fica preso; na
   // StreamMax Signature so permanece enquanto o foco continuar nele.
@@ -1700,6 +1703,7 @@ void guia_adotar_canal(const char *id) {
 }
 
 int guia_pediu_preview(CatItem *it) {
+  if (iptvvod_ativo()) { pedPreview = 0; return 0; }
   if (!pedPreview || !it) return 0;
   pedPreview = 0; *it = pedPreviewItem; return 1;
 }
@@ -2206,6 +2210,9 @@ static void sair(void) {
 
 void guia_evento(const SDL_Event *e) {
   if (!guia_visivel()) return;
+  if (!overlay && tvTresColunas && !gRetrato() && iptvvod_evento(e)) {
+    okDesde = 0; okLongo = 0; return;
+  }
 #ifdef NV_TOUCH_UI
   if (toquerol_navegacao(e)) toqueGuiaRetomar();
 #endif
@@ -2273,6 +2280,11 @@ void guia_evento(const SDL_Event *e) {
   // a terceira mostra somente dados reais da EPG. Foco nunca dispara video
   // sozinho. OK no canal usa a MESMA acao do guia classico.
   if (tvTresColunas && !gRetrato()) {
+    if (k == SDLK_UP && iptvvod_tem_abas() &&
+        ((tvColunaFoco == SM_TV_COL_CANAIS && focoCol == 0) ||
+         (tvColunaFoco == SM_TV_COL_CATEGORIAS && focoLin == 0))) {
+      iptvvod_focar_abas(); return;
+    }
     if (e->key.keysym.scancode == G_SCANCODE_YELLOW || k == SDLK_l) {
       tvTresColunas = 0; modoLista = 1; janelaDesl = 0; focoTopo = 0;
       return;
@@ -2658,6 +2670,8 @@ static void drenarCarga(void) {
 }
 
 void guia_atualizar(float dt, Uint32 agora) {
+  iptvvod_atualizar(dt, agora);
+  if (aberta) iptvvod_preparar();
 #ifdef NV_TOUCH_UI
   if (!telefoneui_ativo()) toqueLimpar();
 #endif
@@ -2683,7 +2697,7 @@ void guia_atualizar(float dt, Uint32 agora) {
   // So o APP abre as fontes; este bloco agenda o pedido depois de repousar
   // 500ms na TCL (600ms no guia classico), nunca durante a navegacao rapida.
   { const Uint32 espera = tvTresColunas ? SM_TV_PREVIEW_FOCO_MS : G_PREVIEW_ESPERA_MS;
-    if (aberta && !overlay && (previewLigado || tvTresColunas) &&
+    if (aberta && !overlay && !iptvvod_ativo() && (previewLigado || tvTresColunas) &&
         streammax_tv_preview_segue_foco(tvTresColunas, tvColunaFoco, previewPreso) &&
         !player_aberto() &&
         nCanais > 0 && (estado == G_PRONTO || estado == G_BAIXANDO) &&
@@ -4905,12 +4919,9 @@ static void smTvPainel(GfxRect r, float a) {
           0.022f, 0.012f, 0.032f, 0.064f, a);
 }
 static void smTvFoco(GfxRect r, int ativo, float a) {
-  // Contorno ciano com centro azul profundo, alinhado com as cores da logo.
-  gfx_cor((GfxRect){r.x-2.0f,r.y-2.0f,r.w+4.0f,r.h+4.0f},
-          0.15f, ativo ? 0.032f : 0.018f, ativo ? 0.63f : 0.20f,
-          ativo ? 0.99f : 0.46f, (ativo ? 0.94f : 0.63f)*a);
-  gfx_cor(r, 0.15f, 0.021f, ativo ? 0.17f : 0.085f,
-          ativo ? 0.39f : 0.22f, a);
+  // Referencia UniTV: barra magenta e cantos discretos sobre azul profundo.
+  gfx_cor(r, 0.02f, ativo ? 0.96f : 0.16f,
+          ativo ? 0.025f : 0.055f, ativo ? 0.34f : 0.24f, a);
 }
 static void streammaxTvDesenhar(float a, time_t agoraT) {
   const float x = G_AREA_X, gap = SM_TV_COL_GAP, y = SM_TV_BODY_Y;
@@ -4940,11 +4951,10 @@ static void streammaxTvDesenhar(float a, time_t agoraT) {
   logoapp_streammax_wordmark((GfxRect){x + 18.0f, 36.0f, 246.0f, 44.0f}, a);
   gfx_cor((GfxRect){x+335.0f,41.0f,2.0f,37.0f},
           0, 0.13f, 0.30f, 0.52f, a);
-  sub = txt_linha(TXT_G26B, i18n("TV AO VIVO"), 239, 247, 255, 255);
-  txt_desenhar_alpha(sub, x + 358.0f, 36.0f, a);
+  iptvvod_abas_desenhar(a);
   snprintf(aux, sizeof aux, "%d canais  ·  %d categorias", nCanais, nCat);
   sub = txt_linha(TXT_DET_META2, aux, 145, 173, 207, 255);
-  txt_desenhar_alpha(sub, x + 358.0f, 78.0f, a);
+  txt_desenhar_alpha(sub, x + 358.0f, 91.0f, a);
   { char h[16];
     fmtHora(agoraT, h, sizeof h);
     sub = txt_linha(TXT_G30B, h, 232, 241, 255, 255);
@@ -5120,6 +5130,9 @@ void guia_desenhar(Uint32 agora) {
   int l, i, temLinhas;
   if (a < 0.01f || !guia_visivel()) return;
   if (overlay) { desenharBanda(a, agora); return; }
+  if (iptvvod_ativo() && tvTresColunas && !gRetrato()) {
+    iptvvod_desenhar(a); return;
+  }
   if (tvTresColunas && !gRetrato()) {
     streammaxTvDesenhar(a, agoraT);
     return;
@@ -5499,6 +5512,7 @@ int guia_canal_campos(int i, const char **id, const char **nome, const char **lo
 }
 
 void guia_abrir_sessao(void) {
+  iptvvod_abrir_sessao();
   // Nunca tocar no staging de um fio vivo. Ele sai no proximo limite de
   // pedido e o desenho descarta o resultado pela geracao da abertura.
   cargaCancelada = 1;

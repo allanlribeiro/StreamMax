@@ -149,6 +149,7 @@
 #include "vazao.h"
 #include "stalker.h"
 #include "xtream.h"
+#include "iptvvod.h"
 #include "rede.h"
 #include "ts_sonda.h"
 #include <unistd.h>
@@ -5865,6 +5866,31 @@ void app_atualizar(float dt, Uint32 agora) {
     nomeParaFolha(); stream_folha_abrir();
   }
 
+  // VOD IPTV: a fonte vem do mesmo provedor, sem buscar em addons de filmes.
+  if (iptvvod_parar_preview()) {
+    novaGeracaoFonte(); limparFontePendente(); aguardandoFonte = 0;
+    canalFonteIdx = -1;
+    if (player_mini_no_guia_ativo()) player_fechar_mini();
+  }
+  { CatItem it; char url[4096];
+    if (iptvvod_pediu_tocar(&it, url, sizeof url)) {
+      int ni = cat_indice_por_imdb(it.imdb);
+      if (ni < 0) ni = cat_acrescentar(&it);
+      if (ni >= 0) {
+        limparFonteVOD();
+        if (player_aberto() || player_retido()) player_encerrar();
+        diagnostico_cancelar_vazao(); p2pmotor_parar_fundo();
+        novaGeracaoFonte(); limparFontePendente(); aguardandoFonte = 0;
+        Stream fonte = {0};
+        snprintf(fonte.url, sizeof fonte.url, "%s", url);
+        snprintf(fonte.provedor, sizeof fonte.provedor, "Xtream VOD");
+        snprintf(fonte.rotulo, sizeof fonte.rotulo, "Lista IPTV · VOD");
+        stream_definir_alvo(it.imdb); stream_definir_lista(&fonte, 1);
+        stream_definir_atual(0); video_definir_cabecalhos(""); video_definir_dv(0);
+        player_abrir(ni, NULL); player_definir_fonte(url);
+      }
+    }
+  }
   // CANAL ESCOLHIDO NO GUIA — tela cheia ou faixa, mesma acao: toca direto.
   { CatItem it;
     if (aguardandoFonte != 2 && guia_pediu_canal(&it)) tocarCanal(&it); }

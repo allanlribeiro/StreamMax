@@ -1,4 +1,5 @@
 #include "xtream.h"
+#include "xtreamvod.h"
 int ajustes_livetv_formato(void);  // ajustes.h puxa SDL; o teste do xtream nao
 #include "rede.h"
 #include "js.h"
@@ -22,7 +23,7 @@ int ajustes_livetv_formato(void);  // ajustes.h puxa SDL; o teste do xtream nao
 #endif
 // Proxy do Xtream so no Tizen (ver chamar). NV_XTREAM_PROXY_TESTE liga o ramo
 // numa build nativa para tests/xtream.sh conferir a url montada sem emcc.
-#if defined(__EMSCRIPTEN__) || defined(NV_XTREAM_PROXY_TESTE)
+#if (defined(__EMSCRIPTEN__) && !defined(NV_DESKTOP_WEB)) || defined(NV_XTREAM_PROXY_TESTE)
 #define XT_PROXY 1
 #else
 #define XT_PROXY 0
@@ -41,6 +42,7 @@ static NvPerfilSessao sessaoLida;
 static XtreamConta conta;
 static int formatoOk = -1;
 static pthread_mutex_t trava = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t revisaoCadastro = 1;
 
 static const char *arquivo(void) {
   static char nome[40];
@@ -76,6 +78,7 @@ static void carregarTravado(void) {
   NvPerfilSessao sessao = nv_perfil_sessao_ler();
   if (lido && p == perfilLido && sessao == sessaoLida) return;
   perfilLido = p; sessaoLida = sessao; lido = 1;
+  revisaoCadastro++;
   servidor[0] = usuario[0] = senha[0] = 0;
   memset(&conta, 0, sizeof conta); formatoOk = -1;
   b = dados_ler(arquivo());
@@ -117,6 +120,7 @@ void xtream_definir_servidor(const char *s) {
   pthread_mutex_lock(&trava);
   carregarTravado();
   normalizarServidor(s, servidor, sizeof servidor);
+  revisaoCadastro++;
   gravar();
   pthread_mutex_unlock(&trava);
 }
@@ -124,6 +128,7 @@ void xtream_definir_usuario(const char *u) {
   pthread_mutex_lock(&trava);
   carregarTravado();
   snprintf(usuario, sizeof usuario, "%s", u ? u : "");
+  revisaoCadastro++;
   gravar();
   pthread_mutex_unlock(&trava);
 }
@@ -131,6 +136,7 @@ void xtream_definir_senha(const char *s) {
   pthread_mutex_lock(&trava);
   carregarTravado();
   snprintf(senha, sizeof senha, "%s", s ? s : "");
+  revisaoCadastro++;
   gravar();
   pthread_mutex_unlock(&trava);
 }
@@ -139,6 +145,7 @@ void xtream_esquecer(void) {
   pthread_mutex_lock(&trava);
   dados_apagar(arquivo());
   servidor[0] = usuario[0] = senha[0] = 0;
+  revisaoCadastro++;
   lido = 1; perfilLido = perfis_ativo();
   pthread_mutex_unlock(&trava);
 }
@@ -726,4 +733,226 @@ int xtream_url(const char *id, char *url, unsigned n) {
   // O primeiro formato da ordem (ver xtream_formatos). Era sempre .m3u8.
   int k = xtream_formatos(ext);
   return xtream_url_formato(id, k > 0 ? ext[0] : "m3u8", url, n);
+}
+
+// --- filmes e series do proprio provedor ---------------------------------
+uint64_t xtream_revisao(void) {
+  uint64_t r;
+  pthread_mutex_lock(&trava);
+  carregarTravado(); r = revisaoCadastro;
+  pthread_mutex_unlock(&trava);
+  return r;
+}
+static int vodAtual(NvPerfilSessao s, uint64_t r) {
+  return nv_perfil_sessao_atual(s) && xtream_revisao() == r;
+}
+static int vodDigitos(const char *s) {
+  size_t n = 0;
+  if (!s || !*s) return 0;
+  for (; *s; s++, n++) if (*s < '0' || *s > '9' || n >= 30) return 0;
+  return 1;
+}
+// Campo de profundidade 1. Nao confundir id/title do episodio com info.id.
+static const char *vodCampo(const char *p, const char *fim, const char *nome) {
+  char chave[80];
+  if (!p || *p != '{' || !fim) return NULL;
+  p++;
+  while (p < fim) {
+    while (p < fim && ((unsigned char)*p <= ' ' || *p == ',')) p++;
+    if (*p != '"') return NULL;
+    const char *q = p + 1;
+    while (q < fim && *q != '"') { if (*q == '\\' && q + 1 < fim) q++; q++; }
+    if (q >= fim || !js_cadeia(p, chave, sizeof chave)) return NULL;
+    p = q + 1;
+    while (p < fim && (unsigned char)*p <= ' ') p++;
+    if (p >= fim || *p++ != ':') return NULL;
+    while (p < fim && (unsigned char)*p <= ' ') p++;
+    if (!strcmp(chave, nome)) return p;
+    if (*p == '{' || *p == '[') { q = js_fim(p); if (!q || q >= fim) return NULL; p = q + 1; }
+    else if (*p == '"') {
+      p++;
+      while (p < fim && *p != '"') { if (*p == '\\' && p + 1 < fim) p++; p++; }
+      if (p < fim) p++;
+    } else { while (p < fim && *p != ',' && *p != '}') p++; }
+  }
+  return NULL;
+}
+static int vodTexto(const char *p, const char *fim, const char *chave, char *out, size_t n) {
+  const char *v = vodCampo(p, fim, chave);
+  if (!v) return 0;
+  if (*v == '"') return js_cadeia(v, out, n);
+  if (*v < '0' || *v > '9') return 0;
+  const char *f = v;
+  while (f < fim && ((*f >= '0' && *f <= '9') || *f == '.')) f++;
+  if ((size_t)(f-v) >= n) return 0;
+  memcpy(out, v, (size_t)(f-v)); out[f-v] = 0;
+  return 1;
+}
+static char *vodPedir(const char *acao, NvPerfilSessao sessao, uint64_t rev, int *erro) {
+  int st = 0;
+  *erro = XV_CANCELADO;
+  if (!vodAtual(sessao, rev)) return NULL;
+  char *r = chamarSt(acao, XT_PRAZO_LISTA_S, &st, sessao);
+  if (!vodAtual(sessao, rev)) { free(r); return NULL; }
+  *erro = st == 401 || st == 403 ? XV_AUTH : XV_REDE;
+  if (!r || !st || st >= 400) { free(r); return NULL; }
+  if (classificar(r) != XC_JSON || !js_fim(pulaBom(r))) {
+    free(r); *erro = XV_RESPOSTA; return NULL;
+  }
+  *erro = 0;
+  return r;
+}
+static int vodArray(const char *json) {
+  const char *p = pulaBom(json);
+  if (*p == '[') return 1;
+  const char *fim = js_fim(p);
+  const char *info = vodCampo(p, fim, "user_info");
+  if (info && *info == '{' && js_num(info, js_fim(info), "auth", -1) == 0) return XV_AUTH;
+  return XV_RESPOSTA;
+}
+int xtream_vod_categorias(int tipo, XtreamVodCategoria *out, int max,
+                         NvPerfilSessao sessao, uint64_t rev) {
+  int erro, n = 0;
+  if (!out || max < 1 || (tipo != XV_FILMES && tipo != XV_SERIES)) return XV_RESPOSTA;
+  char *r = vodPedir(tipo == XV_FILMES ? "get_vod_categories" : "get_series_categories", sessao, rev, &erro);
+  if (!r) return erro;
+  int forma = vodArray(r);
+  if (forma != 1) { free(r); return forma; }
+  const char *p = js_raiz_array(pulaBom(r));
+  while (p && *p == '{' && n < max) {
+    const char *f = js_fim(p);
+    if (!f) break;
+    XtreamVodCategoria it = {{0}, {0}};
+    if (vodTexto(p, f, "category_id", it.id, sizeof it.id) && vodDigitos(it.id) &&
+        vodTexto(p, f, "category_name", it.nome, sizeof it.nome) && it.nome[0]) out[n++] = it;
+    p = js_prox(f);
+  }
+  free(r); return vodAtual(sessao, rev) ? n : XV_CANCELADO;
+}
+static int vodLerItem(const char *p, const char *f, int tipo, XtreamVodItem *it) {
+  memset(it, 0, sizeof *it);
+  vodTexto(p, f, tipo == XV_FILMES ? "stream_id" : "series_id", it->id, sizeof it->id);
+  vodTexto(p, f, "name", it->nome, sizeof it->nome);
+  vodTexto(p, f, "category_id", it->categoria, sizeof it->categoria);
+  vodTexto(p, f, tipo == XV_FILMES ? "stream_icon" : "cover", it->capa, sizeof it->capa);
+  vodTexto(p, f, "container_extension", it->extensao, sizeof it->extensao);
+  vodTexto(p, f, "plot", it->sinopse, sizeof it->sinopse);
+  vodTexto(p, f, "year", it->ano, sizeof it->ano);
+  if (!it->ano[0]) vodTexto(p, f, "releaseDate", it->ano, sizeof it->ano);
+  vodTexto(p, f, "rating", it->nota, sizeof it->nota);
+  return vodDigitos(it->id) && it->nome[0];
+}
+int xtream_vod_itens(int tipo, const char *categoria, XtreamVodItem *out, int max,
+                     int *total, NvPerfilSessao sessao, uint64_t rev) {
+  int erro, n = 0, nt = 0;
+  char acao[140];
+  if (total) *total = 0;
+  if (!out || max < 1 || (tipo != XV_FILMES && tipo != XV_SERIES) ||
+      (categoria && *categoria && !vodDigitos(categoria))) return XV_RESPOSTA;
+  snprintf(acao, sizeof acao, "%s%s%s", tipo == XV_FILMES ? "get_vod_streams" : "get_series",
+           categoria && *categoria ? "&category_id=" : "", categoria ? categoria : "");
+  char *r = vodPedir(acao, sessao, rev, &erro);
+  if (!r) return erro;
+  int forma = vodArray(r);
+  if (forma != 1) { free(r); return forma; }
+  const char *p = js_raiz_array(pulaBom(r));
+  while (p && *p == '{') {
+    const char *f = js_fim(p); XtreamVodItem it;
+    if (!f) break;
+    if (vodLerItem(p, f, tipo, &it) &&
+        (!categoria || !*categoria || !it.categoria[0] || !strcmp(categoria, it.categoria))) {
+      if (n < max) out[n++] = it;
+      nt++;
+    }
+    p = js_prox(f);
+  }
+  free(r); if (total) *total = nt;
+  return vodAtual(sessao, rev) ? n : XV_CANCELADO;
+}
+static int vodCompararEp(const void *a, const void *b) {
+  const XtreamVodItem *x = a, *y = b;
+  if (x->temporada != y->temporada) return (x->temporada > y->temporada) ? 1 : -1;
+  if (x->episodio != y->episodio) return (x->episodio > y->episodio) ? 1 : -1;
+  return strcmp(x->id, y->id);
+}
+int xtream_vod_episodios(const char *serie, XtreamVodItem *out, int max,
+                        int *total, NvPerfilSessao sessao, uint64_t rev) {
+  int erro, n = 0, nt = 0; char acao[120];
+  if (total) *total = 0;
+  if (!out || max < 1 || !vodDigitos(serie)) return XV_RESPOSTA;
+  snprintf(acao, sizeof acao, "get_series_info&series_id=%s", serie);
+  char *r = vodPedir(acao, sessao, rev, &erro);
+  if (!r) return erro;
+  const char *raiz = pulaBom(r), *rf = js_fim(raiz);
+  const char *eps = vodCampo(raiz, rf, "episodes");
+  if (!eps || (*eps != '{' && *eps != '[')) { free(r); return XV_RESPOSTA; }
+  // episodes e um objeto de arrays por temporada; alguns paineis devolvem [].
+  const char *lim = js_fim(eps), *p = eps + 1;
+  while (p && p < lim) {
+    if (*p != '[' && !(eps[0] == '[' && *p == '{')) { p++; continue; }
+    int temporada = 0;
+    if (eps[0] == '{') {
+      const char *q = p;
+      while (q > eps && *q != '"') q--;
+      if (q > eps) { const char *z = q - 1; while (z > eps && *z != '"') z--; temporada = atoi(z + 1); }
+    }
+    const char *fimArray = *p == '[' ? js_fim(p) : lim;
+    const char *itp = *p == '[' ? js_raiz_array(p) : p;
+    while (itp && itp < fimArray && *itp == '{') {
+      const char *f = js_fim(itp); XtreamVodItem it = {0}; char b[32] = "";
+      if (!f) break;
+      vodTexto(itp, f, "id", it.id, sizeof it.id);
+      vodTexto(itp, f, "title", it.nome, sizeof it.nome);
+      vodTexto(itp, f, "container_extension", it.extensao, sizeof it.extensao);
+      it.temporada = temporada;
+      if (vodTexto(itp, f, "season", b, sizeof b)) it.temporada = atoi(b);
+      if (vodTexto(itp, f, "episode_num", b, sizeof b)) it.episodio = atoi(b);
+      const char *info = vodCampo(itp, f, "info");
+      if (info && *info == '{') {
+        const char *inf = js_fim(info);
+        vodTexto(info, inf, "plot", it.sinopse, sizeof it.sinopse);
+        vodTexto(info, inf, "movie_image", it.capa, sizeof it.capa);
+      }
+      if (!it.nome[0]) snprintf(it.nome, sizeof it.nome, "Episódio %d", it.episodio);
+      if (vodDigitos(it.id)) { if (n < max) out[n++] = it; nt++; }
+      itp = js_prox(f);
+    }
+    p = fimArray + 1;
+  }
+  qsort(out, (size_t)n, sizeof *out, vodCompararEp);
+  free(r); if (total) *total = nt;
+  return vodAtual(sessao, rev) ? n : XV_CANCELADO;
+}
+int xtream_vod_url(int tipo, const XtreamVodItem *it, char *out, unsigned n,
+                   NvPerfilSessao sessao, uint64_t rev) {
+  char u[300], s[300]; int k;
+  if (!out || !n) return 0;
+  out[0] = 0;
+  if (!it || !vodDigitos(it->id) || (tipo != XV_FILMES && tipo != XV_SERIES)) return 0;
+  const char *ext = it->extensao[0] ? it->extensao : "mp4";
+  for (const char *p = ext; *p; p++)
+    if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9'))) return 0;
+  pthread_mutex_lock(&trava);
+  carregarTravado();
+  if (!nv_perfil_sessao_atual(sessao) || revisaoCadastro != rev || !servidor[0] || !usuario[0] || !senha[0]) {
+    pthread_mutex_unlock(&trava); return 0;
+  }
+  urlenc(usuario, u, sizeof u); urlenc(senha, s, sizeof s);
+  k = snprintf(out, n, "%s/%s/%s/%s/%s.%s", servidor, tipo == XV_FILMES ? "movie" : "series", u, s, it->id, ext);
+  pthread_mutex_unlock(&trava);
+  if (k < 0 || (unsigned)k >= n) { out[0] = 0; return 0; }
+  return 1;
+}
+int xtream_vod_identidade(int tipo, const char *id, char *out, unsigned n) {
+  uint64_t h = UINT64_C(14695981039346656037);
+  if (!out || !n || !vodDigitos(id)) return 0;
+  pthread_mutex_lock(&trava); carregarTravado();
+  const char *s = servidor;
+  for (; *s; s++) { h ^= (unsigned char)*s; h *= UINT64_C(1099511628211); }
+  h ^= 0; h *= UINT64_C(1099511628211);
+  for (s = usuario; *s; s++) { h ^= (unsigned char)*s; h *= UINT64_C(1099511628211); }
+  pthread_mutex_unlock(&trava);
+  int k = snprintf(out, n, "xtv:%016llx:%c:%s", (unsigned long long)h,
+                   tipo == XV_FILMES ? 'm' : tipo == XV_SERIES ? 's' : 'e', id);
+  return k > 0 && (unsigned)k < n;
 }
