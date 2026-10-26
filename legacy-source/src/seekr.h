@@ -60,6 +60,10 @@ int  seekr_tem_chave(void);
 // REAL do video (o servico escolhe a versao da folha por ela). Assincrono; a
 // mesma combinacao pedida de novo nao refaz a consulta.
 void seekr_pedir(const char *imdb, int t, int e, long durMs);
+// Source-provided WebVTT / HLS image playlists. Does not use a Seekr key/API
+// or a second video decoder. Inputs copied; coalesced, cancellable worker.
+void seekr_fonte_pedir(const char *video,const char *vtt,const char *cabecalhos);
+int seekr_da_fonte(void);
 void seekr_desligar(void);
 int  seekr_estado(void);
 // FIO DE DESENHO: textura 320x180 da miniatura de `posSeg` (0 enquanto nao ha

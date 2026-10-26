@@ -4117,7 +4117,7 @@ void player_atualizar(float dt, Uint32 agora) {
     scrubbing = 1; posVisSolto = 1; scrubUltimo = agora;
   }
 #endif
-  if (scrubbing && agora - scrubUltimo > salto_fim_ms(ajustes_seekr_ligado())) terminarSalto();
+  if (scrubbing && agora - scrubUltimo > salto_fim_ms(ajustes_seekr_ligado() && seekr_estado() == SEEKR_PRONTO)) terminarSalto();
 
   medirAssistido();
   if (fontePrincipal() && video_ativo()) {
@@ -4142,14 +4142,13 @@ void player_atualizar(float dt, Uint32 agora) {
       duracaoSeg = (float)d; duracaoReal = 1;
       durFonteAtualizar(d, agora);
     }
-    // MINIATURAS DO SEEKR: so com a duracao REAL (o servico escolhe a versao
-    // da folha por ela) e uma vez por titulo — seekr_pedir ignora o repetido.
-    if (d > 60.0 && video_pronto() && !ehCanal() && ajustes_seekr_ligado()) {
-      const CatItem *cs = item();
-      if (cs && !strncmp(cs->imdb, "tt", 2))
-        seekr_pedir(cs->imdb, strcmp(cs->tipo, "series") ? 0 : epT,
-                    strcmp(cs->tipo, "series") ? 0 : epE, (long)(d * 1000.0));
-    }
+    // Miniaturas da propria fonte: apenas metadados/imagens, nunca outro player.
+    // A identidade completa evita misturar quadros ao trocar fonte ou episodio.
+    if (d > 1.0 && video_pronto() && !ehCanal() && ajustes_seekr_ligado()) {
+      const Stream *s = stream_item(stream_atual());
+      seekr_fonte_pedir(video_url_atual(), s ? s->miniaturasVtt : NULL,
+                       s ? s->cabecalhos : NULL);
+    } else if (seekr_da_fonte()) seekr_desligar();
     // Retomada so com o pipeline ASSENTADO: pronto + tocando (ou 2,5 s depois
     // de pronto, para quem abre pausado). Seek logo no loadCompleted e o que o
     // uMS recusa com "seek Failure" (#246).
@@ -4602,9 +4601,11 @@ static void seekrMiniatura(float bx, float bw, float frac, float yBarra, float a
   float x, y, tot, xs[3];
   Uint32 agora = SDL_GetTicks();
   if (ehCanal() || !(scrubbing || posVisSolto) || a < 0.05f || !ajustes_seekr_habilitado()) return;
-  est = seekr_tem_chave() ? seekr_estado() : SEEKR_DESLIGADO;
+  est = seekr_estado();
   if (est != SEEKR_PRONTO && est != SEEKR_BUSCANDO) {
-    seekrStatus(bx, bw, frac, yBarra, a, est);
+#ifdef NV_SHOT_HOOKS
+    if (!seekr_da_fonte()) seekrStatus(bx, bw, frac, yBarra, a, est);
+#endif
     return;
   }
   seekr_definir_ajuste_ms((long)ajustes_seekr_ajuste_s() * 1000L);
@@ -5706,7 +5707,7 @@ static void capaReabertura(GfxRect furo, const CatItem *c, Uint32 agora) {
   a += (on ? dt : -dt) / 0.25f;
   if (a > 1.0f) a = 1.0f;
   if (a <= 0.0f) { a = 0.0f; if (usouSeekr) { seekr_ocioso(); usouSeekr = 0; } return; }
-  if (ajustes_seekr_habilitado() && seekr_tem_chave() && seekr_estado() == SEEKR_PRONTO) {
+  if (ajustes_seekr_habilitado() && seekr_da_fonte() && seekr_estado() == SEEKR_PRONTO) {
     double cue = -1;
     seekr_definir_ajuste_ms((long)ajustes_seekr_ajuste_s() * 1000L);
     tex = seekr_quadro(video_pos(), &cue);
@@ -6292,7 +6293,7 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
   // Layout de reproducao do original: titulo/logo acima da barra,
   // progresso em toda a largura util e controles redondos fixos logo abaixo.
   // A coordenada e virtual para preservar escala na TCL P7K.
-  float ySo = ajustes_seekr_ligado() ? PLR_BARRA_Y_SEEKR : PLR_BARRA_Y_SO;
+  float ySo = (ajustes_seekr_ligado() && seekr_estado() == SEEKR_PRONTO) ? PLR_BARRA_Y_SEEKR : PLR_BARRA_Y_SO;
   float yCheio = transporteBarraY();
   float yBarra   = (yCheio + (ySo - yCheio) * (1.0f - cheio)) + desce;
   float yRowTopo = yBarra + PLR_GAP_ROW;

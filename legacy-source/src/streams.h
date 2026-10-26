@@ -36,6 +36,8 @@ typedef struct Stream {
   // NORMALMENTE — o app parecia funcionar e mostrava o cartao de erro. Nao ha
   // erro para detectar nesse caminho, so o tamanho do campo.
   char url[4096];
+  // Timeline WebVTT explicitly declared by this stream/addon. A poster is not a timeline.
+  char miniaturasVtt[4096];
   int  altura;          // 2160, 1080, 720...
   int  dolbyVision;
   int  dolbyAtmos;

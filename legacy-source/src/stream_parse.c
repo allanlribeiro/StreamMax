@@ -2,6 +2,7 @@
 #include "streammax_source_audio.h"
 #include "badges.h"
 #include "js.h"
+#include "minifonte.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1046,6 +1047,7 @@ int stream_extrair(const char *json, const char *provedor, Stream **saida) {
     if (!fim || fim <= p) break;
     // externalUrl abre fora do player; sem midia/hash a fonte fica oculta.
     js_texto_raiz_em(p, fim, "url", s.url, sizeof s.url);
+    minifonte_metadados(p, fim, s.miniaturasVtt, sizeof s.miniaturasVtt);
     { const char *bh = valorRaiz(p, fim, "behaviorHints");
       const char *hint = bh ? valorRaiz(bh, fim, "notWebReady") : NULL;
       s.notWebReady = hint && fim - hint >= 4 && !memcmp(hint, "true", 4) &&

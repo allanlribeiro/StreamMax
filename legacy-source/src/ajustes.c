@@ -1845,7 +1845,7 @@ static const char *CHAVE[] = {
   "relogioPosLocal",
   "seloVistoLocal",
   // LOCAL e SEM o "-"; a chave e credencial e mora em seekr.txt (dados).
-  "seekrLocal", "-seekrChave", "-seekrTestar",
+  "streammaxMiniaturasFonteLocal", "-seekrChave", "-seekrTestar",
   "seekrFitaLocal", "seekrAjusteLocal",
   "saidaPlayerLocal",
   // LOCAL e SEM o "-": o web nao tem a pergunta.
@@ -2441,7 +2441,7 @@ static void desenhaFolhaHeroCat(void);
 static char seekrChave[96];
 static int lig(int op) {
   if (op == AJ_FALHA_PROVEDORES || op == AJ_FALHA_ADDONS) return ajFalhaValor(op) == 0;
-  return valor[op] == 0 && (op != AJ_SEEKR_LIGADO || seekrChave[0]);
+  return valor[op] == 0;
 }
 // #311: "Buscar no Cinemeta" so governa a BUSCA (o add-on Cinemeta e a reserva
 // do catalogo do Nuvio). Sem o add-on instalado e com o ajuste no padrao ele nao
@@ -2704,6 +2704,7 @@ float ajustes_tamanho_ajustes(void) {
 // The phone always uses List. Keep the stored TV preference unchanged.
 static int ajLayoutSelecionavel(void) { return !telefoneui_ativo(); }
 static int ajOpcaoDisponivel(int op) {
+  if (op == AJ_SEEKR_CHAVE || op == AJ_SEEKR_TESTAR) return 0;
   if (op == AJ_FALHA_ADDON_LIMITE) return faAddonEditar[0] != 0;
 #ifndef NV_ANDROID
   if (op == AJ_FONTE_PRECARREGAR) return 0;
@@ -7113,9 +7114,10 @@ static const char *ajudaOpcaoBase(int op) {
     case AJ_TMDB_CW: return "Usa o TMDB para preencher os cartazes da fileira de retomada.";
     case AJ_MDB_LIGADO: return "O MDBList junta notas de várias fontes na página do título. Desligar esconde a fileira inteira.";
     case AJ_MDB_CHAVE: return "A chave vem da sua conta Nuvio ou do arquivo do pacote. Não dá para digitar nesta TV.";
-    case AJ_SEEKR_LIGADO: case AJ_SEEKR_CHAVE: return seekrAjuda(op);
-    case AJ_SEEKR_FITA: return "Mostra o quadro anterior e o seguinte ao lado da miniatura, com o tempo de cada um. Deixa claro que há um quadro a cada 10 segundos.";
-    case AJ_SEEKR_AJUSTE: return "Use quando a miniatura mostra sempre a cena de alguns segundos antes ou depois. Acontece quando a sua versão do título é diferente da usada pelo Seekr (outro corte, abertura mais longa). Vale para todos os títulos; volte a 0 ao trocar de filme.";
+    case AJ_SEEKR_LIGADO: return "Ao avançar ou voltar, mostra as miniaturas publicadas pela própria fonte. Não precisa de chave. Se a fonte não fornecer imagens, a barra de tempo funciona normalmente.";
+    case AJ_SEEKR_CHAVE: return seekrAjuda(op);
+    case AJ_SEEKR_FITA: return "Mostra o quadro anterior e o seguinte ao lado da miniatura, com o tempo de cada um. O intervalo entre os quadros depende da fonte.";
+    case AJ_SEEKR_AJUSTE: return "Use quando a miniatura mostra sempre a cena de alguns segundos antes ou depois. Use apenas se a fonte publicar imagens com o tempo deslocado. Vale para todos os títulos; volte a 0 ao trocar de filme.";
     case AJ_SEEKR_TESTAR: return seekrAjuda(op);
     case AJ_FANART_CHAVE: return "Sua chave pessoal do fanart.tv, gratuita em fanart.tv/get-an-api-key. Com ela a fonte fanart.tv entra no Background do hero. Fica só nesta TV e aparece mascarada.";
     case AJ_MDB_TRAKT: case AJ_MDB_IMDB: case AJ_MDB_TMDB:
@@ -8483,10 +8485,6 @@ static int definirValorDireto(int op, int novo) {
   novo = limita(op, novo);
   if (ajLegendaPrincipal(op)) return ajLegendaDefinir(op, novo);
   if (ajFalhaBackend(op)) return ajFalhaDefinir(op, novo);
-  if (op == AJ_SEEKR_LIGADO && novo == 0 && !seekrChave[0]) {
-    uxNotificar(seekrPedirChave());
-    return 0;
-  }
   if (op == AJ_PROVEDORES_ESCOPO) {
     int ok = ajustes_definir_provedores_compartilhados(novo == 0);
     if (!ok) uxNotificar("Não foi possível agora. Tente novamente.");
@@ -9045,7 +9043,6 @@ static const char *textoValor(int op) {
   }
   const Opcao *o = &OPCOES[op];
   if (o->tipo == OP_LEITURA || o->tipo == OP_ACAO) return textoLeitura(op);
-  if (op == AJ_SEEKR_LIGADO && !seekrChave[0]) return i18n("Desligado");
   if (op == AJ_HERO_TRAILER_ESPERA) {
     // Decimos de segundo: 22 le "2,2 s".
     int v = valor[op];

@@ -3,6 +3,7 @@
 #include "rede.h"
 #include "gfx.h"
 #include "jpegrapido.h"
+#include "minifonte_rede.h"
 #include <SDL2/SDL.h>
 #ifndef __EMSCRIPTEN__
 #include <SDL2/SDL_image.h>
@@ -50,6 +51,12 @@ static int    emVoo;       // 1 = um fio de recorte trabalhando
 // Ajuste de sincronia em ms, somado a posicao antes da escolha da cue (o
 // "preview sync" da documentacao).
 static long   ajusteMs;
+static int fonteModo, fonteWorker, fonteOciosa;
+static char fonteVideo[MINI_URL], fonteVtt[MINI_URL], fonteCab[512];
+static RedeGrupo *fonteGrupo;
+typedef struct { char video[MINI_URL],vtt[MINI_URL],cab[512];unsigned g;RedeJob *job; } FontePedido;
+static FontePedido *fontePendente;
+int seekr_da_fonte(void) { int r;pthread_mutex_lock(&trava);r=fonteModo;pthread_mutex_unlock(&trava);return r; }
 
 // Lado do desenho (so o fio de desenho mexe): texturas por cue, para a fita
 // (anterior, atual, seguinte) nao refazer upload a cada quadro.
@@ -62,8 +69,10 @@ void seekr_definir_chave(const char *c) {
   if (!strcmp(chave, c ? c : "")) { pthread_mutex_unlock(&trava); return; }
   snprintf(chave, sizeof chave, "%s", c ? c : "");
   // Chave nova: o que foi recusado ou achado com a anterior nao vale mais.
-  geracao++; estado = SEEKR_DESLIGADO; pedImdb[0] = 0;
-  expiraUtc = retryUtc = 0; ultimoHttp = 0; ultimaLatencia = 0;
+  if (!fonteModo) {
+    geracao++; estado = SEEKR_DESLIGADO; pedImdb[0] = 0;
+    expiraUtc = retryUtc = 0; ultimoHttp = 0; ultimaLatencia = 0;
+  }
   pthread_mutex_unlock(&trava);
 }
 void seekr_chave_propria(int propria) {
@@ -142,6 +151,7 @@ static void limparTudo(void) {
 
 void seekr_ocioso(void) {
   pthread_mutex_lock(&trava);
+  fonteOciosa = 1;
   if (!emVoo) soltarFolha();
   pthread_mutex_unlock(&trava);
 }
@@ -152,7 +162,57 @@ void seekr_definir_ajuste_ms(long ms) {
 void seekr_desligar(void) {
   pthread_mutex_lock(&trava);
   geracao++; estado = SEEKR_DESLIGADO;
+  fonteModo = 0; fonteVideo[0]=fonteVtt[0]=fonteCab[0]=0;
+  if(fonteGrupo)rede_grupo_avancar(fonteGrupo);
+  if(fontePendente){rede_job_soltar(fontePendente->job);free(fontePendente);fontePendente=NULL;}
   limparTudo();
+  pthread_mutex_unlock(&trava);
+}
+
+static void *fonteConsultar(void *unused) {
+  (void)unused;
+  for(;;) {
+    pthread_mutex_lock(&trava);
+    FontePedido *p=fontePendente;fontePendente=NULL;
+    if(!p){fonteWorker=0;pthread_mutex_unlock(&trava);return NULL;}
+    pthread_mutex_unlock(&trava);
+    SeekrVtt v={0};int ok=minifonte_carregar(p->video,p->vtt,p->cab,p->job,&v);
+    pthread_mutex_lock(&trava);
+    if(fonteModo && p->g==geracao && rede_job_estado(p->job)==REDE_OK) {
+      seekr_vtt_liberar(&vtt);soltarFolha();soltarJpg();soltarProntos();
+      vtt=v;memset(&v,0,sizeof v);
+      estado=ok>0?SEEKR_PRONTO:ok<0?SEEKR_REDE_INDISPONIVEL:SEEKR_SEM_PREVIA;
+      expiraUtc=(long long)time(NULL)+6*3600;expiraTick=SDL_GetTicks()+6u*3600u*1000u;
+    }
+    pthread_mutex_unlock(&trava);
+    seekr_vtt_liberar(&v);rede_job_soltar(p->job);free(p);
+  }
+}
+void seekr_fonte_pedir(const char *video,const char *preview,const char *cab) {
+  pthread_t fio;
+  if(!video||!video[0]||strlen(video)>=sizeof fonteVideo)return;
+  if(!preview)preview="";
+  if(!cab)cab="";
+  if(strlen(preview)>=sizeof fonteVtt||strlen(cab)>=sizeof fonteCab)return;
+  pthread_mutex_lock(&trava);
+  if(fonteModo&&!strcmp(fonteVideo,video)&&!strcmp(fonteVtt,preview)&&!strcmp(fonteCab,cab)){pthread_mutex_unlock(&trava);return;}
+  if(!fonteGrupo)fonteGrupo=rede_grupo_criar();
+  if(!fonteGrupo){pthread_mutex_unlock(&trava);return;}
+  rede_grupo_avancar(fonteGrupo);geracao++;limparTudo();
+  fonteModo=1;fonteOciosa=1;estado=SEEKR_SEM_PREVIA;
+  snprintf(fonteVideo,sizeof fonteVideo,"%s",video);snprintf(fonteVtt,sizeof fonteVtt,"%s",preview);snprintf(fonteCab,sizeof fonteCab,"%s",cab);
+  if(fontePendente){rede_job_soltar(fontePendente->job);free(fontePendente);fontePendente=NULL;}
+  if(!preview[0]&&!minifonte_e_hls(video)){pthread_mutex_unlock(&trava);return;}
+  FontePedido *p=calloc(1,sizeof *p);
+  if(!p){pthread_mutex_unlock(&trava);return;}
+  p->job=rede_job_criar(fonteGrupo);
+  if(!p->job){free(p);pthread_mutex_unlock(&trava);return;}
+  strcpy(p->video,video);strcpy(p->vtt,preview);strcpy(p->cab,cab);p->g=geracao;fontePendente=p;estado=SEEKR_BUSCANDO;
+  if(!fonteWorker){
+    fonteWorker=1;
+    if(pthread_create(&fio,NULL,fonteConsultar,NULL)==0)pthread_detach(fio);
+    else{fonteWorker=0;estado=SEEKR_SEM_PREVIA;fontePendente=NULL;rede_job_soltar(p->job);free(p);}
+  }
   pthread_mutex_unlock(&trava);
 }
 
@@ -352,7 +412,8 @@ void seekr_pedir(const char *imdb, int t, int e, long durMs) {
 
 static SDL_Surface *decodificar(const unsigned char *b, long n) {
   SDL_Surface *s, *c;
-  int w0 = 0, h0 = 0;
+  int w0 = 0, h0 = 0, expectedW = 0, expectedH = 0;
+  if (n <= 0 || !minifonte_imagem_tamanho(b, (size_t)n, &expectedW, &expectedH)) return NULL;
   // Largura pedida enorme = sem reducao de DCT: o recorte precisa do pixel
   // inteiro (o quadro ja e pequeno, 320x180).
   s = jpeg_rapido_carregar_mem(b, (size_t)n, 1 << 20, &w0, &h0);
@@ -360,13 +421,19 @@ static SDL_Surface *decodificar(const unsigned char *b, long n) {
   if (!s) { SDL_RWops *rw = SDL_RWFromConstMem(b, (int)n); s = rw ? IMG_Load_RW(rw, 1) : NULL; }
 #endif
   if (!s) return NULL;
+  if (s->w != expectedW || s->h != expectedH) { SDL_FreeSurface(s); return NULL; }
   if (s->format->format == SDL_PIXELFORMAT_ABGR8888) return s;
   c = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);
   SDL_FreeSurface(s);
   return c;
 }
 
-typedef struct { char url[2300]; int folha, cue, x, y, w, h; unsigned g; } Recorte;
+typedef struct {
+  char url[MINI_URL], video[MINI_URL], cab[512];
+  int folha, cue, x, y, w, h, fonte;
+  unsigned g;
+  RedeJob *job;
+} Recorte;
 
 static char *baixarFolha(const char *url, long *n, int *http) {
   RedeMedida medida = {0};
@@ -378,32 +445,32 @@ static char *baixarFolha(const char *url, long *n, int *http) {
 static void *recortar(void *u) {
   Recorte *r = u;
   SDL_Surface *s = NULL;
-  unsigned char *px = NULL;
   int precisa;
   pthread_mutex_lock(&trava);
   precisa = !(folhaSup && folhaIdx == r->folha && folhaG == r->g);
+  int atual = r->g == geracao;
   pthread_mutex_unlock(&trava);
-  if (precisa) {
+  if (precisa && atual) {
     long n = 0;
     char *b = NULL;
-    Uint32 t0 = SDL_GetTicks();
-    int baixou = 0;
-    // O JPEG desta folha ja esta guardado? Entao so decodifica.
+    int baixou = 0, http = 0;
     pthread_mutex_lock(&trava);
     if (jpgBytes && jpgIdx == r->folha && jpgG == r->g && (b = malloc((size_t)jpgN)) != NULL) {
       memcpy(b, jpgBytes, (size_t)jpgN); n = jpgN;
     }
     pthread_mutex_unlock(&trava);
-    int http = 0;
-    if (!b) { b = baixarFolha(r->url, &n, &http); baixou = 1; }   // assinada, sem chave
-    s = b && n > 0 ? decodificar((unsigned char *)b, n) : NULL;
-    printf("[seekr] sheet index=%d width=%d height=%d kb=%ld source=%s latency_ms=%u\n",
-           r->folha, s ? s->w : 0, s ? s->h : 0, n / 1024,
-           baixou ? "network" : "cache", SDL_GetTicks() - t0);
-    fflush(stdout);
+    if (!b) {
+      b = r->fonte ? minifonte_baixar(r->url, r->video, r->cab, r->job, &n, &http)
+                   : baixarFolha(r->url, &n, &http);
+      baixou = 1;
+    }
+    if ((!r->job || rede_job_estado(r->job) == REDE_OK) && b && n > 0)
+      s = decodificar((unsigned char *)b, n);
     pthread_mutex_lock(&trava);
-    if (!s && baixou && r->g == geracao) {
-      if (http == 403) expiraUtc = 0; // Next player tick refreshes through quota.
+    if (!s && r->g == geracao) {
+      // Uma imagem ausente ou invalida nao pode gerar um pedido a cada frame.
+      if (r->fonte) estado = SEEKR_SEM_PREVIA;
+      else if (http == 403) expiraUtc = 0;
       else if (http == 0 || http >= 500) {
         estado = SEEKR_REDE_INDISPONIVEL; retryUtc = (long long)time(NULL) + 30;
       }
@@ -411,29 +478,42 @@ static void *recortar(void *u) {
     if (s && r->g == geracao) {
       soltarFolha(); folhaSup = s; folhaIdx = r->folha; folhaG = r->g;
       if (baixou) { soltarJpg(); jpgBytes = b; jpgN = n; jpgIdx = r->folha; jpgG = r->g; b = NULL; }
-    } else if (s) { SDL_FreeSurface(s); s = NULL; }
+    } else if (s) SDL_FreeSurface(s);
     pthread_mutex_unlock(&trava);
     free(b);
   }
   pthread_mutex_lock(&trava);
   s = folhaSup;
-  // Recorta DENTRO da trava: a folha pode ser trocada por outro pedido.
-  if (s && folhaIdx == r->folha && r->g == geracao && r->x + r->w <= s->w && r->y + r->h <= s->h &&
-      (px = malloc((size_t)r->w * (size_t)r->h * 4u)) != NULL) {
-    int y, k, livre = 0;
-    if (SDL_MUSTLOCK(s)) SDL_LockSurface(s);
-    for (y = 0; y < r->h; y++)
-      memcpy(px + (size_t)y * (size_t)r->w * 4u,
-             (const unsigned char *)s->pixels + (size_t)(r->y + y) * (size_t)s->pitch + (size_t)r->x * 4u,
-             (size_t)r->w * 4u);
-    if (SDL_MUSTLOCK(s)) SDL_UnlockSurface(s);
-    for (k = 0; k < SK_SLOTS; k++) if (!prontos[k].px) { livre = k; break; }
-    if (k == SK_SLOTS) livre = 0;
-    free(prontos[livre].px);
-    prontos[livre] = (Pronto){ px, r->w, r->h, r->cue, r->g };
+  if (s && folhaIdx == r->folha && folhaG == r->g && r->g == geracao) {
+    int w = r->w ? r->w : s->w, h = r->h ? r->h : s->h;
+    if (r->x >= 0 && r->y >= 0 && w > 0 && h > 0 && r->x <= s->w - w && r->y <= s->h - h) {
+      // Saida pequena e constante; conserva a proporcao, inclusive em fontes 4:3.
+      SDL_Surface *out = SDL_CreateRGBSurfaceWithFormat(0, 320, 180, 32, SDL_PIXELFORMAT_ABGR8888);
+      if (out) {
+        SDL_FillRect(out, NULL, SDL_MapRGBA(out->format, 0, 0, 0, 255));
+        SDL_Rect src = {r->x, r->y, w, h}, dst = {0, 0, 320, 180};
+        if ((long long)w * 180 > (long long)h * 320) dst.h = h * 320 / w;
+        else dst.w = w * 180 / h;
+        if (dst.w < 1) dst.w = 1;
+        if (dst.h < 1) dst.h = 1;
+        dst.x = (320 - dst.w) / 2; dst.y = (180 - dst.h) / 2;
+        SDL_SetSurfaceBlendMode(s, SDL_BLENDMODE_NONE);
+        unsigned char *px = malloc(320u * 180u * 4u);
+        if (px && SDL_BlitScaled(s, &src, out, &dst) == 0) {
+          for (int y = 0; y < 180; y++) memcpy(px + y * 320u * 4u, (unsigned char *)out->pixels + y * out->pitch, 320u * 4u);
+          int livre = 0;
+          for (int k = 0; k < SK_SLOTS; k++) if (!prontos[k].px) { livre = k; break; }
+          free(prontos[livre].px);
+          prontos[livre] = (Pronto){px, 320, 180, r->cue, r->g};
+        } else free(px);
+        SDL_FreeSurface(out);
+      }
+    } else if (r->fonte) estado = SEEKR_SEM_PREVIA;
   }
   emVoo = 0;
+  if (fonteOciosa) soltarFolha();
   pthread_mutex_unlock(&trava);
+  if (r->job) rede_job_soltar(r->job);
   free(r);
   return NULL;
 }
@@ -490,13 +570,15 @@ int seekr_quadros(double posSeg, int n, GLuint *texs, double *cueSeg) {
   for (k = 0; k < n; k++) { texs[k] = 0; if (cueSeg) cueSeg[k] = -1.0; }
   pthread_mutex_lock(&trava);
   g = geracao;
+  fonteOciosa = 0;
   memcpy(pr, prontos, sizeof pr);
   memset(prontos, 0, sizeof prontos);
   if (estado != SEEKR_PRONTO || expiraUtc <= (long long)time(NULL) ||
       (Sint32)(expiraTick - SDL_GetTicks()) <= 0) {
     pthread_mutex_unlock(&trava); for (k = 0; k < SK_SLOTS; k++) free(pr[k].px); return 0;
   }
-  i = seekr_vtt_cue(&vtt, (long)(posSeg * 1000.0) + ajusteMs);
+  i = fonteModo ? minifonte_cue(&vtt, (long)(posSeg * 1000.0) + ajusteMs)
+                : seekr_vtt_cue(&vtt, (long)(posSeg * 1000.0) + ajusteMs);
   if (i >= 0) {
     // Com fita: anterior, atual, seguinte (as que existem). A ATUAL vem
     // primeiro na fila de pedidos — e a que a pessoa esta olhando.
@@ -516,7 +598,13 @@ int seekr_quadros(double posSeg, int n, GLuint *texs, double *cueSeg) {
           snprintf(pedir->url, sizeof pedir->url, "%s", vtt.folhas[q->folha]);
           pedir->folha = q->folha; pedir->cue = c;
           pedir->x = q->x; pedir->y = q->y; pedir->w = q->w; pedir->h = q->h;
-          pedir->g = g; emVoo = 1;
+          pedir->g = g; pedir->fonte = fonteModo;
+          if (fonteModo) {
+            strcpy(pedir->video, fonteVideo); strcpy(pedir->cab, fonteCab);
+            pedir->job = rede_job_criar(fonteGrupo);
+            if (!pedir->job) { free(pedir); pedir = NULL; }
+          }
+          if (pedir) emVoo = 1;
         }
       }
     }
@@ -534,7 +622,7 @@ int seekr_quadros(double posSeg, int n, GLuint *texs, double *cueSeg) {
   if (pedir) {
     pthread_t fio;
     if (pthread_create(&fio, NULL, recortar, pedir) == 0) pthread_detach(fio);
-    else { free(pedir); pthread_mutex_lock(&trava); emVoo = 0; pthread_mutex_unlock(&trava); }
+    else { if (pedir->job) rede_job_soltar(pedir->job); free(pedir); pthread_mutex_lock(&trava); emVoo = 0; pthread_mutex_unlock(&trava); }
   }
   // Upload do que ficou pronto.
   for (k = 0; k < SK_SLOTS; k++) {
