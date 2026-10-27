@@ -1,0 +1,58 @@
+{
+  "version": "1.0.24",
+  "version_code": 20031,
+  "package": "com.streammax.tv",
+  "source_commit": "da499ecbb9693ec46979f2dc5ce5939850181090",
+  "branch": "fix/streammax-trailer-open-context",
+  "release": {
+    "page": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.24",
+    "latest": "v1.0.24",
+    "draft": false,
+    "prerelease": false,
+    "apk_url": "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.24/StreamMax-1.0.24-android.apk",
+    "apk_bytes": 62471926,
+    "apk_sha256": "300a59786c5a4fb14b4abc3522f30c091fda08518068d7feeef46bb05bfd3d60",
+    "signer_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ],
+    "min_sdk": 24,
+    "target_sdk": 35
+  },
+  "workflow": {
+    "id": 40599884788,
+    "url": "https://github.com/allanlribeiro/StreamMax/actions/runs/40599884788",
+    "conclusion": "success",
+    "jobs": {
+      "native-apk": "success",
+      "publicar": "success"
+    }
+  },
+  "artifact": {
+    "id": 12778267573,
+    "name": "StreamMax-1.0.24-Trailer-Abertura",
+    "zip_sha256": "7a100e5c2408e1f4240f73c1afea4619736fd0a0c78b87724c0eab16385f4fd7"
+  },
+  "baseline": {
+    "source": "554e8577e70f5211520e7ad4572f70838e1b8180",
+    "reproduction": "complete trailer.c, controlled backend: first Home window command is FIT, ownership marked afterwards"
+  },
+  "checks": {
+    "complete_opening": "passed with ASan/UBSan; cold/hot, atomic initial COVER, late dimensions, updates, close/failure, card/detail ownership",
+    "queued_window": "actual Java Pending tested: retention, consume once, newest wins, stale generations dropped",
+    "android_wiring": "source contract: URL/window same request, pending consumed before attaching Surface; no initial FIT override",
+    "compiled_jni": "public static abrirComJanela and exact signature verified in real DEX and both libmain.so files",
+    "renderer": "existing complete gfx.c/text scales/right edge/gradient regressions passed",
+    "home_scroll": "ASan/UBSan Android/host/touch tests passed",
+    "addons_xtream_watchnext_first_source_no_seek_frames": "passed",
+    "installed_1_0_23_ota": "passed against actual public JSON, URL, digest and APK size",
+    "signature_and_identity": "passed locally and in CI"
+  },
+  "limits": [
+    "No physical TCL P7K retest or FPS measurement.",
+    "Opening backend and clock controlled in C test; not a MediaCodec/compositor emulator.",
+    "The compiled JNI check verifies method/signature, not end-to-end execution on TV.",
+    "Recorded black bars within a video are a separate source property."
+  ]
+}

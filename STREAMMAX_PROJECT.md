@@ -3,18 +3,21 @@
 ## Continuidade — abertura do trailer após novo teste da TCL (27/10/2026)
 
 - O usuário informou que a 1.0.23 ainda não resolveu o enquadramento.
-- Branch `fix/streammax-trailer-open-context`; candidata 1.0.24, código 20031.
+- Branch `fix/streammax-trailer-open-context`; versão 1.0.24, código 20031.
 - Falha reproduzida com `trailer.c` completo da 1.0.23: a abertura ocorria
   antes da marcação de dono HOME, portanto o primeiro comando era FIT.
 - Novo `trailer_abrir_home` define contexto antes de abrir; URL e janela
   COVER chegam juntas a `NvPlayer.abrirComJanela`, antes da Surface.
 - Janela retida durante release assíncrono, consumida somente pelo mesmo
-  pedido. A ponte JNI será verificada no DEX e nos dois ABIs do APK.
+  pedido. Ponte JNI conferida no DEX e nos dois ABIs do APK.
 - Testes de abertura fria/quente, metadata tardia, falha e destinos alternativos
   aprovados com ASan/UBSan. Degradê e layout da 1.0.23 preservados.
 - [Análise e limites](./docs/trailer-abertura/ANALISE-1.0.24.md).
-- Estado: código revisado e testes locais aprovados; APK/publicação em preparação.
-  Confirmação na TCL e medição de FPS ainda pendentes.
+- APK compilado e assinado com a chave oficial; publicado no canal do app.
+  Atualizador da 1.0.23 conferido com JSON público, URL e SHA-256 do APK.
+- [Versão 1.0.24](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.24) e
+  [registro de validação](./docs/trailer-abertura/VALIDACAO-1.0.24.json).
+- Confirmação na TCL e medição de FPS ainda pendentes.
 
 ## Continuidade — bordas do trailer após foto da TCL (27/10/2026)
 
