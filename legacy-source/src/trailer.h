@@ -35,6 +35,10 @@ int  trailer_suportado(void);
 // `cheia` marca o modo de tela
 // cheia com teclado proprio.
 void trailer_abrir(const char *fonte, GfxRect r, int som, int cheia);
+// Home: define dono/destino ANTES do primeiro comando de janela ao Android.
+// Abre apenas com o pipeline livre; nao toma um trailer ativo dos detalhes.
+void trailer_abrir_home(const char *fonte, GfxRect r, int som, int noCartao,
+                        const char *imdb);
 void trailer_rect(GfxRect r);
 // O proximo trailer_abrir (e os trailer_rect dele) toca DENTRO DE UM CARTAZ da
 // home (modo "No card"). So muda algo no .tpk: la o recorte de fonte vira um
@@ -80,7 +84,7 @@ int  trailer_estado(void);
 // Retangulo atual, para quem desenha o furo.
 GfxRect trailer_retangulo(void);
 // QUEM ABRIU o trailer aberto, e de qual titulo (imdb). O destaque da home
-// marca TRAILER_DONO_HOME logo depois de abrir; a pagina do titulo, quando
+// usa trailer_abrir_home para marcar o dono antes de abrir; a pagina do titulo, quando
 // ADOTA esse trailer (trailerfonte.h, NV_TRAILER_CONTINUA_DETALHE), passa
 // para TRAILER_DONO_DETALHE — e a home deixa de fechar o que nao e mais dela.
 // trailer_fechar zera. Sem marca (qualquer outro chamador) e NENHUM, como

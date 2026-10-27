@@ -57,7 +57,7 @@ with tempfile.TemporaryDirectory(prefix='streammax-trailer-edges-') as tmp:
     # Integracao: o modo inteiro chega ao helper, sem virar booleano FIT.
     host=(ROOT/'android/app/src/main/java/space/nuvio/nativelegacy/NvPlayer.kt').read_text()
     native=(ROOT/'src/video_android.c').read_text()
-    assert 'definirJanela(x, y, w, h, encaixa)' in host
+    assert 'definirJanela(x, y, w, h, encaixa, pedido)' in host
     assert 'StreamMaxVideoWindow.calculate(pedX,pedY,pedW,pedH,videoW,videoH,pedEncaixa)' in host
     assert 'C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING' in host
     assert 'janelaSeMudou(x,y,w,h,2)' in native

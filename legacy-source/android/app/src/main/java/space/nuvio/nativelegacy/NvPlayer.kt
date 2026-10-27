@@ -1124,10 +1124,22 @@ object NvPlayer {
 
     @JvmStatic fun abrir(url: String, cabecalhos: String) { abrirPosicao(url, cabecalhos, 0, 0) }
     @JvmStatic fun abrirPosicao(url: String, cabecalhos: String, inicioMs: Int, geracao: Int) {
+        abrirPosicaoInterno(url,cabecalhos,inicioMs,geracao,null)
+    }
+    @JvmStatic fun abrirComJanela(url: String, cabecalhos: String, inicioMs: Int, geracao: Int,
+                                  x: Int, y: Int, w: Int, h: Int, modo: Int) {
+        abrirPosicaoInterno(url,cabecalhos,inicioMs,geracao,intArrayOf(x,y,w,h,modo))
+    }
+    private fun abrirPosicaoInterno(url: String, cabecalhos: String, inicioMs: Int,
+                                    geracao: Int, janela: IntArray?) {
         cancelarPreparo(0)
         val pedido = pedidos.incrementAndGet()
         principal.post {
-            if (pedido == pedidos.get()) abrirMain(url, cabecalhos, false, inicioMs.coerceAtLeast(0), geracao, pedido)
+            if (pedido == pedidos.get()) {
+                // Mesmo pedido da URL: retido durante o release, antes da Surface.
+                if (janela != null) janelaPendente.offer(pedido,janela[0],janela[1],janela[2],janela[3],janela[4])
+                abrirMain(url, cabecalhos, false, inicioMs.coerceAtLeast(0), geracao, pedido)
+            }
         }
     }
     @JvmStatic fun abrirRetomada(url: String, cabecalhos: String, inicioMs: Int, fracao: Int, geracao: Int) {
@@ -1224,7 +1236,12 @@ object NvPlayer {
         val v = centesimos.coerceIn(25, 400) / 100f
         principal.post { player?.setPlaybackSpeed(v) }
     }
-    @JvmStatic fun janela(x: Int, y: Int, w: Int, h: Int, encaixa: Int) { principal.post { definirJanela(x, y, w, h, encaixa) } }
+    @JvmStatic fun janela(x: Int, y: Int, w: Int, h: Int, encaixa: Int) {
+        val pedido = pedidos.get()
+        principal.post {
+            if (pedido == pedidos.get()) definirJanela(x, y, w, h, encaixa, pedido)
+        }
+    }
     @JvmStatic fun escolher(tipo: Int, idx: Int) { principal.post { escolherMain(tipo, idx) } }
 
     // --- abrir / liberar ------------------------------------------------------
@@ -1485,6 +1502,10 @@ object NvPlayer {
             val p = r.p
             recursosAtuais = r
             player = p
+            // A abertura pode ter aguardado o decoder antigo. Receber a janela
+            // dessa abertura antes de anexar a Surface impede um FIT inicial.
+            temJanela = false
+            aplicarJanelaPendente(pedido)
             processador = r.proc
             r.tap.ligado = tap.ligado
             tap = r.tap
@@ -1510,8 +1531,7 @@ object NvPlayer {
                 p.setVideoSurfaceView(sv)
                 sv.holder.addCallback(depoisDoMedia3)
             }
-            temJanela = false
-            aplicarEncaixe()
+            if (!temJanela) aplicarEncaixe()
 
             if (preparada == null) {
                 val mediaItem = itemMidia(url)
@@ -1763,13 +1783,23 @@ object NvPlayer {
     // EXACT ja vem com a proporcao certa. COVER preenche mesmo com metadata tardia.
     private var pedX = 0; private var pedY = 0; private var pedW = 0; private var pedH = 0
     private var pedEncaixa = StreamMaxVideoWindow.FIT
+    private val janelaPendente = StreamMaxVideoWindow.Pending()
 
-    private fun definirJanela(x: Int, y: Int, w: Int, h: Int, encaixa: Int) {
-        if (player == null) return   // como o Video.cs: o C repete depois do videoInfo
+    private fun definirJanela(x: Int, y: Int, w: Int, h: Int, encaixa: Int, pedido: Int) {
+        if (player == null) {
+            janelaPendente.offer(pedido,x,y,w,h,encaixa)
+            return
+        }
+        janelaPendente.clear()
         pedX = x; pedY = y; pedW = w; pedH = h; pedEncaixa = encaixa
         temJanela = true
         calcularJanela()
         Log.i(TAG, "[dvtrace] janela sessao=$sessao holder=${System.identityHashCode(superficie?.holder)} pedido=$x,$y ${w}x$h encaixa=$encaixa calculada=$jx,$jy ${jw}x$jh hdr=$ultHdr semRecriar=$semRecriar")
+    }
+
+    private fun aplicarJanelaPendente(pedido: Int) {
+        val r = janelaPendente.take(pedido) ?: return
+        definirJanela(r[0],r[1],r[2],r[3],r[4],pedido)
     }
 
     private fun calcularJanela() {

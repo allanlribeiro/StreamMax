@@ -5,6 +5,22 @@ public final class StreamMaxVideoWindow {
     public static final int EXACT = 0, FIT = 1, COVER = 2;
     private StreamMaxVideoWindow() {}
 
+    /** Main-thread mailbox for a window arriving during asynchronous release. */
+    public static final class Pending {
+        private int request = -1;
+        private int[] value;
+        public void offer(int request, int x, int y, int w, int h, int mode) {
+            this.request = request;
+            this.value = new int[]{x,y,w,h,mode};
+        }
+        public int[] take(int currentRequest) {
+            int[] result = request == currentRequest ? value : null;
+            clear();
+            return result;
+        }
+        public void clear() { request = -1; value = null; }
+    }
+
     public static int[] calculate(int x, int y, int w, int h, int videoW, int videoH, int mode) {
         if (mode == EXACT || videoW <= 0 || videoH <= 0 || w <= 0 || h <= 0)
             return new int[]{x,y,w,h};

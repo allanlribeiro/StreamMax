@@ -178,6 +178,8 @@ int    video_pronto(void);   // 1 depois do loadCompleted
 #ifdef NV_ANDROID
 // COVER, sem tarjas, inclusive quando as dimensoes chegam depois da janela.
 void   video_android_janela_preencher(int x, int y, int w, int h);
+// Abertura atomica do trailer: a janela acompanha a URL, antes da Surface.
+int    video_android_tocar_home(const char *url, int x, int y, int w, int h);
 int    video_superficie_estavel(void);   // 1 depois da ultima recriacao da Surface (HDR/DV)
 int    video_quadro_visto(void);   // 1 depois do primeiro quadro desenhado (antes do "pronto")
 #endif

@@ -13,8 +13,8 @@ host = Path("android/app/src/main/java/space/nuvio/nativelegacy/NuvioActivity.kt
 manifest = Path("android/app/src/main/AndroidManifest.xml").read_text()
 paths = Path("android/app/src/main/res/xml/caminhos_atualizacao.xml").read_text()
 config = json.loads(Path("deploy/app/appinfo.json").read_text())
-assert config["version"] == "2.0.30"
-assert '#define SM_UPDATE_VERSION "1.0.23"' in Path("src/streammax_update.h").read_text()
+assert config["version"] == "2.0.31"
+assert '#define SM_UPDATE_VERSION "1.0.24"' in Path("src/streammax_update.h").read_text()
 assert '#define AT_URL    SM_UPDATE_API' in native
 assert '#define AT_PAGINA SM_UPDATE_PAGE' in native
 assert "sm_update_nova_versao(tag)" in native
@@ -35,5 +35,5 @@ assert "canRequestPackageInstalls()" in host
 assert "android.permission.REQUEST_INSTALL_PACKAGES" in manifest
 assert 'android:resource="@xml/caminhos_atualizacao"' in manifest
 assert 'path="dados/atualizacao/"' in paths
-print("OK: OTA StreamMax 1.0.23 sem Nuvio upstream; APK/signer/versao verificados")
+print("OK: OTA StreamMax 1.0.24 sem Nuvio upstream; APK/signer/versao verificados")
 PY

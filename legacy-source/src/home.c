@@ -6120,10 +6120,8 @@ void home_trailer_passo(int topo, float dt, Uint32 agora) {
       // trailer toca na home — destaque, Tela cheia ou No card. Na Samsung
       // (.wgt) trailer_abrir forca mudo de qualquer jeito.
       heroTrailerNoCartao = destCartao;
-      trailer_no_cartao(destCartao);
-      trailer_abrir(u, destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerVideoRect(heroTrailerArea(heroArteRect)),
-                    ajustes_trailer_som(), 0);
-      trailer_marcar_dono(TRAILER_DONO_HOME, ci->imdb);
+      trailer_abrir_home(u, destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerVideoRect(heroTrailerArea(heroArteRect)),
+                         ajustes_trailer_som(), destCartao, ci->imdb);
       // trailer_abrir e void por compatibilidade com o player nativo; no
       // browser ainda pode recusar a criacao (canvas ausente). Tratar isso
       // como erro da fonte evita deixar a tentativa marcada para sempre.

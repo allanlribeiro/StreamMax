@@ -18,6 +18,17 @@ public final class TestVideoWindow {
         }
         int[] exact=StreamMaxVideoWindow.calculate(-100,-50,2100,1200,1920,804,0);
         check(exact[0]==-100 && exact[1]==-50 && exact[2]==2100 && exact[3]==1200);
+        StreamMaxVideoWindow.Pending pending = new StreamMaxVideoWindow.Pending();
+        pending.offer(10,537,0,1383,670,2);
+        int[] beforeSurface = pending.take(10);
+        check(beforeSurface!=null && beforeSurface[0]==537 && beforeSurface[4]==2);
+        check(pending.take(10)==null);
+        pending.offer(10,1,2,3,4,1);
+        check(pending.take(11)==null);  // janela da fonte/perfil anterior nao volta
+        pending.offer(12,10,20,300,200,1);
+        pending.offer(12,537,0,1383,670,2);
+        check(pending.take(12)[4]==2); // pedido mais recente prevalece
         System.out.println("OK: FIT reproduz faixa direita; COVER preenche, metadata tardia e EXACT preservados");
+        System.out.println("OK: janela pendente retida ate a Surface, consumo unico e geracoes antigas descartadas");
     }
 }

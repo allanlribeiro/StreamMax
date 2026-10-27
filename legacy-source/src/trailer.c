@@ -344,6 +344,21 @@ static void nativoJanela(GfxRect r, int telaCheia) {
 #endif
   video_janela((int)r.x,(int)r.y,(int)r.w,(int)r.h);
 }
+static int nativoTocar(const char *fonte, GfxRect r, int telaCheia) {
+#if defined(NV_ANDROID)
+  if (dono == TRAILER_DONO_HOME && !noCartao && !telaCheia &&
+      ajustes_home_layout() == HOME_LAYOUT_MODERNA && !layout_modo_mobile()) {
+    float x,y,w,h;
+    // Metadata da fonte anterior nao pertence a esta abertura.
+    sm_trailer_hero_video(r.x,r.y,r.w,r.h,0,0,&x,&y,&w,&h);
+    return video_android_tocar_home(fonte,(int)lroundf(x),(int)lroundf(y),
+                                    (int)lroundf(w),(int)lroundf(h));
+  }
+#else
+  (void)r; (void)telaCheia;
+#endif
+  return video_tocar(fonte);
+}
 static void nativoAplicar(void) {
   if (!aberto) return;
   // Home Moderna: cover uniforme e overscan do Nuvio original na caixa da arte,
@@ -459,7 +474,7 @@ void trailer_abrir(const char *fonte, GfxRect r, int som, int modoCheia) {
   if (!trailer_js_abrir(fonte, r.x, r.y, r.w, r.h, som, ajustes_trailer_zoom(), NV_REC_URL)) return;
 #else
   if (nova) {
-    if (!falso && !video_tocar(fonte)) return;
+    if (!falso && !nativoTocar(fonte, r, modoCheia)) return;
 #ifdef NV_TPK
     video_tpk_trailer_marcar(1);
 #endif
@@ -485,6 +500,22 @@ void trailer_abrir(const char *fonte, GfxRect r, int som, int modoCheia) {
 #ifndef __EMSCRIPTEN__
   nativoAplicar();
 #endif
+}
+
+void trailer_abrir_home(const char *fonte, GfxRect r, int som, int cartao,
+                        const char *imdb) {
+  if (aberto || !fonte || !fonte[0]) return;
+  // A TCL pode fixar a primeira janela do decoder. O dono precisa estar
+  // definido ja em video_tocar/nativoJanela, nao depois de trailer_abrir.
+  dono = TRAILER_DONO_HOME;
+  noCartao = cartao != 0;
+  snprintf(donoImdb, sizeof donoImdb, "%s", imdb ? imdb : "");
+  trailer_abrir(fonte, r, som, 0);
+  if (!aberto) {
+    dono = TRAILER_DONO_NENHUM;
+    noCartao = 0;
+    donoImdb[0] = 0;
+  }
 }
 
 void trailer_rect(GfxRect r) {

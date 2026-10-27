@@ -56,6 +56,8 @@ static jclass    gCls;      // GlobalRef: FindClass de fio do SDL nao acha class
 static jmethodID mImagemUpscaling;
 static jmethodID mAbrir, mParar, mPausar, mBuscar, mVolume, mJanela, mEscolher;
 static jmethodID mAbrirPosicao;
+static jmethodID mAbrirComJanela;
+static struct { int ativa, x, y, w, h; } janelaHomeAbertura;
 // 2.0.3 (opcional): abrirRetomada(url, cab, inicioMs, fracao, geracao). So o
 // percentual conhecido (retomada da conta, sem registro local): o Kotlin
 // aplica fracao/10000 da duracao do CONTAINER antes do primeiro quadro.
@@ -85,6 +87,8 @@ static int resolverMetodos(JNIEnv *env) {
   // depois da duracao. A ausencia deste metodo nao derruba a ponte inteira.
   mAbrirPosicao = (*env)->GetStaticMethodID(env, gCls, "abrirPosicao", "(Ljava/lang/String;Ljava/lang/String;II)V");
   if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); mAbrirPosicao = NULL; }
+  mAbrirComJanela = (*env)->GetStaticMethodID(env, gCls, "abrirComJanela", "(Ljava/lang/String;Ljava/lang/String;IIIIIII)V");
+  if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); mAbrirComJanela = NULL; }
   mAbrirRetomada = (*env)->GetStaticMethodID(env, gCls, "abrirRetomada", "(Ljava/lang/String;Ljava/lang/String;III)V");
   if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); mAbrirRetomada = NULL; }
   mCache = (*env)->GetStaticMethodID(env, gCls, "cache", "(I)V");
@@ -740,7 +744,12 @@ static int abrirSessao(int inicioMs, int fracao) {
     // abrirPosicao also when starting at 0: it is how the Kotlin side learns
     // this session's generation (StreamFit passive telemetry). At 0 the
     // resume state stays -1, exactly as the plain abrir path left it.
-    if (preparado && mAbrirPreparada) {
+    if (janelaHomeAbertura.ativa && mAbrirComJanela) {
+      (*env)->CallStaticVoidMethod(env, gCls, mAbrirComJanela, u, c,
+          (jint)inicioMs, (jint)geracao,
+          (jint)janelaHomeAbertura.x, (jint)janelaHomeAbertura.y,
+          (jint)janelaHomeAbertura.w, (jint)janelaHomeAbertura.h, (jint)2);
+    } else if (preparado && mAbrirPreparada) {
       jstring a = paraJString(env, ling_audio());
       if (!a) {
         (*env)->DeleteLocalRef(env, u); (*env)->DeleteLocalRef(env, c);
@@ -838,6 +847,18 @@ void cacheboost_backend_ganho(int pct) {
   kInt(mGanho, pct);
 }
 int video_tocar(const char *u) { return video_tocar_posicao(u, 0.0); }
+int video_android_tocar_home(const char *u, int x, int y, int w, int h) {
+  JNIEnv *env = ambiente();
+  if (!env) return 0;
+  int suporta = mAbrirComJanela != NULL;
+  fimChamada(env);
+  if (!suporta || w <= 0 || h <= 0) return 0;
+  janelaHomeAbertura.x=x; janelaHomeAbertura.y=y;
+  janelaHomeAbertura.w=w; janelaHomeAbertura.h=h; janelaHomeAbertura.ativa=1;
+  int ok = video_tocar(u);
+  janelaHomeAbertura.ativa=0;
+  return ok;
+}
 
 void video_definir_reconexao(int sim) { reconProxima = sim ? 1 : 0; }
 int video_recarregar(void) {
