@@ -98,7 +98,6 @@ static void avisarCascaAberto(int v) { (void)v; tex_pressao_reproducao(v); }
 #include "creditosauto.h"
 #include "credfonte.h"
 #include "credaprende.h"
-#include "seekr.h"
 #include "visto.h"     /* fim de episodio/filme para Simkl e conta */
 #include "vistoep.h"   /* o check de "assistido" na lista de episodios (issue #100) */
 #include "pausao.h"
@@ -162,7 +161,7 @@ static void avisarCascaAberto(int v) { (void)v; tex_pressao_reproducao(v); }
 // retoma. 420 ms e maior que o intervalo de repeticao do controle (que na C9
 // fica perto de 100 ms) e menor que o tempo de reacao de quem soltou de
 // proposito.
-#define PLR_SCRUB_FIM_MS  SALTO_FIM_MS   // sem Seekr; com ele salto_fim_ms()
+#define PLR_SCRUB_FIM_MS  SALTO_FIM_MS
 // Duracao de reserva, em segundos, para quando o `meta` do catalogo nao traz
 // tempo de filme (as series trazem "3 temporadas", que nao e duracao de nada).
 // 1h54 e so um numero plausivel para o layout ter o que mostrar — assim que o
@@ -181,13 +180,11 @@ static void avisarCascaAberto(int v) { (void)v; tex_pressao_reproducao(v); }
 #define PLR_GAP_ROW       38.0f   // topo da barra -> topo dos botoes
 #define PLR_TOQUE_CELULA  144.0f  // antes da escala UI; 48 dp numa tela de 360 dp
 // Onde a barra fica (topo do trilho): com o OSD inteiro, e na busca so com a
-// barra (#128) — mais baixa, sem nada embaixo dela alem do tempo. Com o Seekr
-// ligado a busca deixa 30 px a mais para a ilha da miniatura.
+// barra (#128) — mais baixa, sem nada embaixo dela alem do tempo.
 // Ancoradas na BASE da tela do OSD: o OSD e camada ampliada (escala.h) e mede
-// pela tela virtual. Em 1080 sao 902, 960 e 930, como no mockup.
+// pela tela virtual. Em 1080 sao 902 e 960, como no mockup.
 #define PLR_BARRA_Y      (NV_VTELA_H - 178.0f)
 #define PLR_BARRA_Y_SO   (NV_VTELA_H - 120.0f)
-#define PLR_BARRA_Y_SEEKR (NV_VTELA_H - 150.0f)
 // De quanto o bloco desliza para baixo quando escondido. Pequeno de proposito:
 // o que faz o movimento ser lido nao e a distancia, e a mola somada ao fade.
 #define PLR_DESLIZE       46.0f
@@ -2512,7 +2509,6 @@ static void fecharSessao(int manter) {
     reacao_fechar();
     episodios_fechar();
     if (!manter) { intro_desligar(); introIdx=introT=introE=-1; }
-    seekr_desligar();
     // Antes do legenda_desligar: o fio do mkvass ainda entregaria um lote ao
     // overlay depois do desligamento, e o proximo titulo abriria com a legenda
     // do anterior. mkvass_parar grava o sidecar parcial com o que ja veio.
@@ -3633,7 +3629,6 @@ static void terminarSalto(void) {
   if (scrubToque) recuarAutomatico(scrubInicio, posSeg);
   retomandoSalto = scrubTocava;
   pausao_fechar();
-  seekr_ocioso();   // solta a folha decodificada (~22 MB), fica o JPEG
   if (comVideo) {
     if (posSeg >= scrubInicio) creditosauto_buscar(&creditosAuto, posSeg);
     buscarUsuario(posSeg);
@@ -3676,7 +3671,7 @@ static int ativarBotao(int i, int repetiu) {
       recuarAutomatico(de, 0.0);
       scrubbing = scrubToque = scrubTocava = 0; scrubInicio = 0.0;
       if (retomar) retomandoSalto = 1;
-      pausao_fechar(); seekr_ocioso();
+      pausao_fechar();
       posSeg = posVis = posVisV = 0.0f; posVisSolto = 0;
       retomarPct = 0; retomarFonteSeg = -1.0; retomadaAplicada = 1;
       relogio_zerar(&relLeg); velmed_zerar(&velMed);
@@ -4117,7 +4112,7 @@ void player_atualizar(float dt, Uint32 agora) {
     scrubbing = 1; posVisSolto = 1; scrubUltimo = agora;
   }
 #endif
-  if (scrubbing && agora - scrubUltimo > salto_fim_ms(ajustes_seekr_ligado() && seekr_estado() == SEEKR_PRONTO)) terminarSalto();
+  if (scrubbing && agora - scrubUltimo > salto_fim_ms(0)) terminarSalto();
 
   medirAssistido();
   if (fontePrincipal() && video_ativo()) {
@@ -4142,13 +4137,6 @@ void player_atualizar(float dt, Uint32 agora) {
       duracaoSeg = (float)d; duracaoReal = 1;
       durFonteAtualizar(d, agora);
     }
-    // Miniaturas da propria fonte: apenas metadados/imagens, nunca outro player.
-    // A identidade completa evita misturar quadros ao trocar fonte ou episodio.
-    if (d > 1.0 && video_pronto() && !ehCanal() && ajustes_seekr_ligado()) {
-      const Stream *s = stream_item(stream_atual());
-      seekr_fonte_pedir(video_url_atual(), s ? s->miniaturasVtt : NULL,
-                       s ? s->cabecalhos : NULL);
-    } else if (seekr_da_fonte()) seekr_desligar();
     // Retomada so com o pipeline ASSENTADO: pronto + tocando (ou 2,5 s depois
     // de pronto, para quem abre pausado). Seek logo no loadCompleted e o que o
     // uMS recusa com "seek Failure" (#246).
@@ -4520,150 +4508,6 @@ void player_atualizar(float dt, Uint32 agora) {
     float alvo = (visivel && habilitadas[i] && botao == i && !barraFoco) ? 1.0f : 0.0f;
     focoB[i] = anim_mola(focoB[i], alvo, dt,
                          alvo > focoB[i] ? NV_MOLA_FOCO : NV_MOLA_DESFOCO);
-  }
-}
-
-// MINIATURA DO SEEKR: UMA ILHA acima da barra (Glass UI), so enquanto a
-// pessoa procura. 384x216 com raio 17 dentro do miolo (raio 26) e o tempo do
-// QUADRO na base da propria ilha, com o que falta ao lado — saiu a chapa
-// preta, o anel branco de 2 px e a pilula preta sobre a imagem. Na fita, a
-// anterior e a seguinte (256x144, apagadas) ficam centradas na altura da
-// atual, cada uma com o seu tempo. Sem quadro pronto a ilha ja nasce no lugar
-// com o tempo certo e o anel de 12 pontos: o Seekr nao parece desligado.
-// O tempo e o do QUADRO (cue), nao a posicao crua (seekrvtt.h).
-// Status is shown only while scrubbing, in the same material as the preview.
-// These lines use fixed translated labels and numeric usage/times only;
-// neither credentials nor provider responses enter the OSD.
-static int seekrStatusLinhas(int est, const SeekrUso *uso, int temChave,
-                             char linhas[3][192]) {
-  int n = 1;
-  char hora[48];
-  memset(linhas, 0, 3 * 192);
-  if (est == SEEKR_PRONTO || est == SEEKR_BUSCANDO ||
-      (est == SEEKR_DESLIGADO && temChave) ||
-      est < SEEKR_DESLIGADO || est > SEEKR_RELOGIO_INDISPONIVEL) return 0;
-  if (est == SEEKR_DESLIGADO)
-    snprintf(linhas[0], 192, "Seekr · %s", i18n("sem chave"));
-  else snprintf(linhas[0], 192, "%s", i18n(seekr_estado_rotulo(est)));
-  if (est == SEEKR_LIMITE_LOCAL && uso) {
-    if (!uso->persistente) {
-      snprintf(linhas[0], 192, "%s", i18n(seekr_estado_rotulo(SEEKR_ARMAZENAMENTO_INDISPONIVEL)));
-    } else {
-      snprintf(linhas[n++], 192, i18n("%d de %d consultas hoje (UTC)"), uso->usadas, uso->limite);
-      if (uso->relogioAtrasado)
-        snprintf(linhas[n++], 192, "%s", i18n(seekr_estado_rotulo(SEEKR_RELOGIO_INDISPONIVEL)));
-      else if (seekr_horario_local(uso->reinicioUtc, hora, sizeof hora))
-        snprintf(linhas[n++], 192, i18n("Renova em %s (hora local)"), hora);
-    }
-  } else if (est == SEEKR_LIMITE_PROVEDOR && uso) {
-    if (uso->relogioAtrasado)
-      snprintf(linhas[n++], 192, "%s", i18n(seekr_estado_rotulo(SEEKR_RELOGIO_INDISPONIVEL)));
-    else if (seekr_horario_local(uso->retryUtc, hora, sizeof hora))
-      snprintf(linhas[n++], 192, i18n("Tente após %s (hora local)"), hora);
-  }
-  return n;
-}
-
-static void seekrStatus(float bx, float bw, float frac, float yBarra, float a, int est) {
-  char linhas[3][192];
-  SeekrUso uso;
-  int n, k;
-  float w = 360.0f, h, x, y;
-  if (!scrubbing) return;
-  seekr_uso(&uso);
-  n = seekrStatusLinhas(est, &uso, seekr_tem_chave(), linhas);
-  if (!n) return;
-  for (k = 0; k < n; k++) {
-    float medida = (float)txt_largura(k ? TXT_G18M : TXT_G20B, linhas[k]) + 48.0f;
-    if (medida > w) w = medida;
-  }
-  if (w > 760.0f) w = 760.0f;
-  h = 32.0f + (float)n * 30.0f;
-  x = bx + bw * frac - w * 0.5f;
-  if (x < PLR_MARGEM) x = PLR_MARGEM;
-  if (x + w > bx + bw) x = bx + bw - w;
-  y = yBarra - 24.0f - h;
-  plrui_material((GfxRect){x, y, w, h}, 26.0f, 0, a);
-  for (k = 0; k < n; k++) {
-    int tinta = k ? 180 : 243;
-    TxtLinha l = txt_linha_corta(k ? TXT_G18M : TXT_G20B, linhas[k],
-                                tinta, tinta, tinta, 255, w - 48.0f);
-    txt_desenhar_alpha(l, x + (w - (float)l.w) * 0.5f,
-                       y + 16.0f + (float)k * 30.0f + (30.0f - (float)l.h) * 0.5f, a);
-  }
-}
-
-static void seekrMiniatura(float bx, float bw, float frac, float yBarra, float a) {
-  GLuint t[3] = { 0, 0, 0 };
-  double cue[3] = { -1, -1, -1 };
-  int fita, n, k, est;
-  const float w = 384.0f, h = 216.0f, ws = 256.0f, hs = 144.0f, vao = 12.0f, linha = 52.0f;
-  float x, y, tot, xs[3];
-  Uint32 agora = SDL_GetTicks();
-  if (ehCanal() || !(scrubbing || posVisSolto) || a < 0.05f || !ajustes_seekr_habilitado()) return;
-  est = seekr_estado();
-  if (est != SEEKR_PRONTO && est != SEEKR_BUSCANDO) {
-#ifdef NV_SHOT_HOOKS
-    if (!seekr_da_fonte()) seekrStatus(bx, bw, frac, yBarra, a, est);
-#endif
-    return;
-  }
-  seekr_definir_ajuste_ms((long)ajustes_seekr_ajuste_s() * 1000L);
-  fita = ajustes_seekr_fita();
-  n = fita ? 3 : 1;
-  { float pv = posVisSolto ? posVis : posSeg;
-  if (est == SEEKR_PRONTO) seekr_quadros(pv, n, t, cue);
-  // A sincronia ja entra no tempo do quadro; sem cue ainda (a folha chegando),
-  // a posicao com o mesmo ajuste.
-  if (cue[n == 1 ? 0 : 1] < 0.0) cue[n == 1 ? 0 : 1] = pv + ajustes_seekr_ajuste_s(); }
-  tot = fita ? 20.0f + ws * 2.0f + w + vao * 2.0f : w + 20.0f;
-  x = bx + bw * frac - tot * 0.5f;
-  if (x < PLR_MARGEM) x = PLR_MARGEM;
-  if (x + tot > bx + bw) x = bx + bw - tot;
-  y = yBarra - 24.0f - (10.0f + h + linha);
-  plrui_material((GfxRect){ x, y, tot, 10.0f + h + linha }, 26.0f, 0, a);
-  if (fita) { xs[0] = x + 10.0f; xs[1] = xs[0] + ws + vao; xs[2] = xs[1] + w + vao; }
-  else xs[0] = x + 10.0f;
-  for (k = 0; k < n; k++) {
-    int atual = (n == 1 || k == 1);
-    float qw = atual ? w : ws, qh = atual ? h : hs;
-    float qx = xs[k], qy = y + 10.0f + (h - qh) * 0.5f, ca = atual ? 1.0f : 0.6f;
-    GfxRect q = { qx, qy, qw, qh };
-    char rot[32];
-    if (cue[k] < 0.0) continue;
-    if (t[k]) {
-      gfx_tex_aspect_atual = 16.0f / 9.0f;
-      gfx_rect(q, t[k], GFX_CARD, 0, 0, 0, 17.0f / qh, 0, 0, 0, a * ca);
-      gfx_tex_aspect_atual = 0.0f;
-      // A atual ainda chegando (seekr da a ultima usada no lugar): o anel por
-      // cima, para nao parecer que o quadro e deste ponto.
-      if (atual && seekr_quadro_velho()) {
-        gfx_cor(q, 17.0f / qh, 1, 1, 1, 0.05f * a);
-        plrui_anel(qx + qw * 0.5f, qy + qh * 0.5f, 44.0f, 1, agora, a);
-      }
-    } else {
-      if (ajustes_vidro()) gfx_cor(q, 17.0f / qh, 1, 1, 1, 0.05f * a);
-      else gfx_cor(q, 17.0f / qh, 0.125f, 0.129f, 0.149f, a);
-      if (atual) plrui_anel(qx + qw * 0.5f, qy + qh * 0.5f, 44.0f, 1, agora, a);
-    }
-    plrui_tempo(rot, sizeof rot, cue[k]);
-    { float yc = y + 10.0f + h + linha * 0.5f;
-      if (atual) {
-        TxtLinha lt = txt_linha(TXT_G26B, rot, 243, 242, 239, 255), lr = { 0 };
-        float tw = (float)lt.w;
-        if (!fita) {
-          char r[32], d[24];
-          plrui_tempo(d, sizeof d, duracaoSeg - cue[k]);
-          snprintf(r, sizeof r, "\xe2\x88\x92%s", d);
-          lr = txt_linha(TXT_G18M, r, 243, 242, 239, 128);
-          tw += 10.0f + (float)lr.w;
-        }
-        txt_desenhar_alpha(lt, qx + (qw - tw) * 0.5f, yc - (float)lt.h * 0.5f, a);
-        if (lr.w) txt_desenhar_alpha(lr, qx + (qw - tw) * 0.5f + lt.w + 10.0f, yc - (float)lr.h * 0.5f + 2.0f, a);
-      } else {
-        TxtLinha lt = txt_linha(TXT_G20B, rot, 243, 242, 239, 140);
-        txt_desenhar_alpha(lt, qx + (qw - (float)lt.w) * 0.5f, yc - (float)lt.h * 0.5f, a);
-      } }
   }
 }
 
@@ -5693,12 +5537,11 @@ static void desenharCinema(Uint32 agora, const CatItem *c, int furou) {
 int video_tpk_capa(void);   // video_tpk.c
 // CAPA DA REABERTURA (DTS/TrueHD convertido). No TS continuo cada seek, a
 // reconexao e a troca para o convertido abrem OUTRO player, e o plano de video
-// fica preto ate o primeiro quadro novo. No lugar do preto: a miniatura do
-// ponto de destino (a mesma do scrub, seekr) ou, sem ela, a arte do titulo,
+// fica preto ate o primeiro quadro novo. No lugar do preto: a arte do titulo,
 // escurecida, com o anel de buffer por cima (video_bufferando_ms). Some em
 // 250 ms quando o quadro chega. So o convertido chama isto (o resto: 0).
 static void capaReabertura(GfxRect furo, const CatItem *c, Uint32 agora) {
-  static float a; static Uint32 ult; static int usouSeekr;
+  static float a; static Uint32 ult;
   float dt = ult && agora - ult < 100u ? (float)(agora - ult) / 1000.0f : 1.0f / 60.0f;
   GLuint tex = 0;
   const char *arte = NULL;
@@ -5706,14 +5549,7 @@ static void capaReabertura(GfxRect furo, const CatItem *c, Uint32 agora) {
   ult = agora;
   a += (on ? dt : -dt) / 0.25f;
   if (a > 1.0f) a = 1.0f;
-  if (a <= 0.0f) { a = 0.0f; if (usouSeekr) { seekr_ocioso(); usouSeekr = 0; } return; }
-  if (ajustes_seekr_habilitado() && seekr_da_fonte() && seekr_estado() == SEEKR_PRONTO) {
-    double cue = -1;
-    seekr_definir_ajuste_ms((long)ajustes_seekr_ajuste_s() * 1000L);
-    tex = seekr_quadro(video_pos(), &cue);
-    if (tex && seekr_quadro_velho()) tex = 0;   // a de outro ponto confundiria
-    if (tex) usouSeekr = 1;
-  }
+  if (a <= 0.0f) { a = 0.0f; return; }
   if (!tex && c && c->backdrop[0]) { arte = artehero_url(c); tex = tex_obter_hero(arte); }
   if (!tex) return;   // fica o preto, com o anel
   gfx_tex_aspect_atual = arte ? tex_aspecto(arte) : 16.0f / 9.0f;
@@ -6274,7 +6110,7 @@ void player_desenhar(Uint32 agora) {
   desenharOsd(agora, a, ac, c);
 }
 
-// O CORPO DO OSD (barra, titulo, Seekr, botoes, tempo, selos e o botao de
+// O CORPO DO OSD (barra, titulo, botoes, tempo, selos e o botao de
 // pular), na camada ampliada: tudo aqui mede pela tela virtual.
 static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c);
 static void desenharOsd(Uint32 agora, float a, float ac, const CatItem *c) {
@@ -6293,7 +6129,7 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
   // Layout de reproducao do original: titulo/logo acima da barra,
   // progresso em toda a largura util e controles redondos fixos logo abaixo.
   // A coordenada e virtual para preservar escala na TCL P7K.
-  float ySo = (ajustes_seekr_ligado() && seekr_estado() == SEEKR_PRONTO) ? PLR_BARRA_Y_SEEKR : PLR_BARRA_Y_SO;
+  float ySo = PLR_BARRA_Y_SO;
   float yCheio = transporteBarraY();
   float yBarra   = (yCheio + (ySo - yCheio) * (1.0f - cheio)) + desce;
   float yRowTopo = yBarra + PLR_GAP_ROW;
@@ -6391,8 +6227,6 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
         txt_desenhar_alpha(lt, cx, yBase - (float)lt.h, ac);
       }
     } }
-  // Depois do titulo: a miniatura fica POR CIMA dele enquanto a pessoa procura.
-  seekrMiniatura(bx, bw, frac, yBarra, a);
 
   // --- CONTROLES NO ESTILO DO ORIGINAL --------------------------------------
   // O player original usa IconButton circular: fundo transparente em repouso,
@@ -6453,8 +6287,7 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
   // --- tempo -----------------------------------------------------------------
   // Com o OSD inteiro: "1:12:40 / 2:37:00" na linha dos botoes, o decorrido
   // claro (24/600 a 92%) e "/ total" apagado. Na busca so com a barra: o
-  // decorrido a esquerda e, a direita, o que falta ("-1:16:40") — ou o total,
-  // com o Seekr, cuja ilha ja diz o que falta.
+  // decorrido a esquerda e, a direita, o que falta ("-1:16:40").
   {
     char t1[24], t2[32], d[24];
     if (ehCanal()) {
@@ -6475,8 +6308,7 @@ static void desenharOsdCorpo(Uint32 agora, float a, float ac, const CatItem *c) 
       if (cheio < 0.99f) {
         char r[32];
         TxtLinha l1 = txt_linha(TXT_ILHA_NOME, t1, 243, 242, 239, 235), l2;
-        if (ajustes_seekr_ligado()) snprintf(r, sizeof r, "%s", d);
-        else { char f[24]; plrui_tempo(f, sizeof f, duracaoSeg - posSeg); snprintf(r, sizeof r, "\xe2\x88\x92%s", f); }
+        { char f[24]; plrui_tempo(f, sizeof f, duracaoSeg - posSeg); snprintf(r, sizeof r, "\xe2\x88\x92%s", f); }
         l2 = txt_linha(TXT_ILHA_NOME, r, 243, 242, 239, 128);
         txt_desenhar_alpha(l1, cx, yBarra + 32.0f, a * (1.0f - cheio));
         txt_desenhar_alpha(l2, cx + cw - l2.w, yBarra + 32.0f, a * (1.0f - cheio));

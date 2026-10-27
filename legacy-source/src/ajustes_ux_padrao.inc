@@ -185,8 +185,9 @@
   0,                /* relogio na tela: LIGADO (V_LIGA: 0 = Ligado), o de sempre */
   0,                /* posicao do relogio: Automatica, a de sempre */
   0,                /* selo de assistido nos posteres: LIGADO (V_LIGA: 0 = Ligado) */
-  // Miniaturas da propria fonte: ligadas, sem chave e sem decoder adicional.
-  0,                /* miniaturas da fonte (preferencia local nova) */
+  // Seekr DESLIGADO (V_LIGA: 1 = Desligado): sem chave nao ha o que mostrar, e
+  // cada titulo aberto gasta uma consulta da cota diaria da pessoa.
+  1,                /* miniaturas do Seekr */
   0, 0,             /* chave e teste do Seekr: acoes */
   1,                /* fita de miniaturas: DESLIGADA (V_LIGA: 1 = Desligado), uma so */
   0,                /* sincronia da miniatura: 0 s (a documentacao: nada automatico) */

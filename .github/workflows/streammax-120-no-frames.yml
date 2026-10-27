@@ -1,0 +1,252 @@
+name: StreamMax 1.0.20 - retirar frames e publicar atualizacao
+
+# Compila, verifica a retirada dos frames e publica no canal oficial do app.
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/streammax-remove-seek-previews]
+    paths:
+      - '.github/workflows/streammax-120-no-frames.yml'
+      - 'legacy-source/src/**'
+      - 'legacy-source/android/**'
+      - 'legacy-source/deploy/app/art/marcas/streammax_startup.png'
+      - 'legacy-source/tests/test_streammax_update.c'
+      - 'legacy-source/tests/streammax-addon-cadastro-tv.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  native-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar VOD Xtream e preservar guia ao vivo
+        working-directory: legacy-source
+        run: |
+          bash tests/streammax-xtream-vod.sh
+          bash tests/streammax-livetv-columns.sh
+          bash tests/streammax-first-source.sh
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Confirmar escopo e executar testes
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '"version": "2.0.27"' legacy-source/deploy/app/appinfo.json
+          grep -Fq 'version="2.0.27"' legacy-source/tools/tizen-config.xml
+          grep -Fq '#define SM_UPDATE_VERSION "1.0.20"' legacy-source/src/streammax_update.h
+          grep -Fq 'applicationId = "com.streammax.tv"' legacy-source/android/app/build.gradle.kts
+          bash legacy-source/tests/streammax-watch-next.sh
+          bash legacy-source/tests/streammax-hero-trailer.sh
+          bash legacy-source/tests/streammax-home-visual.sh
+          bash legacy-source/tests/streammax-addon-cadastro-tv.sh
+          bash legacy-source/tests/streammax-addon-install.sh
+          bash legacy-source/tests/streammax-static-s-splash.sh
+          python3 migration/check-playback-contracts.py legacy-source
+          bash legacy-source/tests/streammax-updater.sh
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+
+      - name: Configuração pública do backend de login
+        shell: bash
+        env:
+          CLOUD_URL: https://api.nuvio.tv
+          CLOUD_PUBLIC_KEY: sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+        run: |
+          set -euo pipefail
+          umask 077
+          printf 'NUVIO_SUPABASE_URL=%s\nNUVIO_SUPABASE_ANON_KEY=%s\nTV_LOGIN_WEB_BASE_URL=%s\n' \
+            "$CLOUD_URL" "$CLOUD_PUBLIC_KEY" "https://nuvio.tv/tv-login" \
+            > legacy-source/local.properties
+          cd legacy-source
+          tools/env.sh --require-core >/dev/null
+          curl --fail --silent --show-error --retry 2 --connect-timeout 10 --max-time 30 \
+            -H "apikey: $CLOUD_PUBLIC_KEY" "$CLOUD_URL/auth/v1/health" >/dev/null
+
+      - name: Android SDK e NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "${ANDROID_HOME:?ANDROID_HOME não encontrado}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install \
+            "platforms;android-35" "build-tools;35.0.0" \
+            "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Dependências nativas
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libgles-dev
+
+      - name: Confirmar retirada inclusive com preferencias antigas
+        working-directory: legacy-source
+        run: bash tests/streammax-no-seek-previews.sh
+
+      - name: Compilar bibliotecas nativas curl, JPEG, WebP
+        shell: bash
+        working-directory: legacy-source
+        env:
+          NUVIO_ANDROID_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android/deps.sh arm64-v8a armeabi-v7a
+          for abi in arm64-v8a armeabi-v7a; do
+            for lib in curl jpeg webp; do
+              test -s "$HOME/.cache/nuvio-android/prefix/$abi/lib/lib$lib.so"
+            done
+          done
+
+      - name: Compilar APK assinado
+        shell: bash
+        working-directory: legacy-source
+        env:
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+          RELEASE_STORE_B64: ${{ secrets.STREAMMAX_RELEASE_KEYSTORE_B64 }}
+          NUVIO_KEYSTORE_PASS: ${{ secrets.STREAMMAX_RELEASE_STORE_PASSWORD }}
+          NUVIO_KEY_ALIAS: ${{ secrets.STREAMMAX_RELEASE_KEY_ALIAS }}
+          NUVIO_KEY_PASS: ${{ secrets.STREAMMAX_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_STORE_B64" && test -n "$NUVIO_KEYSTORE_PASS"
+          test -n "$NUVIO_KEY_ALIAS" && test -n "$NUVIO_KEY_PASS"
+          export NUVIO_KEYSTORE="$RUNNER_TEMP/streammax-120-no-frames.jks"
+          umask 077
+          printf '%s' "$RELEASE_STORE_B64" | base64 --decode > "$NUVIO_KEYSTORE"
+          bash tools/android.sh --release-only
+
+      - name: Verificar pacote e assinatura da versão oficial
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find legacy-source/build/android -maxdepth 1 -name '*-android.apk' -type f)
+          test "${#apks[@]}" -eq 1
+          apk="${apks[0]}"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$aapt" dump badging "$apk" > "$RUNNER_TEMP/streammax-badging.txt"
+          grep -q "^package: name='com.streammax.tv'" "$RUNNER_TEMP/streammax-badging.txt"
+          grep -q "versionCode='20027'" "$RUNNER_TEMP/streammax-badging.txt"
+          grep -Fq "versionName='1.0.20'" "$RUNNER_TEMP/streammax-badging.txt"
+          "$signer" verify --verbose "$apk"
+          unzip -Z1 "$apk" > "$RUNNER_TEMP/streammax-entries.txt"
+          for abi in arm64-v8a armeabi-v7a; do
+            grep -Fxq "lib/$abi/libmain.so" "$RUNNER_TEMP/streammax-entries.txt"
+          done
+          grep -Fxq "assets/art/marcas/streammax_startup.png" "$RUNNER_TEMP/streammax-entries.txt"
+          mkdir -p "$RUNNER_TEMP/approved"
+          gh release download v1.0.11 --repo "$GITHUB_REPOSITORY" \
+            --pattern StreamMax-1.0.11-android.apk --dir "$RUNNER_TEMP/approved"
+          anterior="$RUNNER_TEMP/approved/StreamMax-1.0.11-android.apk"
+          test -s "$anterior"
+          cert_antigo="$("$signer" verify --print-certs "$anterior" | grep -m1 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')"
+          cert_novo="$("$signer" verify --print-certs "$apk" | grep -m1 'Signer #1 certificate SHA-256 digest:' | awk '{print $NF}')"
+          test -n "$cert_antigo" && test "$cert_antigo" = "$cert_novo"
+          mkdir -p pacote
+          cp "$apk" pacote/StreamMax-1.0.20-android.apk
+          sha256sum pacote/*.apk > pacote/SHA256.txt
+          printf 'StreamMax 1.0.20 - sem frames\nBranch: %s\nCommit: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > pacote/BUILD-INFO.txt
+          printf 'Frames retirados. Publicacao pelo job seguinte apos verificacao.\n' >> pacote/BUILD-INFO.txt
+          echo "OK: package e assinatura preservados, versionCode maior."
+
+      - name: Disponibilizar APK verificado
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-1.0.20-Sem-Frames
+          path: pacote/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publicar:
+    needs: native-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: allanlribeiro/StreamMax
+      TAG: v1.0.20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: StreamMax-1.0.20-Sem-Frames
+          path: pacote
+      - name: Conferir origem, integridade e assinatura
+        run: |
+          set -euo pipefail
+          grep -Fxq "Commit: $GITHUB_SHA" pacote/BUILD-INFO.txt
+          sha256sum --check pacote/SHA256.txt
+          apk=pacote/StreamMax-1.0.20-android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > badging.txt
+          grep -q "^package: name='com.streammax.tv'" badging.txt
+          grep -q "versionCode='20027'" badging.txt
+          grep -Fq "versionName='1.0.20'" badging.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" > cert.txt
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          cert = re.findall(r'^Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)\s*$', Path('cert.txt').read_text(), re.M)
+          assert len(cert) == 1 and cert[0].lower() == 'a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5'
+          PY
+          cp RELEASE-STREAMMAX-1.0.20.md pacote/LEIA-ME.md
+          sed -i 's/Frames retirados. Publicacao pelo job seguinte apos verificacao./Frames retirados. Canal oficial de atualizacao pelo aplicativo./' pacote/BUILD-INFO.txt
+          rm pacote/SHA256.txt
+          (cd pacote && sha256sum *.apk LEIA-ME.md BUILD-INFO.txt > SHA256SUMS.txt)
+      - name: Publicar e conferir o atualizador da 1.0.19
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = v1.0.19
+          if gh release view "$TAG" --json isDraft --jq .isDraft > existe.txt 2>/dev/null; then
+            test "$(cat existe.txt)" = true
+          else
+            gh release create "$TAG" --draft --prerelease=false --latest=false --target "$GITHUB_SHA" \
+              --title 'StreamMax 1.0.20 — Retirada dos frames' --notes-file RELEASE-STREAMMAX-1.0.20.md
+          fi
+          gh release upload "$TAG" pacote/* --clobber
+          rid="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '.[] | select(.tag_name == "v1.0.20") | .id')"
+          test -n "$rid"
+          gh api "repos/$GH_REPO/releases/$rid" > release.json
+          python3 - <<'PY'
+          import hashlib, json, re
+          from pathlib import Path
+          r = json.load(open('release.json'))
+          assert r['tag_name'] == 'v1.0.20' and r['draft'] is True and r['prerelease'] is False
+          assets = {a['name']: a for a in r['assets']}
+          for p in Path('pacote').iterdir():
+              a = assets[p.name]
+              assert a['state'] == 'uploaded' and a['size'] == p.stat().st_size
+              assert a['digest'] == 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()
+          apk = assets['StreamMax-1.0.20-android.apk']
+          assert re.fullmatch(r'https://github\.com/allanlribeiro/StreamMax/releases/download/(?:untagged-[0-9a-f]+|v1\.0\.20)/StreamMax-1\.0\.20-android\.apk', apk['browser_download_url'])
+          apk['browser_download_url'] = 'https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.20/StreamMax-1.0.20-android.apk'
+          Path('release-prevista.json').write_text(json.dumps(r))
+          PY
+          python3 legacy-source/tests/check-streammax-120-ota-release.py release-prevista.json pacote/StreamMax-1.0.20-android.apk
+          gh release edit "$TAG" --draft=false --prerelease=false --latest=true --notes-file RELEASE-STREAMMAX-1.0.20.md
+          gh api "repos/$GH_REPO/releases/latest" > latest.json
+          python3 legacy-source/tests/check-streammax-120-ota-release.py latest.json pacote/StreamMax-1.0.20-android.apk
+          python3 - <<'PY'
+          import json
+          r = json.load(open('latest.json'))
+          assert r['tag_name'] == 'v1.0.20' and r['draft'] is False and r['prerelease'] is False
+          print('OK: atualizacao 1.0.20 sem frames liberada no aplicativo')
+          PY

@@ -1,6 +1,18 @@
 # StreamMax — guia de continuidade do projeto
 
-## Continuidade — miniaturas da fonte (27/10/2026)
+## Continuidade — retirada dos frames (27/10/2026)
+
+- O usuário informou que a 1.0.19 não passou no teste e cancelou a ideia dos frames.
+  Tratar o recurso como encerrado.
+- Versão 1.0.20, código Android 20027, em `fix/streammax-remove-seek-previews`:
+  retirada a integração da fonte e o painel de miniaturas; a barra usa o avanço normal.
+- Ajustes antigos ativados não reabilitam miniaturas. Cadastro de addons, contas,
+  perfis, VOD IPTV e demais funções seguem a base 1.0.18.
+- Testes locais: preferências antigas, avanço, layout, VOD, trailers, OTA e isolamento
+  de pacote. Compilação e publicação da atualização em preparação.
+- Notas: [StreamMax 1.0.20](./RELEASE-STREAMMAX-1.0.20.md).
+
+## Histórico — miniaturas da fonte na 1.0.19 (cancelado pelo usuário)
 
 - Projeto ativo: `legacy-source/`, Android `com.streammax.tv`, baseado no APK
   estável StreamMax **1.0.18**. O Kotlin na raiz é referência histórica.

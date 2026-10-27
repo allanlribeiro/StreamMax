@@ -1,3 +1,6 @@
+> Histórico da versão 1.0.19. O usuário cancelou o recurso após o teste na TV.
+> A integração e o painel foram retirados do código na versão 1.0.20.
+
 # Miniaturas ao avançar e voltar — StreamMax 1.0.19
 
 O player Android mostra a imagem correspondente à posição escolhida na barra

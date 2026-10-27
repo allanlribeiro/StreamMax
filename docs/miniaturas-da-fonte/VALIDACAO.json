@@ -28,5 +28,7 @@
   "observacao": "Depende de timeline de miniaturas fornecida pelo provedor. Sem imagens compativeis, o avanco continua normal.",
   "pagina_previa": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.19-source-thumbnails-preview.1",
   "publicacao_ota": "https://github.com/allanlribeiro/StreamMax/actions/runs/40425081729",
-  "atualizador_1_0_18_validado_com_json_publico": true
+  "atualizador_1_0_18_validado_com_json_publico": true,
+  "resultado_teste_usuario": "Nao passou no teste; usuario cancelou a ideia dos frames",
+  "situacao_recurso": "Retirado do codigo na versao 1.0.20"
 }

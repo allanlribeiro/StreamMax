@@ -2,7 +2,7 @@
 
 > **Android TV ativo nesta branch:** o aplicativo nativo está em
 > [`legacy-source/`](./legacy-source), com pacote `com.streammax.tv`.
-> A versão 1.0.19 acrescenta [miniaturas da própria fonte ao avançar/voltar](./MINIATURAS-DA-FONTE.md).
+> A versão 1.0.20 [retira as miniaturas ao avançar/voltar](./RELEASE-STREAMMAX-1.0.20.md), após o usuário cancelar o recurso no teste da TV.
 > A compilação correspondente é `cd legacy-source && bash tools/android.sh --release-only`.
 > As instruções Kotlin abaixo pertencem à base anterior mantida como referência.
 
