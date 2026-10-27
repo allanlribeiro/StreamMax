@@ -13,9 +13,9 @@ assert "video_largura" not in area and "video_altura" not in area
 assert "return arte;" in area
 assert "GfxRect furo = heroTrailerArea(r);" in home
 assert "heroTrailerArea(heroArteRect)" in home
-assert "gfx_furo_hero_suave(furo, anim_suave(aTrailer), modoHero == GFX_HERO_CHEIO);" in home
+assert "gfx_furo_hero_suave(furo, anim_suave(aTrailer), heroTrailerBase());" in home
 assert "if (!trailer_aberto() || trailer_dono() != TRAILER_DONO_HOME || !trailer_mostra_video())" in home
-assert "destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerArea(heroArteRect)" in home
+assert "destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerVideoRect(heroTrailerArea(heroArteRect))" in home
 trailer = Path("src/trailer.c").read_text()
 assert "dono == TRAILER_DONO_HOME && !noCartao && !cheia" in trailer
 assert "if (!heroAndroid && video_recorte_fonte_trailer())" in trailer

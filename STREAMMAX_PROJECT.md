@@ -1,5 +1,20 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — bordas do trailer após foto da TCL (27/10/2026)
+
+- O usuário confirmou problemas visuais na 1.0.22: direita com faixa preta,
+  esquerda sem transição perceptível e base com corte seco.
+- Branch `fix/streammax-trailer-edges`; candidata 1.0.23, código 20030.
+- Quadro ancorado na direita, escala de texto convertida para o player,
+  degradê inferior alinhado ao topo dos cartazes e curva suave nas bordas.
+- Android passa COVER=2 desde a abertura e preserva esse modo na reaplicação;
+  Java/Kotlin usam geometria testada, mantendo EXACT/FIT nos outros destinos.
+- Novo teste inclui `gfx.c` inteiro, geometria real e classe Java do player.
+  Baseline da 1.0.22 reproduz base tardia; FIT reproduz faixa direita.
+- [Análise e limites](./docs/trailer-bordas/ANALISE-1.0.23.md).
+- Estado: testes locais aprovados; APK e publicação em preparação.
+  Resultado físico na TCL e FPS ainda pendentes.
+
 ## Continuidade — trailer com referência no Nuvio original (27/10/2026)
 
 - Pedido: comparar o destaque com Nuvio original e ajustar tamanho/degradê.

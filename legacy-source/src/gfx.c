@@ -1554,33 +1554,15 @@ static const char *FS_CORPO[GFX_NMODOS] = {
   "  gl_FragColor = (uLeve > 0.5 && a > 0.5) ? vec4(o, 1.0) : nv_dither(o, 1.0);\n"
   "}\n",
 
-  // GFX_FURO_HERO — ModernHeroGradientLayer do NuvioTV 252e9eb0.
-  // Um quad sem textura: a arte sai enquanto entram o video e as rampas
-  // da cor de fundo. Paradas lineares iguais as da arte (GFX_HERO/CHEIO).
-  // uFoco = crossfade; uPar.x = fundo inteiro. Saida pre-multiplicada,
-  // somada a arte anterior * (1 - crossfade) por gfx_furo_hero_suave.
+  // GFX_FURO_HERO — caixa de video ancorada na borda direita, rampas
+  // adaptadas a primeira fileira. Quintica C2: nao ha quina na entrada ou
+  // saida do degrade. uPar.x = largura esquerda; uPar.y/uCor.r = base.
+  // Saida pre-multiplicada, somada a arte*(1-crossfade) pelo compositor.
+  "NV_HP float heroSuave(NV_HP float t){ t=clamp(t,0.0,1.0); return t*t*t*(t*(t*6.0-15.0)+10.0); }\n"
   "void main(){\n"
-  "  float ah, av;\n"
-  "  if (uPar.x > 0.5) {\n"
-  "    float t = vUv.x/0.65;\n"
-  "    ah = 1.0 - clamp(t/0.22,0.0,1.0)*0.10\n"
-  "             - clamp((t-0.22)/0.24,0.0,1.0)*0.10\n"
-  "             - clamp((t-0.46)/0.30,0.0,1.0)*0.38\n"
-  "             - clamp((t-0.76)/0.24,0.0,1.0)*0.42;\n"
-  "    av = clamp((vUv.y-0.640)/0.108,0.0,1.0)*0.35\n"
-  "       + clamp((vUv.y-0.748)/0.108,0.0,1.0)*0.40\n"
-  "       + clamp((vUv.y-0.856)/0.144,0.0,1.0)*0.25;\n"
-  "  } else {\n"
-  "    float t = vUv.x/0.45;\n"
-  "    ah = 1.0 - clamp(t/0.22,0.0,1.0)*0.14\n"
-  "             - clamp((t-0.22)/0.24,0.0,1.0)*0.30\n"
-  "             - clamp((t-0.46)/0.30,0.0,1.0)*0.40\n"
-  "             - clamp((t-0.76)/0.24,0.0,1.0)*0.16;\n"
-  "    av = clamp((vUv.y-0.820)/0.072,0.0,1.0)*0.25\n"
-  "       + clamp((vUv.y-0.892)/0.063,0.0,1.0)*0.40\n"
-  "       + clamp((vUv.y-0.955)/0.045,0.0,1.0)*0.35;\n"
-  "  }\n"
-  "  float a = clamp(ah + av - ah*av,0.0,1.0)*clamp(uFoco,0.0,1.0);\n"
+  "  NV_HP float e = heroSuave(vUv.x/max(uPar.x,0.01));\n"
+  "  NV_HP float b = 1.0-heroSuave((vUv.y-uPar.y)/max(uCor.r-uPar.y,0.01));\n"
+  "  NV_HP float a = (1.0-e*b)*clamp(uFoco,0.0,1.0);\n"
   "  gl_FragColor = vec4(uFundo*a,a);\n"
   "}\n",
 };
@@ -4296,10 +4278,14 @@ void gfx_furo_alfa(GfxRect r, float a) {
 // Resultado pre-multiplicado = arte*(1-a) + fundo*(a*gradiente).
 // O compositor Android completa com video*a*(1-gradiente). Assim a foto
 // realmente sai do destaque, inclusive no degrade, sem exposicao dupla.
-void gfx_furo_hero_suave(GfxRect r, float a, int cheio) {
+void gfx_furo_hero_suave(GfxRect r, float a, float base) {
   GfxRect t = r;
   if (a <= 0.0f || r.w <= 0.0f || r.h <= 0.0f) return;
   if (a > 1.0f) a = 1.0f;
+  float fim = fminf(r.y + r.h, fmaxf(r.y + 1.0f, base));
+  float altura = fminf(144.0f, (fim - r.y) * 0.30f);
+  float inicio = (fim - altura - r.y) / r.h;
+  fim = (fim - r.y) / r.h;
   if (dinPendente) dinDescarregar();
   if (ambPendente) gfx_ambiente_descarregar();
   ambIntacta = 0;
@@ -4308,8 +4294,8 @@ void gfx_furo_hero_suave(GfxRect r, float a, int cheio) {
   vidroFuro(t);
   glBlendColor(0, 0, 0, 1.0f - a);
   glBlendFuncSeparate(GL_ONE, GL_CONSTANT_ALPHA, GL_ONE, GL_CONSTANT_ALPHA);
-  gfx_rect(r, 0, GFX_FURO_HERO, a, cheio ? 1.0f : 0.0f, 0, 0.0f,
-           0, 0, 0, 1.0f);
+  gfx_rect(r, 0, GFX_FURO_HERO, a, 0.45f, inicio, 0.0f,
+           fim, 0, 0, 1.0f);
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
   glBlendColor(0, 0, 0, 0);
 }

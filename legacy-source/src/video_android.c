@@ -997,7 +997,11 @@ void video_janela(int x, int y, int w, int h) { janelaSeMudou(x, y, w, h, 1); }
 //   escala = dw/sw, dh/sh;  W,H = quadro * escala;  X,Y = d - s * escala.
 // Aqui o retangulo pode sair da tela e ter origem negativa: o Kotlin aplica por
 // layout na SurfaceView e o pai recorta o excedente, sem a restricao do Tizen.
-static int ultX, ultY, ultW, ultH, temUlt;
+static int ultX, ultY, ultW, ultH, ultModo, temUlt;
+void video_android_janela_preencher(int x, int y, int w, int h) {
+  ultX=x; ultY=y; ultW=w; ultH=h; ultModo=2; temUlt=1;
+  janelaSeMudou(x,y,w,h,2);
+}
 void video_janela_fonte(int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh) {
   double qw = largura, qh = altura, ex, ey;
   int X, Y, W, H;
@@ -1019,11 +1023,11 @@ void video_janela_fonte(int sx, int sy, int sw, int sh, int dx, int dy, int dw, 
   printf("[video] android recorte %d,%d %dx%d de %.0fx%.0f -> janela %d,%d %dx%d\n",
          sx, sy, sw, sh, qw, qh, X, Y, W, H);
   fflush(stdout);
-  ultX = X; ultY = Y; ultW = W; ultH = H; temUlt = 1;
+  ultX = X; ultY = Y; ultW = W; ultH = H; ultModo = 0; temUlt = 1;
   janelaSeMudou(X, Y, W, H, 0);
 }
 int  video_recorte_fonte(void) { return 1; }
-void video_recorte_reaplicar(void) { if (temUlt) janelaKt(ultX, ultY, ultW, ultH, 0); }
+void video_recorte_reaplicar(void) { if (temUlt) janelaKt(ultX, ultY, ultW, ultH, ultModo); }
 // O Kotlin escala 1920x1080 de layout para a camada real; nada a fazer aqui.
 void video_escala_definir(int sw, int sh) { (void)sw; (void)sh; }
 

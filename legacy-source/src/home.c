@@ -4692,6 +4692,13 @@ static void ponteiroHero(int a, int b);
 // A proporcao da fonte so altera o cover do video, nunca o tamanho da caixa.
 static GfxRect heroTrailerArea(GfxRect arte) {
 #ifdef NV_ANDROID
+  if (homeCinematicaTV()) {
+    // A Home usa coordenadas virtuais de texto; o player usa o canvas real.
+    // Ancorar a caixa na borda visivel, sem o overshoot de 56 px da arte.
+    float s = gfx_escala_txt();
+    float w = NV_TELA_BASE_W / s, h = NV_TELA_BASE_H / s;
+    return (GfxRect){w * 0.28f, 0, w * 0.72f, fminf(NV_HERO_ARTE_H, h)};
+  }
   if (layoutHome() == HOME_LAYOUT_DINAMICA) {
     // A Dinamica deixa a primeira fileira espiar junto da arte de tela cheia;
     // so a zona do hero, ate antes dessa fileira, recebe video.
@@ -4700,6 +4707,20 @@ static GfxRect heroTrailerArea(GfxRect arte) {
   }
 #endif
   return arte;
+}
+static GfxRect heroTrailerVideoRect(GfxRect r) {
+#ifdef NV_ANDROID
+  if (homeCinematicaTV()) {
+    float s = gfx_escala_txt();
+    r.x *= s; r.y *= s; r.w *= s; r.h *= s;
+  }
+#endif
+  return r;
+}
+static float heroTrailerBase(void) {
+  // O degrade termina ANTES dos cartazes; a caixa do video nao encolhe.
+  // No foco do destaque, a primeira fileira desce junto com scrollY.
+  return homeShelfTop() + homeCabecalhoH() + fmaxf(0.0f, -scrollY);
 }
 static GfxRect heroArtworkRect(int lay, int cheio) {
   if (lay == HOME_LAYOUT_PADRAO) return padBannerRect();
@@ -4758,7 +4779,7 @@ static GfxRect heroEditorialRect(int editorial, float aspect) {
 static void heroTrailerAtualizaRect(GfxRect r, float saida) {
   if (telefoneui_ativo() && saida <= 0.001f && heroTrailerItem >= 0 && heroTrailerItem == heroAtual &&
       trailer_aberto() && !trailer_cheia() && trailer_dono() == TRAILER_DONO_HOME)
-    trailer_rect(heroTrailerArea(r));
+    trailer_rect(heroTrailerVideoRect(heroTrailerArea(r)));
 }
 static void alvoAcaoHero(GfxRect r, float saida, float cin, float alpha) {
   if (!telefoneui_ativo()) return;
@@ -5321,10 +5342,10 @@ static void desenhaHero(Uint32 agora, float saida) {
   // Rampas da borda esquerda e da base. Android compoe a troca inteira em
   // um quad; outras plataformas mantem o furo e o veu separados.
 #ifdef NV_ANDROID
-  // Mesmas paradas lineares do ModernHeroGradientLayer original: 45%/82%
-  // na faixa e 65%/64% no fundo inteiro. O miolo superior direito fica livre.
+  // A rampa inferior acompanha a primeira fileira da Home compacta, nao
+  // o fim da arte que ja esta escondido pelos cartazes.
   if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
-    gfx_furo_hero_suave(furo, anim_suave(aTrailer), modoHero == GFX_HERO_CHEIO);
+    gfx_furo_hero_suave(furo, anim_suave(aTrailer), heroTrailerBase());
   else if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);
 #else
   if (aTrailer > 0.0f && aTrailer < 0.995f) gfx_furo_alfa(furo, aTrailer);
@@ -6100,7 +6121,7 @@ void home_trailer_passo(int topo, float dt, Uint32 agora) {
       // (.wgt) trailer_abrir forca mudo de qualquer jeito.
       heroTrailerNoCartao = destCartao;
       trailer_no_cartao(destCartao);
-      trailer_abrir(u, destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerArea(heroArteRect),
+      trailer_abrir(u, destCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerVideoRect(heroTrailerArea(heroArteRect)),
                     ajustes_trailer_som(), 0);
       trailer_marcar_dono(TRAILER_DONO_HOME, ci->imdb);
       // trailer_abrir e void por compatibilidade com o player nativo; no
@@ -6127,7 +6148,7 @@ trailer_hero_fim:
   if (heroTrailerItem >= 0 && heroTrailerItem == itemAtual &&
       trailer_aberto() && !trailer_cheia() && trailer_dono() == TRAILER_DONO_HOME &&
       (!heroTrailerNoCartao || cartaoTrailerItem == heroTrailerItem)) {
-    GfxRect alvoR = heroTrailerNoCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerArea(heroArteRect);
+    GfxRect alvoR = heroTrailerNoCartao ? cartaoVideoRect(cartaoTrailerRect) : heroTrailerVideoRect(heroTrailerArea(heroArteRect));
     GfxRect atual = trailer_retangulo();
     if (fabsf(alvoR.x - atual.x) > 1.0f || fabsf(alvoR.y - atual.y) > 1.0f ||
         fabsf(alvoR.w - atual.w) > 1.0f || fabsf(alvoR.h - atual.h) > 1.0f)

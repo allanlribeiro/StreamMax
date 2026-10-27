@@ -330,6 +330,20 @@ int trailer_suportado(void) {
   return sabe;
 #endif
 }
+static void nativoJanela(GfxRect r, int telaCheia) {
+#if defined(NV_ANDROID)
+  if (dono == TRAILER_DONO_HOME && !noCartao && !telaCheia &&
+      ajustes_home_layout() == HOME_LAYOUT_MODERNA && !layout_modo_mobile()) {
+    float x,y,w,h;
+    sm_trailer_hero_video(r.x,r.y,r.w,r.h,video_largura(),video_altura(),&x,&y,&w,&h);
+    video_android_janela_preencher((int)lroundf(x),(int)lroundf(y),(int)lroundf(w),(int)lroundf(h));
+    return;
+  }
+#else
+  (void)telaCheia;
+#endif
+  video_janela((int)r.x,(int)r.y,(int)r.w,(int)r.h);
+}
 static void nativoAplicar(void) {
   if (!aberto) return;
   // Home Moderna: cover uniforme e overscan do Nuvio original na caixa da arte,
@@ -390,12 +404,7 @@ static void nativoAplicar(void) {
 #else
     if (heroAndroid) {
       if (ajustes_home_layout() == HOME_LAYOUT_MODERNA && NV_TELA_W > NV_TELA_H) {
-        float vx, vy, vw, vh;
-        sm_trailer_hero_video(rect.x, rect.y, rect.w, rect.h,
-                              video_largura(), video_altura(), &vx, &vy, &vw, &vh);
-        video_janela_fonte(0, 0, video_largura(), video_altura(),
-                           (int)lroundf(vx), (int)lroundf(vy),
-                           (int)lroundf(vw), (int)lroundf(vh));
+        nativoJanela(rect, cheia);
       } else video_janela((int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
     } else {
       trailer_recorte(video_largura(), video_altura(), ajustes_trailer_zoom(),
@@ -462,7 +471,7 @@ void trailer_abrir(const char *fonte, GfxRect r, int som, int modoCheia) {
     volumeTocandoEnviado = 0;
 #endif
   } else if (comSom != som) volumePendente = 1;
-  video_janela((int)r.x, (int)r.y, (int)r.w, (int)r.h);
+  nativoJanela(r, modoCheia);
   if (!nova) recortePendente = 1;
 #endif
   if (nova) {
@@ -487,7 +496,7 @@ void trailer_rect(GfxRect r) {
 #ifdef __EMSCRIPTEN__
   trailer_js_abrir(fonteAtual, r.x, r.y, r.w, r.h, comSom, ajustes_trailer_zoom(), NV_REC_URL);
 #else
-  video_janela((int)r.x, (int)r.y, (int)r.w, (int)r.h);
+  nativoJanela(r, cheia);
   recortePendente = 1;
   nativoAplicar();
 #endif
