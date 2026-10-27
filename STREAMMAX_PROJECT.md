@@ -4,7 +4,7 @@
 
 - O usuário confirmou problemas visuais na 1.0.22: direita com faixa preta,
   esquerda sem transição perceptível e base com corte seco.
-- Branch `fix/streammax-trailer-edges`; candidata 1.0.23, código 20030.
+- Branch `fix/streammax-trailer-edges`; versão 1.0.23, código 20030.
 - Quadro ancorado na direita, escala de texto convertida para o player,
   degradê inferior alinhado ao topo dos cartazes e curva suave nas bordas.
 - Android passa COVER=2 desde a abertura e preserva esse modo na reaplicação;
@@ -12,8 +12,11 @@
 - Novo teste inclui `gfx.c` inteiro, geometria real e classe Java do player.
   Baseline da 1.0.22 reproduz base tardia; FIT reproduz faixa direita.
 - [Análise e limites](./docs/trailer-bordas/ANALISE-1.0.23.md).
-- Estado: testes locais aprovados; APK e publicação em preparação.
-  Resultado físico na TCL e FPS ainda pendentes.
+- APK compilado, assinado com a chave oficial e publicado no canal do app.
+  Atualizador da 1.0.22 validado com o JSON público, URL e hash do APK.
+- [Versão 1.0.23](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.23) e
+  [registro de validação](./docs/trailer-bordas/VALIDACAO-1.0.23.json).
+- Resultado físico na TCL e FPS ainda pendentes.
 
 ## Continuidade — trailer com referência no Nuvio original (27/10/2026)
 

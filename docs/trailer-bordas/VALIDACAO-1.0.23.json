@@ -1,0 +1,68 @@
+{
+  "version": "1.0.23",
+  "version_code": 20030,
+  "package": "com.streammax.tv",
+  "source_commit": "554e8577e70f5211520e7ad4572f70838e1b8180",
+  "branch": "fix/streammax-trailer-edges",
+  "release": {
+    "page": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.23",
+    "latest": "v1.0.23",
+    "draft": false,
+    "prerelease": false,
+    "apk_url": "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.23/StreamMax-1.0.23-android.apk",
+    "apk_bytes": 62471502,
+    "apk_sha256": "0de71aac4e14aeb1a5d61dde42b0fcf92d95195dbc0a5f8e4ab282babfb0ad0b",
+    "signer_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ],
+    "min_sdk": 24,
+    "target_sdk": 35
+  },
+  "workflow": {
+    "id": 40592975433,
+    "url": "https://github.com/allanlribeiro/StreamMax/actions/runs/40592975433",
+    "conclusion": "success",
+    "jobs": {
+      "native-apk": "success",
+      "publicar": "success"
+    }
+  },
+  "artifact": {
+    "id": 12775751083,
+    "name": "StreamMax-1.0.23-Trailer-Bordas",
+    "zip_sha256": "1b76fdbf066081b4b72333be1f22f5b56daae04fd19c3ad8f402593e4a78e69b"
+  },
+  "baseline": {
+    "source": "af60fad69e95c3c3d95ca8ca325afb5f4e7ad020",
+    "bottom_fade": "reproduced on full gfx.c: transparent at poster top",
+    "fit_window": "reproduced by actual arithmetic: about 59 logical px on right (39 at 1280x720)"
+  },
+  "checks": {
+    "real_renderer": "passed, complete gfx.c including vertex/shaders/uniforms/blend",
+    "text_scales": [
+      0.85,
+      0.95,
+      1,
+      1.05,
+      1.1,
+      1.25,
+      1.5
+    ],
+    "edges": "left/bottom monotonic, right alpha clear, opaque at poster top; RGB seam checked with full backdrop and partial crossfade",
+    "android_window": "actual native dispatch/reapply and Java helper; COVER from start, late dimensions, EXACT/FIT retained",
+    "first_frame": "actual trailer visibility gate passed",
+    "home_scroll": "passed with ASan/UBSan, Android/host/touch",
+    "addons_xtream_livetv_watchnext_updater": "passed",
+    "portuguese_hls_tracks": "passed",
+    "no_seek_frames": "passed",
+    "installed_1_0_22_ota": "passed against actual public JSON, canonical URL and signed APK hash",
+    "signature_and_package": "passed locally and in CI"
+  },
+  "limits": [
+    "No physical TCL P7K retest or measured TV FPS.",
+    "Controlled scene; not a screenshot of the corrected physical TV.",
+    "Black bars recorded within a source video are not dynamically detected."
+  ]
+}
