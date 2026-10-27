@@ -8,6 +8,7 @@ O usuário confirmou a foto da versão 1.0.22: corte abrupto inferior/lateral es
 - Conversão explícita da escala de texto entre as coordenadas virtuais da Home e o canvas do player. Antes, o desenho e a janela podiam receber medidas diferentes quando a escala não era 100%.
 - A área de vídeo permanece grande; o degradê termina no topo dos cartazes (`378 + 48 = 426` no canvas padrão), não no final da arte de 670 px. A faixa inferior ocupa até 30% da altura visível, limitada a 144 px. Quando o foco no destaque desce os cartazes, a transição acompanha essa borda.
 - Curva quintica de transparência na esquerda e na base, com precisão alta onde suportada. O miolo e a borda direita permanecem livres da máscara.
+- Quando existe foto no fundo inteiro, a área à esquerda do vídeo também dissolve para a mesma cor da primeira coluna da rampa, evitando emenda vertical entre a foto e o degradê. É um retângulo de cor simples, sem nova textura ou blur.
 - Modo Android COVER=2, preservado como inteiro no JNI/Kotlin. Usado desde a abertura do trailer da Home; metadados tardios recalculam o preenchimento. Reaplicar o recorte preserva COVER. Os modos antigos EXACT=0 e FIT=1 continuam disponíveis para os demais destinos.
 - Cover/overscan uniforme da 1.0.22 mantido. Sem textura extra, blur, framebuffer adicional ou segundo decoder.
 

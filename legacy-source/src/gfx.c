@@ -4282,6 +4282,12 @@ void gfx_furo_hero_suave(GfxRect r, float a, float base) {
   GfxRect t = r;
   if (a <= 0.0f || r.w <= 0.0f || r.h <= 0.0f) return;
   if (a > 1.0f) a = 1.0f;
+  // O fundo inteiro pode ter foto tambem a esquerda da caixa de video.
+  // Ela deve chegar a MESMA cor da primeira coluna da rampa, senao fica
+  // uma emenda vertical mesmo com o alfa do video perfeitamente suave.
+  if (r.x > 0.0f)
+    gfx_rect((GfxRect){0,r.y,r.x,r.h},0,GFX_COR,0,0,0,0,
+             NV_COR_FUNDO_R,NV_COR_FUNDO_G,NV_COR_FUNDO_B,a);
   float fim = fminf(r.y + r.h, fmaxf(r.y + 1.0f, base));
   float altura = fminf(144.0f, (fim - r.y) * 0.30f);
   float inicio = (fim - altura - r.y) / r.h;

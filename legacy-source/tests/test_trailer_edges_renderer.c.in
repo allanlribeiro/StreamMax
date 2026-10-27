@@ -37,6 +37,7 @@ static float homeCabecalhoH(void){return 48;}
 enum { W=1280,H=720 };
 static unsigned char pixels[W*H*4];
 static int alpha(int x,int y){return pixels[((H-1-y)*W+x)*4+3];}
+static const unsigned char *pixel(int x,int y){return pixels+((H-1-y)*W+x)*4;}
 static void capture(GfxRect box,float progress,float base) {
  glClearColor(.6,.2,.1,1);glClear(GL_COLOR_BUFFER_BIT);
  gfx_furo_hero_suave(box,progress,base);
@@ -81,6 +82,9 @@ int main(void) {
     mid+=a>8&&a<247;
    }
    assert(alpha(x0,60)>250 && mid>100);
+   // O fundo fora da caixa e a primeira coluna da rampa devem se encontrar
+   // sem uma faixa vertical, inclusive com foto no fundo inteiro.
+   for(int c=0;c<3;c++)assert(abs(pixel(x0-1,60)[c]-pixel(x0,60)[c])<=2);
    // Base sem salto de transparencia em pixels vizinhos.
    int start=(int)((base-fminf(144,base*.30f))*scale*H/1080);
    prev=-1;mid=0;
@@ -90,6 +94,7 @@ int main(void) {
    }
    assert(mid>20);
    capture(box,.5f,base);
+   for(int c=0;c<3;c++)assert(abs(pixel(x0-1,60)[c]-pixel(x0,60)[c])<=2);
    assert(abs(alpha(1100,clearY)-128)<3);
    assert(alpha(1100,bottom)>250);
   }
