@@ -9,7 +9,8 @@
 - Ajustes antigos ativados não reabilitam miniaturas. Cadastro de addons, contas,
   perfis, VOD IPTV e demais funções seguem a base 1.0.18.
 - Testes locais: preferências antigas, avanço, layout, VOD, trailers, OTA e isolamento
-  de pacote. Compilação e publicação da atualização em preparação.
+  de pacote. APK compilado, assinado e publicado no canal oficial do aplicativo.
+- [Atualização 1.0.20 publicada](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.20); atualizador da 1.0.19 validado com o JSON público. [Verificações](./docs/sem-frames/VALIDACAO.json).
 - Notas: [StreamMax 1.0.20](./RELEASE-STREAMMAX-1.0.20.md).
 
 ## Histórico — miniaturas da fonte na 1.0.19 (cancelado pelo usuário)

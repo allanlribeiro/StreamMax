@@ -1,0 +1,24 @@
+{
+  "versao": "1.0.20",
+  "versionCode": 20027,
+  "pacote": "com.streammax.tv",
+  "codigo_apk": "43987cf4803caf318c76c8c01b2eee259a4b8c6a",
+  "workflow": "https://github.com/allanlribeiro/StreamMax/actions/runs/40482448084",
+  "pagina": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.20",
+  "arquivo": "StreamMax-1.0.20-android.apk",
+  "bytes": 62468334,
+  "digest": "sha256:7b16a566da7286cb9833503742e46c6cf15db5aa2339a7ce2c9343570039bed3",
+  "assinatura_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+  "canal": "atualizacao pelo aplicativo",
+  "decisao": "Usuario cancelou os frames apos a versao 1.0.19 nao passar no teste",
+  "verificacoes": [
+    "Player sem consultas, recortes e painel de miniaturas",
+    "Preferencias antigas ligadas nao reativam o recurso",
+    "Barra de avanco e retorno normal, layout e controle",
+    "VOD Xtream, guia ao vivo, addons, trailers, splash e Watch Next",
+    "Compilacao ARM 32/64 bits e assinatura oficial",
+    "Ausencia do carregador minifonte e da chave nova no APK de ambas arquiteturas",
+    "Atualizador da 1.0.19 reconhece o JSON publico da 1.0.20 com URL e SHA-256 corretos"
+  ],
+  "teste_fisico_1_0_20_na_tcl": false
+}
