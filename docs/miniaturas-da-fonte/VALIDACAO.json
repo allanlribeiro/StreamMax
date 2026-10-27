@@ -1,0 +1,29 @@
+{
+  "versao": "1.0.19",
+  "versionCode": 20026,
+  "pacote": "com.streammax.tv",
+  "codigo_apk": "d5b2368942aeb0f44f9458616c78fe5363072910",
+  "compilacao": "https://github.com/allanlribeiro/StreamMax/actions/runs/40423258130",
+  "publicacao": "https://github.com/allanlribeiro/StreamMax/actions/runs/40424329590",
+  "pagina": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.19-source-thumbnails-preview.1",
+  "arquivo": "StreamMax-1.0.19-android.apk",
+  "bytes": 62491978,
+  "digest": "sha256:cbdc86b315d2b52af7752af6e0f19dcff483653b292c25c48c0cb9bdc259086c",
+  "assinatura_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+  "testes_aprovados": [
+    "Parsers WebVTT, HLS, URL e metadados",
+    "Entradas truncadas e 40000 mutacoes com ASan/UBSan",
+    "HTTP real, redirects e isolamento de credenciais entre origens",
+    "Cancelamento e descarte de resposta antiga na troca de fonte",
+    "Recortes RGB e faixa de tres quadros",
+    "Cache e liberacao da folha apos encerrar o avanco",
+    "Limites de resposta e imagem invalida",
+    "Sem sondagem de MP4 sem metadados",
+    "Regressoes IPTV VOD, player, addons, splash, home, login estatico e OTA",
+    "APK assinado e duas arquiteturas ARM verificadas"
+  ],
+  "tcl_real_testada": false,
+  "provedores_reais_testados": false,
+  "canal": "previa manual",
+  "observacao": "Depende de timeline de miniaturas fornecida pelo provedor. Sem imagens compativeis, o avanco continua normal."
+}
