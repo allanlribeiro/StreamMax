@@ -4,7 +4,7 @@
 
 - Pedido: comparar o destaque com Nuvio original e ajustar tamanho/degradê.
 - Referência: `NuvioMedia/NuvioTV`, `252e9eb0ceb3d31d7bcbe770736f6eb83f283e05`.
-- Branch `fix/streammax-hero-original`; versão candidata 1.0.22, código 20029.
+- Branch `fix/streammax-hero-original`; versão 1.0.22, código 20029.
 - Trailer ocupa a mesma caixa da arte; fonte quadrada/vertical não encolhe
   mais a caixa. Cover uniforme e overscan 1,35 como no original.
 - Mesmas paradas lineares do degradê do original, com cor de fundo em vez
@@ -14,8 +14,11 @@
 - Preservados os layouts, fileiras, correção de rolagem, ausência de frames
   e preferências de áudio/legendas; nenhum segundo decoder ou blur adicionado.
 - [Comparativo e limites](./docs/trailer-original/COMPARATIVO-1.0.22.md).
-- Estado: código revisto e testes locais aprovados; APK/publicação em preparação.
-  Homologação visual e FPS na TCL P7K ainda pendentes.
+- APK compilado e assinado com a chave oficial; publicado no canal do aplicativo.
+  Atualizador da 1.0.21 conferido com JSON público e hash do APK.
+- [Versão 1.0.22](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.22) e
+  [registro de validação](./docs/trailer-original/VALIDACAO-1.0.22.json).
+- Homologação visual e FPS na TCL P7K ainda pendentes.
 
 ## Continuidade — rolagem da Home (27/10/2026)
 
