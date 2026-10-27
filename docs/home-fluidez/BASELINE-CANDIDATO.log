@@ -1,0 +1,17 @@
+Android=False toque=False baseline=True
+baseline: velocidade antiga 3635.080 px/s permanece e bloqueia pre-carregamento
+Android=False toque=True baseline=True
+baseline: velocidade antiga 3635.080 px/s permanece e bloqueia pre-carregamento
+Android=True toque=False baseline=True
+baseline: velocidade antiga 3635.080 px/s permanece e bloqueia pre-carregamento
+Android=True toque=True baseline=True
+baseline: velocidade antiga 3635.080 px/s permanece e bloqueia pre-carregamento
+Android=False toque=False baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque
+Android=False toque=True baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque
+Android=True toque=False baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque
+Android=True toque=True baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque
+Candidato aprovado sem modificar o codigo do aplicativo

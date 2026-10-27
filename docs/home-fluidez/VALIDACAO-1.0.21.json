@@ -1,0 +1,63 @@
+{
+  "versao": "1.0.21",
+  "codigo_android": 20028,
+  "baseline": "43987cf4803caf318c76c8c01b2eee259a4b8c6a",
+  "codigo_correcao": "1932681a8ba19a46eb09fbfe345bde61db61133b",
+  "metodo": "Foco e molas reais, alvoScrollFil e bloco de atualizacao extraidos da Home; medidas de cards controladas; sem janela, rede ou GPU",
+  "baseline_defeito_reproduzido": true,
+  "candidato_aprovado_antes_de_alterar_home": true,
+  "sanitizadores": [
+    "AddressSanitizer",
+    "UndefinedBehaviorSanitizer"
+  ],
+  "variantes": [
+    "host",
+    "host com NV_TOUCH_UI",
+    "NV_ANDROID",
+    "NV_ANDROID com NV_TOUCH_UI"
+  ],
+  "intervalos_simulados_ms": [
+    33.333333333333336,
+    16.666666666666668,
+    8.333333333333334,
+    100
+  ],
+  "casos": [
+    "Troca antes de assentar e liberacao do pre-carregamento",
+    "Retorno a coluna lembrada",
+    "Trocas rapidas entre tres fileiras",
+    "Fim do trabalho de geometria nas fileiras paradas",
+    "Animacoes reduzidas local e global",
+    "Ver tudo",
+    "Pular fileira vazia",
+    "Heroi dividido",
+    "Palco",
+    "Poster expandido",
+    "Rolagem livre por toque"
+  ],
+  "desenho_home_identico_a_1_0_20": true,
+  "modulos_preservados": [
+    "tex_cache.c",
+    "gfx.c",
+    "layout.h",
+    "trailer.c",
+    "trailerhero.h",
+    "player.c",
+    "focus.c",
+    "anim.h"
+  ],
+  "teste_fisico_na_tcl": false,
+  "fps_na_tv_medido": false,
+  "pacote": "com.streammax.tv",
+  "workflow": "https://github.com/allanlribeiro/StreamMax/actions/runs/40488255629",
+  "pagina": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.21",
+  "canal": "atualizacao pelo aplicativo",
+  "apk": "StreamMax-1.0.21-android.apk",
+  "bytes": 62468954,
+  "digest": "sha256:17012ef5347a28bc090c5188279238bbef4cb380186681a544da357fd2374da8",
+  "assinatura_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+  "compilacao_e_assinatura_aprovadas": true,
+  "atualizador_1_0_20_validado_com_json_publico": true,
+  "navegacao_vertical_home": "Regra existente do cartao mais proximo preservada; confirmada em teste isolado com focoVertical real e fileira curta",
+  "escopo": "Correcao do estado da rolagem horizontal; politicas de cache, GPU e texto mantidas"
+}

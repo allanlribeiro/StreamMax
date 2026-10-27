@@ -12,7 +12,10 @@
   30/60/120 Hz simulados e intervalo longo. ASan/UBSan aprovados.
 - Alteração concentrada na atualização horizontal. Layout, trailer, degradê e
   retirada dos frames preservados. Cache/GPU/texto aguardam testes próprios.
-- Branch `fix/streammax-home-row-settle`; compilação e publicação em preparação.
+- Branch `fix/streammax-home-row-settle`; APK compilado e assinado, publicado no canal
+  oficial do aplicativo. O atualizador da 1.0.20 foi validado com o JSON público.
+- [Versão 1.0.21](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.21) e
+  [registro de validação](./docs/home-fluidez/VALIDACAO-1.0.21.json).
 - Medição de FPS e teste físico na TCL P7K ainda pendentes.
 - Notas: [StreamMax 1.0.21](./RELEASE-STREAMMAX-1.0.21.md).
 
