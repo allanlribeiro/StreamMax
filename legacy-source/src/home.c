@@ -4688,23 +4688,10 @@ static float desenhaCopiaHero(const CatItem *ci, int principal, float x,
 // usar. Era isso que faltava para a abertura ler como rearranjo de layout e
 // nao como troca de tela.
 static void ponteiroHero(int a, int b);
-// O hero pode manter uma ARTE de fundo em tela cheia, mas no Android TV
-// o TRAILER do destaque nao deve herdar esse retangulo: ele invadiria a
-// area das fileiras, ficando animado atras de todos os cartazes.
-// A regiao de video e a faixa superior VISIVEL de cada layout. A arte
-// cinematografica atras do restante da Home permanece intocada.
+// Como no Nuvio original, arte e trailer compartilham a caixa do destaque.
+// A proporcao da fonte so altera o cover do video, nunca o tamanho da caixa.
 static GfxRect heroTrailerArea(GfxRect arte) {
 #ifdef NV_ANDROID
-  if (layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone()) {
-    // Viewport da 1.0.15 ampliado 17% a esquerda e 3% para baixo.
-    // O video cobre esta mascara com escala uniforme (trailer.c).
-    float w, h, x;
-    // Transicoes 14% maiores que na 1.0.15; centro/topo/direita limpos.
-    sm_trailer_hero_area(NV_TELA_W, fminf(NV_HERO_ARTE_W, NV_TELA_W * 0.64f),
-                        fminf(NV_HERO_ARTE_H, homeShelfTop() + 60.0f),
-                        video_largura(), video_altura(), &x, &w, &h);
-    return (GfxRect){x, 0.0f, w, h};
-  }
   if (layoutHome() == HOME_LAYOUT_DINAMICA) {
     // A Dinamica deixa a primeira fileira espiar junto da arte de tela cheia;
     // so a zona do hero, ate antes dessa fileira, recebe video.
@@ -5252,8 +5239,8 @@ static void desenhaHero(Uint32 agora, float saida) {
     aArte *= (1.0f - aTrailer);
   }
 #endif
-  // Android: manter o backdrop sob a mascara. O proprio furo faz o
-  // crossfade e dissolve as bordas para a arte, sem retangulo preto.
+  // Android: a composicao abaixo substitui a arte pelo video e pelas rampas
+  // do fundo na mesma proporcao; nao deixa a foto parada vazar no degrade.
   if (deslizando) {
     // O que sai do retangulo da arte nao pinta: o shader corta a arte de tela,
     // e o recorte aqui corta o poster e o marcador, que andam o rect inteiro.
@@ -5325,24 +5312,13 @@ static void desenhaHero(Uint32 agora, float saida) {
                            arteA != NULL && arteA[0] != 0);
   }
   }
-  // RAMPAS SOBRE O TRAILER (#290, dono 06/10: "vamos colocar o gradiente
-  // mesmo, vamos fazer ficar bonito"). Sem elas o video era um retangulo de
-  // borda dura ao lado do painel do texto. Aqui so as RAMPAS do proprio hero
-  // (uPar.x > 0.5: a esquerda, 45% da largura, e o pe, 18% da altura), as
-  // mesmas que dissolvem a arte parada — trailer e arte ficam com o mesmo
-  // enquadramento, e o miolo do video fica limpo (o veu de 20/09 que o dono
-  // tirou escurecia o trailer; este nao toca no miolo). Um quad, sem textura.
-  // Alfa = heroTrailerFade: entra enquanto a arte sai, entao a soma das duas
-  // rampas fica constante no crossfade. Desenhado DEPOIS do furo, com alfa:
-  // no .tpk/LG/Android o plano de video aparece com 1 - alfa sob a rampa.
+  // Rampas da borda esquerda e da base. Android compoe a troca inteira em
+  // um quad; outras plataformas mantem o furo e o veu separados.
 #ifdef NV_ANDROID
-  // SurfaceView a direita, arte da home ainda visivel a esquerda e na base.
-  // Antes o furo retangular + veu preto usava um degrade cuja COR nao era
-  // a cor do backdrop real. O video parecia um quadrado preto com borda.
-  // Agora o recorte dissolve o ALFA do canvas em duas direcoes; o fundo que
-  // ja estava desenhado continua aparecendo ate o ponto de transicao.
+  // Mesmas paradas lineares do ModernHeroGradientLayer original: 45%/82%
+  // na faixa e 65%/64% no fundo inteiro. O miolo superior direito fica livre.
   if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
-    gfx_furo_hero_suave(furo, aTrailer, SM_TRAILER_FADE_ESQUERDA, SM_TRAILER_FADE_BASE);
+    gfx_furo_hero_suave(furo, aTrailer, modoHero == GFX_HERO_CHEIO);
   else if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);
 #else
   if (aTrailer > 0.0f && aTrailer < 0.995f) gfx_furo_alfa(furo, aTrailer);
@@ -6154,7 +6130,12 @@ trailer_hero_fim:
   { float alvo = (heroTrailerItem >= 0 && heroTrailerItem == itemAtual &&
                   trailer_aberto() && !trailer_cheia() && trailer_tocando() &&
                   trailer_mostra_video()) ? 1.0f : 0.0f;   // .tpk: ate o recorte assentar (#178)
-    heroTrailerFade = anim_mola(heroTrailerFade, alvo, dt, NV_MOLA_SCROLL);
+#ifdef NV_ANDROID
+    if (!heroTrailerNoCartao && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
+      heroTrailerFade = sm_trailer_hero_fade(heroTrailerFade, alvo, dt, ajustes_animacoes_reduzidas());
+    else
+#endif
+      heroTrailerFade = anim_mola(heroTrailerFade, alvo, dt, NV_MOLA_SCROLL);
     // O `playing` chegou: este titulo ja teve o seu trailer (ver heroTrailerTocou).
     if (alvo > 0.5f) heroTrailerMarcarTocou(heroTrailerImdb);
     // MODO CINEMA: so com o trailer do DESTAQUE tocando (foco no hero). No do

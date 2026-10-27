@@ -1554,16 +1554,34 @@ static const char *FS_CORPO[GFX_NMODOS] = {
   "  gl_FragColor = (uLeve > 0.5 && a > 0.5) ? vec4(o, 1.0) : nv_dither(o, 1.0);\n"
   "}\n",
 
-  // GFX_FURO_HERO — mascara de ALFA do SurfaceView Android. O pixel da
-  // arte permanece intacto em x=0 e y=1; o miolo vai a alpha 0 para revelar
-  // o video atras do canvas. Um unico quad; sem FBO, blur ou texture fetch.
-  // uFoco = quanto o trailer entrou; uPar.x = largura do fade esquerdo;
-  // uPar.y = inicio do fade inferior. Topo, direita e miolo ficam limpos.
+  // GFX_FURO_HERO — ModernHeroGradientLayer do NuvioTV 252e9eb0.
+  // Um quad sem textura: a arte sai enquanto entram o video e as rampas
+  // da cor de fundo. Paradas lineares iguais as da arte (GFX_HERO/CHEIO).
+  // uFoco = crossfade; uPar.x = fundo inteiro. Saida pre-multiplicada,
+  // somada a arte anterior * (1 - crossfade) por gfx_furo_hero_suave.
   "void main(){\n"
-  "  float e = smoothstep(0.0, max(uPar.x,0.02), vUv.x);\n"
-  "  float b = 1.0-smoothstep(uPar.y, 1.0, vUv.y);\n"
-  "  float abertura = clamp(uFoco,0.0,1.0) * e * b;\n"
-  "  gl_FragColor = vec4(0.0,0.0,0.0,1.0-abertura);\n"
+  "  float ah, av;\n"
+  "  if (uPar.x > 0.5) {\n"
+  "    float t = vUv.x/0.65;\n"
+  "    ah = 1.0 - clamp(t/0.22,0.0,1.0)*0.10\n"
+  "             - clamp((t-0.22)/0.24,0.0,1.0)*0.10\n"
+  "             - clamp((t-0.46)/0.30,0.0,1.0)*0.38\n"
+  "             - clamp((t-0.76)/0.24,0.0,1.0)*0.42;\n"
+  "    av = clamp((vUv.y-0.640)/0.108,0.0,1.0)*0.35\n"
+  "       + clamp((vUv.y-0.748)/0.108,0.0,1.0)*0.40\n"
+  "       + clamp((vUv.y-0.856)/0.144,0.0,1.0)*0.25;\n"
+  "  } else {\n"
+  "    float t = vUv.x/0.45;\n"
+  "    ah = 1.0 - clamp(t/0.22,0.0,1.0)*0.14\n"
+  "             - clamp((t-0.22)/0.24,0.0,1.0)*0.30\n"
+  "             - clamp((t-0.46)/0.30,0.0,1.0)*0.40\n"
+  "             - clamp((t-0.76)/0.24,0.0,1.0)*0.16;\n"
+  "    av = clamp((vUv.y-0.820)/0.072,0.0,1.0)*0.25\n"
+  "       + clamp((vUv.y-0.892)/0.063,0.0,1.0)*0.40\n"
+  "       + clamp((vUv.y-0.955)/0.045,0.0,1.0)*0.35;\n"
+  "  }\n"
+  "  float a = clamp(ah + av - ah*av,0.0,1.0)*clamp(uFoco,0.0,1.0);\n"
+  "  gl_FragColor = vec4(uFundo*a,a);\n"
   "}\n",
 };
 
@@ -1603,7 +1621,7 @@ static const struct { int sdf, cover; } PRECISA[GFX_NMODOS] = {
   {1,0},   /* GFX_TEXTURA — SDF dos cantos; o recorte vem pronto em uJan */
   {1,0},   /* GFX_VIDRO — SDF proprio em pixels; o {1,..} so liga a margem de 1 px do quad */
   {1,0},   /* GFX_VITRINE_DIN — o do GFX_VITRINE */
-  {0,0}    /* GFX_FURO_HERO — apenas mascara de alfa */
+  {0,0}    /* GFX_FURO_HERO — rampas e crossfade, sem textura */
 };
 
 static GLuint compila(GLenum tipo, const char *src) {
@@ -4275,27 +4293,25 @@ void gfx_furo_alfa(GfxRect r, float a) {
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-// Diferente de gfx_furo_alfa, o hero nao abre um buraco retangular.
-// A borda esquerda e a base convergem para o proprio backdrop ja pintado
-// neste frame, nao para preto: elimina o quadrado na TCL ao rolar a home.
-// A operacao e um unico multiplicador de cor e alfa e nao mexe no player.
-void gfx_furo_hero_suave(GfxRect r, float a, float bordaEsquerda, float inicioBase) {
+// Resultado pre-multiplicado = arte*(1-a) + fundo*(a*gradiente).
+// O compositor Android completa com video*a*(1-gradiente). Assim a foto
+// realmente sai do destaque, inclusive no degrade, sem exposicao dupla.
+void gfx_furo_hero_suave(GfxRect r, float a, int cheio) {
   GfxRect t = r;
   if (a <= 0.0f || r.w <= 0.0f || r.h <= 0.0f) return;
-  if (bordaEsquerda < 0.02f) bordaEsquerda = 0.02f;
-  if (bordaEsquerda > 0.90f) bordaEsquerda = 0.90f;
-  if (inicioBase < 0.10f) inicioBase = 0.10f;
-  if (inicioBase > 0.95f) inicioBase = 0.95f;
+  if (a > 1.0f) a = 1.0f;
   if (dinPendente) dinDescarregar();
   if (ambPendente) gfx_ambiente_descarregar();
   ambIntacta = 0;
   GFX_TR_RECT(t.x, t.y, t.w, t.h);
   if (escAtiva != 1.0f) { t.x *= escAtiva; t.y *= escAtiva; t.w *= escAtiva; t.h *= escAtiva; }
   vidroFuro(t);
-  glBlendFuncSeparate(GL_ZERO, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA);
-  gfx_rect(r, 0, GFX_FURO_HERO, a, bordaEsquerda, inicioBase, 0.0f,
+  glBlendColor(0, 0, 0, 1.0f - a);
+  glBlendFuncSeparate(GL_ONE, GL_CONSTANT_ALPHA, GL_ONE, GL_CONSTANT_ALPHA);
+  gfx_rect(r, 0, GFX_FURO_HERO, a, cheio ? 1.0f : 0.0f, 0, 0.0f,
            0, 0, 0, 1.0f);
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendColor(0, 0, 0, 0);
 }
 
 // Multiplica TUDO o que ja foi desenhado neste quadro (cor e alfa, que e

@@ -332,8 +332,8 @@ int trailer_suportado(void) {
 }
 static void nativoAplicar(void) {
   if (!aberto) return;
-  // Na TCL a Home amplia o viewport 17% na largura e 3% na altura.
-  // Cobrir essa area com escala UNIFORME, sem herdar o zoom dos filmes.
+  // Home Moderna: cover uniforme e overscan do Nuvio original na caixa da arte,
+  // sem herdar o zoom dos filmes nem redimensionar a caixa conforme a fonte.
   // O player de filmes e o trailer da pagina de detalhes nao mudam.
 #if defined(NV_ANDROID)
   const int heroAndroid = dono == TRAILER_DONO_HOME && !noCartao && !cheia;
@@ -551,6 +551,12 @@ int trailer_tocando(void) {
 #endif
 }
 int trailer_mostra_video(void) {
+#if defined(NV_ANDROID) && !defined(__EMSCRIPTEN__)
+  // O prazo de video_pronto tambem cobre audio sem imagem no player normal.
+  // O destaque so substitui sua foto depois de um quadro real do trailer.
+  if (dono == TRAILER_DONO_HOME && !noCartao && !cheia)
+    return aberto && video_quadro_visto();
+#endif
 #if defined(NV_TPK) && !defined(__EMSCRIPTEN__)
   Uint32 t = SDL_GetTicks();
   const char *porque = NULL;

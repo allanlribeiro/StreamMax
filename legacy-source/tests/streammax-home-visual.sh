@@ -31,9 +31,9 @@ assert "logoapp_streammax_wordmark" in menu
 assert "float e = cinemaRail() ? 1.0f : 0.0f;" in menu
 assert "borda = 48.0f + 250.0f * NV_MENU_MODERNA_AUMENTO;" in aj
 assert "(NV_SHELF_TOP + 481.0f) * 0.75f" in home
-# O destaque ganha mais vídeo visível e mantém área reservada para as fileiras.
-assert "fminf(NV_HERO_ARTE_H, homeShelfTop() + 60.0f)," in home
-assert "gfx_furo_hero_suave(furo, aTrailer, SM_TRAILER_FADE_ESQUERDA, SM_TRAILER_FADE_BASE);" in home
+# Arte e trailer compartilham a caixa; proporcao da fonte nao a encolhe.
+assert "sm_trailer_hero_area" not in home
+assert "gfx_furo_hero_suave(furo, aTrailer, modoHero == GFX_HERO_CHEIO);" in home
 assert "heroTrailerArea(heroArteRect)" in home
 # O foco e o raio continuam animados e ajustáveis; acabamento do card mais fino.
 assert "#define NV_HOME_ANEL_SUTIL 2.0f" in home
@@ -41,6 +41,6 @@ assert 'return ajustes_borda_foco() ? 0.02f : 0.045f;' in home
 assert 'gfx_borda_foco_atual = ajustes_borda_foco() ? 0.55f : 0.0f;' in home
 assert "anim_mola(animFoco[r][c], alvo, dt" in home
 assert "ajustes_raio_poster_px()" in home
-assert '#define SM_UPDATE_VERSION "1.0.21"' in up
-print("OK: Home StreamMax 1.0.21: menu e fileiras da 1.0.4 preservados")
+assert '#define SM_UPDATE_VERSION "1.0.22"' in up
+print("OK: Home StreamMax 1.0.22: menu e fileiras da 1.0.4 preservados")
 PY

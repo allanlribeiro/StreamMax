@@ -1,5 +1,22 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — trailer com referência no Nuvio original (27/10/2026)
+
+- Pedido: comparar o destaque com Nuvio original e ajustar tamanho/degradê.
+- Referência: `NuvioMedia/NuvioTV`, `252e9eb0ceb3d31d7bcbe770736f6eb83f283e05`.
+- Branch `fix/streammax-hero-original`; versão candidata 1.0.22, código 20029.
+- Trailer ocupa a mesma caixa da arte; fonte quadrada/vertical não encolhe
+  mais a caixa. Cover uniforme e overscan 1,35 como no original.
+- Mesmas paradas lineares do degradê do original, com cor de fundo em vez
+  da foto parada. Crossfade de 480 ms só após primeiro quadro real.
+- Teste isolado de geometria e shader/compositor GLES real passou, comparando
+  273.920 canais de pixels com os colorStops do Compose.
+- Preservados os layouts, fileiras, correção de rolagem, ausência de frames
+  e preferências de áudio/legendas; nenhum segundo decoder ou blur adicionado.
+- [Comparativo e limites](./docs/trailer-original/COMPARATIVO-1.0.22.md).
+- Estado: código revisto e testes locais aprovados; APK/publicação em preparação.
+  Homologação visual e FPS na TCL P7K ainda pendentes.
+
 ## Continuidade — rolagem da Home (27/10/2026)
 
 - O usuário autorizou aplicar a correção se o teste isolado fosse bem-sucedido.
