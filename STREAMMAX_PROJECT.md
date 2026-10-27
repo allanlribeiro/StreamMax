@@ -13,6 +13,7 @@
   cancelamento, recortes RGB, faixa de três quadros e liberação da folha ao
   encerrar o avanço. Teste físico na TCL e fontes reais ainda pendente.
 - Detalhes, formatos e limites: [MINIATURAS-DA-FONTE.md](./MINIATURAS-DA-FONTE.md).
+- APK compilado e assinado; [prévia para teste manual publicada](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.19-source-thumbnails-preview.1). [Registro da validação](./docs/miniaturas-da-fonte/VALIDACAO.json).
 
 ## Diretriz de migração para Nuvio Native Legacy (17/10/2026)
 
