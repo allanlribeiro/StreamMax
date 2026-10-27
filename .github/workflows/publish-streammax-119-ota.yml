@@ -1,0 +1,139 @@
+name: Publicar atualizacao automatica StreamMax 1.0.19
+on:
+  push:
+    branches: [feat/streammax-source-thumbnails]
+    paths: ['.github/workflows/publish-streammax-119-ota.yml']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: streammax-119-android-ota
+  cancel-in-progress: false
+jobs:
+  publicar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_REPO: allanlribeiro/StreamMax
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.19
+      BUILD_SHA: d5b2368942aeb0f44f9458616c78fe5363072910
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Conferir origem e testes aprovados
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/actions/runs/40423258130 --jq .head_sha)" = "$BUILD_SHA"
+          test "$(gh api repos/$GH_REPO/actions/runs/40423258130 --jq .conclusion)" = success
+          test "$(gh api repos/$GH_REPO/actions/runs/40424329590 --jq .conclusion)" = success
+          git merge-base --is-ancestor "$BUILD_SHA" HEAD
+          test -z "$(git diff --name-only "$BUILD_SHA" HEAD -- legacy-source/src legacy-source/android legacy-source/deploy legacy-source/tools)"
+          bash legacy-source/tests/streammax-updater.sh
+          python3 - <<'PY'
+          import json
+          r = json.load(open('docs/miniaturas-da-fonte/VALIDACAO.json'))
+          assert r['versao'] == '1.0.19' and r['versionCode'] == 20026
+          assert r['codigo_apk'] == 'd5b2368942aeb0f44f9458616c78fe5363072910'
+          assert r['digest'] == 'sha256:cbdc86b315d2b52af7752af6e0f19dcff483653b292c25c48c0cb9bdc259086c'
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: allanlribeiro/StreamMax
+          run-id: '40423258130'
+          name: StreamMax-1.0.19-Miniaturas-TESTE
+          path: pacote
+      - name: Verificar APK oficial e preparar arquivos
+        run: |
+          set -euo pipefail
+          sha256sum --check pacote/SHA256.txt
+          grep -Fxq "Commit: $BUILD_SHA" pacote/BUILD-INFO.txt
+          apk=pacote/StreamMax-1.0.19-android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > badging.txt
+          grep -q "^package: name='com.streammax.tv'" badging.txt
+          grep -q "versionCode='20026'" badging.txt
+          grep -Fq "versionName='1.0.19'" badging.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" > cert.txt
+          python3 - <<'PY'
+          import hashlib, re
+          from pathlib import Path
+          cert = re.findall(r'^Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)\s*$', Path('cert.txt').read_text(), re.M)
+          assert len(cert) == 1 and cert[0].lower() == 'a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5'
+          apk = Path('pacote/StreamMax-1.0.19-android.apk')
+          assert apk.stat().st_size == 62491978
+          assert hashlib.sha256(apk.read_bytes()).hexdigest() == 'cbdc86b315d2b52af7752af6e0f19dcff483653b292c25c48c0cb9bdc259086c'
+          PY
+          cp MINIATURAS-DA-FONTE.md pacote/LEIA-ME.md
+          sed -i 's/Não publicado. Teste real na TCL pendente./Canal oficial de atualização pelo aplicativo. Teste real na TCL pendente./' pacote/BUILD-INFO.txt
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          r = json.load(open('docs/miniaturas-da-fonte/VALIDACAO.json'))
+          r['canal'] = 'atualizacao pelo aplicativo'
+          r['pagina'] = 'https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.19'
+          r['publicacao_ota'] = 'https://github.com/allanlribeiro/StreamMax/actions/runs/' + os.environ['GITHUB_RUN_ID']
+          Path('pacote/TESTES.json').write_text(json.dumps(r, ensure_ascii=False, indent=2) + '\n')
+          PY
+          rm pacote/SHA256.txt
+          (cd pacote && sha256sum *.apk *.md *.json BUILD-INFO.txt > SHA256SUMS.txt)
+      - name: Preparar notas da atualizacao
+        run: |
+          cat > notas.md <<'EOF'
+          Ao avançar ou voltar um filme ou episódio, o StreamMax pode mostrar a miniatura da posição escolhida quando a própria fonte fornece uma sequência de imagens compatível.
+
+          - WebVTT declarado pelo addon e trilhas de imagens em HLS VOD.
+          - Uma miniatura por padrão; faixa de três quadros opcional em Ajustes → Reprodução → Miniatura ao avançar.
+          - Carregamento em segundo plano, cache limitado e cancelamento na troca de fonte.
+          - Sem chave do Seekr. A disponibilidade das imagens depende da fonte; não se presume suporte em todos os addons.
+
+          **Atualização pelo aplicativo:** abra Ajustes → Sobre e ajuda → Procurar atualização. Selecione Atualizar agora e confirme a instalação na TV. Se solicitado, permita que o StreamMax instale atualizações. O Android exige essa confirmação.
+
+          Mesmo APK assinado da prévia 1.0.19, com pacote `com.streammax.tv`, versionCode 20026 e assinatura oficial. Se você já instalou a prévia 1.0.19, já possui este arquivo.
+
+          Testes automatizados de leitura, rede, recortes de imagens, cancelamento, cache e memória aprovados. Compilação ARM 32/64 bits e assinatura verificadas. Teste físico na TCL P7K e com provedores reais ainda pendente.
+
+          Código do APK: d5b2368942aeb0f44f9458616c78fe5363072910.
+          Compilação: https://github.com/allanlribeiro/StreamMax/actions/runs/40423258130.
+          EOF
+      - name: Publicar e validar o canal do atualizador instalado
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/releases/latest --jq .tag_name)" = v1.0.18
+          if gh release view "$TAG" --json isDraft --jq .isDraft > existe.txt 2>/dev/null; then
+            test "$(cat existe.txt)" = true
+          else
+            gh release create "$TAG" --draft --prerelease=false --latest=false --target "$BUILD_SHA" \
+              --title 'StreamMax 1.0.19 — Miniaturas da fonte' --notes-file notas.md
+          fi
+          gh release upload "$TAG" pacote/* --clobber
+          rid="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '.[] | select(.tag_name == "v1.0.19") | .id')"
+          test -n "$rid"
+          gh api "repos/$GH_REPO/releases/$rid" > release.json
+          python3 - <<'PY'
+          import hashlib, json, re
+          from pathlib import Path
+          r = json.load(open('release.json'))
+          assert r['tag_name'] == 'v1.0.19' and r['draft'] is True and r['prerelease'] is False
+          assets = {a['name']: a for a in r['assets']}
+          for p in Path('pacote').iterdir():
+              a = assets[p.name]
+              assert a['state'] == 'uploaded' and a['size'] == p.stat().st_size
+              assert a['digest'] == 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()
+          apk = assets['StreamMax-1.0.19-android.apk']
+          assert re.fullmatch(r'https://github\.com/allanlribeiro/StreamMax/releases/download/(?:untagged-[0-9a-f]+|v1\.0\.19)/StreamMax-1\.0\.19-android\.apk', apk['browser_download_url'])
+          apk['browser_download_url'] = 'https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.19/StreamMax-1.0.19-android.apk'
+          Path('release-prevista.json').write_text(json.dumps(r))
+          PY
+          python3 legacy-source/tests/check-streammax-119-ota-release.py release-prevista.json pacote/StreamMax-1.0.19-android.apk
+          gh release edit "$TAG" --draft=false --prerelease=false --latest=true --notes-file notas.md
+          gh api "repos/$GH_REPO/releases/latest" > latest.json
+          python3 legacy-source/tests/check-streammax-119-ota-release.py latest.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open('latest.json'))
+          assert r['draft'] is False and r['prerelease'] is False and r['tag_name'] == 'v1.0.19'
+          print('OK: versao 1.0.19 publicada no canal oficial do aplicativo')
+          PY
+          gh release view "$TAG" --json url,assets --jq '{url,arquivos:[.assets[]|{name,size}]}'
