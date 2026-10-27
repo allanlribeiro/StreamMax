@@ -1,0 +1,109 @@
+// Foco e molas reais; somente as medidas dos cards sao fixtures, sem SDL/GPU.
+#include "focus.h"
+#include "anim.h"
+#include "layout.h"
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+enum { FILEIRA_NORMAL, FILEIRA_HEROI_DIVIDIDO, FILEIRA_PALCO };
+static Foco foco;
+static struct { int tipo; } fileiras[4];
+static float scrollX[4], velX[4], expAbre;
+static int toqueLivreX[4], chamadas[4], expFileira, expColuna, motionReduzido;
+static float passoFil(int r) { chamadas[r]++; return 300.0f; }
+static float larguraFil(int r) { (void)r; return 240.0f; }
+static float xOffTipo(int tipo) { (void)tipo; return 0.0f; }
+static float homeLarguraUtil(void) { return 900.0f; }
+static float sobraDireitaFoco(int r, float abre) { (void)r; return 20.0f + 80.0f * abre; }
+
+/* GEOMETRIA_REAL */
+
+static void passo(float dt) {
+  for (int r = 0; r < foco.nFileiras; r++) {
+    /* PASSO_REAL */
+    assert(isfinite(scrollX[r]) && isfinite(velX[r]));
+  }
+}
+static void andar(int n, float dt) { while (n-- > 0) passo(dt); }
+static void iniciar(void) {
+  int colunas[] = {14, 12, 11, 10};
+  focus_iniciar(&foco, 4, colunas);
+  memset(fileiras, 0, sizeof fileiras); memset(scrollX, 0, sizeof scrollX);
+  memset(velX, 0, sizeof velX); memset(chamadas, 0, sizeof chamadas);
+  memset(toqueLivreX, 0, sizeof toqueLivreX);
+  expFileira = expColuna = -1; expAbre = 0; motionReduzido = 0;
+  anim_politica_reduzida = 0;
+}
+static void repouso(void) {
+  for (int r = 0; r < foco.nFileiras; r++)
+    assert(fabsf(velX[r]) <= 0.25f); // Limiar real que libera o pre-carregamento.
+}
+static void trocar_antes_de_assentar(float dt) {
+  iniciar(); assert(focus_mover(&foco, 5, 0)); andar(5, dt);
+  float velocidade = velX[0]; assert(velocidade > 0.25f);
+  assert(focus_mover(&foco, 0, 1)); assert(foco.colunaLembrada[0] == 5);
+  andar((int)(4.0f / dt), dt);
+#ifdef SM_EXPECT_STALE
+  assert(fabsf(velX[0]) > 0.25f && velX[0] == velocidade);
+  printf("baseline: velocidade antiga %.3f px/s permanece e bloqueia pre-carregamento\n", velX[0]);
+#else
+  repouso(); assert(fabsf(scrollX[0] - 860.0f) < 0.25f);
+  float posicao = scrollX[0];
+  assert(focus_mover(&foco, 0, -1)); assert(foco.coluna == 5);
+  passo(dt); assert(fabsf(scrollX[0] - posicao) < 0.25f);
+#endif
+}
+static void trocas_rapidas(float dt) {
+  iniciar(); focus_mover(&foco, 7, 0); andar(3, dt);
+  focus_mover(&foco, 0, 1); focus_mover(&foco, 4, 0); andar(4, dt);
+  focus_mover(&foco, 0, 1); focus_mover(&foco, 9, 0); andar(3, dt);
+  focus_mover(&foco, 0, -1); andar(2, dt);
+  focus_mover(&foco, 0, -1); assert(foco.coluna == 7);
+  andar((int)(4.0f / dt), dt); repouso();
+  assert(fabsf(scrollX[0] - 1460.0f) < 0.25f);
+  assert(fabsf(scrollX[1] - 560.0f) < 0.25f);
+  assert(fabsf(scrollX[2] - 2060.0f) < 0.25f);
+  memset(chamadas, 0, sizeof chamadas); andar(600, dt);
+  assert(chamadas[0] > 0 && chamadas[1] == 0 && chamadas[2] == 0);
+}
+static void modos(float dt) {
+  iniciar(); focus_mover(&foco, 13, 0); andar(4, dt); // Inclui o ultimo "Ver tudo".
+  focus_mover(&foco, 0, 1); motionReduzido = 1; passo(dt); repouso();
+  assert(fabsf(scrollX[0] - 3260.0f) < 0.25f);
+  iniciar(); focus_mover(&foco, 5, 0); andar(4, dt); focus_mover(&foco, 0, 1);
+  anim_politica_reduzida = 1; passo(dt); repouso();
+  iniciar(); foco.nColunas[1] = 0; focus_mover(&foco, 5, 0); andar(4, dt);
+  focus_mover(&foco, 0, 1); assert(foco.fileira == 2);
+  andar((int)(4.0f / dt), dt); repouso();
+  iniciar(); fileiras[0].tipo = FILEIRA_HEROI_DIVIDIDO;
+  focus_mover(&foco, 3, 0); andar(4, dt); focus_mover(&foco, 0, 1);
+  andar((int)(4.0f / dt), dt); repouso(); assert(fabsf(scrollX[0] - 1200.0f) < 0.25f);
+  iniciar(); fileiras[0].tipo = FILEIRA_PALCO;
+  focus_mover(&foco, 5, 0); andar(4, dt); focus_mover(&foco, 0, 1);
+  andar((int)(4.0f / dt), dt); repouso(); assert(fabsf(scrollX[0] - 860.0f) < 0.25f);
+  iniciar(); expFileira = 0; expColuna = 5; expAbre = 1.0f;
+  focus_mover(&foco, 5, 0); andar(4, dt); focus_mover(&foco, 0, 1);
+  andar((int)(4.0f / dt), dt); repouso(); assert(fabsf(scrollX[0] - 940.0f) < 0.25f);
+}
+static void toque(void) {
+#ifdef NV_TOUCH_UI
+  iniciar(); toqueLivreX[0] = 1; scrollX[0] = 135.0f;
+  focus_mover(&foco, 5, 0); andar(120, 1.0f/60.0f);
+  assert(scrollX[0] == 135.0f && velX[0] == 0.0f);
+  toqueLivreX[0] = 0; andar(240, 1.0f/60.0f);
+  assert(fabsf(scrollX[0] - 860.0f) < 0.25f);
+#endif
+}
+int main(void) {
+#ifdef SM_EXPECT_STALE
+  trocar_antes_de_assentar(1.0f/60.0f);
+#else
+  float tempos[] = {1.0f/30.0f, 1.0f/60.0f, 1.0f/120.0f, 0.1f};
+  for (unsigned i = 0; i < sizeof tempos/sizeof *tempos; i++) {
+    trocar_antes_de_assentar(tempos[i]); trocas_rapidas(tempos[i]); modos(tempos[i]);
+  }
+  toque();
+  puts("OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque");
+#endif
+}

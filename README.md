@@ -2,7 +2,8 @@
 
 > **Android TV ativo nesta branch:** o aplicativo nativo está em
 > [`legacy-source/`](./legacy-source), com pacote `com.streammax.tv`.
-> A versão 1.0.20 [retira as miniaturas ao avançar/voltar](./RELEASE-STREAMMAX-1.0.20.md), após o usuário cancelar o recurso no teste da TV.
+> A versão 1.0.21 [corrige a troca de fileiras na Home](./RELEASE-STREAMMAX-1.0.21.md).
+> Os frames do player seguem retirados, conforme a decisão da versão 1.0.20.
 > A compilação correspondente é `cd legacy-source && bash tools/android.sh --release-only`.
 > As instruções Kotlin abaixo pertencem à base anterior mantida como referência.
 

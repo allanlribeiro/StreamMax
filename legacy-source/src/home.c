@@ -3930,7 +3930,9 @@ static void home_atualizar_(float dt, Uint32 agora) {
 #ifdef NV_TOUCH_UI
     if (toqueLivreX[r]) scrollX[r] = anim_clamp(scrollX[r], 0.0f, toqueHomeMaxX(r));
 #endif
-    if (r == foco.fileira
+    // A fileira anterior precisa terminar a mola: velocidade antiga bloqueia
+    // o pre-carregamento vertical, mesmo quando a pessoa ja mudou de fileira.
+    if ((r == foco.fileira || velX[r] != 0.0f)
 #ifdef NV_TOUCH_UI
         && !toqueLivreX[r]
 #endif
@@ -3944,10 +3946,17 @@ static void home_atualizar_(float dt, Uint32 agora) {
       // `expAbre` so vale para a coluna que esta aberta: o alvo acompanha a
       // abertura enquanto ela acontece, e a fileira desliza junto em vez de
       // deixar o card crescer para fora da tela.
-      float abre = (r == expFileira && foco.coluna == expColuna) ? expAbre : 0.0f;
-      float alvo = alvoScrollFil(r, foco.coluna, scrollX[r], abre);
+      int col = r == foco.fileira ? foco.coluna : foco.colunaLembrada[r];
+      float abre = (r == expFileira && col == expColuna) ? expAbre : 0.0f;
+      float alvo = alvoScrollFil(r, col, scrollX[r], abre);
       scrollX[r] = anim_mola2_reduzida(&velX[r], scrollX[r], alvo, dt,
                                        NV_MOLA2_SCROLL, motionReduzido);
+      // Mesmo limiar do pre-carregamento. Encerra o trabalho residual fora
+      // do foco; o ajuste final e menor que um quarto de pixel de layout.
+      if (r != foco.fileira && fabsf(velX[r]) <= 0.25f &&
+          fabsf(scrollX[r] - alvo) <= 0.25f) {
+        scrollX[r] = alvo; velX[r] = 0.0f;
+      }
     }
   }
 

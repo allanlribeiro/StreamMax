@@ -1,5 +1,21 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — rolagem da Home (27/10/2026)
+
+- O usuário autorizou aplicar a correção se o teste isolado fosse bem-sucedido.
+  A baseline reproduziu velocidade antiga bloqueando o pré-carregamento; o
+  candidato passou antes de alterar a Home.
+- A 1.0.21, código 20028, conclui a mola das fileiras que perderam foco, usa a
+  coluna lembrada e encerra o trabalho residual após assentarem.
+- Testes com foco, geometria e molas reais: trocas rápidas, retorno, Ver tudo,
+  fileiras vazias, Herói dividido, Palco, expansão, toque, animações reduzidas,
+  30/60/120 Hz simulados e intervalo longo. ASan/UBSan aprovados.
+- Alteração concentrada na atualização horizontal. Layout, trailer, degradê e
+  retirada dos frames preservados. Cache/GPU/texto aguardam testes próprios.
+- Branch `fix/streammax-home-row-settle`; compilação e publicação em preparação.
+- Medição de FPS e teste físico na TCL P7K ainda pendentes.
+- Notas: [StreamMax 1.0.21](./RELEASE-STREAMMAX-1.0.21.md).
+
 ## Continuidade — retirada dos frames (27/10/2026)
 
 - O usuário informou que a 1.0.19 não passou no teste e cancelou a ideia dos frames.
