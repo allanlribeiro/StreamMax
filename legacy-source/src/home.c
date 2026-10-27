@@ -5226,6 +5226,12 @@ static void desenhaHero(Uint32 agora, float saida) {
   // trailer: ver home_trailer_passo).
   float aTrailer = (heroTrailerFade > 0.005f && heroTrailerItem == heroAtual &&
                     !heroTrailerNoCartao) ? heroTrailerFade : 0.0f;
+#ifdef NV_ANDROID
+  // O plano deixa de existir ao terminar/fechar. Nao dissolver contra uma
+  // superficie ja liberada: a foto volta inteira, sem um clarão preto.
+  if (!trailer_aberto() || trailer_dono() != TRAILER_DONO_HOME || !trailer_mostra_video())
+    aTrailer = 0.0f;
+#endif
   GfxRect furo = heroTrailerArea(r);
   if (furo.y + furo.h > NV_TELA_H) furo.h = NV_TELA_H - furo.y;
   if (furo.y < 0.0f) { furo.h += furo.y; furo.y = 0.0f; }
@@ -5318,7 +5324,7 @@ static void desenhaHero(Uint32 agora, float saida) {
   // Mesmas paradas lineares do ModernHeroGradientLayer original: 45%/82%
   // na faixa e 65%/64% no fundo inteiro. O miolo superior direito fica livre.
   if (aTrailer > 0.0f && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
-    gfx_furo_hero_suave(furo, aTrailer, modoHero == GFX_HERO_CHEIO);
+    gfx_furo_hero_suave(furo, anim_suave(aTrailer), modoHero == GFX_HERO_CHEIO);
   else if (aTrailer > 0.0f) gfx_furo_alfa(furo, aTrailer);
 #else
   if (aTrailer > 0.0f && aTrailer < 0.995f) gfx_furo_alfa(furo, aTrailer);

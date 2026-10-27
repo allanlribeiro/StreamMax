@@ -19,6 +19,8 @@ A caixa nativa na faixa é a já usada pela arte: `(555,0,1421,670)` no canvas 1
 
 O quad do destaque produz cor/alfa pré-multiplicados. Para progresso `a` e opacidade combinada do degradê `g`, o canvas fica `arte*(1-a) + fundo*(a*g)`, com alfa `(1-a)+a*g`. O compositor completa com `video*a*(1-g)`. Ao terminar, a foto não participa mais. Uma passagem, sem textura extra, blur, FBO ou segundo decoder.
 
+O progresso é suavizado com `anim_suave` na apresentação. Ao fechar o trailer ou transferi-lo para detalhes, a Home volta a desenhar a foto opaca imediatamente: não se mantém um buraco sobre uma superfície já liberada.
+
 ## Verificação
 
 - `streammax-hero-original.py`: extrai as funções reais da Home e do trailer e o shader/compositor reais de `gfx.c`.

@@ -33,7 +33,7 @@ assert "borda = 48.0f + 250.0f * NV_MENU_MODERNA_AUMENTO;" in aj
 assert "(NV_SHELF_TOP + 481.0f) * 0.75f" in home
 # Arte e trailer compartilham a caixa; proporcao da fonte nao a encolhe.
 assert "sm_trailer_hero_area" not in home
-assert "gfx_furo_hero_suave(furo, aTrailer, modoHero == GFX_HERO_CHEIO);" in home
+assert "gfx_furo_hero_suave(furo, anim_suave(aTrailer), modoHero == GFX_HERO_CHEIO);" in home
 assert "heroTrailerArea(heroArteRect)" in home
 # O foco e o raio continuam animados e ajustáveis; acabamento do card mais fino.
 assert "#define NV_HOME_ANEL_SUTIL 2.0f" in home
