@@ -1,5 +1,11 @@
 # StreamMax
 
+> **Android TV ativo nesta branch:** o aplicativo nativo está em
+> [`legacy-source/`](./legacy-source), com pacote `com.streammax.tv`.
+> A versão 1.0.19 acrescenta [miniaturas da própria fonte ao avançar/voltar](./MINIATURAS-DA-FONTE.md).
+> A compilação correspondente é `cd legacy-source && bash tools/android.sh --release-only`.
+> As instruções Kotlin abaixo pertencem à base anterior mantida como referência.
+
 **StreamMax** is an independently branded Android TV project based on the open-source [Nuvio TV](https://github.com/NuvioMedia/NuvioTV) application. It is under active development.
 
 The intended visual direction is **cinematic blue**: deep navy and black backgrounds, electric-blue/cyan accents, and subtle violet highlights. The project focuses on smooth remote-control navigation, **Continue Watching**, static artwork, and responsive performance on modest Android TV devices.

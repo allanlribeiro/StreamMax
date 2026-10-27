@@ -44,6 +44,8 @@ int main(int argc,char **argv){
   GLuint red=frame(2);assert(colors[red][0]>240&&colors[red][1]<10&&colors[red][2]<10);
   GLuint green=frame(12);assert(colors[green][0]<10&&colors[green][1]>240&&colors[green][2]<10);
   GLuint blue=frame(22);assert(colors[blue][0]<10&&colors[blue][1]<10&&colors[blue][2]>240);
+  GLuint strip[3];double times[3];assert(seekr_quadros(12,3,strip,times));
+  assert(strip[0]==red&&strip[1]==green&&strip[2]==blue&&times[0]==0&&times[1]==10&&times[2]==20);
   seekr_ocioso();pthread_mutex_lock(&trava);assert(!folhaSup&&jpgBytes);pthread_mutex_unlock(&trava);
   // Mesma fonte nao baixa a timeline novamente.
   unsigned g=geracao;seekr_fonte_pedir(media,"",auth);assert(geracao==g);
@@ -51,6 +53,14 @@ int main(int argc,char **argv){
   seekr_fonte_pedir(media,"/slow.vtt",auth);SDL_Delay(60);
   seekr_fonte_pedir(media,"/plain.vtt",auth);ready(SEEKR_PRONTO);
   red=frame(2);assert(colors[red][0]>240&&colors[red][2]<10);
+  seekr_fonte_pedir(media,"/slow-image.vtt",auth);ready(SEEKR_PRONTO);
+  GLuint pending;seekr_quadros(2,1,&pending,NULL);seekr_ocioso();
+  for(int k=0;k<1000;k++){
+    pthread_mutex_lock(&trava);int busy=emVoo;pthread_mutex_unlock(&trava);
+    if(!busy)break;
+    SDL_Delay(5);
+  }
+  pthread_mutex_lock(&trava);assert(!emVoo&&!folhaSup&&jpgBytes);pthread_mutex_unlock(&trava);
   seekr_fonte_pedir(media,"/bad-image.vtt",auth);ready(SEEKR_PRONTO);
   for(int k=0;k<100&&seekr_estado()==SEEKR_PRONTO;k++){GLuint t;seekr_quadros(2,1,&t,NULL);SDL_Delay(5);}
   assert(seekr_estado()==SEEKR_SEM_PREVIA);

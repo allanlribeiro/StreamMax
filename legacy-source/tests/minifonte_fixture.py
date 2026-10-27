@@ -44,14 +44,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             body = '#EXTM3U\n#EXT-X-IMAGE-STREAM-INF:BANDWIDTH=100,CODECS="png",RESOLUTION=320x180,URI="thumbs/index.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=9000\nvideo.m3u8\n'
         elif path == '/catalog/thumbs/index.m3u8':
             body = '#EXTM3U\n#EXT-X-IMAGES-ONLY\n#EXTINF:25,\n#EXT-X-TILES:RESOLUTION=320x180,LAYOUT=3x1,DURATION=10\nsheet.png\n#EXT-X-ENDLIST\n'
-        elif path in ('/catalog/thumbs/sheet.png', '/public/sheet.png'):
+        elif path in ('/catalog/thumbs/sheet.png', '/public/sheet.png', '/slow-sheet.png'):
+            if path == '/slow-sheet.png':
+                time.sleep(.3)
             body = image
-        elif path in ('/plain.vtt', '/public/frames.vtt', '/bad-image.vtt', '/slow.vtt'):
+        elif path in ('/plain.vtt', '/public/frames.vtt', '/bad-image.vtt', '/slow.vtt', '/slow-image.vtt'):
             if path == '/slow.vtt':
                 time.sleep(.4)
             target = 'broken.png' if path == '/bad-image.vtt' else '/catalog/thumbs/sheet.png'
             if path == '/public/frames.vtt':
                 target = 'sheet.png'
+            if path == '/slow-image.vtt':
+                target = '/slow-sheet.png'
             body = 'WEBVTT\n\n00:00.000 --> 00:10.000\n' + target + '#xywh=0,0,320,180\n'
         elif path == '/large.vtt':
             body = b'x' * (2 * 1024 * 1024 + 1)

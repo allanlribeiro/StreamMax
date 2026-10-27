@@ -63,5 +63,27 @@ int main(void) {
     minifonte_hls_imagens(noise,base,0,0,&v);seekr_vtt_liberar(&v);
     minifonte_imagem_tamanho((unsigned char*)noise,len,&w,&h);
   }
+  const char *samples[]={vtt,master,images,
+    "{\"behaviorHints\":{\"thumbnails\":{\"type\":\"vtt\",\"url\":\"frames.vtt\"}}}"};
+  for(size_t s=0;s<sizeof samples/sizeof *samples;s++){
+    size_t length=strlen(samples[s]);char *mutant=malloc(length+1);assert(mutant);
+    for(size_t cut=0;cut<=length;cut++){
+      memcpy(mutant,samples[s],cut);mutant[cut]=0;
+      minifonte_vtt(mutant,base,&v);seekr_vtt_liberar(&v);
+      minifonte_hls_indice(mutant,base,out,sizeof out,&w,&h);
+      minifonte_hls_imagens(mutant,base,320,180,&v);seekr_vtt_liberar(&v);
+      minifonte_metadados(mutant,mutant+cut,out,sizeof out);
+    }
+    for(int t=0;t<10000;t++){
+      memcpy(mutant,samples[s],length+1);state=state*1664525u+1013904223u;
+      size_t index=state%length;state=state*1664525u+1013904223u;
+      mutant[index]=(char)(1+state%126);
+      minifonte_vtt(mutant,base,&v);seekr_vtt_liberar(&v);
+      minifonte_hls_imagens(mutant,base,320,180,&v);seekr_vtt_liberar(&v);
+      minifonte_hls_indice(mutant,base,out,sizeof out,&w,&h);
+      minifonte_metadados(mutant,mutant+length,out,sizeof out);
+    }
+    free(mutant);
+  }
   puts("OK: URL, metadados, VTT, HLS, limites de imagem e entradas truncadas");
 }

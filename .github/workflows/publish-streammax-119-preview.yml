@@ -1,0 +1,111 @@
+name: Publicar APK de teste StreamMax 1.0.19 miniaturas
+on:
+  push:
+    branches: [feat/streammax-source-thumbnails]
+    paths: ['.github/workflows/publish-streammax-119-preview.yml']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: streammax-119-source-preview
+  cancel-in-progress: false
+jobs:
+  publicar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: allanlribeiro/StreamMax
+      TAG: v1.0.19-source-thumbnails-preview.1
+      BUILD_RUN: '40423258130'
+      BUILD_SHA: d5b2368942aeb0f44f9458616c78fe5363072910
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Conferir a compilacao aprovada
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/actions/runs/$BUILD_RUN --jq .conclusion)" = success
+          test "$(gh api repos/$GH_REPO/actions/runs/$BUILD_RUN --jq .head_sha)" = "$BUILD_SHA"
+          git merge-base --is-ancestor "$BUILD_SHA" HEAD
+          test -z "$(git diff --name-only "$BUILD_SHA" HEAD -- legacy-source/src legacy-source/android legacy-source/deploy legacy-source/tools)"
+      - name: Testes adicionais de entradas truncadas e memoria
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libsdl2-dev libsdl2-image-dev libgles-dev
+          SM_PLAYER_TESTS=1 SM_SANITIZERS=1 bash legacy-source/tests/streammax-source-thumbnails.sh
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: allanlribeiro/StreamMax
+          run-id: '40423258130'
+          name: StreamMax-1.0.19-Miniaturas-TESTE
+          path: pacote
+      - name: Verificar integridade, identidade e assinatura
+        run: |
+          set -euo pipefail
+          sha256sum --check pacote/SHA256.txt
+          grep -Fxq "Commit: $BUILD_SHA" pacote/BUILD-INFO.txt
+          apk=pacote/StreamMax-1.0.19-android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > badging.txt
+          grep -q "^package: name='com.streammax.tv'" badging.txt
+          grep -q "versionCode='20026'" badging.txt
+          grep -Fq "versionName='1.0.19'" badging.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk" > cert.txt
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          cert = re.findall(r'^Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)\s*$', Path('cert.txt').read_text(), re.M)
+          assert len(cert) == 1 and cert[0].lower() == 'a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5'
+          PY
+          cp MINIATURAS-DA-FONTE.md pacote/LEIA-ME.md
+          sed -i 's/Não publicado. Teste real na TCL pendente./Prévia para instalação manual. Teste real na TCL pendente./' pacote/BUILD-INFO.txt
+          rm pacote/SHA256.txt
+          (cd pacote && sha256sum *.apk LEIA-ME.md BUILD-INFO.txt > SHA256SUMS.txt)
+      - name: Preparar pagina de download
+        run: |
+          cat > notas.md <<'EOF'
+          APK Android de teste baseado no StreamMax 1.0.18, com miniaturas ao avançar e voltar fornecidas pela própria fonte.
+
+          - WebVTT declarado pelo addon e trilhas de imagens anunciadas em HLS VOD.
+          - Uma miniatura por padrão; faixa de três quadros opcional em Ajustes → Reprodução → Miniatura ao avançar.
+          - Imagens carregadas em segundo plano, cache limitado e cancelamento na troca de fonte.
+          - Sem chave do Seekr e sem abrir outro player para gerar imagens.
+
+          **Depende da fonte:** ela precisa publicar uma sequência de miniaturas compatível. Não se presume suporte no Torrentio, TorBox ou em todos os addons. Sem imagens, o avanço e o retorno funcionam normalmente.
+
+          A compilação das duas arquiteturas Android, os testes com servidor HTTP local, os recortes reais de imagens, o cancelamento e a análise de memória passaram. Teste físico na TCL P7K e com provedores reais ainda pendente.
+
+          Baixe **StreamMax-1.0.19-android.apk** em Assets abaixo e confirme a instalação na TV. Pacote `com.streammax.tv`, versionCode 20026 e mesma assinatura oficial. Esta é uma prévia para instalação manual; o canal estável de atualização automática continua na versão 1.0.18.
+
+          Código do APK: d5b2368942aeb0f44f9458616c78fe5363072910.
+          Compilação: https://github.com/allanlribeiro/StreamMax/actions/runs/40423258130.
+          EOF
+      - name: Publicar previa com arquivos verificados
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --json isDraft --jq .isDraft > existe.txt 2>/dev/null; then
+            test "$(cat existe.txt)" = true
+          else
+            gh release create "$TAG" --draft --prerelease --latest=false --target "$BUILD_SHA" \
+              --title 'StreamMax 1.0.19 — Miniaturas da fonte (teste)' --notes-file notas.md
+          fi
+          gh release upload "$TAG" pacote/* --clobber
+          rid="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '.[] | select(.tag_name == "v1.0.19-source-thumbnails-preview.1") | .id')"
+          test -n "$rid"
+          gh api "repos/$GH_REPO/releases/$rid" > release.json
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          release = json.load(open('release.json'))
+          assert release['draft'] is True and release['prerelease'] is True
+          assert release['tag_name'] == 'v1.0.19-source-thumbnails-preview.1'
+          assets = {a['name']: a for a in release['assets']}
+          for p in Path('pacote').iterdir():
+              a = assets[p.name]
+              assert a['state'] == 'uploaded' and a['size'] == p.stat().st_size
+              assert a['digest'] == 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()
+          PY
+          gh release edit "$TAG" --draft=false --prerelease --latest=false --notes-file notas.md
+          gh release view "$TAG" --json url,assets --jq '{url,arquivos:[.assets[]|{name,size}]}'

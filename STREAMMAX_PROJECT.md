@@ -1,5 +1,19 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — miniaturas da fonte (27/10/2026)
+
+- Projeto ativo: `legacy-source/`, Android `com.streammax.tv`, baseado no APK
+  estável StreamMax **1.0.18**. O Kotlin na raiz é referência histórica.
+- Branch: `feat/streammax-source-thumbnails`; implementação do APK em
+  `d5b2368942aeb0f44f9458616c78fe5363072910`, versão **1.0.19**, código **20026**.
+- O usuário escolheu usar miniaturas publicadas pela fonte. WebVTT declarado
+  pelo addon e HLS VOD com trilha de imagens usam o painel existente do player.
+- Seekr está fora do ar; a nova opção não depende de chave nem consulta essa API.
+- Testes locais passaram: parsers, ASan/UBSan, HTTP real com duas origens,
+  cancelamento, recortes RGB, faixa de três quadros e liberação da folha ao
+  encerrar o avanço. Teste físico na TCL e fontes reais ainda pendente.
+- Detalhes, formatos e limites: [MINIATURAS-DA-FONTE.md](./MINIATURAS-DA-FONTE.md).
+
 ## Diretriz de migração para Nuvio Native Legacy (17/10/2026)
 
 **Prioridade máxima:** desenvolver o StreamMax em cima da implementação Android de [iqui27/nuvio-native-legacy](https://github.com/iqui27/nuvio-native-legacy/tree/master/android), e não continuar usando o Nuvio original como base do novo APK. O código atual na branch `dev` fica preservado como referência/backup até haver um build funcional da nova base.
