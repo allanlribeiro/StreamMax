@@ -5,7 +5,7 @@
   "codigo_apk": "d5b2368942aeb0f44f9458616c78fe5363072910",
   "compilacao": "https://github.com/allanlribeiro/StreamMax/actions/runs/40423258130",
   "publicacao": "https://github.com/allanlribeiro/StreamMax/actions/runs/40424329590",
-  "pagina": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.19-source-thumbnails-preview.1",
+  "pagina": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.19",
   "arquivo": "StreamMax-1.0.19-android.apk",
   "bytes": 62491978,
   "digest": "sha256:cbdc86b315d2b52af7752af6e0f19dcff483653b292c25c48c0cb9bdc259086c",
@@ -24,6 +24,9 @@
   ],
   "tcl_real_testada": false,
   "provedores_reais_testados": false,
-  "canal": "previa manual",
-  "observacao": "Depende de timeline de miniaturas fornecida pelo provedor. Sem imagens compativeis, o avanco continua normal."
+  "canal": "atualizacao pelo aplicativo",
+  "observacao": "Depende de timeline de miniaturas fornecida pelo provedor. Sem imagens compativeis, o avanco continua normal.",
+  "pagina_previa": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.19-source-thumbnails-preview.1",
+  "publicacao_ota": "https://github.com/allanlribeiro/StreamMax/actions/runs/40425081729",
+  "atualizador_1_0_18_validado_com_json_publico": true
 }
