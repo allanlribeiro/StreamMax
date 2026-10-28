@@ -4,7 +4,7 @@
 
 - Pedido: usar a referencia panoramica web enviada, como opcao chamada
   **Globoplay**, sem substituir a Home nem os layouts anteriores.
-- Branch `feat/streammax-globoplay-home`; preparando 1.0.26 / 20033 / 2.0.33.
+- Branch `feat/streammax-globoplay-home`; 1.0.26 / 20033 / 2.0.33 publicada.
 - Enum acrescentado no fim: Moderna=0, Padrao=1, Dinamica=2, Globoplay=3.
   Preferencia local `homeLayoutLocal` e padrao anterior preservados.
 - Carrossel central arredondado, vizinhos estaticos, copia no painel,
@@ -12,7 +12,12 @@
 - Testes locais do shader, controle, mola, preferencias e abertura;
   previa da Moderna comparada byte a byte com a 1.0.25.
 - [Previa, implementacao e limites](./docs/globoplay-home/README.md).
-- Compilacao/assinatura/publicacao da atualizacao e teste fisico pendentes.
+- Compilado, assinado e publicado: [1.0.26](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.26).
+- Fonte `fe95472d92b07786c8067143410e8ee95b9f1b1d`; workflow `40692882200`, dois jobs aprovados.
+- APK 62.481.578 bytes, SHA-256 `247869bf97bdb7202c96fc70f4c00482c76af3a357983a162702a146e541a4e2`.
+- Opcao/shader nos dois ABIs, assinatura, JNI e atualizador instalado na
+  1.0.25 conferidos com o JSON publico. [Registro](./docs/globoplay-home/VALIDACAO-1.0.26.json).
+- Navegacao completa/visual na TCL e FPS ainda pendentes.
 
 ## Continuidade — liberacao do Hero aprovado (28/10/2026)
 

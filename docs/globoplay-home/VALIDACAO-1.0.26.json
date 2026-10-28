@@ -1,0 +1,76 @@
+{
+  "version": "1.0.26",
+  "version_code": 20033,
+  "internal_version": "2.0.33",
+  "package": "com.streammax.tv",
+  "source_commit": "fe95472d92b07786c8067143410e8ee95b9f1b1d",
+  "branch": "feat/streammax-globoplay-home",
+  "layout": {
+    "name": "Globoplay",
+    "value": 3,
+    "previous_values": {
+      "Moderna": 0,
+      "Padrao": 1,
+      "Dinamica": 2
+    },
+    "default_unchanged": true,
+    "local_key": "homeLayoutLocal",
+    "path": "Ajustes → Tela inicial → Layout da home → Globoplay"
+  },
+  "release": {
+    "page": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.26",
+    "latest": "v1.0.26",
+    "draft": false,
+    "prerelease": false,
+    "apk_url": "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.26/StreamMax-1.0.26-android.apk",
+    "apk_bytes": 62481578,
+    "apk_sha256": "247869bf97bdb7202c96fc70f4c00482c76af3a357983a162702a146e541a4e2",
+    "signer_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ],
+    "min_sdk": 24,
+    "target_sdk": 35
+  },
+  "workflow": {
+    "id": 40692882200,
+    "url": "https://github.com/allanlribeiro/StreamMax/actions/runs/40692882200",
+    "conclusion": "success",
+    "jobs": {
+      "native-apk": {
+        "id": 122831947849,
+        "conclusion": "success"
+      },
+      "publicar": {
+        "id": 122836715907,
+        "conclusion": "success"
+      }
+    }
+  },
+  "artifact": {
+    "id": 12817394850,
+    "name": "StreamMax-1.0.26-Globoplay-Home",
+    "zip_bytes": 57537221,
+    "zip_sha256": "5115893a78d46c02f16530a66632b46489e966b83cc3e56f8e74f78e57a55696"
+  },
+  "checks": {
+    "new_renderer": "actual new C draw functions and complete gfx.c, controlled catalogue/input dependencies, still-image video composition; scales 85-150%, smooth alpha ramps, no old photo leakage, opaque corners",
+    "navigation": "actual Hero D-pad block, hero intention/step and vertical spring; consecutive presses, bounds, empty row, simulated 30/60/120Hz settling; correct focus item publication",
+    "settings": "complete ajustes.c with section GC and controlled external dependencies; 4 options, old indices/default unchanged, all menu states, local scope; ASan/UBSan",
+    "old_moderna_preview": "same PNG bytes as approved 1.0.25 demonstration screenshot; not an exhaustive all-layout screenshot comparison",
+    "trailer_opening": "complete trailer.c, Moderna and Globoplay, cold/hot, initial atomic COVER, late dimensions and card/detail ownership; ASan/UBSan",
+    "existing_renderer_and_horizontal_scroll": "passed",
+    "addons_iptv_watchnext_no_frames": "CI passed",
+    "signature_identity_integrity": "verified locally; downloaded artifact APK digest/size match public release asset; official signer",
+    "compiled_feature": "Globoplay option string and globoEase shader present in both libmain.so ABIs",
+    "compiled_jni": "method and exact signature in DEX and both ABIs",
+    "installed_1_0_25_updater": "passed against actual public JSON, exact URL and digest of APK",
+    "auth": "static contracts and public backend health; no real account login test"
+  },
+  "limits": [
+    "No physical TCL P7K test, full UI emulator run or measured FPS.",
+    "Preview content/text/top bar/rows are controlled demonstration fixtures; panel/carousel runs actual production C and GLES.",
+    "Settings test does not execute complete preference-file load or real account synchronization."
+  ]
+}

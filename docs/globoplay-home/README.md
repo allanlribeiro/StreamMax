@@ -58,5 +58,12 @@ Nao houve medicao de FPS nem teste fisico na TCL. Os testes de entrada e
 catalogo usam dependencias controladas, nao emulam o compositor MediaCodec.
 Os controles no aparelho e a aparencia final precisam de confirmacao na TV.
 
-Branch `feat/streammax-globoplay-home`; preparando 1.0.26, codigo 20033.
-O registro de publicacao e integridade sera acrescentado apos o APK verificado.
+Branch `feat/streammax-globoplay-home`; **1.0.26 / codigo 20033 publicada**.
+APK assinado com a chave oficial e presente no canal de atualizacao do app.
+Atualizador da 1.0.25, codigo do novo layout nos dois ABIs e ponte JNI conferidos
+localmente com o JSON publico e o APK real.
+
+[Pagina da versao](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.26)
+· [Registro de validacao](VALIDACAO-1.0.26.json)
+
+Confirmacao visual, navegacao completa e desempenho fisico continuam pendentes.
