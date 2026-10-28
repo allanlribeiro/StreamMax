@@ -3,14 +3,19 @@
 ## Continuidade — liberacao do Hero aprovado (28/10/2026)
 
 - O usuario aprovou a previa e autorizou prosseguir com a nova versao.
-- Branch `feat/streammax-hero-height`: preparando StreamMax 1.0.25,
+- Branch `feat/streammax-hero-height`: StreamMax 1.0.25,
   codigo Android 20032, versao interna Legacy 2.0.32.
 - O layout e o enquadramento sao os mesmos do commit aprovado `2b03bea`.
   Nesta etapa, ajustes de versao, compilacao, assinatura e distribuicao OTA.
 - Workflow `streammax-125-hero-height.yml` verifica pacote, assinatura oficial,
   ponte JNI e o atualizador realmente instalado na 1.0.24 antes/depois da
   publicacao. Sem alteracoes em conta, codecs, addons ou logo.
-- Confirmacao de publicacao, hash do APK e teste na TCL ainda pendentes.
+- Compilado, assinado e publicado no canal do app: [1.0.25](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.25).
+- Fonte `6f142be885ccc140bb33e61f5768bf5b759c8d6c`; run `40684220938`, ambos jobs aprovados.
+- APK 62.473.102 bytes, SHA-256 `022199f92518b551fae6eae1f2601ec3f611e1a905e2c2282b00650c626faa0f`.
+- Assinatura oficial, JNI e atualizador instalado na 1.0.24 conferidos localmente
+  contra o JSON publico real. [Validacao](./docs/hero-altura-15/VALIDACAO-1.0.25.json).
+- Confirmacao visual na TCL e FPS continuam pendentes.
 
 ## Continuidade — Hero 15% mais alto e previa (28/10/2026)
 
@@ -27,7 +32,7 @@
   locais passaram. FPS e dispositivo fisico nao foram medidos.
 - Previa tecnica com funcoes/shader reais e conteudo estatico demonstrativo,
   nao captura completa do app nem foto da TV: [imagens e limites](./docs/hero-altura-15/README.md).
-- Sem APK/OTA novo nesta etapa; versao distribuida continua 1.0.24.
+- Na etapa de previa nao foi publicado APK; a liberacao posterior esta registrada acima.
 
 ## Continuidade — abertura do trailer após novo teste da TCL (27/10/2026)
 

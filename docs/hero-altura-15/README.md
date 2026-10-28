@@ -78,7 +78,13 @@ parametros SM_CFLAGS/SM_GL_LIBS permitem os headers/bibliotecas do ambiente.
 
 ## Distribuicao
 
-Mudanca salva na branch `feat/streammax-hero-height`, para o pedido de testes
-e previa. **Nenhum novo APK ou OTA foi publicado nesta etapa**; a ultima versao
-distribuida continua 1.0.24. Faltam compilacao Android da nova revisao,
-confirmacao visual na TCL e medicao fisica de desempenho.
+A previa foi aprovada e a **1.0.25** foi compilada, assinada com a chave oficial
+e publicada no canal de atualizacao do aplicativo. Codigo Android 20032.
+O layout e o enquadramento permanecem identicos ao commit aprovado `2b03bea`.
+
+[Pagina da versao](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.25)
+· [Registro da validacao](VALIDACAO-1.0.25.json)
+
+Conferidos localmente o APK, a ponte JNI nos dois ABIs e o atualizador que esta
+instalado na 1.0.24, usando o JSON publico real. Na TV: Ajustes → Sobre e ajuda
+→ Procurar atualizacao. Confirmacao visual na TCL e FPS ainda pendentes.
