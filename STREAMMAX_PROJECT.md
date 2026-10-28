@@ -1,5 +1,17 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — liberacao do Hero aprovado (28/10/2026)
+
+- O usuario aprovou a previa e autorizou prosseguir com a nova versao.
+- Branch `feat/streammax-hero-height`: preparando StreamMax 1.0.25,
+  codigo Android 20032, versao interna Legacy 2.0.32.
+- O layout e o enquadramento sao os mesmos do commit aprovado `2b03bea`.
+  Nesta etapa, ajustes de versao, compilacao, assinatura e distribuicao OTA.
+- Workflow `streammax-125-hero-height.yml` verifica pacote, assinatura oficial,
+  ponte JNI e o atualizador realmente instalado na 1.0.24 antes/depois da
+  publicacao. Sem alteracoes em conta, codecs, addons ou logo.
+- Confirmacao de publicacao, hash do APK e teste na TCL ainda pendentes.
+
 ## Continuidade — Hero 15% mais alto e previa (28/10/2026)
 
 - O usuario aprovou o degrade da 1.0.24 e pediu testes de mais altura para
