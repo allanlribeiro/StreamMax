@@ -717,6 +717,10 @@ static int homeCinematicaTV(void) {
 #endif
 }
 static float homeShelfTop(void) {
+  // +15% de altura util (ate o topo dos cartazes), somente com Hero na TV.
+  // O cabecalho continua com 48 px; tamanho dos cards e molas nao mudam.
+  if (homeCinematicaTV() && ajustes_hero_ligado())
+    return (378.0f + 48.0f) * 1.15f - 48.0f;
   return homeCinematicaTV() ? 378.0f : NV_SHELF_TOP;
 }
 static float homeCabecalhoH(void) {
@@ -4711,6 +4715,11 @@ static GfxRect heroTrailerArea(GfxRect arte) {
 static GfxRect heroTrailerVideoRect(GfxRect r) {
 #ifdef NV_ANDROID
   if (homeCinematicaTV()) {
+    // Enquadrar no espaco realmente visivel, com a reserva do foco no Hero.
+    // A caixa antiga de 670 px centralizava o filme atras dos cartazes.
+    // A mascara continua maior: fecha a foto tambem abaixo do video.
+    float altura = homeShelfTop() + homeCabecalhoH() + empurraHeroModerna();
+    r.h = fminf(r.h, altura);
     float s = gfx_escala_txt();
     r.x *= s; r.y *= s; r.w *= s; r.h *= s;
   }

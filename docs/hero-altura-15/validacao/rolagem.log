@@ -1,0 +1,8 @@
+Android=False toque=False baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque
+Android=False toque=True baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque
+Android=True toque=False baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque
+Android=True toque=True baseline=False
+OK: troca, retorno, colunas lembradas, repouso sem trabalho residual, modos e toque

@@ -38,7 +38,8 @@ with tempfile.TemporaryDirectory(prefix='streammax-trailer-edges-') as tmp:
     gfx = Path(baseline).resolve() if baseline else ROOT/'src/gfx.c'
     template = (ROOT/'tests/test_trailer_edges_renderer.c.in').read_text()
     template = template.replace('/* REAL_GFX */', '#include "'+str(gfx)+'"')
-    funcs='\n'.join(function(home,n) for n in ['heroTrailerArea','heroTrailerVideoRect','heroTrailerBase'])
+    funcs='\n'.join(function(home,n) for n in ['homeCinematicaTV','homeShelfTop','homeCabecalhoH',
+        'empurraHeroModerna','heroTrailerArea','heroTrailerVideoRect','heroTrailerBase'])
     template=template.replace('/* REAL_HOME */', funcs)
     template=template.replace('/* REAL_VIDEO_WINDOW */', '\n'.join(function(video,n) for n in ['video_android_janela_preencher','video_recorte_reaplicar']))
     template=template.replace('/* REAL_TRAILER_WINDOW */',function(trailer,'nativoJanela')+'\n'+function(trailer,'trailer_mostra_video'))

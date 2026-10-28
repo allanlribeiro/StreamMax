@@ -14,7 +14,28 @@ static void geometria(void) {
     assert(vx <= x + 0.01f && vy <= 0.01f);
     assert(vx+vw >= x+w-0.01f && vy+vh >= h-0.01f);
     assert(fabsf(vw/vh-asp) < 0.001f);  // Uniform scale: never squeeze or stretch.
-    assert(fabsf(vw / fmaxf(w,h*asp) - 1.35f) < 0.001f);
+    assert(vw / fmaxf(w,h*asp) >= 1.019f);
+    // Um quadro 16:9 com barras embutidas de ate 2.40:1 continua coberto.
+    if (asp >= 1.70f && asp <= 1.85f) assert(vw/2.40f >= h);
+    // A caixa larga nao precisa da ampliacao fixa antiga de 35%.
+    assert(vw < fmaxf(w,h*asp) * 1.35f);
+  }
+  // Marco no terco inferior: antes ficava atras da fileira/veu; agora fica
+  // acima do inicio do degrade. Prova ganho de conteudo, nao so caixa maior.
+  float x,y,w,h;
+  sm_trailer_hero_video(537.6f,0,1382.4f,513.9f,1920,1080,&x,&y,&w,&h);
+  float marcoNovo=y+h*.60f;
+  float hAntigo=1382.4f*1.35f/(16.0f/9.0f);
+  float marcoAntigo=(670-hAntigo)*.5f+hAntigo*.60f;
+  assert(marcoNovo < 489.9f-144.0f);
+  assert(marcoAntigo > 426.0f-426.0f*.30f);
+  // Escalas diferentes: cover uniforme sem descobrir bordas, inclusive
+  // fontes de cinema, quadradas, verticais e metadata ainda desconhecida.
+  for (int scale=85;scale<=150;scale+=5) for (unsigned i=0;i<5;i++) {
+    float altura=513.9f*scale/100;
+    sm_trailer_hero_video(537.6f,0,1382.4f,altura,tamanhos[i][0],tamanhos[i][1],&x,&y,&w,&h);
+    assert(x<=538 && x+w>=1920 && y<=0 && y+h>=altura);
+    if (i==0 || i==4) assert(h*(16.0f/9.0f)/2.40f >= altura);
   }
   for (int hz=30; hz<=120; hz*=2) {
     float a=0;

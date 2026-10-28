@@ -42,7 +42,7 @@ void video_bombear(void){}
 int video_falhou(void){return 0;}
 int video_terminou(void){return 0;}
 int video_conflito_recurso(void){return 0;}
-static const GfxRect box={537.6f,0,1382.4f,670};
+static const GfxRect box={537.6f,0,1382.4f,513.9f};
 int main(void) {
 #ifdef SM_TRAILER_BASELINE
  trailer_no_cartao(0);trailer_abrir("https://test/trailer.mp4",box,0,0);

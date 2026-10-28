@@ -1,5 +1,22 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — Hero 15% mais alto e previa (28/10/2026)
+
+- O usuario aprovou o degrade da 1.0.24 e pediu testes de mais altura para
+  revelar a parte inferior do trailer, com envio de imagens.
+- Branch `feat/streammax-hero-height`: Home Moderna Android TV com Hero ligado
+  ganha 15% de altura ate os cartazes (426 -> 489,9); player enquadrado na area
+  visivel (513,9 incluindo reserva de foco), mantendo mascara maior.
+- Zoom fixo de 35% substituido por margem minima de 2%, com cobertura
+  adicional para fontes ~16:9 com barras de cinema embutidas ate 2.40:1.
+  Heuristica de proporcao, nao deteccao de pixels. Demais destinos preservados.
+- Renderizador completo em escalas 85-150%, abertura com ASan/UBSan,
+  geometria/fontes, rolagem horizontal com sanitizadores e demais verificacoes
+  locais passaram. FPS e dispositivo fisico nao foram medidos.
+- Previa tecnica com funcoes/shader reais e conteudo estatico demonstrativo,
+  nao captura completa do app nem foto da TV: [imagens e limites](./docs/hero-altura-15/README.md).
+- Sem APK/OTA novo nesta etapa; versao distribuida continua 1.0.24.
+
 ## Continuidade — abertura do trailer após novo teste da TCL (27/10/2026)
 
 - O usuário informou que a 1.0.23 ainda não resolveu o enquadramento.

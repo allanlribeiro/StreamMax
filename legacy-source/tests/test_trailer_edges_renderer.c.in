@@ -14,7 +14,9 @@ int ajustes_vidro_fosco(void){return 0;}
 int ajustes_vidro(void){return 0;}
 int ajustes_vidro_qualidade(void){return 0;}
 float nv_layout_w=1920,nv_layout_h=1080;
-static int layoutEscolhido,mobile,dono,noCartao,cheia,aberto,quadro,vw=1920,vh=1080,janelaModo;
+// Controles mutaveis do driver, inclusive sob IPA no GCC 14 em TU unica.
+static volatile int layoutEscolhido,mobile,heroLigado=1;
+static int dono,noCartao,cheia,aberto,quadro,vw=1920,vh=1080,janelaModo;
 static GfxRect janela;
 static int ultX,ultY,ultW,ultH,ultModo,temUlt;
 static float scrollY;
@@ -29,9 +31,9 @@ void video_janela(int x,int y,int w,int h){janelaModo=1;janela=(GfxRect){x,y,w,h
 static void janelaSeMudou(int x,int y,int w,int h,int modo){janelaModo=modo;janela=(GfxRect){x,y,w,h};}
 static void janelaKt(int x,int y,int w,int h,int modo){janelaSeMudou(x,y,w,h,modo);}
 /* REAL_VIDEO_WINDOW */
-static int homeCinematicaTV(void){return layoutEscolhido==HOME_LAYOUT_MODERNA&&!mobile;}
-static float homeShelfTop(void){return 378;}
-static float homeCabecalhoH(void){return 48;}
+int ajustes_hero_ligado(void){return heroLigado;}
+static int homeRetratoTelefone(void){return 0;}
+static int heroCompactoTelefone(void){return 0;}
 /* REAL_HOME */
 /* REAL_TRAILER_WINDOW */
 enum { W=1280,H=720 };
@@ -56,15 +58,22 @@ int main(void) {
  assert(alpha(1100,282)<8);
  puts("REPRODUZIDO 1.0.22: video ainda totalmente visivel na linha dos cartazes; degrade so termina abaixo deles");
 #else
+ layoutEscolhido=HOME_LAYOUT_MODERNA;
+ assert(fabsf(homeShelfTop()+homeCabecalhoH()-426.0f*1.15f)<.01f);
+ heroLigado=0;assert(homeShelfTop()==378);heroLigado=1;
+ mobile=1;assert(homeShelfTop()==NV_SHELF_TOP);mobile=0;
+ layoutEscolhido=HOME_LAYOUT_PADRAO;assert(homeShelfTop()==NV_SHELF_TOP);
+ layoutEscolhido=HOME_LAYOUT_MODERNA;
  const float scales[]={.85f,.95f,1,1.05f,1.10f,1.25f,1.50f};
  for(unsigned s=0;s<sizeof scales/sizeof scales[0];s++) {
   gfx_escala_txt_definir(scales[s]);float scale=gfx_escala_txt();gfx_escala_sair(scale);
   for(int hero=0;hero<2;hero++) {
-   scrollY=hero?-144:0;
+   scrollY=hero?-empurraHeroModerna():0;
    GfxRect box=heroTrailerArea((GfxRect){555,0,1421,670});
    GfxRect plane=heroTrailerVideoRect(box);
    assert(fabsf(plane.x+plane.w-1920)<.01f);
-   assert(fabsf(plane.x-box.x*scale)<.01f && fabsf(plane.h-box.h*scale)<.01f);
+   assert(fabsf(plane.x-box.x*scale)<.01f);
+   assert(plane.h<=box.h*scale && plane.h>=heroTrailerBase()*scale-.01f);
    float base=fminf(heroTrailerBase(),box.y+box.h);
    int bottom=(int)ceilf(base*scale*H/1080);
    if(bottom>=H)bottom=H-1;
@@ -72,6 +81,10 @@ int main(void) {
    // Direita limpa ate a borda; abaixo da transicao, fundo opaco.
    assert(alpha(W-1,60)<3);
    assert(alpha(1100,bottom)>250);
+   // A foto antiga nao reaparece abaixo da caixa menor do player.
+   int planeBottom=(int)ceilf(plane.h*H/1080);
+   int maskBottom=(int)(box.h*scale*H/1080);
+   for(int y=planeBottom;y<maskBottom&&y<H;y++)assert(alpha(1100,y)>250);
    int clearY=(int)(base*.60f*scale*H/1080);
    assert(alpha(1100,clearY)<3);
    // Borda esquerda fecha e abre de forma monotona, com valores intermediarios.

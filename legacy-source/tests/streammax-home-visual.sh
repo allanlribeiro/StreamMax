@@ -19,6 +19,8 @@ assert "FILEIRA_CONTINUE" in home and "continuar_desenhar" in home
 # O layout TV fica mais compacto sem mudar a geometria antiga do celular.
 assert "#define NV_HOME_HERO_EMPURRA 144.0f" in layout
 assert "return homeCinematicaTV() ? 378.0f : NV_SHELF_TOP;" in home
+assert "if (homeCinematicaTV() && ajustes_hero_ligado())" in home
+assert "return (378.0f + 48.0f) * 1.15f - 48.0f;" in home
 assert "return homeCinematicaTV() ? 48.0f : NV_LEGACY_ROW_HEAD_H;" in home
 assert "if (homeCinematicaTV()) return 24.0f;" in home
 assert "if (homeCinematicaTV()) return 36.0f;" in home
