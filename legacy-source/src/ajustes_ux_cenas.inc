@@ -115,6 +115,15 @@ static void ajcHome(const AjcHome *o) {
       ajc_barras(HX(cx + 30), HY(90), 160 * k, 2, o->hero);
     }
     fy = 186 - 150 * (1 - o->hero);
+  } else if(o->layout==HOME_LAYOUT_GLOBOPLAY){
+    if(o->hero>.01f){
+      ajc_cartaz(HX(64),HY(36),512*k,222*k,4,o->hero);
+      ajc_cartaz(HX(586),HY(36),512*k,222*k,5,.6f*o->hero);
+      ajc_veu(HX(64),HY(36),280*k,222*k,2,.95f*o->hero);
+      ajc_ret(HX(82),HY(168),146*k,16*k,4*k,1,1,1,o->hero);
+      ajc_barras(HX(82),HY(194),188*k,2,o->hero);
+    }
+    fy=280-240*(1-o->hero);
   } else {   // Dinamica (Apple TV): o cartao grande em foco e a faixa de numeros
     if (o->hero > 0.01f) {
       ajc_cartaz(HX(cx + 10), HY(20), 330 * k, 168 * k, 2, o->hero);
@@ -166,7 +175,7 @@ static void ajcHome(const AjcHome *o) {
 }
 static AjcHome ajcHomePadrao(void) {
   AjcHome o;
-  o.layout = valor[AJ_HOME_LAYOUT] >= 0 && valor[AJ_HOME_LAYOUT] < 3 ? valor[AJ_HOME_LAYOUT] : 0;
+  o.layout = valor[AJ_HOME_LAYOUT] >= 0 && valor[AJ_HOME_LAYOUT] < HOME_LAYOUT_N ? valor[AJ_HOME_LAYOUT] : 0;
   o.hero = ajcLig(AJ_HERO); o.heroCheio = 0; o.paisagem = ajcLig(AJ_LANDSCAPE);
   o.rail = 1; o.railVidro = ajcLig(AJ_RAIL_BLUR); o.cw = 0;
   o.focoAnda = (float)ajc_passo(1.2f, 4) - 1.0f + ajc_passo_t(1.2f);
@@ -179,8 +188,8 @@ static AjcHome ajcHomePadrao(void) {
 // Tres diagramas de layout lado a lado; o atual no acento.
 static void ajcCenaLayouts(void) {
   int i, atual = (int)(ajcValor(AJ_HOME_LAYOUT) + 0.5f);
-  for (i = 0; i < 3; i++) {
-    float x = 24 + i * 204, y = 70, w = 184, h = 103.5f;
+  for (i = 0; i < HOME_LAYOUT_N; i++) {
+    float x = 24 + i * 154, y = 90, w = 136, h = 76.5f;
     AjcHome o = ajcHomePadrao();
     o.layout = i; o.hero = 1; o.rail = 1;
     o.focoAnda = i == atual ? o.focoAnda : -1;

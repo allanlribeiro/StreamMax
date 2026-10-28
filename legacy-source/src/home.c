@@ -4,6 +4,7 @@
 // infraestrutura nativa cuida de cache assíncrono, foco e transições.
 #include "home.h"
 #include "trailerhero.h"
+#include "globoplayhome.h"
 #include "perfis.h"
 #include "botoes.h"
 #include "cwretido.h"
@@ -734,6 +735,7 @@ static int homeRetratoTelefone(void) {
 #endif
 }
 static float homeConteudoX(void) {
+  if(layoutHome()==HOME_LAYOUT_GLOBOPLAY)return sm_globo_home(NV_TELA_W,NV_TELA_H).x;
   // Retrato usa a barra como camada. Se ainda houver uma rail visivel,
   // espelha sua reserva para centralizar sem desenhar por baixo dela.
   if (homeRetratoTelefone())
@@ -741,6 +743,7 @@ static float homeConteudoX(void) {
   return ajustes_conteudo_x();
 }
 static float homeMargemDireita(void) {
+  if(layoutHome()==HOME_LAYOUT_GLOBOPLAY)return sm_globo_home(NV_TELA_W,NV_TELA_H).x;
   return homeRetratoTelefone() ? homeConteudoX() : NV_HOME_SAFE_RIGHT;
 }
 static float homeConteudoDireita(void) { return NV_TELA_W - homeMargemDireita(); }
@@ -807,6 +810,7 @@ static float topoFileiras(void) {
     case HOME_LAYOUT_PADRAO:
       return heroOn ? NV_PAD_TOPO_FIL : NV_DIN_TOPO_FIL - 10.0f;
     case HOME_LAYOUT_DINAMICA: return NV_DIN_TOPO_FIL;
+    case HOME_LAYOUT_GLOBOPLAY: return heroOn ? 240.0f : 132.0f;
     default:                   return homeShelfTop();
   }
 }
@@ -829,6 +833,7 @@ static float corteFileiras(void) {
     case HOME_LAYOUT_PADRAO:
       return ajustes_hero_ligado() ? NV_PAD_BANNER_Y + NV_PAD_BANNER_H + 8.0f : 0.0f;
     case HOME_LAYOUT_DINAMICA: return 0.0f;
+    case HOME_LAYOUT_GLOBOPLAY: return 132.0f;
     default:                   return homeShelfTop() - (heroCompactoTelefone() ? 0.0f : 96.0f);
   }
 }
@@ -841,6 +846,7 @@ static float empurraHero(void) {
   if (homeRetratoTelefone() && !heroOn) return 0.0f;
   switch (layoutHome()) {
     case HOME_LAYOUT_PADRAO:   return 0.0f;
+    case HOME_LAYOUT_GLOBOPLAY: return heroOn ? sm_globo_home(NV_TELA_W,NV_TELA_H).push : 0.0f;
     case HOME_LAYOUT_DINAMICA: return heroOn ? repousoFileirasDin() - NV_DIN_TOPO_FIL : 0.0f;
     default:                   return empurraHeroModerna();
   }
@@ -4186,6 +4192,7 @@ int home_streaming_barra(const int **pastas) {
 float home_topo_fracao(void) {
   float f;
   // Barra no topo (#461): so com o foco no destaque, como a pilula na pagina rolada.
+  if (layoutHome() == HOME_LAYOUT_GLOBOPLAY) return 1.0f;
   if (layoutHome() != HOME_LAYOUT_DINAMICA) return ajustes_menu_topo() ? (float)focoHero : 1.0f;
   f = 1.0f + dinHeroY() / 140.0f;
   return f < 0.0f ? 0.0f : (f > 1.0f ? 1.0f : f);
@@ -4195,6 +4202,7 @@ void home_hero_rect(float *x, float *y, float *w, float *h) {
   GfxRect r = heroArteRect;
   // Dinamica com o destaque ja rolado para fora: a pagina do titulo cresce a
   // partir do CARTAO que abriu, e nao de uma faixa que ninguem ve.
+  if (layoutHome()==HOME_LAYOUT_GLOBOPLAY && !focoHero && temItemFoco) r=itemFoco.rect;
   if (layoutHome() == HOME_LAYOUT_DINAMICA && -dinHeroY() >= NV_DIN_ARTE_FADE_B - 60.0f && temItemFoco)
     r = itemFoco.rect;
   *x = r.x; *y = r.y; *w = r.w; *h = r.h;
@@ -4351,6 +4359,7 @@ static void desenhaPontosHero(float xDir, float yc, int n, int atual, float a) {
 // desenho e pelos pedidos antecipados (heroPedirLogo): o MESMO teto cai no
 // MESMO item do cache, sem promocao nem segundo decode.
 static float heroLogoMaxW(int lay, int cheio) {
+  if (lay == HOME_LAYOUT_GLOBOPLAY) return fminf(540.0f,sm_globo_home(NV_TELA_W,NV_TELA_H).w*.36f);
   if (lay == HOME_LAYOUT_PADRAO) return homeTextoLargura(NV_PAD_LOGO_MAX_W);
   if (lay == HOME_LAYOUT_DINAMICA) return homeTextoLargura(NV_DIN_LOGO_MAX_W);
   return homeTextoLargura(cheio ? NV_LOGO_HERO_CHEIO_MAX_W : NV_LOGO_HERO_MAX_W);
@@ -4524,6 +4533,7 @@ static float desenhaCopiaHero(const CatItem *ci, int principal, float x,
   // Padrão has a shorter banner: fit the logo into the measured remaining
   // space when every real information line exists, including a caption.
   float minTop = 24.0f;
+  if(lay==HOME_LAYOUT_GLOBOPLAY) minTop=base-sm_globo_home(NV_TELA_W,NV_TELA_H).h+104.0f;
   if (lay == HOME_LAYOUT_PADRAO)
     minTop = base - (NV_PAD_BANNER_H - NV_PAD_TEXTO_BASE) + 24.0f;
   else if (lay == HOME_LAYOUT_DINAMICA)
@@ -4714,6 +4724,7 @@ static GfxRect heroTrailerArea(GfxRect arte) {
 }
 static GfxRect heroTrailerVideoRect(GfxRect r) {
 #ifdef NV_ANDROID
+  if(layoutHome()==HOME_LAYOUT_GLOBOPLAY){float s=gfx_escala_txt();return (GfxRect){r.x*s,r.y*s,r.w*s,r.h*s};}
   if (homeCinematicaTV()) {
     // Enquadrar no espaco realmente visivel, com a reserva do foco no Hero.
     // A caixa antiga de 670 px centralizava o filme atras dos cartazes.
@@ -4732,6 +4743,10 @@ static float heroTrailerBase(void) {
   return homeShelfTop() + homeCabecalhoH() + fmaxf(0.0f, -scrollY);
 }
 static GfxRect heroArtworkRect(int lay, int cheio) {
+  if(lay==HOME_LAYOUT_GLOBOPLAY){
+    SmGloboHome g=sm_globo_home(NV_TELA_W,NV_TELA_H);
+    return (GfxRect){g.x,g.y-(scrollY+empurraHero()),g.w,g.h};
+  }
   if (lay == HOME_LAYOUT_PADRAO) return padBannerRect();
   GfxRect r = lay == HOME_LAYOUT_DINAMICA
             ? (GfxRect){0, dinHeroY(), NV_TELA_W, NV_DIN_ARTE_H}
@@ -4807,6 +4822,82 @@ static void heroVeuLayout(int lay, float h) {
   vitAncora = lay == HOME_LAYOUT_PADRAO ? 0.30f : 0.28f;
   vitVeuIni = lay == HOME_LAYOUT_DINAMICA ? 0.38f * alturaTextoHeroDin() / h : 0.0f;
 }
+
+// Globoplay e um quarto desenho da mesma Home: catalogo, foco e player comuns.
+// Os vizinhos sao imagens; o unico decoder pertence ao painel central parado.
+static void globoVizinho(GfxRect r,int indice,float alfa) {
+  const CatItem *item=cat_item_exato(indice);
+  const char *path=indice>=0?arte_por_identidade(indice,2):NULL;
+  if(!item||!path||r.x>=NV_TELA_W||r.x+r.w<=0)return;
+  GLuint t=tex_obter_hero_quente(path);
+  // Vizinho protegido fica neutro: nao alternar o cache de blur de varias
+  // artes a cada quadro, nem expor um still que deveria estar escondido.
+  if(t&&home_proximo_desfocar(item,path))t=0;
+  if(t){
+    float ant=gfx_card_forcar_cover_atual;
+    gfx_card_forcar_cover_atual=1;gfx_tex_aspect_atual=tex_aspecto(path);
+    gfx_rect(r,t,GFX_CARD,0,0,0,18.0f/r.h,1,1,1,alfa*.62f);
+    gfx_tex_aspect_atual=0;gfx_card_forcar_cover_atual=ant;
+  }else gfx_cor(r,18.0f/r.h,.08f,.08f,.09f,alfa);
+}
+static void globoPainel(GfxRect r,const CatItem *ci,const char *path,GLuint t,float video,float alfa) {
+  if(t&&home_proximo_desfocar(ci,path))t=gfx_desfocado(t,path);
+  gfx_globoplay_media(r,t,path?tex_aspecto(path):16.0f/9.0f,video,alfa);
+}
+static void desenhaHeroGloboplay(GfxRect r,const CatItem *ci,const CatItem *anterior,
+                               const char *arte,const char *arteAnt,GLuint t,GLuint tAnt,
+                               float video,float alfa,float dAnt,float dAtu,int deslizando,float saida) {
+  if(alfa<=.004f)return;
+  float passo=r.w+24.0f;
+  int pos=heroPosDe(heroAtual),n=heroNLista();
+  // Durante o deslize, os cartoes viajam com o MESMO relogio e mesmo passo.
+  for(int dir=-1;dir<=1;dir+=2){
+    int viz=heroIdxEm(pos+dir);
+    if(deslizando&&viz==heroAnterior)continue;
+    GfxRect rv=r;rv.x+=(dir+dAtu)*passo;
+    globoVizinho(rv,viz,alfa);
+  }
+  GfxRect atual=r,ant=r;
+  atual.x+=dAtu*passo;ant.x+=dAnt*passo;
+  if(deslizando){
+    globoPainel(ant,anterior,arteAnt,tAnt,0,alfa);
+    globoPainel(atual,ci,arte,t,0,alfa);
+  }else if(video>.0f){
+    globoPainel(atual,ci,arte,t,video,alfa);
+  }else{
+    if(tAnt&&heroSai>.004f)globoPainel(ant,anterior,arteAnt,tAnt,0,alfa*anim_suave(heroSai));
+    globoPainel(atual,ci,arte,t,0,alfa*(tAnt?anim_suave(heroEntra):1.0f));
+  }
+  if(!ci)return;
+  float x=atual.x+44.0f,base=atual.y+atual.h-70.0f;
+  float largura=atual.w*.35f,slot=(float)focoHero;
+  float actionY=desenhaCopiaHero(ci,1,x,base,HOME_LAYOUT_GLOBOPLAY,0,100.0f,
+                                largura,2,alfa,alfa,0,50,14,slot);
+  if(deslizando&&anterior&&anterior!=ci)
+    (void)desenhaCopiaHero(anterior,0,ant.x+44,base,HOME_LAYOUT_GLOBOPLAY,0,100,
+                          largura,2,alfa,alfa,0,50,14,slot);
+  if(focoHero){
+    if(!deslizando)gfx_anel(r,18.0f/r.h,2,1,1,1,alfa*.45f);
+    TxtLinha l=txt_linha(TXT_DET_BOTAO,i18n("Ver título"),245,245,245,255);
+    GfxRect bt={x,actionY,l.w+64,50};
+    int tinta=botao_superficie(bt,1,alfa);
+    l=txt_linha(TXT_DET_BOTAO,i18n("Ver título"),tinta,tinta,tinta,255);
+    txt_desenhar_alpha(l,bt.x+32,bt.y+(bt.h-l.h)*.5f,alfa);
+#ifdef NV_TOUCH_UI
+    alvoAcaoHero(bt,saida,0,alfa);
+    heroPublicarFoco(ci,alfa);
+#endif
+    int pontos=n<6?n:6,inicio=pos-2;
+    if(inicio<0)inicio=0;if(inicio>n-pontos)inicio=n-pontos;
+    float px=r.x+(r.w-(pontos*32.0f-8.0f))*.5f,py=r.y+r.h-22;
+    for(int i=0;i<pontos;i++)gfx_cor((GfxRect){px+i*32,py,24,4},.5f,1,1,1,
+                                                      alfa*(i+inicio==pos?.95f:.32f));
+    if(!telefoneui_ativo()&&ci){
+      itemFoco.indice=heroAtual;itemFoco.rect=r;itemFoco.arte=arteDoItem(ci,NULL);
+      itemFoco.titulo=ci->titulo;itemFoco.genero=ci->genero;itemFoco.meta=ci->meta;publicarItemFoco();
+    }
+  }
+}
 static void desenhaHero(Uint32 agora, float saida) {
   (void)agora;
   const int motionReduzido = ajustes_animacoes_reduzidas();
@@ -4864,6 +4955,11 @@ static void desenhaHero(Uint32 agora, float saida) {
     heroVeuLayout(lay, r.h);
     logoH = NV_DIN_LOGO_H; sinW = 760.0f;
     btnH = NV_HERO_BOTAO_COMPACTO_H; btnGap = 22.0f;
+  }
+
+  if(lay==HOME_LAYOUT_GLOBOPLAY){
+    cheio=0;logoH=100.0f;sinW=r.w*.35f;sinLinhas=2;btnH=50.0f;btnGap=14.0f;
+    aVis=anim_clamp(1.0f-fmaxf(0.0f,scrollY+empurraHero())/(r.h*.50f),0.0f,1.0f);
   }
 
   // Logo, descricao e botao ficam na faixa cinematografica compacta da TCL.
@@ -4957,7 +5053,7 @@ static void desenhaHero(Uint32 agora, float saida) {
   // COLECAO EM FOCO: o destaque vira o banner da pasta. Moderna e Padrao; a
   // Dinamica nao tem destaque parado no topo e mostra o mesmo banner por tras
   // do cabecalho da fileira (dinArteColecao).
-  if(!focoHero&&lay!=HOME_LAYOUT_DINAMICA&&foco.fileira>=0&&foco.fileira<nFileiras&&fileiras[foco.fileira].tipo==FILEIRA_CATALOGOS) {
+  if(!focoHero&&lay!=HOME_LAYOUT_DINAMICA&&lay!=HOME_LAYOUT_GLOBOPLAY&&foco.fileira>=0&&foco.fileira<nFileiras&&fileiras[foco.fileira].tipo==FILEIRA_CATALOGOS) {
     const ColFolder *folder=col_folder(fileiras[foco.fileira].folders[foco.coluna]);
     if(folder) {
       if(folder->editorial) {
@@ -5262,6 +5358,12 @@ static void desenhaHero(Uint32 agora, float saida) {
   if (!trailer_aberto() || trailer_dono() != TRAILER_DONO_HOME || !trailer_mostra_video())
     aTrailer = 0.0f;
 #endif
+  if(lay==HOME_LAYOUT_GLOBOPLAY){
+    heroArteRect=r;
+    desenhaHeroGloboplay(r,ci,cAnt,arteA,arteB,tAtu,tAnt,aTrailer,
+                         aArte*aVis*(1.0f-saida),dAnt,dAtu,deslizando,saida);
+    return;
+  }
   GfxRect furo = heroTrailerArea(r);
   if (furo.y + furo.h > NV_TELA_H) furo.h = NV_TELA_H - furo.y;
   if (furo.y < 0.0f) { furo.h += furo.y; furo.y = 0.0f; }
@@ -5517,6 +5619,9 @@ static void desenhaHero(Uint32 agora, float saida) {
 // tinha subido. Fundo neutro nao compete com nada.
 static void desenhaFundo(Uint32 agora) {
   GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
+  if(layoutHome()==HOME_LAYOUT_GLOBOPLAY){
+    gfx_cor_painel(tela,0,.105f,.105f,.105f,1);return;
+  }
   // So a Dinamica pinta fundo (o vidro fosco); Moderna e Padrao ficam com o
   // clear, como sempre.
   if (layoutHome() == HOME_LAYOUT_DINAMICA) { desenhaFundoDin(agora); return; }
@@ -5882,7 +5987,7 @@ static void shotTrailerPasso(int topo, float dt, Uint32 agora, int heroSetting, 
   heroTrailerNoCartao = dest == 1;
   alvo = dest >= 0 ? 1.0f : 0.0f;
   heroTrailerFade = anim_mola(heroTrailerFade, alvo, dt, NV_MOLA_SCROLL);
-  { int toca = topo && dest == 0 && focoHero && layoutHome() != HOME_LAYOUT_PADRAO;
+  { int toca = topo && dest == 0 && focoHero && layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY;
     trailercinema_passo(&heroCinema, toca, dt, ajustes_animacoes_reduzidas()); }
 }
 #endif
@@ -5947,7 +6052,7 @@ void home_trailer_passo(int topo, float dt, Uint32 agora) {
     if (!topo) motivo = HERO_GATE_OVERLAY;
     else if (!destCartao && !ajustes_hero_ligado()) motivo = HERO_GATE_DISABLED;
     else if (focoHero ? !heroSetting : !posterSetting) motivo = HERO_GATE_SETTING;
-    else if (!destCartao && !focoHero && layoutHome() == HOME_LAYOUT_DINAMICA) motivo = HERO_GATE_DYNAMIC;
+    else if (!destCartao && !focoHero && (layoutHome() == HOME_LAYOUT_DINAMICA || layoutHome() == HOME_LAYOUT_GLOBOPLAY)) motivo = HERO_GATE_DYNAMIC;
     else if (!noHero && !noCartaz) motivo = HERO_GATE_POSTER_WAIT;
   }
   pronto = pronto && itemAtual >= 0 &&
@@ -6165,7 +6270,7 @@ trailer_hero_fim:
                   trailer_aberto() && !trailer_cheia() && trailer_tocando() &&
                   trailer_mostra_video()) ? 1.0f : 0.0f;   // .tpk: ate o recorte assentar (#178)
 #ifdef NV_ANDROID
-    if (!heroTrailerNoCartao && layoutHome() == HOME_LAYOUT_MODERNA && !homeRetratoTelefone())
+    if (!heroTrailerNoCartao && (layoutHome() == HOME_LAYOUT_MODERNA || layoutHome() == HOME_LAYOUT_GLOBOPLAY) && !homeRetratoTelefone())
       heroTrailerFade = sm_trailer_hero_fade(heroTrailerFade, alvo, dt, ajustes_animacoes_reduzidas());
     else
 #endif
@@ -6183,7 +6288,7 @@ trailer_hero_fim:
     // sem cinema, o texto e a arte seguem como estao.
     { int toca = topo && alvo > 0.5f && !heroTrailerNoCartao &&
                  focoHero && ajustes_trailer_hero() &&
-                 layoutHome() != HOME_LAYOUT_PADRAO
+                 layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY
 #ifdef NV_ANDROID
                  // TCL: trailer permanece no hero com as fileiras visiveis.
                  && 0
@@ -7420,7 +7525,8 @@ static void home_desenhar_(Uint32 agora) {
   if (ajustes_hero_ligado() && !vazioQr) desenhaHero(agora, pd);
   if (ajustes_hero_ligado() && !vazioQr && heroVisivelToque() > 0.25f) {
     float heroBaixo = layoutHome() == HOME_LAYOUT_DINAMICA
-                    ? dinHeroY() + alturaTextoHeroDin() : corteFileiras();
+                    ? dinHeroY() + alturaTextoHeroDin()
+                    : layoutHome()==HOME_LAYOUT_GLOBOPLAY ? heroArteRect.y+heroArteRect.h : corteFileiras();
     if (heroBaixo > 0.0f)
       ponteiro_alvo(0, 0, NV_TELA_W, heroBaixo,
 #ifdef NV_TOUCH_UI

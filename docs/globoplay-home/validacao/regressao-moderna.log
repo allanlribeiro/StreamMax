@@ -1,0 +1,22 @@
+{
+  "baseline": "da499ecbb9693ec46979f2dc5ce5939850181090",
+  "antes": {
+    "cards_y": 426.0,
+    "mask_h": 670.0,
+    "box_h": 670.0,
+    "video_w": 1866.24,
+    "video_h": 1049.76,
+    "zoom": 1.35,
+    "source_bottom_at_fade": 0.46494
+  },
+  "depois": {
+    "cards_y": 489.9,
+    "mask_h": 670.0,
+    "box_h": 513.9,
+    "video_w": 1410.048,
+    "video_h": 793.152,
+    "zoom": 1.02,
+    "source_bottom_at_fade": 0.61215
+  },
+  "limitacao": "GLES real; quadro estatico e fileiras de teste; sem decoder ou TV fisica."
+}

@@ -1565,6 +1565,21 @@ static const char *FS_CORPO[GFX_NMODOS] = {
   "  NV_HP float a = (1.0-e*b)*clamp(uFoco,0.0,1.0);\n"
   "  gl_FragColor = vec4(uFundo*a,a);\n"
   "}\n",
+
+  // GFX_GLOBOPLAY: o plano Android substitui a foto, inclusive no degrade.
+  // Quinas voltam ao fundo opaco; apenas o miolo revela o video. Uma passada.
+  "NV_HP float globoEase(NV_HP float t){ t=clamp(t,0.0,1.0); return t*t*t*(t*(t*6.0-15.0)+10.0); }\n"
+  "void main(){\n"
+  "  NV_HP float m=bordaR(vUv,uRaio,uAspect);\n"
+  "  NV_HP float ge=1.0-globoEase((vUv.x-0.13)/0.48);\n"
+  "  NV_HP float gb=globoEase((vUv.y-0.72)/0.28)*0.96;\n"
+  "  NV_HP float g=ge+gb-ge*gb;\n"
+  "  NV_HP float v=clamp(uFoco,0.0,1.0);\n"
+  "  vec3 photo=texture2D(uTex,cover(vUv)).rgb*(1.0-g);\n"
+  "  vec3 color=(1.0-m)*uCor.rgb+m*photo*(1.0-v);\n"
+  "  NV_HP float a=1.0-m*v*(1.0-g);\n"
+  "  gl_FragColor=vec4(color*uCor.a,a*uCor.a);\n"
+  "}\n",
 };
 
 // Cada corpo declara o que usa; montar so o necessario mantem o shader enxuto.
@@ -1603,7 +1618,8 @@ static const struct { int sdf, cover; } PRECISA[GFX_NMODOS] = {
   {1,0},   /* GFX_TEXTURA — SDF dos cantos; o recorte vem pronto em uJan */
   {1,0},   /* GFX_VIDRO — SDF proprio em pixels; o {1,..} so liga a margem de 1 px do quad */
   {1,0},   /* GFX_VITRINE_DIN — o do GFX_VITRINE */
-  {0,0}    /* GFX_FURO_HERO — rampas e crossfade, sem textura */
+  {0,0},   /* GFX_FURO_HERO — rampas e crossfade, sem textura */
+  {1,1}    /* GFX_GLOBOPLAY — cantos e cover no painel */
 };
 
 static GLuint compila(GLenum tipo, const char *src) {
@@ -4304,6 +4320,26 @@ void gfx_furo_hero_suave(GfxRect r, float a, float base) {
            fim, 0, 0, 1.0f);
   glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
   glBlendColor(0, 0, 0, 0);
+}
+
+void gfx_globoplay_media(GfxRect r, GLuint tex, float aspecto, float video, float alfa) {
+  if (r.w<=0 || r.h<=0 || alfa<=0.0f) return;
+  if (dinPendente) dinDescarregar();
+  if (ambPendente) gfx_ambiente_descarregar();
+  ambIntacta=0;
+  GfxRect t=r;
+  GFX_TR_RECT(t.x,t.y,t.w,t.h);
+  if(escAtiva!=1.0f){t.x*=escAtiva;t.y*=escAtiva;t.w*=escAtiva;t.h*=escAtiva;}
+  if(video>0.0f)vidroFuro(t);
+  float ant=gfx_tex_aspect_atual;
+  gfx_tex_aspect_atual=aspecto>0.0f?aspecto:16.0f/9.0f;
+  // Com video o shader escreve a composicao completa: nao conservar alfa da
+  // foto antiga/fundo. Sem video, source-over permite crossfade entre artes.
+  glBlendFuncSeparate(GL_ONE,video>0.0f?GL_ZERO:GL_ONE_MINUS_SRC_ALPHA,
+                      GL_ONE,video>0.0f?GL_ZERO:GL_ONE_MINUS_SRC_ALPHA);
+  gfx_rect(r,tex,GFX_GLOBOPLAY,video,0,0,18.0f/r.h,.105f,.105f,.105f,alfa);
+  glBlendFuncSeparate(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA,GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
+  gfx_tex_aspect_atual=ant;
 }
 
 // Multiplica TUDO o que ja foi desenhado neste quadro (cor e alfa, que e

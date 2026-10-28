@@ -1,0 +1,167 @@
+#include <EGL/egl.h>
+#include <assert.h>
+#include <stdint.h>
+/* REAL_GFX */
+#include "globoplayhome.h"
+#include "home.h"
+#include "focus.h"
+#include "text.h"
+#define NV_TXT_TELA
+#include "escala.h"
+int perftv_enabled,perftv_blur,perftv_glass,perftv_uploads;
+float nv_cor_fundo_viva[3]={.04f,.04f,.04f},nv_acento_viva[3],nv_grad_viva[3][3];
+float nv_ambiente_viva[4][3],nv_ambiente_forca,nv_tempo_viva;
+int nv_grad_ativo;
+float nv_layout_w=1920,nv_layout_h=1080;
+int ajustes_profundidade(void){return 0;} float ajustes_profundidade_brilho(void){return 0;}
+int ajustes_vidro_fosco(void){return 0;} int ajustes_vidro(void){return 0;} int ajustes_vidro_qualidade(void){return 0;}
+void gpun_descartar_cor(int padrao){(void)padrao;}
+int telefoneui_ativo(void){return 0;}
+static int heroCompactoTelefone(void){return 0;}
+float sinopse_entrelinha(TxtEstilo s,float h){(void)s;return h;}
+typedef struct {float logo,logoHeight,action,caption,friends,meta,secondary,synopsis;} HeroCopyLayout;
+/* REAL_COPY */
+/* FIXTURE_IO */
+static CatItem items[3];static HomeItem itemFoco;static int published,requests;
+static int focoHero=1,heroAtual=1,heroAnterior=0,heroDesejado=-1,heroPendente=1;
+static float heroSai=0,heroEntra=1,scrollY,velY;
+static int heroSetN=3,heroSet[]={0,1,2},heroDirDesejado,heroAutoDesligado,pedidoMenu,pedidoRelogio;
+static Uint32 heroPendenteEm,heroDesejadoEm,heroTrocaEm;
+static int toqueHeroYPreso,toqueLivreY;
+static float toqueHeroPaginaW,toqueHeroPaginaH,toqueHeroPaginaMin,toqueHeroPaginaMax;
+static Foco foco;static AnimBorda bordaPag;
+static void heroSetGarantir(void){}
+static void heroTempoInicio(int i){assert(i>=0&&i<3);}
+Uint32 sm_ticks(void){return 1000;}
+static float empurraHero(void){return sm_globo_home(NV_TELA_W,NV_TELA_H).push;}
+static float toqueHomeMaxY(void){return 5000;}
+static void publicarItemFoco(void){published++;}
+static int primeiraFileiraNavegavel(void){for(int i=0;i<foco.nFileiras;i++)if(foco.nColunas[i]>0)return i;return -1;}
+int ajustes_menu_topo(void){return 1;}
+const char *i18n(const char *s){return s;}
+const CatItem *cat_item_exato(int i){return i>=0&&i<3?items+i:NULL;}
+static const char *paths[]={"frame-02","frame-10","frame-12"};
+static const char *arte_por_identidade(int i,int t){(void)t;return i>=0&&i<3?paths[i]:NULL;}
+static const char *arteDoItem(const CatItem *ci,int *poster){if(poster)*poster=0;return ci?paths[ci-items]:NULL;}
+static int blocked=-1;
+int home_proximo_desfocar(const CatItem *ci,const char *s){(void)s;return blocked>=0&&ci==items+blocked;}
+const char *tex_arquivo(const char *s){(void)s;return NULL;}
+static Asset frames[3];
+GLuint tex_obter_hero_quente(const char *s){requests++;for(int i=0;i<3;i++)if(!strcmp(s,paths[i]))return frames[i].id;return 0;}
+float tex_aspecto(const char *s){for(int i=0;i<3;i++)if(s&&!strcmp(s,paths[i]))return (float)frames[i].w/frames[i].h;return 16.f/9;}
+static int botao_superficie(GfxRect r,float f,float a){(void)f;gfx_cor(r,.5,1,1,1,a);return 15;}
+TxtLinha txt_linha(TxtEstilo e,const char *s,int r,int g,int b,int a){(void)e;(void)s;(void)r;(void)g;(void)b;(void)a;return (TxtLinha){.w=110,.h=28};}
+void txt_desenhar_alpha(TxtLinha l,float x,float y,float a){(void)l;(void)a;label("button",x,y,1,1,1);}
+static float desenhaCopiaHero(const CatItem *ci,int principal,float x,float base,int lay,int cheio,float logoH,
+                             float sinW,int linhas,float a,float copyA,float cin,float btnH,float btnGap,float slot){
+ (void)principal;(void)lay;(void)cheio;(void)linhas;(void)a;(void)copyA;(void)cin;
+ HeroCopyLayout c=heroCopyLayout(base,60,1,1,0,logoH,btnH,btnGap,base-sm_globo_home(NV_TELA_W,NV_TELA_H).h+104,slot,0);
+ int index=ci?ci-items:1;const char *logos[]={"logo-02","logo-10","logo-12"};Asset l=asset(logos[index]);
+ float w=fminf(sinW,c.logoHeight*l.w/l.h),h=w*l.h/l.w;
+ gfx_rect((GfxRect){x,c.logo+c.logoHeight-h,w,h},l.id,GFX_TEXTO,0,0,0,0,1,1,1,1);glDeleteTextures(1,&l.id);
+ label("meta",x,c.meta,.75,.75,.75);label("nota",x,c.secondary,1,.85,.4);
+ label("sin1",x,c.synopsis,1,1,1);label("sin2",x,c.synopsis+30,1,1,1);return c.action;
+}
+static void alvoAcaoHero(GfxRect r,float s,float c,float a){(void)r;(void)s;(void)c;(void)a;}
+static void heroPublicarFoco(const CatItem *ci,float a){(void)ci;(void)a;}
+/* REAL_HOME */
+/* REAL_BORDER_CONSTANT */
+static void mover(SDL_Keycode k){/* REAL_KEYBOARD */}
+static unsigned char pixels[1920*1080*4];
+static unsigned char *pixel(int x,int y){return pixels+((1079-y)*1920+x)*4;}
+static void readback(void){glReadPixels(0,0,1920,1080,GL_RGBA,GL_UNSIGNED_BYTE,pixels);assert(glGetError()==GL_NO_ERROR);}
+static void testes(void){
+ int cols[]={4,0,7};focus_iniciar(&foco,3,cols);pedidoMenu=pedidoRelogio=0;
+ heroAtual=0;heroDesejado=-1;focoHero=1;mover(SDLK_LEFT);assert(pedidoMenu);
+ mover(SDLK_RIGHT);assert(heroDesejado==1);mover(SDLK_RIGHT);assert(heroDesejado==2);
+ mover(SDLK_RIGHT);assert(heroDesejado==2);mover(SDLK_LEFT);assert(heroDesejado==1);
+ mover(SDLK_UP);assert(pedidoMenu);mover(SDLK_DOWN);assert(!focoHero&&foco.fileira==0);
+ focoHero=1;foco.fileira=1;mover(SDLK_DOWN);assert(!focoHero&&foco.fileira==0);
+ for(int hz=30;hz<=120;hz*=2){
+  scrollY=-empurraHero();velY=0;
+  for(int i=0;i<hz*4;i++)scrollY=homeScrollYPasso(0,1.f/hz,0);
+  assert(fabsf(scrollY)<.01&&fabsf(velY)<.1);
+  SmGloboHome g=sm_globo_home(NV_TELA_W,NV_TELA_H);
+  assert(g.y-(scrollY+g.push)+g.h<240);
+  for(int i=0;i<hz*4;i++)scrollY=homeScrollYPasso(-g.push,1.f/hz,0);
+  assert(fabsf(scrollY+g.push)<.01);
+ }
+ focoHero=1;heroAtual=1;heroDesejado=-1;
+ const float scales[]={.85,1,1.25,1.5};
+ GLuint red;unsigned char rgba[]={255,0,0,255};glGenTextures(1,&red);glBindTexture(GL_TEXTURE_2D,red);
+ glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,1,1,0,GL_RGBA,GL_UNSIGNED_BYTE,rgba);
+ glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+ for(unsigned i=0;i<4;i++){
+  gfx_escala_txt_definir(scales[i]);gfx_escala_sair(scales[i]);SmGloboHome g=sm_globo_home(NV_TELA_W,NV_TELA_H);
+  assert(g.x>=0&&g.x+g.w<NV_TELA_W&&g.y+g.h<g.shelf);
+  GfxRect r={g.x,g.y,g.w,g.h};
+  for(int phase=0;phase<=4;phase++){
+   glClearColor(.105,.105,.105,1);glClear(GL_COLOR_BUFFER_BIT);
+   gfx_globoplay_media(r,red,16.f/9,phase*.25f,1);readback();
+   int x=(int)((g.x+g.w*.85f)*scales[i]),y=(int)((g.y+g.h*.25f)*scales[i]);
+   assert(abs(pixel(x,y)[3]-(255-phase*255/4))<3);
+   assert(abs(pixel(x,y)[0]-(255-phase*255/4))<3); // sem foto vazando no video
+   assert(pixel((int)(g.x*scales[i]),(int)(g.y*scales[i]))[3]>250);
+   assert(pixel((int)((g.x+g.w+2)*scales[i]),y)[3]>250);
+  }
+  int yy=(int)((g.y+g.h*.25f)*scales[i]),prev=256;
+  for(int x=(int)((g.x+g.w*.13f)*scales[i]);x<(g.x+g.w*.61f)*scales[i];x++){
+   int a=pixel(x,yy)[3];assert(a<=prev+1&&abs(a-prev)<8);prev=a;
+  }
+  int xx=(int)((g.x+g.w*.85f)*scales[i]);prev=-1;
+  for(int y=(int)((g.y+g.h*.72f)*scales[i]);y<(g.y+g.h)*scales[i]-2;y++){
+   int a=pixel(xx,y)[3];assert(a>=prev-1&&a-prev<10);prev=a;
+  }
+  const int sizes[][2]={{0,0},{1920,1080},{1920,804},{1080,1080},{720,1280}};
+  for(int k=0;k<5;k++){
+   float x,y,w,h;sm_globo_video(r.x,r.y,r.w,r.h,sizes[k][0],sizes[k][1],&x,&y,&w,&h);
+   assert(x<=r.x+.01f&&y<=r.y+.01f&&x+w>=r.x+r.w-.01f&&y+h>=r.y+r.h-.01f);
+   float aspect=k?(float)sizes[k][0]/sizes[k][1]:16.f/9;
+   assert(fabsf(w/h-aspect)<.001f);
+  }
+ }
+ glDeleteTextures(1,&red);gfx_escala_sair(1);gfx_escala_txt_definir(1);
+ SmGloboHome g=sm_globo_home(1920,1080);GfxRect r={g.x,g.y,g.w,g.h};
+ blocked=0;globoVizinho(r,0,1);readback();
+ assert(abs(pixel(500,300)[0]-20)<2&&abs(pixel(500,300)[1]-20)<2);blocked=-1;
+ heroSetN=0;published=requests=0;
+ desenhaHeroGloboplay(r,NULL,NULL,NULL,NULL,0,0,0,1,0,0,0,0);
+ assert(!published&&!requests);readback();heroSetN=3;
+ puts("OK: D-pad real, limites do carrossel, fileira vazia e mola vertical 30/60/120 Hz");
+ puts("OK: shader completo 85-150%, cantos opacos, video sem foto residual e uma unica janela");
+}
+static void scene(const char *name,int rows,int slide){
+ SmGloboHome g=sm_globo_home(1920,1080);scrollY=rows?0:-g.push;focoHero=!rows;
+ GfxRect r={g.x,g.y-(scrollY+g.push),g.w,g.h};float x,y,w,h;
+ sm_globo_video(r.x,r.y,r.w,r.h,frames[1].w,frames[1].h,&x,&y,&w,&h);
+ glClearColor(.105,.105,.105,1);glClear(GL_COLOR_BUFFER_BIT);
+ gfx_rect((GfxRect){x,y,w,h},frames[1].id,GFX_SNAP,0,0,0,0,1,1,1,1);dump(name,"video");
+ glClearColor(.105,.105,.105,1);glClear(GL_COLOR_BUFFER_BIT);published=requests=0;
+ desenhaHeroGloboplay(r,&items[1],&items[0],paths[1],paths[0],frames[1].id,frames[0].id,
+                      rows?0:1,rows?0:1,slide?-.5f:0,slide?.5f:0,slide,0);
+ if(!rows)assert(published==1&&itemFoco.indice==1&&requests<=2);
+ else assert(!published&&!requests);
+ // Barra e fileiras demonstrativas; o painel/carrossel acima e o codigo real.
+ gfx_cor((GfxRect){340,24,1200,64},.5,.04,.04,.045,1);
+ label("nav",390,44,1,1,1);label("clock",1780,42,1,1,1);
+ float yy=rows?240:g.shelf;
+ for(int row=0;row<(rows?2:1);row++){
+  label(row?"row2":"row1",192,yy,.92,.92,.92);
+  const char *p[]={"poster-10","poster-12","poster-02","poster-00","poster-01","poster-04"};
+  for(int i=0;i<6;i++)card(p[i],(GfxRect){192+i*280,yy+64,252,378});
+  yy+=64+378+36;
+ }
+ dump(name,"overlay");
+}
+int main(int argc,char **argv){
+ assert(argc==2);snprintf(assetDir,sizeof assetDir,"%s",argv[1]);
+ EGLDisplay d=eglGetDisplay(EGL_DEFAULT_DISPLAY);assert(eglInitialize(d,0,0)&&eglBindAPI(EGL_OPENGL_ES_API));
+ EGLint a[]={EGL_SURFACE_TYPE,EGL_PBUFFER_BIT,EGL_RENDERABLE_TYPE,EGL_OPENGL_ES2_BIT,EGL_RED_SIZE,8,EGL_GREEN_SIZE,8,EGL_BLUE_SIZE,8,EGL_ALPHA_SIZE,8,EGL_NONE};
+ EGLConfig cfg;EGLint n;assert(eglChooseConfig(d,a,&cfg,1,&n)&&n);
+ EGLint sz[]={EGL_WIDTH,1920,EGL_HEIGHT,1080,EGL_NONE},ca[]={EGL_CONTEXT_CLIENT_VERSION,2,EGL_NONE};
+ EGLSurface s=eglCreatePbufferSurface(d,cfg,sz);EGLContext c=eglCreateContext(d,cfg,EGL_NO_CONTEXT,ca);
+ assert(eglMakeCurrent(d,s,s,c)&&gfx_iniciar());gfx_tamanho_alvo(1920,1080);glViewport(0,0,1920,1080);
+ for(int i=0;i<3;i++){frames[i]=asset(paths[i]);snprintf(items[i].titulo,sizeof items[i].titulo,"Titulo %d",i);}
+ testes();scene("inicio",0,0);scene("fileiras",1,0);scene("transicao",0,1);
+ eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);eglDestroyContext(d,c);eglDestroySurface(d,s);eglTerminate(d);return 0;
+}

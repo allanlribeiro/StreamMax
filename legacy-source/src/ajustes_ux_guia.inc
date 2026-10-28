@@ -947,12 +947,12 @@ static void guiaDesenharInspetor(const GuiaVista *v, float a) {
     y += ajBloco(TXT_AJ_SUB, GUIA_CAP_TXT[c], x, y, w, 28.5f, 0.66f * a, 5);
     y += 16;
     if (c == 1) {
-      AjMini m = ajMiniPadrao(), o[3];
-      static const char *const N[3] = { "Moderna", "Padrão", "Dinâmica" };
+      AjMini m = ajMiniPadrao(), o[HOME_LAYOUT_N];
+      static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay" };
       int i;
       m.art = 13; m.relogio = 2; m.rail = 1; m.semHero = 0;
-      for (i = 0; i < 3; i++) { o[i] = m; o[i].lay = i; }
-      y += ajOpcoesMini(o, N, 3, 0, x, y, w) + 18;
+      for (i = 0; i < HOME_LAYOUT_N; i++) { o[i] = m; o[i].lay = i; }
+      y += ajOpcoesMini(o, N, HOME_LAYOUT_N, 0, x, y, w) + 18;
     }
     snprintf(q, sizeof q, "%d", guiaNoCap(c));
     snprintf(q2, sizeof q2, "%d", guiaNovosNoCap(c));

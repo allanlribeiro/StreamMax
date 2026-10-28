@@ -146,6 +146,18 @@ static void ajMiniHome(AjMini o, float ox, float oy, float W) {
     { static const int L[4] = { 13, 15, 21, 33 };
       for (i = 0; i < 4; i++) ajImg(ajArte(AJA_FUNDO, L[i]), MR(210 + i * 428, 700, 400, 225), 14 * s, a); }
     for (i = 0; i < 7; i++) ajImg(ajArte(AJA_POSTER, AJ_POS[(i + 2) % 14]), MR(210 + i * 288, 1010, 260, 390), 14 * s, a);
+  } else if(o.lay==HOME_LAYOUT_GLOBOPLAY){
+    gfx_cor(quad,rr/H,.105f,.105f,.105f,a);
+    if(!o.semHero){
+      ajImg(ajArte(AJA_FUNDO,15),MR(-1368,110,1536,668),18*s,.45f*a);
+      ajImg(ajArte(AJA_FUNDO,o.art),MR(192,110,1536,668),18*s,a);
+      ajImg(ajArte(AJA_FUNDO,12),MR(1752,110,1536,668),18*s,.45f*a);
+      gfx_rect(MR(192,110,900,668),0,GFX_VEU,0,0,0,0,0,0,0,.95f*a);
+      ajLogo(ajArte(AJA_LOGO,o.art),MX(236),MY(390),500*s,110*s,a);
+      ajTextoMini("Ver título",25*s,1,MX(236),MY(650),255,255,255,a);
+    }
+    ajTextoMini("Continuar assistindo",30*s,1,MX(192),MY(o.semHero?180:830),243,242,239,a);
+    for(i=0;i<6;i++)ajImg(ajArte(AJA_POSTER,AJ_POS[i]),MR(192+i*260,o.semHero?240:890,236,354),14*s,a);
   } else if (o.lay == HOME_LAYOUT_DINAMICA) {
     const char *c = ajArte(AJA_FUNDO, o.art);
     GLuint t = c[0] ? tex_obter_larg(c, 24.0f) : 0;
@@ -260,15 +272,15 @@ static AjMini ajMiniPadrao(void) {
   return m;
 }
 static float ajPreviaLayout(float x, float y, float w) {
-  AjMini m = ajMiniPadrao(), o[3];
-  static const char *const N[3] = { "Moderna", "Padrão", "Dinâmica" };
-  static const char *const N2[3] = { "Moderna", "Padrão", "Dinâmica" };   // v2: o nome inteiro esta no titulo
+  AjMini m = ajMiniPadrao(), o[HOME_LAYOUT_N];
+  static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay" };
+  static const char *const N2[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay" };   // v2: o nome inteiro esta no titulo
   int i, sel = valor[AJ_HOME_LAYOUT];
   if (ajEditandoLinha(AJ_HOME_LAYOUT)) sel = uxPendente;
   m.lay = sel;
   ajMiniHome(m, x, y, w);
-  for (i = 0; i < 3; i++) { o[i] = m; o[i].lay = i; }
-  return w * 9.0f / 16.0f + 16.0f + ajOpcoesMini(o, ajMiniRotuloV2 ? N2 : N, 3, sel, x, y + w * 9.0f / 16.0f + 16.0f, w);
+  for (i = 0; i < HOME_LAYOUT_N; i++) { o[i] = m; o[i].lay = i; }
+  return w * 9.0f / 16.0f + 16.0f + ajOpcoesMini(o, ajMiniRotuloV2 ? N2 : N, HOME_LAYOUT_N, sel, x, y + w * 9.0f / 16.0f + 16.0f, w);
 }
 static float ajPreviaHome(float x, float y, float w) {
   ajMiniHome(ajMiniPadrao(), x, y, w);

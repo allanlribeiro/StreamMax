@@ -1,0 +1,4 @@
+OK: D-pad real, limites do carrossel, fileira vazia e mola vertical 30/60/120 Hz
+OK: shader completo 85-150%, cantos opacos, video sem foto residual e uma unica janela
+OK: quarto layout local; indices/padrao anteriores preservados, retorno e valores invalidos
+OK: imagens usam o novo renderizador real; textos/catalogo/backend de entrada controlados

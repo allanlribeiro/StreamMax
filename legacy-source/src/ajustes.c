@@ -833,7 +833,7 @@ static const char *V_POSTER_PROV[] = { "Desligado", "SpatialPosters", "RPDB", "M
 // A terceira e so "Dinâmica" (dono, 13/10: "pode tirar o apple tv"). A chave
 // era a do antigo tema de cor, que desde 03/10 se chama "Da arte"; a traducao
 // dela agora e a do layout. O valor gravado continua HOME_LAYOUT_DINAMICA.
-static const char *V_HOME_LAYOUT[] = { "Moderna", "Padrão", "Dinâmica" };
+static const char *V_HOME_LAYOUT[] = { "Moderna", "Padrão", "Dinâmica", "Globoplay" };
 // "Fonte automatica" (issue #130). O INDICE e o gravado (fonteAutoLocal) e o
 // FONTEAUTO_* de fonteauto.h: 0 = a regra de pontuacao, 1 = a primeira da
 // lista do addon, e so ela — o "Auto-play first source" do Nuvio.
@@ -1450,7 +1450,7 @@ static const Opcao OPCOES[AJ_N] = {
   ACAO("Chave do RPDB"),
   ACAO("Modelo de URL dos pôsteres"),
   ACAO("Testar pôsteres"),
-  ESC("Layout da home",             V_HOME_LAYOUT, 3), // local: ver V_HOME_LAYOUT
+  ESC("Layout da home",             V_HOME_LAYOUT, HOME_LAYOUT_N), // indices anteriores preservados
   ACAO("Chave do AllDebrid"),
   ACAO("Testar chave do AllDebrid"),
   ACAO("Chave do Real-Debrid"),
@@ -3102,7 +3102,8 @@ int ajustes_rail_moderna(void)        { return lig(AJ_RAIL_MODERNA); }
 // #461: a barra no topo nao existe no Dinamica (a pilula dela ja e o topo) nem
 // no telefone em retrato (nao cabe).
 int ajustes_menu_topo(void) {
-  return valor[AJ_MENU_TOPO] == 1 && ajustes_home_layout() != HOME_LAYOUT_DINAMICA && !ajRetrato();
+  return (valor[AJ_MENU_TOPO] == 1 || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY) &&
+         ajustes_home_layout() != HOME_LAYOUT_DINAMICA && !ajRetrato();
 }
 int ajustes_abas_estilo(void) { return valor[AJ_ABAS_ESTILO]; }
 void ajustes_definir_abas_estilo(int estilo) {
@@ -6448,7 +6449,7 @@ static int inativa(int op) {
   switch (op) {
     case AJ_VIDRO_CONTORNO: case AJ_VIDRO_OPAC: case AJ_VIDRO_FOSCO: case AJ_VIDRO_QUALIDADE: return !lig(AJ_VIDRO);
     case AJ_RAIL:         return ajustes_rail_moderna();
-    case AJ_MENU_TOPO:    return ajustes_home_layout() == HOME_LAYOUT_DINAMICA;
+    case AJ_MENU_TOPO:    return ajustes_home_layout() == HOME_LAYOUT_DINAMICA || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY;
     case AJ_RAIL_BLUR:    return !ajustes_rail_moderna();
     case AJ_HERO_CATALOGOS: return !ajustes_hero_ligado();
     // O fundo em tela cheia e da Moderna: no Padrao o destaque e um banner e na
@@ -6664,7 +6665,7 @@ static const char *ajudaOpcaoBase(int op) {
     if (op == AJ_VIDRO_CONTORNO) return "Ative a interface de vidro para ajustar o contorno.";
     if (op == AJ_VIDRO_OPAC || op == AJ_VIDRO_FOSCO || op == AJ_VIDRO_QUALIDADE) return "Ative a interface de vidro para ajustar o vidro.";
     if (op == AJ_RAIL) return "Desative a barra lateral moderna para escolher entre recolhida e fixa.";
-    if (op == AJ_MENU_TOPO) return "No layout Dinâmica o menu já fica no alto da tela.";
+    if (op == AJ_MENU_TOPO) return "Nos layouts Dinâmica e Globoplay o menu já fica no alto da tela.";
     if (op == AJ_RAIL_BLUR) return "Ative a barra lateral moderna para usar o desfoque.";
     if (op == AJ_HERO_CATALOGOS) return "Ative Mostrar destaque para exibir os catálogos no topo da Home.";
     if (op == AJ_HERO_CHEIO) return "Só vale no layout Moderna. No Padrão o destaque é um banner, e na Dinâmica ele ocupa a largura toda e sobe junto com a rolagem.";
@@ -6998,7 +6999,7 @@ static const char *ajudaOpcaoBase(int op) {
     case AJ_POSTER_TESTAR: return "Baixa o cartaz de um filme conhecido com a configuração atual e mostra se deu certo. O primeiro cartaz de cada título é montado no servidor e pode levar alguns segundos.";
     case AJ_COLECAO_EXIBICAO: return "Vale para coleções sem escolha própria neste perfil. Automático mantém a exibição original. Em Exibição, escolha Padrão para seguir este ajuste novamente.";
     case AJ_MURAL_TITULOS: return "Ligado (padrão): cada ladrilho do Mural mostra o nome do título. Desligado: o nome fica só no painel da direita. Vale só nesta TV.";
-    case AJ_HOME_LAYOUT: return "Moderna: destaque atrás das fileiras. Padrão: destaque num banner no topo. Dinâmica: estilo Apple TV, com destaques grandes e Top 10.";
+    case AJ_HOME_LAYOUT: return "Moderna: destaque atrás das fileiras. Padrão: banner no topo. Dinâmica: destaques grandes e Top 10. Globoplay: carrossel panorâmico com prévias laterais e fileiras abaixo.";
     case AJ_VIDRO: return "Painéis, botões e menus viram ilhas translúcidas que deixam a arte aparecer. Desligado, as mesmas ilhas ficam opacas. Só muda o visual; nada muda de lugar.";
     case AJ_PROVEDORES_ESCOPO: return "Compartilhada usa as mesmas contas de provedores neste aparelho. Separada guarda uma cópia para este perfil. Trocar de opção mantém as duas configurações.";
     case AJ_ADDONS_PRINCIPAL: return "Os outros perfis desta conta usam os addons do perfil principal. Desligado, cada perfil usa os seus — a não ser que a conta já diga para usar os do principal.";
@@ -7269,7 +7270,7 @@ static const char *beneficioProprio(int op) {
     case AJ_SAIDA_PLAYER: return "O filme pode ficar na ilha do relógio para você voltar depois.";
     case AJ_LEG_FORCADA: return "Placas e falas em outra língua aparecem; o resto, não.";
     case AJ_BUSCA_CINEMETA: return "A busca também consulta o Cinemeta se o catálogo do Nuvio falhar.";
-    case AJ_HOME_LAYOUT: return "Como a Home se organiza: Moderna, Padrão ou Dinâmica.";
+    case AJ_HOME_LAYOUT: return "Como a Home se organiza: Moderna, Padrão, Dinâmica ou Globoplay.";
     case AJ_MENU_TOPO: return "Onde fica o menu: na esquerda ou no alto da tela.";
     case AJ_ABAS_ESTILO: return "Como as abas de uma coleção de streaming aparecem: chips, menu suspenso, barra central ou páginas.";
     case AJ_HERO_FUNDO: return "De onde vem a arte grande do destaque e da página do título.";

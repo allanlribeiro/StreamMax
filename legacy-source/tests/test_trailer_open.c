@@ -8,19 +8,19 @@
 #include <string.h>
 float nv_layout_w=1920,nv_layout_h=1080;
 static Uint32 ticks=100;
-static int ready,playing,width,height,shouldFail;
+static int ready,playing,width,height,shouldFail,homeLayout=HOME_LAYOUT_MODERNA;
 static int modes[128],nMode,atomicOpen;
 static void record(int mode) { assert(nMode<128);modes[nMode++]=mode; }
 Uint32 sm_test_ticks(void){return ticks;}
 int layout_modo_mobile(void){return 0;}
-int ajustes_home_layout(void){return HOME_LAYOUT_MODERNA;}
+int ajustes_home_layout(void){return homeLayout;}
 float ajustes_trailer_zoom(void){return 1;}
 int trailerfonte_tizen(void){return 0;}
 int trailerfonte_com_som(int tizen){return !tizen;}
 int video_iniciar_auto(void){return 1;}
 int video_tocar(const char *url){assert(url&&*url);return !shouldFail;}
 int video_android_tocar_home(const char *url,int x,int y,int w,int h){
- assert(w>0&&h>0&&x>=0&&y<0);
+ assert(w>0&&h>0&&x>=0);(void)y;
  atomicOpen++;record(2);return video_tocar(url);
 }
 void video_janela(int x,int y,int w,int h){(void)x;(void)y;(void)w;(void)h;record(1);}
@@ -42,7 +42,7 @@ void video_bombear(void){}
 int video_falhou(void){return 0;}
 int video_terminou(void){return 0;}
 int video_conflito_recurso(void){return 0;}
-static const GfxRect box={537.6f,0,1382.4f,513.9f};
+static GfxRect box={537.6f,0,1382.4f,513.9f};
 int main(void) {
 #ifdef SM_TRAILER_BASELINE
  trailer_no_cartao(0);trailer_abrir("https://test/trailer.mp4",box,0,0);
@@ -50,7 +50,9 @@ int main(void) {
  assert(nMode>0 && modes[0]==1 && atomicOpen==0);
  puts("REPRODUZIDO 1.0.23: o primeiro comando da abertura da Home e FIT, antes da marca de dono");
 #else
- for(int hot=0;hot<2;hot++) {
+ for(int variant=0;variant<2;variant++) for(int hot=0;hot<2;hot++) {
+  homeLayout=variant?HOME_LAYOUT_GLOBOPLAY:HOME_LAYOUT_MODERNA;
+  box=variant?(GfxRect){192,110,1536,667.83f}:(GfxRect){537.6f,0,1382.4f,513.9f};
   nMode=atomicOpen=0;ready=playing=hot;width=hot?1920:0;height=hot?1080:0;
   trailer_abrir_home(hot?"https://test/hot.mp4":"https://test/cold.mp4",box,0,0,"tt1");
   assert(trailer_aberto()&&trailer_dono()==TRAILER_DONO_HOME);

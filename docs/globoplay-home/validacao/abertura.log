@@ -1,0 +1,9 @@
+[trailer] https://test/cold.mp4 no fundo mudo
+[trailer] https://test/hot.mp4 no fundo mudo
+[trailer] https://test/cold.mp4 no fundo mudo
+[trailer] https://test/hot.mp4 no fundo mudo
+[trailer] https://test/card.mp4 no fundo mudo
+[trailer] https://test/detail.mp4 no fundo mudo
+OK: trailer.c inteiro: abertura fria/quente, primeiro comando COVER, metadata tardia e nenhum FIT na Home
+OK: cartao/detalhe preservados, falha limpa contexto e Home nao toma trailer ativo
+OK: janela acompanha URL/geracao e e aplicada antes da Surface; pedidos antigos sao filtrados

@@ -1,5 +1,19 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — novo layout opcional Globoplay (28/10/2026)
+
+- Pedido: usar a referencia panoramica web enviada, como opcao chamada
+  **Globoplay**, sem substituir a Home nem os layouts anteriores.
+- Branch `feat/streammax-globoplay-home`; preparando 1.0.26 / 20033 / 2.0.33.
+- Enum acrescentado no fim: Moderna=0, Padrao=1, Dinamica=2, Globoplay=3.
+  Preferencia local `homeLayoutLocal` e padrao anterior preservados.
+- Carrossel central arredondado, vizinhos estaticos, copia no painel,
+  menu superior, fileiras abaixo e rolagem comum. Um unico decoder.
+- Testes locais do shader, controle, mola, preferencias e abertura;
+  previa da Moderna comparada byte a byte com a 1.0.25.
+- [Previa, implementacao e limites](./docs/globoplay-home/README.md).
+- Compilacao/assinatura/publicacao da atualizacao e teste fisico pendentes.
+
 ## Continuidade — liberacao do Hero aprovado (28/10/2026)
 
 - O usuario aprovou a previa e autorizou prosseguir com a nova versao.
