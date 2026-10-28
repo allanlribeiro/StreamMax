@@ -50,8 +50,9 @@ int main(void) {
  assert(nMode>0 && modes[0]==1 && atomicOpen==0);
  puts("REPRODUZIDO 1.0.23: o primeiro comando da abertura da Home e FIT, antes da marca de dono");
 #else
- for(int variant=0;variant<2;variant++) for(int hot=0;hot<2;hot++) {
-  homeLayout=variant?HOME_LAYOUT_GLOBOPLAY:HOME_LAYOUT_MODERNA;
+ const int layouts[]={HOME_LAYOUT_MODERNA,HOME_LAYOUT_GLOBOPLAY,HOME_LAYOUT_PROFISSIONAL};
+ for(int variant=0;variant<3;variant++) for(int hot=0;hot<2;hot++) {
+  homeLayout=layouts[variant];
   box=variant?(GfxRect){192,110,1536,667.83f}:(GfxRect){537.6f,0,1382.4f,513.9f};
   nMode=atomicOpen=0;ready=playing=hot;width=hot?1920:0;height=hot?1080:0;
   trailer_abrir_home(hot?"https://test/hot.mp4":"https://test/cold.mp4",box,0,0,"tt1");

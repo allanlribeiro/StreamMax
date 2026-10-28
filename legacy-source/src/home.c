@@ -5,6 +5,7 @@
 #include "home.h"
 #include "trailerhero.h"
 #include "globoplayhome.h"
+#include "profissionalhome.h"
 #include "perfis.h"
 #include "botoes.h"
 #include "cwretido.h"
@@ -411,6 +412,10 @@ static float okDip = 1.0f;   // escala do card sob o OK apertado (pressdip.h)
 // nada disso — ele tem um item por vez e ocupa a tela. Um bit de estado ao lado
 // do foco descreve melhor o que a tela faz: existe um degrau ACIMA da fileira 0.
 static int focoHero = 1;
+static int profHubFoco=-1,nProfPastas,profPastas[SM_PROF_PASTAS_MAX];
+static int profissionalTecla(SDL_Keycode k);
+static void profissionalEscolher(int qual);
+static void profissionalColecoes(void);
 // Quando a ultima tecla foi vista. O carrossel do destaque so anda depois de o
 // controle ficar QUIETO: com o destaque em foco ha um contador na tela ("3 / 10")
 // e uma arte que a pessoa escolheu — trocar por baixo dela a cada sete segundos
@@ -735,6 +740,7 @@ static int homeRetratoTelefone(void) {
 #endif
 }
 static float homeConteudoX(void) {
+  if(layoutHome()==HOME_LAYOUT_PROFISSIONAL)return sm_prof_home(NV_TELA_W,NV_TELA_H).margin;
   if(layoutHome()==HOME_LAYOUT_GLOBOPLAY)return sm_globo_home(NV_TELA_W,NV_TELA_H).x;
   // Retrato usa a barra como camada. Se ainda houver uma rail visivel,
   // espelha sua reserva para centralizar sem desenhar por baixo dela.
@@ -743,6 +749,7 @@ static float homeConteudoX(void) {
   return ajustes_conteudo_x();
 }
 static float homeMargemDireita(void) {
+  if(layoutHome()==HOME_LAYOUT_PROFISSIONAL)return sm_prof_home(NV_TELA_W,NV_TELA_H).margin;
   if(layoutHome()==HOME_LAYOUT_GLOBOPLAY)return sm_globo_home(NV_TELA_W,NV_TELA_H).x;
   return homeRetratoTelefone() ? homeConteudoX() : NV_HOME_SAFE_RIGHT;
 }
@@ -811,6 +818,7 @@ static float topoFileiras(void) {
       return heroOn ? NV_PAD_TOPO_FIL : NV_DIN_TOPO_FIL - 10.0f;
     case HOME_LAYOUT_DINAMICA: return NV_DIN_TOPO_FIL;
     case HOME_LAYOUT_GLOBOPLAY: return heroOn ? 240.0f : 132.0f;
+    case HOME_LAYOUT_PROFISSIONAL: return heroOn ? 240.0f : 132.0f;
     default:                   return homeShelfTop();
   }
 }
@@ -834,6 +842,7 @@ static float corteFileiras(void) {
       return ajustes_hero_ligado() ? NV_PAD_BANNER_Y + NV_PAD_BANNER_H + 8.0f : 0.0f;
     case HOME_LAYOUT_DINAMICA: return 0.0f;
     case HOME_LAYOUT_GLOBOPLAY: return 132.0f;
+    case HOME_LAYOUT_PROFISSIONAL: return 132.0f;
     default:                   return homeShelfTop() - (heroCompactoTelefone() ? 0.0f : 96.0f);
   }
 }
@@ -847,6 +856,7 @@ static float empurraHero(void) {
   switch (layoutHome()) {
     case HOME_LAYOUT_PADRAO:   return 0.0f;
     case HOME_LAYOUT_GLOBOPLAY: return heroOn ? sm_globo_home(NV_TELA_W,NV_TELA_H).push : 0.0f;
+    case HOME_LAYOUT_PROFISSIONAL: return heroOn ? sm_prof_home(NV_TELA_W,NV_TELA_H).push : 0.0f;
     case HOME_LAYOUT_DINAMICA: return heroOn ? repousoFileirasDin() - NV_DIN_TOPO_FIL : 0.0f;
     default:                   return empurraHeroModerna();
   }
@@ -1426,6 +1436,7 @@ static void abrirMenuCartaz(void) {
 }
 
 static int foco_pode_pressao_longa(void) {
+  if(layoutHome()==HOME_LAYOUT_PROFISSIONAL&&focoHero&&profHubFoco>=0)return 0;
   // No destaque ha sempre um titulo do catalogo por tras, entao o menu do
   // cartaz vale ali como vale num card.
   if (focoHero) return cat_n() > 0;
@@ -2014,7 +2025,7 @@ static int toqueHeroRolar(const PonteiroRolagem *e) {
     toqueHero.telaW = NV_TELA_W; toqueHero.telaH = NV_TELA_H;
     toqueHero.desde = SDL_GetTicks();
     snprintf(toqueHero.imdb, sizeof toqueHero.imdb, "%s", origem->imdb);
-    focoHero = 1; toqueFileira = -1;
+    focoHero = 1; profHubFoco=-1; toqueFileira = -1;
     // Horizontal title movement keeps the page where the finger found it.
     // The vertical-gesture flag also fades the hero; that gesture has not begun.
     toqueHeroYPreso = 1; velY = 0;
@@ -2425,7 +2436,7 @@ int home_iniciar(const char *dirArte) {
   // verdade: ele recebe foco, anda para o lado e tem botao. A fileira 0
   // continua sendo o primeiro degrau ABAIXO dele, e posAplicarTabela desliga
   // este estado quando ha posicao de ontem para restaurar.
-  focoHero = 1;
+  focoHero = 1; profHubFoco=-1;
   int cols[MAX_FIL];
   for (int i = 0; i < nFileiras; i++)
     cols[i] = fileiras[i].n + (fileiras[i].verTudo ? 1 : 0);
@@ -2534,6 +2545,7 @@ static void home_evento_(const SDL_Event *e) {
       // do titulo; segurar abre o menu do cartaz, como em qualquer card.
       if (focoHero) {
         okDesde = 0; okPressionando = 0; okLongDisparado = 0; okHold = 0.0f;
+        if(layoutHome()==HOME_LAYOUT_PROFISSIONAL&&profHubFoco>=0){profissionalEscolher(profHubFoco);return;}
         if (dur >= NV_HOLD_MS) abrirMenuCartaz();
         else pedidoAbrir = 1;
         return;
@@ -2630,7 +2642,7 @@ static void home_evento_(const SDL_Event *e) {
       // 0 e parar ali deixaria um degrau invisivel entre "o topo" e "o topo de
       // verdade", e o segundo Voltar fecharia o app com a pessoa achando que
       // ainda tinha para onde subir.
-      focoHero = 1;
+      focoHero = 1; profHubFoco=-1;
       foco.fileira = 0;
       foco.coluna = 0;
       foco.colunaLembrada[0] = 0;
@@ -2653,6 +2665,7 @@ static void home_evento_(const SDL_Event *e) {
   heroUltTecla = SDL_GetTicks();
   // O DESTAQUE E UM DEGRAU ACIMA DA FILEIRA 0, e nao uma fileira do vetor: as
   // setas dele sao tratadas aqui e nao chegam ao focus_mover.
+  if(profissionalTecla(k))return;
   if (focoHero) {
     if (k == SDLK_RIGHT) { heroPasso(1); return; }
     if (k == SDLK_LEFT) {
@@ -2713,7 +2726,10 @@ static void home_evento_(const SDL_Event *e) {
   }
   else if (k == SDLK_DOWN)  focoVertical(1);
   else if (k == SDLK_UP && !focoVertical(-1)) {
-    if (ajustes_hero_ligado() && cat_n() > 0) focoHero = 1;
+    if (ajustes_hero_ligado() && cat_n() > 0) {
+      focoHero = 1; profHubFoco=-1;
+      if(layoutHome()==HOME_LAYOUT_PROFISSIONAL)profHubFoco=0;
+    }
     else if (ajustes_menu_topo()) pedidoMenu = 1;
     else pedidoRelogio = 1;
   }
@@ -3471,6 +3487,7 @@ static void sincronizarFileiras(void) {
     }
   }
   nFileiras = destino;
+  profissionalColecoes();
   retomarAplicada = retomarRev;
   ultimaRevisao = revisao;
   filsAplicadas = nCat;
@@ -3536,7 +3553,7 @@ void home_ir_topo(void) {
   toqueHomeLimpar();
   toqueHeroCancelar();
 #endif
-  focoHero = 1;
+  focoHero = 1; profHubFoco=-1;
   foco.fileira = 0;
   foco.coluna = 0;
   memset(foco.colunaLembrada, 0, sizeof foco.colunaLembrada);
@@ -4192,7 +4209,7 @@ int home_streaming_barra(const int **pastas) {
 float home_topo_fracao(void) {
   float f;
   // Barra no topo (#461): so com o foco no destaque, como a pilula na pagina rolada.
-  if (layoutHome() == HOME_LAYOUT_GLOBOPLAY) return 1.0f;
+  if (layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL) return 1.0f;
   if (layoutHome() != HOME_LAYOUT_DINAMICA) return ajustes_menu_topo() ? (float)focoHero : 1.0f;
   f = 1.0f + dinHeroY() / 140.0f;
   return f < 0.0f ? 0.0f : (f > 1.0f ? 1.0f : f);
@@ -4202,7 +4219,7 @@ void home_hero_rect(float *x, float *y, float *w, float *h) {
   GfxRect r = heroArteRect;
   // Dinamica com o destaque ja rolado para fora: a pagina do titulo cresce a
   // partir do CARTAO que abriu, e nao de uma faixa que ninguem ve.
-  if (layoutHome()==HOME_LAYOUT_GLOBOPLAY && !focoHero && temItemFoco) r=itemFoco.rect;
+  if ((layoutHome()==HOME_LAYOUT_GLOBOPLAY || layoutHome()==HOME_LAYOUT_PROFISSIONAL) && !focoHero && temItemFoco) r=itemFoco.rect;
   if (layoutHome() == HOME_LAYOUT_DINAMICA && -dinHeroY() >= NV_DIN_ARTE_FADE_B - 60.0f && temItemFoco)
     r = itemFoco.rect;
   *x = r.x; *y = r.y; *w = r.w; *h = r.h;
@@ -4359,6 +4376,7 @@ static void desenhaPontosHero(float xDir, float yc, int n, int atual, float a) {
 // desenho e pelos pedidos antecipados (heroPedirLogo): o MESMO teto cai no
 // MESMO item do cache, sem promocao nem segundo decode.
 static float heroLogoMaxW(int lay, int cheio) {
+  if(lay==HOME_LAYOUT_PROFISSIONAL)return sm_prof_home(NV_TELA_W,NV_TELA_H).copyW*.90f;
   if (lay == HOME_LAYOUT_GLOBOPLAY) return fminf(540.0f,sm_globo_home(NV_TELA_W,NV_TELA_H).w*.36f);
   if (lay == HOME_LAYOUT_PADRAO) return homeTextoLargura(NV_PAD_LOGO_MAX_W);
   if (lay == HOME_LAYOUT_DINAMICA) return homeTextoLargura(NV_DIN_LOGO_MAX_W);
@@ -4534,6 +4552,7 @@ static float desenhaCopiaHero(const CatItem *ci, int principal, float x,
   // space when every real information line exists, including a caption.
   float minTop = 24.0f;
   if(lay==HOME_LAYOUT_GLOBOPLAY) minTop=base-sm_globo_home(NV_TELA_W,NV_TELA_H).h+104.0f;
+  if(lay==HOME_LAYOUT_PROFISSIONAL)minTop=base-sm_prof_home(NV_TELA_W,NV_TELA_H).base+150.0f;
   if (lay == HOME_LAYOUT_PADRAO)
     minTop = base - (NV_PAD_BANNER_H - NV_PAD_TEXTO_BASE) + 24.0f;
   else if (lay == HOME_LAYOUT_DINAMICA)
@@ -4654,7 +4673,7 @@ static float desenhaCopiaHero(const CatItem *ci, int principal, float x,
   }
 
   if (metaLinha[0] && aCopy > 0.004f) {
-    float badgeW=ci?badges_desenhar(badges_provedor(ci->provNome),x,yMeta,150,24,aCopy):0;
+    float badgeW=ci&&lay!=HOME_LAYOUT_PROFISSIONAL?badges_desenhar(badges_provedor(ci->provNome),x,yMeta,150,24,aCopy):0;
     TxtLinha lm = txt_linha_corta(TXT_HERO_META, metaLinha, 179, 179, 179, 255,
                                   sinW-badgeW);
     // META E SINOPSE TROCAM NA HORA, sem esvanecer com a arte. MEDIDO: no
@@ -4724,7 +4743,7 @@ static GfxRect heroTrailerArea(GfxRect arte) {
 }
 static GfxRect heroTrailerVideoRect(GfxRect r) {
 #ifdef NV_ANDROID
-  if(layoutHome()==HOME_LAYOUT_GLOBOPLAY){float s=gfx_escala_txt();return (GfxRect){r.x*s,r.y*s,r.w*s,r.h*s};}
+  if(layoutHome()==HOME_LAYOUT_GLOBOPLAY||layoutHome()==HOME_LAYOUT_PROFISSIONAL){float s=gfx_escala_txt();return (GfxRect){r.x*s,r.y*s,r.w*s,r.h*s};}
   if (homeCinematicaTV()) {
     // Enquadrar no espaco realmente visivel, com a reserva do foco no Hero.
     // A caixa antiga de 670 px centralizava o filme atras dos cartazes.
@@ -4743,6 +4762,10 @@ static float heroTrailerBase(void) {
   return homeShelfTop() + homeCabecalhoH() + fmaxf(0.0f, -scrollY);
 }
 static GfxRect heroArtworkRect(int lay, int cheio) {
+  if(lay==HOME_LAYOUT_PROFISSIONAL){
+    SmProfHome p=sm_prof_home(NV_TELA_W,NV_TELA_H);
+    return (GfxRect){0,-(scrollY+empurraHero()),NV_TELA_W,p.heroH};
+  }
   if(lay==HOME_LAYOUT_GLOBOPLAY){
     SmGloboHome g=sm_globo_home(NV_TELA_W,NV_TELA_H);
     return (GfxRect){g.x,g.y-(scrollY+empurraHero()),g.w,g.h};
@@ -4822,6 +4845,8 @@ static void heroVeuLayout(int lay, float h) {
   vitAncora = lay == HOME_LAYOUT_PADRAO ? 0.30f : 0.28f;
   vitVeuIni = lay == HOME_LAYOUT_DINAMICA ? 0.38f * alturaTextoHeroDin() / h : 0.0f;
 }
+
+#include "home_profissional.inc"
 
 // Globoplay e um quarto desenho da mesma Home: catalogo, foco e player comuns.
 // Os vizinhos sao imagens; o unico decoder pertence ao painel central parado.
@@ -4961,6 +4986,10 @@ static void desenhaHero(Uint32 agora, float saida) {
     cheio=0;logoH=100.0f;sinW=r.w*.35f;sinLinhas=2;btnH=50.0f;btnGap=14.0f;
     aVis=anim_clamp(1.0f-fmaxf(0.0f,scrollY+empurraHero())/(r.h*.50f),0.0f,1.0f);
   }
+  if(lay==HOME_LAYOUT_PROFISSIONAL){
+    cheio=0;logoH=112;sinW=sm_prof_home(NV_TELA_W,NV_TELA_H).copyW;sinLinhas=2;btnH=54;btnGap=16;
+    aVis=anim_clamp(1-fmaxf(0,scrollY+empurraHero())/(r.h*.50f),0,1);
+  }
 
   // Logo, descricao e botao ficam na faixa cinematografica compacta da TCL.
   if (homeCinematicaTV()) {
@@ -5053,7 +5082,7 @@ static void desenhaHero(Uint32 agora, float saida) {
   // COLECAO EM FOCO: o destaque vira o banner da pasta. Moderna e Padrao; a
   // Dinamica nao tem destaque parado no topo e mostra o mesmo banner por tras
   // do cabecalho da fileira (dinArteColecao).
-  if(!focoHero&&lay!=HOME_LAYOUT_DINAMICA&&lay!=HOME_LAYOUT_GLOBOPLAY&&foco.fileira>=0&&foco.fileira<nFileiras&&fileiras[foco.fileira].tipo==FILEIRA_CATALOGOS) {
+  if(!focoHero&&lay!=HOME_LAYOUT_DINAMICA&&lay!=HOME_LAYOUT_GLOBOPLAY&&lay!=HOME_LAYOUT_PROFISSIONAL&&foco.fileira>=0&&foco.fileira<nFileiras&&fileiras[foco.fileira].tipo==FILEIRA_CATALOGOS) {
     const ColFolder *folder=col_folder(fileiras[foco.fileira].folders[foco.coluna]);
     if(folder) {
       if(folder->editorial) {
@@ -5358,6 +5387,11 @@ static void desenhaHero(Uint32 agora, float saida) {
   if (!trailer_aberto() || trailer_dono() != TRAILER_DONO_HOME || !trailer_mostra_video())
     aTrailer = 0.0f;
 #endif
+  if(lay==HOME_LAYOUT_PROFISSIONAL){
+    heroArteRect=r;
+    desenhaHeroProfissional(r,ci,cAnt,arteA,arteB,tAtu,tAnt,aTrailer,aArte*aVis*(1-saida),saida);
+    return;
+  }
   if(lay==HOME_LAYOUT_GLOBOPLAY){
     heroArteRect=r;
     desenhaHeroGloboplay(r,ci,cAnt,arteA,arteB,tAtu,tAnt,aTrailer,
@@ -5652,7 +5686,7 @@ static void ponteiroHero(int a, int b) {
 #ifdef NV_TOUCH_UI
   toqueHomeLimpar();
 #endif
-  focoHero = 1;
+  focoHero = 1; profHubFoco=-1;
   heroUltTecla = SDL_GetTicks();
   sairPerguntadoEm = 0;
 }
@@ -5987,7 +6021,7 @@ static void shotTrailerPasso(int topo, float dt, Uint32 agora, int heroSetting, 
   heroTrailerNoCartao = dest == 1;
   alvo = dest >= 0 ? 1.0f : 0.0f;
   heroTrailerFade = anim_mola(heroTrailerFade, alvo, dt, NV_MOLA_SCROLL);
-  { int toca = topo && dest == 0 && focoHero && layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY;
+  { int toca = topo && dest == 0 && focoHero && layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY && layoutHome() != HOME_LAYOUT_PROFISSIONAL;
     trailercinema_passo(&heroCinema, toca, dt, ajustes_animacoes_reduzidas()); }
 }
 #endif
@@ -6052,7 +6086,7 @@ void home_trailer_passo(int topo, float dt, Uint32 agora) {
     if (!topo) motivo = HERO_GATE_OVERLAY;
     else if (!destCartao && !ajustes_hero_ligado()) motivo = HERO_GATE_DISABLED;
     else if (focoHero ? !heroSetting : !posterSetting) motivo = HERO_GATE_SETTING;
-    else if (!destCartao && !focoHero && (layoutHome() == HOME_LAYOUT_DINAMICA || layoutHome() == HOME_LAYOUT_GLOBOPLAY)) motivo = HERO_GATE_DYNAMIC;
+    else if (!destCartao && !focoHero && (layoutHome() == HOME_LAYOUT_DINAMICA || layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL)) motivo = HERO_GATE_DYNAMIC;
     else if (!noHero && !noCartaz) motivo = HERO_GATE_POSTER_WAIT;
   }
   pronto = pronto && itemAtual >= 0 &&
@@ -6270,7 +6304,7 @@ trailer_hero_fim:
                   trailer_aberto() && !trailer_cheia() && trailer_tocando() &&
                   trailer_mostra_video()) ? 1.0f : 0.0f;   // .tpk: ate o recorte assentar (#178)
 #ifdef NV_ANDROID
-    if (!heroTrailerNoCartao && (layoutHome() == HOME_LAYOUT_MODERNA || layoutHome() == HOME_LAYOUT_GLOBOPLAY) && !homeRetratoTelefone())
+    if (!heroTrailerNoCartao && (layoutHome() == HOME_LAYOUT_MODERNA || layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL) && !homeRetratoTelefone())
       heroTrailerFade = sm_trailer_hero_fade(heroTrailerFade, alvo, dt, ajustes_animacoes_reduzidas());
     else
 #endif
@@ -6288,7 +6322,7 @@ trailer_hero_fim:
     // sem cinema, o texto e a arte seguem como estao.
     { int toca = topo && alvo > 0.5f && !heroTrailerNoCartao &&
                  focoHero && ajustes_trailer_hero() &&
-                 layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY
+                 layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY && layoutHome() != HOME_LAYOUT_PROFISSIONAL
 #ifdef NV_ANDROID
                  // TCL: trailer permanece no hero com as fileiras visiveis.
                  && 0
@@ -7523,10 +7557,15 @@ static void home_desenhar_(Uint32 agora) {
   float pd = detail_progresso();
   const int vazioQr = homevazio_ativo(nFileiras);   // sem add-ons: o cartao com o QR no lugar da Home
   if (ajustes_hero_ligado() && !vazioQr) desenhaHero(agora, pd);
+  if(layoutHome()==HOME_LAYOUT_PROFISSIONAL&&ajustes_hero_ligado()&&!vazioQr){
+    SmProfHome p=sm_prof_home(NV_TELA_W,NV_TELA_H);
+    float offset=scrollY+empurraHero();
+    profissionalHubsDesenhar(offset,anim_clamp(1-fmaxf(0,offset)/fmaxf(1,p.push*.75f),0,1)*(1-pd));
+  }
   if (ajustes_hero_ligado() && !vazioQr && heroVisivelToque() > 0.25f) {
     float heroBaixo = layoutHome() == HOME_LAYOUT_DINAMICA
                     ? dinHeroY() + alturaTextoHeroDin()
-                    : layoutHome()==HOME_LAYOUT_GLOBOPLAY ? heroArteRect.y+heroArteRect.h : corteFileiras();
+                    : (layoutHome()==HOME_LAYOUT_GLOBOPLAY||layoutHome()==HOME_LAYOUT_PROFISSIONAL) ? heroArteRect.y+heroArteRect.h : corteFileiras();
     if (heroBaixo > 0.0f)
       ponteiro_alvo(0, 0, NV_TELA_W, heroBaixo,
 #ifdef NV_TOUCH_UI
@@ -8350,6 +8389,7 @@ void home_abrir_sessao(void) {
   okHold = 0.0f;
   home_retomar_esquecer();
   nFileiras = nStreamBarra = nProxHome = 0;
+  profHubFoco=-1;nProfPastas=0;
   memset(fileiras, 0, sizeof fileiras);
   filsAplicadas = prefsAplicadas = -1;
   memset(animFoco, 0, sizeof animFoco);

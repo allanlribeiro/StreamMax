@@ -1,0 +1,60 @@
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include "home.h"
+#include "focus.h"
+#include "colecoes.h"
+#include "ajustes.h"
+#include "profissionalhome.h"
+/* Dados de entrada controlados; as funcoes incluidas abaixo sao da Home. */
+typedef struct {TipoFileira tipo;char titulo[96],base[64],catTipo[8],catId[64];int n,folders[41];} Fileira;
+static Fileira fileiras[3];static int nFileiras;
+static ColFolder folders[5];
+static int lay=HOME_LAYOUT_PROFISSIONAL,heroOn=1,focoHero=1,profHubFoco=-1;
+static int nProfPastas,profPastas[SM_PROF_PASTAS_MAX],pedidoGuia,pedidoMenu,opened=-1;
+static char guiaId[80];static Foco foco;
+static int openedCatalog;
+static int layoutHome(void){return lay;}
+int ajustes_hero_ligado(void){return heroOn;}
+const ColFolder *col_folder(int i){return i>=0&&i<5?folders+i:NULL;}
+void vertudo_colecao(const ColFolder *f){opened=(int)(f-folders);}
+void vertudo_abrir(const char *base,const char *tipo,const char *id,const char *titulo){
+  assert(base[0]&&!strcmp(tipo,"movie")&&!strcmp(id,"teste")&&titulo[0]);openedCatalog++;
+}
+static int primeiraFileiraNavegavel(void){for(int i=0;i<foco.nFileiras;i++)if(foco.nColunas[i])return i;return -1;}
+/* REAL_NAV */
+int main(void){
+  for(int i=0;i<5;i++)folders[i].nSources=i==2?0:1;
+  nFileiras=2;fileiras[0].tipo=fileiras[1].tipo=FILEIRA_CATALOGOS;
+  strcpy(fileiras[0].titulo,"Outras");fileiras[0].n=2;fileiras[0].folders[0]=3;fileiras[0].folders[1]=1;
+  strcpy(fileiras[1].titulo,"Streaming");fileiras[1].n=4;
+  int a[]={0,0,1,2};memcpy(fileiras[1].folders,a,sizeof a);
+  profissionalColecoes();assert(nProfPastas==3&&profPastas[0]==0&&profPastas[1]==1&&profPastas[2]==3);
+  profissionalEscolher(-1);profissionalEscolher(99);assert(opened==-1&&!pedidoGuia);
+  profissionalEscolher(1);assert(opened==1);
+  strcpy(guiaId,"canal-antigo");profissionalEscolher(3);assert(pedidoGuia&&!guiaId[0]);
+  pedidoGuia=0;profissionalClique(0,0);assert(opened==0&&focoHero&&profHubFoco==0);
+  int cols[]={0,7,2};focus_iniciar(&foco,3,cols);foco.colunaLembrada[1]=4;
+  profHubFoco=-1;assert(!profissionalTecla(SDLK_RIGHT));
+  assert(profissionalTecla(SDLK_DOWN)&&profHubFoco==0);
+  for(int i=0;i<20;i++)profissionalTecla(SDLK_RIGHT);
+  assert(profHubFoco==3);profissionalTecla(SDLK_DOWN);
+  assert(!focoHero&&foco.fileira==1&&foco.coluna==4);
+  assert(!profissionalTecla(SDLK_LEFT));
+  focoHero=1;profHubFoco=0;profissionalTecla(SDLK_LEFT);assert(pedidoMenu);
+  profissionalTecla(SDLK_UP);assert(profHubFoco==-1);
+  nFileiras=0;profissionalColecoes();assert(profissionalHubs()==1);
+  cols[0]=cols[1]=cols[2]=0;focus_iniciar(&foco,3,cols);
+  profissionalTecla(SDLK_DOWN);profissionalTecla(SDLK_DOWN);assert(focoHero&&profHubFoco==0);
+  profissionalEscolher(0);assert(pedidoGuia); // sem colecoes, somente TV
+  nFileiras=1;fileiras[0].tipo=FILEIRA_NORMAL;strcpy(fileiras[0].base,"https://example.test");
+  strcpy(fileiras[0].catId,"teste");strcpy(fileiras[0].catTipo,"movie");
+  profissionalColecoes();assert(nProfPastas==1&&profPastas[0]==-1);
+  profissionalEscolher(0);assert(openedCatalog==1);
+  heroOn=0;assert(!profissionalTecla(SDLK_RIGHT));heroOn=1;
+  for(int layout=0;layout<HOME_LAYOUT_PROFISSIONAL;layout++){
+    lay=layout;profHubFoco=0;profissionalColecoes();assert(!nProfPastas&&profHubFoco==-1);
+    assert(!profissionalTecla(SDLK_DOWN));opened=-1;profissionalClique(0,0);assert(opened==-1);
+  }
+  puts("OK: colecoes reais, ordem/duplicatas/ausencia, rotas, ponteiro, D-pad, limites e layouts anteriores");
+}

@@ -1,5 +1,23 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — Home Profissional opcional (28/10/2026)
+
+- Pedido: combinar destaque Apple TV, colecoes Disney+, foco Netflix,
+  identificacao de servicos Prime Video e acesso IPTV/VOD como opcao
+  **Profissional**, sem substituir as homes anteriores; enviar imagens.
+- Branch `feat/streammax-profissional-home`; candidato 1.0.27 / 20034 / 2.0.34.
+- Enum append-only Profissional=4; preferencia local e selecao salva preservadas.
+- Um unico trailer, composicao GLES em uma passada, base nos 22% finais,
+  colecoes/catalagos existentes e atalho para o Guia TV/VOD existente.
+- Sem marcas, assinaturas ou disponibilidade inventadas: atalhos usam colecoes
+  ou catalogos configurados; servicos do Hero usam `provNome` do titulo.
+- Testes locais de renderizador, escala, navegacao/rotas e preferencias;
+  Globoplay comparada byte a byte com a previa da 1.0.26.
+- [Previa, funcionamento e limites](./docs/profissional-home/README.md).
+- APK/publicacao em preparacao; nao declarar disponivel antes de verificar
+  o workflow, a assinatura oficial, o pacote e o JSON real do atualizador.
+- Navegacao completa e FPS na TCL permanecem pendentes de teste fisico.
+
 ## Continuidade — novo layout opcional Globoplay (28/10/2026)
 
 - Pedido: usar a referencia panoramica web enviada, como opcao chamada

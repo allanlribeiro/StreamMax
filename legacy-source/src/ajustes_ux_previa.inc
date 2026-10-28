@@ -146,6 +146,19 @@ static void ajMiniHome(AjMini o, float ox, float oy, float W) {
     { static const int L[4] = { 13, 15, 21, 33 };
       for (i = 0; i < 4; i++) ajImg(ajArte(AJA_FUNDO, L[i]), MR(210 + i * 428, 700, 400, 225), 14 * s, a); }
     for (i = 0; i < 7; i++) ajImg(ajArte(AJA_POSTER, AJ_POS[(i + 2) % 14]), MR(210 + i * 288, 1010, 260, 390), 14 * s, a);
+  } else if(o.lay==HOME_LAYOUT_PROFISSIONAL){
+    gfx_cor(quad,rr/H,.035f,.04f,.055f,a);
+    if(!o.semHero){
+      ajImg(ajArte(AJA_FUNDO,o.art),MR(0,0,1920,734),0,a);
+      gfx_rect(MR(0,0,1100,734),0,GFX_VEU,0,0,0,0,0,0,0,.9f*a);
+      ajLogo(ajArte(AJA_LOGO,o.art),MX(96),MY(300),540*s,112*s,a);
+      ajTextoMini("Ver título",25*s,1,MX(118),MY(590),255,255,255,a);
+      for(i=0;i<5;i++)gfx_cor(MR(96+i*348,740,330,100),.14f,.10f,.13f,.18f,a);
+      ajTextoMini("Coleções",23*s,1,MX(118),MY(776),243,242,239,a);
+      ajTextoMini("TV ao vivo",23*s,1,MX(1508),MY(776),243,242,239,a);
+    }
+    ajTextoMini("Continuar assistindo",30*s,1,MX(96),MY(o.semHero?132:890),243,242,239,a);
+    for(i=0;i<6;i++)ajImg(ajArte(AJA_POSTER,AJ_POS[i]),MR(96+i*300,o.semHero?192:950,276,360),14*s,a);
   } else if(o.lay==HOME_LAYOUT_GLOBOPLAY){
     gfx_cor(quad,rr/H,.105f,.105f,.105f,a);
     if(!o.semHero){
@@ -273,8 +286,8 @@ static AjMini ajMiniPadrao(void) {
 }
 static float ajPreviaLayout(float x, float y, float w) {
   AjMini m = ajMiniPadrao(), o[HOME_LAYOUT_N];
-  static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay" };
-  static const char *const N2[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay" };   // v2: o nome inteiro esta no titulo
+  static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay", "Profissional" };
+  static const char *const N2[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay", "Profissional" };   // v2: o nome inteiro esta no titulo
   int i, sel = valor[AJ_HOME_LAYOUT];
   if (ajEditandoLinha(AJ_HOME_LAYOUT)) sel = uxPendente;
   m.lay = sel;

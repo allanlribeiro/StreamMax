@@ -1580,6 +1580,20 @@ static const char *FS_CORPO[GFX_NMODOS] = {
   "  NV_HP float a=1.0-m*v*(1.0-g);\n"
   "  gl_FragColor=vec4(color*uCor.a,a*uCor.a);\n"
   "}\n",
+
+  // GFX_PROFISSIONAL: composicao unica, cover e degradês ligados ao fundo.
+  // No video, nenhuma foto residual fica sob a transicao. Base so nos 22% finais.
+  "NV_HP float profEase(NV_HP float t){t=clamp(t,0.0,1.0);return t*t*t*(t*(t*6.0-15.0)+10.0);}\n"
+  "void main(){\n"
+  "  NV_HP float ge=1.0-profEase((vUv.x-0.10)/0.50);\n"
+  "  NV_HP float gb=profEase((vUv.y-0.78)/0.22);\n"
+  "  NV_HP float gt=(1.0-profEase(vUv.y/0.18))*0.30;\n"
+  "  NV_HP float g=1.0-(1.0-ge)*(1.0-gb)*(1.0-gt);\n"
+  "  NV_HP float v=clamp(uFoco,0.0,1.0);\n"
+  "  vec3 c=texture2D(uTex,cover(vUv)).rgb*(1.0-g)*(1.0-v)+uFundo*g;\n"
+  "  NV_HP float a=1.0-v*(1.0-g);\n"
+  "  gl_FragColor=vec4(c*uCor.a,a*uCor.a);\n"
+  "}\n",
 };
 
 // Cada corpo declara o que usa; montar so o necessario mantem o shader enxuto.
@@ -1619,7 +1633,8 @@ static const struct { int sdf, cover; } PRECISA[GFX_NMODOS] = {
   {1,0},   /* GFX_VIDRO — SDF proprio em pixels; o {1,..} so liga a margem de 1 px do quad */
   {1,0},   /* GFX_VITRINE_DIN — o do GFX_VITRINE */
   {0,0},   /* GFX_FURO_HERO — rampas e crossfade, sem textura */
-  {1,1}    /* GFX_GLOBOPLAY — cantos e cover no painel */
+  {1,1},   /* GFX_GLOBOPLAY — cantos e cover no painel */
+  {0,1}    /* GFX_PROFISSIONAL — uma composicao, sem SDF */
 };
 
 static GLuint compila(GLenum tipo, const char *src) {
@@ -4338,6 +4353,23 @@ void gfx_globoplay_media(GfxRect r, GLuint tex, float aspecto, float video, floa
   glBlendFuncSeparate(GL_ONE,video>0.0f?GL_ZERO:GL_ONE_MINUS_SRC_ALPHA,
                       GL_ONE,video>0.0f?GL_ZERO:GL_ONE_MINUS_SRC_ALPHA);
   gfx_rect(r,tex,GFX_GLOBOPLAY,video,0,0,18.0f/r.h,.105f,.105f,.105f,alfa);
+  glBlendFuncSeparate(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA,GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
+  gfx_tex_aspect_atual=ant;
+}
+
+void gfx_profissional_media(GfxRect r,GLuint tex,float aspecto,float video,float alfa) {
+  if(r.w<=0||r.h<=0||alfa<=0)return;
+  if(dinPendente)dinDescarregar();
+  if(ambPendente)gfx_ambiente_descarregar();
+  ambIntacta=0;
+  GfxRect t=r;GFX_TR_RECT(t.x,t.y,t.w,t.h);
+  if(escAtiva!=1.0f){t.x*=escAtiva;t.y*=escAtiva;t.w*=escAtiva;t.h*=escAtiva;}
+  if(video>0)vidroFuro(t);
+  float ant=gfx_tex_aspect_atual;
+  gfx_tex_aspect_atual=aspecto>0?aspecto:16.0f/9.0f;
+  glBlendFuncSeparate(GL_ONE,video>0?GL_ZERO:GL_ONE_MINUS_SRC_ALPHA,
+                      GL_ONE,video>0?GL_ZERO:GL_ONE_MINUS_SRC_ALPHA);
+  gfx_rect(r,tex,GFX_PROFISSIONAL,video,0,0,0,1,1,1,alfa);
   glBlendFuncSeparate(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA,GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
   gfx_tex_aspect_atual=ant;
 }

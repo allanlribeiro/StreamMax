@@ -6,6 +6,7 @@
 #include "trailerfonte.h"
 #include "trailerhero.h"
 #include "globoplayhome.h"
+#include "profissionalhome.h"
 #include "extras.h"
 #include "linguas.h"
 #include "video.h"      // trailer_osd_desenhar reads video_pos/duracao on every target
@@ -334,9 +335,11 @@ int trailer_suportado(void) {
 static void nativoJanela(GfxRect r, int telaCheia) {
 #if defined(NV_ANDROID)
   if (dono == TRAILER_DONO_HOME && !noCartao && !telaCheia &&
-      (ajustes_home_layout() == HOME_LAYOUT_MODERNA || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY) && !layout_modo_mobile()) {
+      (ajustes_home_layout() == HOME_LAYOUT_MODERNA || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY || ajustes_home_layout() == HOME_LAYOUT_PROFISSIONAL) && !layout_modo_mobile()) {
     float x,y,w,h;
-    if(ajustes_home_layout()==HOME_LAYOUT_GLOBOPLAY)
+    if(ajustes_home_layout()==HOME_LAYOUT_PROFISSIONAL)
+      sm_prof_video(r.x,r.y,r.w,r.h,video_largura(),video_altura(),&x,&y,&w,&h);
+    else if(ajustes_home_layout()==HOME_LAYOUT_GLOBOPLAY)
       sm_globo_video(r.x,r.y,r.w,r.h,video_largura(),video_altura(),&x,&y,&w,&h);
     else sm_trailer_hero_video(r.x,r.y,r.w,r.h,video_largura(),video_altura(),&x,&y,&w,&h);
     video_android_janela_preencher((int)lroundf(x),(int)lroundf(y),(int)lroundf(w),(int)lroundf(h));
@@ -350,10 +353,12 @@ static void nativoJanela(GfxRect r, int telaCheia) {
 static int nativoTocar(const char *fonte, GfxRect r, int telaCheia) {
 #if defined(NV_ANDROID)
   if (dono == TRAILER_DONO_HOME && !noCartao && !telaCheia &&
-      (ajustes_home_layout() == HOME_LAYOUT_MODERNA || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY) && !layout_modo_mobile()) {
+      (ajustes_home_layout() == HOME_LAYOUT_MODERNA || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY || ajustes_home_layout() == HOME_LAYOUT_PROFISSIONAL) && !layout_modo_mobile()) {
     float x,y,w,h;
     // Metadata da fonte anterior nao pertence a esta abertura.
-    if(ajustes_home_layout()==HOME_LAYOUT_GLOBOPLAY)
+    if(ajustes_home_layout()==HOME_LAYOUT_PROFISSIONAL)
+      sm_prof_video(r.x,r.y,r.w,r.h,0,0,&x,&y,&w,&h);
+    else if(ajustes_home_layout()==HOME_LAYOUT_GLOBOPLAY)
       sm_globo_video(r.x,r.y,r.w,r.h,0,0,&x,&y,&w,&h);
     else sm_trailer_hero_video(r.x,r.y,r.w,r.h,0,0,&x,&y,&w,&h);
     return video_android_tocar_home(fonte,(int)lroundf(x),(int)lroundf(y),
@@ -423,7 +428,7 @@ static void nativoAplicar(void) {
     if (video_recorte_fonte_trailer() || noCartao)
 #else
     if (heroAndroid) {
-      if ((ajustes_home_layout() == HOME_LAYOUT_MODERNA || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY) && NV_TELA_W > NV_TELA_H) {
+      if ((ajustes_home_layout() == HOME_LAYOUT_MODERNA || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY || ajustes_home_layout() == HOME_LAYOUT_PROFISSIONAL) && NV_TELA_W > NV_TELA_H) {
         nativoJanela(rect, cheia);
       } else video_janela((int)rect.x, (int)rect.y, (int)rect.w, (int)rect.h);
     } else {

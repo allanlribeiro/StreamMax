@@ -948,7 +948,7 @@ static void guiaDesenharInspetor(const GuiaVista *v, float a) {
     y += 16;
     if (c == 1) {
       AjMini m = ajMiniPadrao(), o[HOME_LAYOUT_N];
-      static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay" };
+      static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay", "Profissional" };
       int i;
       m.art = 13; m.relogio = 2; m.rail = 1; m.semHero = 0;
       for (i = 0; i < HOME_LAYOUT_N; i++) { o[i] = m; o[i].lay = i; }

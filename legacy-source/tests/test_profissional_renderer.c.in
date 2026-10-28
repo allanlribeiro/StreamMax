@@ -1,0 +1,164 @@
+#include <EGL/egl.h>
+#include <assert.h>
+#include <stdint.h>
+/* REAL_GFX */
+#include "home.h"
+#include "focus.h"
+#include "colecoes.h"
+#include "badges.h"
+#include "text.h"
+#include "profissionalhome.h"
+#define NV_TXT_TELA
+#include "escala.h"
+int perftv_enabled,perftv_blur,perftv_glass,perftv_uploads;
+float nv_cor_fundo_viva[3]={.04f,.04f,.04f},nv_acento_viva[3]={.40f,.65f,1};
+float nv_grad_viva[3][3],nv_ambiente_viva[4][3],nv_ambiente_forca,nv_tempo_viva;
+int nv_grad_ativo;float nv_layout_w=1920,nv_layout_h=1080;
+int ajustes_profundidade(void){return 0;}float ajustes_profundidade_brilho(void){return 0;}
+int ajustes_vidro_fosco(void){return 0;}int ajustes_vidro(void){return 0;}int ajustes_vidro_qualidade(void){return 0;}
+int ajustes_hero_ligado(void){return 1;}void gpun_descartar_cor(int p){(void)p;}
+SDL_Surface *IMG_Load_RW(SDL_RWops *src,int freeSrc){
+  if(freeSrc)SDL_RWclose(src);assert(!"icone de smartphone fora desta fixture de TV");return NULL;
+}
+int telefoneui_ativo(void){return 0;}static int heroCompactoTelefone(void){return 0;}
+float sinopse_entrelinha(TxtEstilo s,float h){(void)s;return h;}
+typedef struct {float logo,logoHeight,action,caption,friends,meta,secondary,synopsis;} HeroCopyLayout;
+/* REAL_COPY */
+/* FIXTURE_IO */
+static Asset cached[40];static char keys[40][80];static int nCached;
+static Asset cachedAsset(const char *s){
+  for(int i=0;i<nCached;i++)if(!strcmp(keys[i],s))return cached[i];
+  assert(nCached<40);snprintf(keys[nCached],80,"%s",s);cached[nCached]=asset(s);return cached[nCached++];
+}
+GLuint tex_obter_larg(const char *s,float w){(void)w;if(strstr(s,"aj_tv-minimal-play"))s="tv-icon";return cachedAsset(s).id;}
+float tex_aspecto(const char *s){Asset a=cachedAsset(s);return (float)a.w/a.h;}
+static ColFolder folders[4];
+const ColFolder *col_folder(int i){return i>=0&&i<4?folders+i:NULL;}
+typedef struct {TipoFileira tipo;char titulo[96],base[64],catTipo[8],catId[64];int n,folders[41];} Fileira;
+static Fileira fileiras[1];static int nFileiras;
+static CatItem item;static HomeItem itemFoco;
+static int nProfPastas=4,profPastas[]={0,1,2,3},profHubFoco=-1,focoHero=1,heroAtual=0;
+static int pedidoGuia,pedidoMenu,published;static char guiaId[80];
+static float heroSai,heroEntra=1,scrollY;
+static Foco foco;
+static int layoutHome(void){return HOME_LAYOUT_PROFISSIONAL;}
+static float empurraHero(void){return sm_prof_home(NV_TELA_W,NV_TELA_H).push;}
+static int primeiraFileiraNavegavel(void){return 0;}
+void vertudo_colecao(const ColFolder *f){(void)f;}
+void vertudo_abrir(const char *b,const char *t,const char *i,const char *n){(void)b;(void)t;(void)i;(void)n;}
+static void publicarItemFoco(void){published++;}
+static const char *arteDoItem(const CatItem *ci,int *p){(void)ci;(void)p;return "frame";}
+int home_proximo_desfocar(const CatItem *ci,const char *p){(void)ci;(void)p;return 0;}
+const char *tex_arquivo(const char *p){(void)p;return NULL;}
+const char *i18n(const char *s){return s;}
+TxtLinha txt_linha(TxtEstilo e,const char *s,int r,int g,int b,int a){
+ (void)e;(void)g;(void)b;(void)a;
+ const char *name=!strcmp(s,"Ver título")?(r<100?"button-dark":"button-light"):
+   !strcmp(s,"TV ao vivo")?"tv-title":!strcmp(s,"IPTV e VOD")?"tv-sub":
+   !strcmp(s,"Serviços do catálogo")?"sources":"generic";
+ Asset t=cachedAsset(name);return (TxtLinha){.tex=t.id,.w=t.w,.h=t.h};
+}
+TxtLinha txt_linha_corta(TxtEstilo e,const char *s,int r,int g,int b,int a,float w){
+ TxtLinha l=txt_linha(e,s,r,g,b,a);assert(l.w<=w+1);return l;
+}
+void txt_desenhar_alpha(TxtLinha l,float x,float y,float a){gfx_rect((GfxRect){x,y,l.w,l.h},l.tex,GFX_TEXTO,0,0,0,0,1,1,1,a);}
+uint64_t badges_provedor(const char *s){return s&&strstr(s,"Netflix")?1:0;}
+float badges_desenhar(uint64_t m,float x,float y,float maxW,float h,float a){
+ if(!m)return 0;Asset t=cachedAsset("brand-netflix");float w=fminf(maxW,h*t.w/t.h);
+ gfx_rect((GfxRect){x,y,w,h},t.id,GFX_TEXTO,0,0,0,0,1,1,1,a);return w;
+}
+static float desenhaCopiaHero(const CatItem *ci,int main,float x,float base,int lay,int cheio,float logoH,
+                             float sinW,int lines,float a,float ca,float cin,float btnH,float gap,float slot){
+ (void)ci;(void)main;(void)lay;(void)cheio;(void)lines;(void)a;(void)ca;(void)cin;
+ SmProfHome p=sm_prof_home(NV_TELA_W,NV_TELA_H);
+ HeroCopyLayout c=heroCopyLayout(base,60,1,1,0,logoH,btnH,gap,base-p.base+150,slot,0);
+ Asset l=cachedAsset("logo");float w=fminf(sinW*.9f,c.logoHeight*l.w/l.h),h=w*l.h/l.w;
+ gfx_rect((GfxRect){x,c.logo+c.logoHeight-h,w,h},l.id,GFX_TEXTO,0,0,0,0,1,1,1,1);
+ label("meta",x,c.meta,.78,.80,.84);label("nota",x,c.secondary,1,.87,.4);
+ label("sin1",x,c.synopsis,.94,.95,.98);label("sin2",x,c.synopsis+30,.94,.95,.98);return c.action;
+}
+/* REAL_PROF */
+static unsigned char pixels[1920*1080*4];
+static unsigned char *pixel(int x,int y){return pixels+((1079-y)*1920+x)*4;}
+static void readback(void){glReadPixels(0,0,1920,1080,GL_RGBA,GL_UNSIGNED_BYTE,pixels);assert(glGetError()==GL_NO_ERROR);}
+static void testShader(void){
+ GLuint red;unsigned char color[]={255,0,0,255};glGenTextures(1,&red);glBindTexture(GL_TEXTURE_2D,red);
+ glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,1,1,0,GL_RGBA,GL_UNSIGNED_BYTE,color);
+ glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+ const float scales[]={.85f,1,1.25f,1.5f};
+ for(unsigned i=0;i<4;i++){
+  gfx_escala_txt_definir(scales[i]);gfx_escala_sair(scales[i]);SmProfHome p=sm_prof_home(NV_TELA_W,NV_TELA_H);
+  GfxRect r={0,0,NV_TELA_W,p.heroH};assert(p.base>150&&p.hubY>=p.heroH&&p.shelf>p.hubY+p.hubH);
+  int x=(int)(r.w*.85f*scales[i]),y=(int)(r.h*.45f*scales[i]);
+  for(int phase=0;phase<=4;phase++){
+   glClearColor(.04,.04,.04,1);glClear(GL_COLOR_BUFFER_BIT);gfx_profissional_media(r,red,16.f/9,phase*.25f,1);readback();
+   assert(abs(pixel(x,y)[3]-(255-phase*255/4))<3);
+   assert(abs(pixel(x,y)[0]-(255-phase*255/4))<3);
+   assert(pixel(2,y)[3]>250&&pixel(x,(int)(r.h*scales[i])-1)[3]>250);
+  }
+  int prev=256;
+  for(int xx=(int)(r.w*.10f*scales[i]);xx<r.w*.60f*scales[i];xx++){
+   int a=pixel(xx,y)[3];assert(a<=prev+1&&abs(a-prev)<8);prev=a;
+  }
+  prev=-1;
+  for(int yy=(int)(r.h*.78f*scales[i]);yy<r.h*scales[i]-1;yy++){
+   int a=pixel(x,yy)[3];assert(a>=prev-1&&a-prev<10);prev=a;
+  }
+  const int dims[][2]={{0,0},{1920,1080},{1920,804},{1080,1080},{720,1280}};
+  for(int k=0;k<5;k++){
+   float vx,vy,vw,vh;sm_prof_video(0,0,r.w,r.h,dims[k][0],dims[k][1],&vx,&vy,&vw,&vh);
+   assert(vx<=.01f&&vy<=.01f&&vx+vw>=r.w-.01f&&vy+vh>=r.h-.01f);
+   assert(fabsf(vw/vh-(k?(float)dims[k][0]/dims[k][1]:16.f/9))<.001f);
+  }
+ }
+ glDeleteTextures(1,&red);gfx_escala_txt_definir(1);gfx_escala_sair(1);
+ puts("OK: shader real, cover uniforme, alfa temporal/espacial, base 22%, escalas 85-150%, sem foto residual");
+}
+static void scene(const char *name,int hub,int rows){
+ SmProfHome p=sm_prof_home(1920,1080);scrollY=rows?0:-p.push;focoHero=!rows;profHubFoco=hub;
+ float offset=scrollY+p.push;GfxRect r={0,-offset,1920,p.heroH};Asset frame=cachedAsset("frame");
+ float x,y,w,h;sm_prof_video(r.x,r.y,r.w,r.h,frame.w,frame.h,&x,&y,&w,&h);
+ glClearColor(.04,.04,.04,1);glClear(GL_COLOR_BUFFER_BIT);
+ gfx_rect((GfxRect){x,y,w,h},frame.id,GFX_SNAP,0,0,0,0,1,1,1,1);dump(name,"video");
+ glClearColor(.04,.04,.04,1);glClear(GL_COLOR_BUFFER_BIT);published=0;
+ if(!rows){
+  desenhaHeroProfissional(r,&item,NULL,"frame",NULL,frame.id,0,1,1,0);
+  profissionalHubsDesenhar(offset,1);
+  assert(published==(hub<0));
+ }
+ // Menu/textos e catalogo demonstrativos. Hero, fontes e hubs acima sao reais.
+ gfx_cor((GfxRect){365,24,1190,62},.5f,.055,.065,.085,.92);
+ label("nav",404,45,.96,.97,.99);label("clock",1780,42,.88,.90,.94);
+ float yy=rows?240:p.shelf;
+ for(int row=0;row<(rows?2:1);row++){
+  label(row?"row2":"continue",96,yy,.96,.97,.99);
+  if(!row){
+   for(int i=0;i<4;i++){
+    GfxRect c={96+i*446,yy+58,420,236};card(i==0?"frame":i==1?"frame-12":"frame-02",c);
+    gfx_cor((GfxRect){c.x+14,c.y+c.h-14,c.w-28,4},.5,.3,.32,.36,1);
+    gfx_cor((GfxRect){c.x+14,c.y+c.h-14,(c.w-28)*(.35f+i*.1f),4},.5,.42,.69,1,1);
+    if(rows&&i==0)gfx_anel(c,18/c.h,2.5,.86,.94,1,1);
+   }
+   yy+=340;
+  }else{
+   const char *names[]={"poster-10","poster-12","poster-02","poster-00","poster-01","poster-04"};
+   for(int i=0;i<6;i++)card(names[i],(GfxRect){96+i*290,yy+58,258,387});
+  }
+ }
+ dump(name,"overlay");
+}
+int main(int argc,char **argv){
+ assert(argc==2);snprintf(assetDir,sizeof assetDir,"%s",argv[1]);
+ EGLDisplay d=eglGetDisplay(EGL_DEFAULT_DISPLAY);assert(eglInitialize(d,0,0)&&eglBindAPI(EGL_OPENGL_ES_API));
+ EGLint a[]={EGL_SURFACE_TYPE,EGL_PBUFFER_BIT,EGL_RENDERABLE_TYPE,EGL_OPENGL_ES2_BIT,EGL_RED_SIZE,8,EGL_GREEN_SIZE,8,EGL_BLUE_SIZE,8,EGL_ALPHA_SIZE,8,EGL_NONE};
+ EGLConfig cfg;EGLint n;assert(eglChooseConfig(d,a,&cfg,1,&n)&&n);
+ EGLint sz[]={EGL_WIDTH,1920,EGL_HEIGHT,1080,EGL_NONE},ca[]={EGL_CONTEXT_CLIENT_VERSION,2,EGL_NONE};
+ EGLSurface s=eglCreatePbufferSurface(d,cfg,sz);EGLContext c=eglCreateContext(d,cfg,EGL_NO_CONTEXT,ca);
+ assert(eglMakeCurrent(d,s,s,c)&&gfx_iniciar());gfx_tamanho_alvo(1920,1080);glViewport(0,0,1920,1080);gfx_icones_dir(assetDir);
+ const char *brands[]={"netflix","disney","prime","max"};
+ for(int i=0;i<4;i++)snprintf(folders[i].logo,sizeof folders[i].logo,"brand-%s",brands[i]);
+ strcpy(item.titulo,"O Astronauta");strcpy(item.provNome,"Netflix");
+ testShader();scene("inicio",-1,0);scene("colecoes",1,0);scene("fileiras",-1,1);
+ puts("OK: desenho real de Hero/hubs e abertura do titulo apenas no foco do Hero");
+ eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);eglDestroyContext(d,c);eglDestroySurface(d,s);eglTerminate(d);
+}

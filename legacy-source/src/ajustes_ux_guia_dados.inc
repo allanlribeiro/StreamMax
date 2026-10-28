@@ -40,7 +40,7 @@ static const GuiaEnt GUIA_ENT[] = {
     "O app avisa quando sai versão nova. Na LG com o Homebrew Channel, Atualizar agora instala sozinho. Sem ele, e na Samsung, o aviso mostra onde baixar.",
     "Ajustes › Sobre e ajuda › Atualizar o aplicativo", AJ_ATUALIZAR, GT_NADA, GX_NADA, GV_NADA },
   { 1, "Três layouts da Home", "aj_layout-dashboard", 1, "h-layout",
-    "Moderna põe o destaque atrás das fileiras. Padrão usa um banner no topo e fundo liso. Dinâmica tem carrossel e Top 10 numerado. Globoplay tem destaque panorâmico, prévias laterais e fileiras abaixo. O botão do destaque segue a sua cor.",
+    "Moderna põe o destaque atrás das fileiras. Padrão usa um banner no topo e fundo liso. Dinâmica tem carrossel e Top 10 numerado. Globoplay tem destaque panorâmico, prévias laterais e fileiras abaixo. Profissional integra trailer, coleções configuradas, serviços e acesso a canais e VOD. O botão do destaque segue a sua cor.",
     "Ajustes › Tela inicial › Layout da home", AJ_HOME_LAYOUT, GT_NADA, GX_NADA, GV_LAYOUTS },
   { 1, "Escolher e ordenar as fileiras", "aj_rows-3", 0, "h-fileiras",
     "Ligue, desligue e mude a ordem de cada fileira. Cada uma pode ter o seu card: cartaz em pé, destaque largo, 4:3 e outros. O que não cabe espera na fila.",

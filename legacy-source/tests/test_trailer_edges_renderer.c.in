@@ -3,6 +3,7 @@
 /* REAL_GFX */
 #include "trailerhero.h"
 #include "globoplayhome.h"
+#include "profissionalhome.h"
 
 // Preferencias/cores controladas; todo o renderizador e shader sao reais.
 int perftv_enabled,perftv_blur,perftv_glass;

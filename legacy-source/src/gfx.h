@@ -265,7 +265,8 @@ typedef enum {
   // progressiva a esquerda e na base. Nao e um veu escuro sobre um retangulo.
   GFX_FURO_HERO = 45,
   GFX_GLOBOPLAY = 46, // painel panoramico: arte ou video, degrade e cantos
-  GFX_NMODOS = 47
+  GFX_PROFISSIONAL = 47, // destaque integrado, sem painel nem blur adicional
+  GFX_NMODOS = 48
 } GfxModo;
 
 typedef struct {
@@ -798,6 +799,7 @@ void gfx_furo_alfa(GfxRect r, float a);
 void gfx_furo_hero_suave(GfxRect r, float a, float base);
 // Painel independente; saida premultiplicada. video=0 foto, 1 plano de video.
 void gfx_globoplay_media(GfxRect r, GLuint tex, float aspecto, float video, float alfa);
+void gfx_profissional_media(GfxRect r, GLuint tex, float aspecto, float video, float alfa);
 // Furo com cantos + veu so-veu do GFX_JANELA (cor 0) numa passada: ver gfx.c.
 void gfx_furo_raio_veu(GfxRect r, float raio, float veu, float rolada, float exp, float ca);
 void gfx_textura(GfxRect r, GLuint tex);

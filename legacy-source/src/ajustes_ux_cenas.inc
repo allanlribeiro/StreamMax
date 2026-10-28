@@ -115,6 +115,16 @@ static void ajcHome(const AjcHome *o) {
       ajc_barras(HX(cx + 30), HY(90), 160 * k, 2, o->hero);
     }
     fy = 186 - 150 * (1 - o->hero);
+  } else if(o->layout==HOME_LAYOUT_PROFISSIONAL){
+    if(o->hero>.01f){
+      ajc_cartaz(HX(0),HY(0),640*k,245*k,4,o->hero);
+      ajc_veu(HX(0),HY(0),360*k,245*k,2,.85f*o->hero);
+      ajc_ret(HX(32),HY(112),160*k,20*k,4*k,1,1,1,.9f*o->hero);
+      ajc_barras(HX(32),HY(150),190*k,2,o->hero);
+      ajc_acento_ret(HX(32),HY(202),80*k,20*k,10*k,o->hero);
+      for(i=0;i<5;i++)ajc_ret(HX(32+i*116),HY(248),106*k,32*k,5*k,.10f,.13f,.18f,o->hero);
+    }
+    fy=296-164*(1-o->hero);
   } else if(o->layout==HOME_LAYOUT_GLOBOPLAY){
     if(o->hero>.01f){
       ajc_cartaz(HX(64),HY(36),512*k,222*k,4,o->hero);
