@@ -1,7 +1,14 @@
 # Home Profissional — opção adicional
 
-Candidato StreamMax **1.0.27**, código Android **20034**, interno **2.0.34**.
-A publicação é confirmada separadamente no registro de validação.
+StreamMax **1.0.27**, código Android **20034**, interno **2.0.34**, publicado.
+[Atualização e APK](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.27) ·
+[Registro de validação](VALIDACAO-1.0.27.json).
+
+Fonte `9d1657927f97ae69bf56405cf04ee90ac610daba`; workflow
+[40755392395](https://github.com/allanlribeiro/StreamMax/actions/runs/40755392395),
+compilação e publicação concluídas com sucesso. APK, assinatura oficial, JNI,
+opção/shader nos dois ABIs e atualizador da 1.0.26 também verificados localmente
+com o anexo e o JSON públicos reais.
 
 Seleção: **Ajustes → Tela inicial → Layout da home → Profissional**.
 Moderna, Padrão, Dinâmica e Globoplay conservam seus índices e sua preferência
@@ -58,7 +65,7 @@ de sincronização de conta pela rede.
 
 Também são exigidas as regressões do Globoplay, Moderna, abertura fria/quente
 do trailer, rolagem e ausência das miniaturas de avanço canceladas.
-Compilação Android, assinatura e publicação ficam registradas após conclusão.
+Compilação Android, assinatura e publicação estão no registro de validação.
 
 **Limites:** sem TV TCL conectada, teste físico de navegação/reprodução,
 medição de FPS, servidor Xtream do usuário ou credenciais reais de login.

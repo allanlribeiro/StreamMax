@@ -1,0 +1,134 @@
+{
+  "checked_at_utc": "2026-10-28T19:48:22.256239+00:00",
+  "version": "1.0.27",
+  "code": 20034,
+  "source": "9d1657927f97ae69bf56405cf04ee90ac610daba",
+  "branch": "feat/streammax-profissional-home",
+  "workflow": {
+    "id": 40755392395,
+    "url": "https://github.com/allanlribeiro/StreamMax/actions/runs/40755392395",
+    "status": "success",
+    "jobs": [
+      {
+        "databaseId": 123052815947,
+        "name": "native-apk",
+        "conclusion": "success"
+      },
+      {
+        "databaseId": 123058076015,
+        "name": "publicar",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "release": {
+    "tag": "v1.0.27",
+    "url": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.27",
+    "draft": false,
+    "prerelease": false
+  },
+  "apk": {
+    "name": "StreamMax-1.0.27-android.apk",
+    "bytes": 62493174,
+    "sha256": "0a9d70761c6a53f6e3ac26a11e628bff9859ab3703e51459761395dedbf03ba6",
+    "url": "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.27/StreamMax-1.0.27-android.apk",
+    "package": "com.streammax.tv",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ],
+    "signer_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+    "jni": "verified",
+    "profissional_option_and_shader_in_both_abis": true
+  },
+  "artifact": {
+    "id": 12845149786,
+    "bytes": 57546991,
+    "sha256": "fe21b66ba92a88d4a5762adc2f6900b47d11a3d33cf3f3b07bf52a66d853230c"
+  },
+  "ota": {
+    "installed_version": "1.0.26",
+    "installed_source": "fe95472d92b07786c8067143410e8ee95b9f1b1d",
+    "tested_with": "real_latest_release_json",
+    "url_and_sha256": "verified"
+  },
+  "previous_layout_previews": {
+    "moderna": "byte-identical to approved 1.0.25/1.0.26",
+    "globoplay": "3 scenes byte-identical to 1.0.26"
+  },
+  "preview": "production Hero/hubs/shader, controlled catalogue/text/menu/rows; not full app/emulator/TV screenshot",
+  "physical_tcl_test": "pending",
+  "fps": "not measured",
+  "local_checks": [
+    {
+      "teste": "visual",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "trailers",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "sem-frames",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "updater",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "addons-cadastro",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "addons-instalar",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "vod",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "guia",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "fontes",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "login",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "pacote",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "player",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "continuar-google",
+      "codigo": 0,
+      "erro": ""
+    },
+    {
+      "teste": "splash",
+      "codigo": 0,
+      "erro": ""
+    }
+  ]
+}

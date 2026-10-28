@@ -5,7 +5,7 @@
 - Pedido: combinar destaque Apple TV, colecoes Disney+, foco Netflix,
   identificacao de servicos Prime Video e acesso IPTV/VOD como opcao
   **Profissional**, sem substituir as homes anteriores; enviar imagens.
-- Branch `feat/streammax-profissional-home`; candidato 1.0.27 / 20034 / 2.0.34.
+- Branch `feat/streammax-profissional-home`; **1.0.27 / 20034 / 2.0.34 publicada**.
 - Enum append-only Profissional=4; preferencia local e selecao salva preservadas.
 - Um unico trailer, composicao GLES em uma passada, base nos 22% finais,
   colecoes/catalagos existentes e atalho para o Guia TV/VOD existente.
@@ -14,8 +14,11 @@
 - Testes locais de renderizador, escala, navegacao/rotas e preferencias;
   Globoplay comparada byte a byte com a previa da 1.0.26.
 - [Previa, funcionamento e limites](./docs/profissional-home/README.md).
-- APK/publicacao em preparacao; nao declarar disponivel antes de verificar
-  o workflow, a assinatura oficial, o pacote e o JSON real do atualizador.
+- Fonte `9d1657927f97ae69bf56405cf04ee90ac610daba`; workflow `40755392395`, ambos jobs aprovados.
+- APK 62.493.174 bytes, SHA-256 `0a9d70761c6a53f6e3ac26a11e628bff9859ab3703e51459761395dedbf03ba6`.
+- Assinatura oficial, pacote, JNI, opcao/shader nos dois ABIs e atualizador da
+  1.0.26 conferidos contra o JSON publico real. [Registro](./docs/profissional-home/VALIDACAO-1.0.27.json).
+- [Atualizacao 1.0.27](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.27).
 - Navegacao completa e FPS na TCL permanecem pendentes de teste fisico.
 
 ## Continuidade — novo layout opcional Globoplay (28/10/2026)
