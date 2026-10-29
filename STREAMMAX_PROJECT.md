@@ -4,7 +4,7 @@
 
 - Pedido: criar conta no proprio StreamMax e aproximar o visual do login da
   identidade do app; nova arte para escolha de perfil.
-- Branch `feat/streammax-cadastro-email`; candidata 1.0.28 / 20035 / 2.0.35.
+- Branch `feat/streammax-cadastro-email`; **1.0.28 / 20035 / 2.0.35 publicada**.
 - `login.c`: Entrar/Criar conta, e-mail/senha/confirmacao, validacao local,
   teclado/controle/ponteiro; formulario em duas colunas na TV e responsivo.
 - Logo corrigida no login/perfis: usa `logoapp_streammax_abertura`, o mesmo
@@ -21,7 +21,13 @@
   confirmacao automatica no momento da consulta. Nenhuma conta real criada
   nos testes; ponta a ponta com conta real e TCL pendentes.
 - [Funcionamento e limites](./docs/cadastro-email/README.md).
-- Compilacao/assinatura/publicacao ainda pendentes nesta entrada inicial.
+- Fonte final `f8ab9f8fd787833a7253dade72beaba9c89a905e`; workflow
+  `40874525924`, dois jobs aprovados. APK 64.035.020 bytes, SHA-256
+  `b03a07615cd537abcc1519115e0992845169d778c647e87af15c5ea7a3e1152f`.
+- Assinatura oficial, pacote/ABIs, cadastro compilado, arte e logo conferidos;
+  atualizador da 1.0.27 validado contra o JSON publico real.
+- [Atualizacao 1.0.28](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.28)
+  e [registro de validacao](./docs/cadastro-email/VALIDACAO-1.0.28.json).
 
 ## Continuidade — Home Profissional opcional (28/10/2026)
 

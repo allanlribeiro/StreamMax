@@ -47,3 +47,9 @@ Mesa/EGL no host. Os textos sao rasterizados por uma fixture com as fontes
 InterDisplay do projeto; teclado e sessao sao controlados. Nao sao capturas
 completas do APK/emulador nem fotos da TCL, e o texto pode variar na TV.
 A arte de perfil e o PNG estatico real incluido no APK, sem mockup de avatares.
+
+## APK publicado
+
+[StreamMax 1.0.28 — baixar no GitHub](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.28).
+A mesma versao foi liberada no canal de atualizacao do aplicativo.
+[Registro da assinatura, artefato e verificacoes](VALIDACAO-1.0.28.json).

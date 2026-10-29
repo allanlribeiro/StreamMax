@@ -1,0 +1,119 @@
+{
+  "source": "f8ab9f8fd787833a7253dade72beaba9c89a905e",
+  "version": "1.0.28",
+  "version_code": 20035,
+  "local_checks": [
+    {
+      "check": "auth-static",
+      "exit_code": 0
+    },
+    {
+      "check": "updater",
+      "exit_code": 0
+    },
+    {
+      "check": "addons-ui",
+      "exit_code": 0
+    },
+    {
+      "check": "addons-install",
+      "exit_code": 0
+    },
+    {
+      "check": "no-frames",
+      "exit_code": 0
+    },
+    {
+      "check": "watch-next",
+      "exit_code": 0
+    },
+    {
+      "check": "home-visual",
+      "exit_code": 0
+    },
+    {
+      "check": "splash",
+      "exit_code": 0
+    },
+    {
+      "check": "VOD",
+      "exit_code": 0
+    },
+    {
+      "check": "guide",
+      "exit_code": 0
+    },
+    {
+      "check": "contracts",
+      "exit_code": 0
+    },
+    {
+      "check": "isolation",
+      "exit_code": 0
+    }
+  ],
+  "signup_asan_ubsan": [
+    "OK: cadastro/login, erros, persistencia, confirmacao, buffers e envio unico",
+    "OK: controle, ponteiro, teclado, validacao, troca de modo e limites 85-150%",
+    "OK: acesso e perfis usam a mesma logo oficial da abertura, sem arte antiga"
+  ],
+  "public_backend_settings": {
+    "http": 200,
+    "disable_signup": false,
+    "mailer_autoconfirm": true,
+    "email_enabled": true,
+    "real_account_created": false,
+    "end_to_end_real_account_tested": false
+  },
+  "home_preview_byte_identical_to_1_0_27": true,
+  "logo_verified_against_official_1_0_27": true,
+  "approved_logo_sha256": "5c2e75b2195351b2c05c29d54043ba3af740463e0a61959da113895a2758125a",
+  "previews": {
+    "rendered_source": [
+      "login.c",
+      "logoapp.c",
+      "gfx.c"
+    ],
+    "text": "fixture InterDisplay",
+    "device_capture": false
+  },
+  "real_account_end_to_end": false,
+  "tcl_device_tested": false,
+  "fps_measured": false,
+  "published": true,
+  "workflow_id": 40874525924,
+  "workflow_url": "https://github.com/allanlribeiro/StreamMax/actions/runs/40874525924",
+  "jobs": [
+    {
+      "id": 123449808330,
+      "name": "native-apk",
+      "conclusion": "success"
+    },
+    {
+      "id": 123454554426,
+      "name": "publicar",
+      "conclusion": "success"
+    }
+  ],
+  "release_url": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.28",
+  "tag": "v1.0.28",
+  "apk": {
+    "name": "StreamMax-1.0.28-android.apk",
+    "bytes": 64035020,
+    "sha256": "b03a07615cd537abcc1519115e0992845169d778c647e87af15c5ea7a3e1152f",
+    "url": "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.28/StreamMax-1.0.28-android.apk",
+    "package": "com.streammax.tv",
+    "version_code": 20035,
+    "signer_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ]
+  },
+  "installed_1_0_27_updater_verified_against_actual_release_json": true,
+  "artifact": {
+    "id": 12898365742,
+    "zip_bytes": 58848265,
+    "zip_sha256": "c20634bafa2f10f663c1351963f487e7a420411838f6bc48b77acf1f1bda734e"
+  }
+}
