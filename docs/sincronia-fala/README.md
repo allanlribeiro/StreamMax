@@ -1,5 +1,9 @@
 # Sincronizar pela fala — StreamMax 1.0.29
 
+[Atualizacao publicada no GitHub](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.29),
+tambem reconhecida pelo atualizador da versao 1.0.28. APK assinado com a chave
+oficial, pacote `com.streammax.tv`, codigo 20036, ARM64 e ARMv7.
+
 Selecione uma legenda de texto de um addon, abra **Legendas > Sincronizacao >
 Sincronizar pela fala** e pressione OK quando ouvir o inicio de uma fala.
 Escolha a frase correspondente com cima/baixo; confirme com OK para alinhar.
@@ -55,6 +59,17 @@ ASan/UBSan e sintaxe nativa completos; regressao de cadastro, contas, addons,
 VOD/guia, Watch Next, retirada de frames, Home, logo, pacote e OTA. O workflow
 tambem executa a integracao de menus `streammax-track-panels.sh` e confere a
 presenca da funcao nos dois binarios nativos do APK.
+
+O workflow [40893132921](https://github.com/allanlribeiro/StreamMax/actions/runs/40893132921)
+terminou com compilacao e publicacao bem-sucedidas. Arquivo baixado novamente,
+ZIP e APK conferidos por SHA-256, assinatura oficial verificada e JSON real
+da ultima release processado pelo atualizador da 1.0.28.
+[Registro completo](./VALIDACAO-1.0.29.json).
+
+Uma prova local adicional extraiu `txt_bloco_impl` e seu tokenizador reais do
+fonte, com metricas de glifos controladas: a quebra preparada foi consumida
+por inteiro, inclusive palavras acima do limite antigo de 512 bytes. Isso
+valida o fluxo de texto, sem substituir o teste com fontes reais na TV.
 
 **Pendente no aparelho:** navegação completa, leitura com as fontes e idioma
 reais, sincronizacao com audio real, formatos de servidores pessoais e fluidez

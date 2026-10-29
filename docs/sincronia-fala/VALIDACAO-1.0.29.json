@@ -1,0 +1,109 @@
+{
+  "source": "a33a32328fec5db911180c77721b2f93bc1ec648",
+  "version": "1.0.29",
+  "local_regression_checks": [
+    {
+      "check": "signup",
+      "exit_code": 0
+    },
+    {
+      "check": "auth",
+      "exit_code": 0
+    },
+    {
+      "check": "updater",
+      "exit_code": 0
+    },
+    {
+      "check": "addons-ui",
+      "exit_code": 0
+    },
+    {
+      "check": "addons-install",
+      "exit_code": 0
+    },
+    {
+      "check": "no-frames",
+      "exit_code": 0
+    },
+    {
+      "check": "watch-next",
+      "exit_code": 0
+    },
+    {
+      "check": "home",
+      "exit_code": 0
+    },
+    {
+      "check": "splash",
+      "exit_code": 0
+    },
+    {
+      "check": "VOD",
+      "exit_code": 0
+    },
+    {
+      "check": "guide",
+      "exit_code": 0
+    },
+    {
+      "check": "contracts",
+      "exit_code": 0
+    },
+    {
+      "check": "isolation",
+      "exit_code": 0
+    }
+  ],
+  "speech_parser_bridge_ui_asan_ubsan": "passed after complete-text wrapping fix",
+  "native_syntax": "passed",
+  "actual_block_layout_controlled_font_metrics": "OK: txt_bloco_impl e tokenizador reais consomem todas as letras, sem corte ou estouro; métricas de fonte controladas",
+  "tcl_device_tested": false,
+  "real_audio_sync_tested": false,
+  "fps_measured": false,
+  "approved_logo_sha256": "5c2e75b2195351b2c05c29d54043ba3af740463e0a61959da113895a2758125a",
+  "version_code": 20036,
+  "published": true,
+  "workflow_id": 40893132921,
+  "workflow_url": "https://github.com/allanlribeiro/StreamMax/actions/runs/40893132921",
+  "jobs": [
+    {
+      "id": 123514966376,
+      "name": "native-apk",
+      "conclusion": "success"
+    },
+    {
+      "id": 123521449279,
+      "name": "publicar",
+      "conclusion": "success"
+    }
+  ],
+  "release_url": "https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.29",
+  "tag": "v1.0.29",
+  "tag_points_to_source": true,
+  "apk": {
+    "name": "StreamMax-1.0.29-android.apk",
+    "bytes": 64050580,
+    "sha256": "54ef29b12aa654f680ea38d660792c7b4996573d3e46f94f254c748d4500fe0c",
+    "url": "https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.29/StreamMax-1.0.29-android.apk",
+    "package": "com.streammax.tv",
+    "version_code": 20036,
+    "signer_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+    "abis": [
+      "arm64-v8a",
+      "armeabi-v7a"
+    ],
+    "min_sdk": 24,
+    "target_sdk": 35
+  },
+  "artifact": {
+    "artifact_id": 12905678813,
+    "zip_bytes": 58864099,
+    "zip_sha256": "18b8b8b9e46050a6f6d65948b29c6b81f5c785a3f4094937df1538005bf04edc"
+  },
+  "installed_1_0_28_updater_verified_against_actual_release_json": true,
+  "speech_feature_in_both_abis": true,
+  "signup_and_profile_art_preserved_in_both_abis": true,
+  "scope": "Primary external SRT/VTT/ASS; per-media/track only; embedded, bitmap and live IPTV excluded",
+  "automated_draw_measurements": "controlled fixtures, not a device or emulator capture"
+}

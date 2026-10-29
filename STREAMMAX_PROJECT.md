@@ -4,7 +4,7 @@
 
 - Pedido: reproduzir o fluxo do Nuvio original de marcar fala e escolher a
   frase da legenda; autorizado implementar e distribuir a atualizacao.
-- Branch `feat/streammax-sincronia-fala`; candidata 1.0.29 / 20036 / 2.0.36.
+- Branch `feat/streammax-sincronia-fala`; **1.0.29 / 20036 / 2.0.36 publicada**.
 - Referencia Nuvio `d14832e1c477cca2b5613b893e590fd5fcab83ee`.
 - `legfala.c/h`, `legendasui_fala.inc` e ponte em legsync: documento externo
   imutavel reutilizado, frase completa, controle/ponteiro, captura historica,
@@ -16,7 +16,17 @@
 - Testes ASan/UBSan de parser/modelo/ponte/painel, sintaxe completa e regressao
   do app; navegacao/audio real e FPS na TCL continuam pendentes.
 - [Funcionamento, testes e limites](./docs/sincronia-fala/README.md).
-- Compilacao, assinatura e publicacao ainda pendentes nesta entrada inicial.
+- Fonte final `a33a32328fec5db911180c77721b2f93bc1ec648`; workflow
+  [40893132921](https://github.com/allanlribeiro/StreamMax/actions/runs/40893132921),
+  compilacao e publicacao concluidas. A primeira tentativa foi cancelada antes
+  de publicar para corrigir palavras longas no componente nativo de texto.
+- APK `StreamMax-1.0.29-android.apk`, 64.050.580 bytes, SHA-256
+  `54ef29b12aa654f680ea38d660792c7b4996573d3e46f94f254c748d4500fe0c`.
+  Assinatura oficial preservada; pacote `com.streammax.tv`, dois ABIs Android.
+- [Release publica](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.29)
+  e atualizacao pelo app verificadas com o atualizador instalado na 1.0.28,
+  usando JSON real da release, URL e hash do APK. Sem teste fisico na TCL.
+- [Registro de validacao](./docs/sincronia-fala/VALIDACAO-1.0.29.json).
 
 ## Continuidade — cadastro direto e identidade de acesso/perfis (29/10/2026)
 
