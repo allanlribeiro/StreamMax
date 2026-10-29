@@ -11,6 +11,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <errno.h>
+#include <stdatomic.h>
 
 // Isolated session fixtures may omit the profile producer; complete apps
 // always link it. Token boundaries invalidate ownership without UI callbacks.
@@ -68,7 +69,7 @@ static char sub[80];
 static int  anonima;              // 1 quando o token e da sessao anonima
 static long expiraEm;             // `exp` do JWT, em segundos
 
-static SesEstado estado = SES_DESLOGADO;
+static _Atomic SesEstado estado = SES_DESLOGADO;
 static char codigo[64];
 static char urlLogin[400];
 static char nonce[64];
@@ -78,12 +79,13 @@ static unsigned pollMs = POLL_MS;
 
 // Login por e-mail (#216). Os dois textos vivem so ate o pedido sair.
 static char emailPend[256], senhaPend[256];
-static int  emailPedido;          // pedido guardado ate o fio do QR acabar
+static _Atomic int emailPedido;   // pedido guardado ate o fio do QR acabar
+static int cadastroEmail;         // imutavel enquanto o worker usa o pedido
 static char erroEmail[240];
 
 static pthread_t fio;
-static int fioVivo;
-static int passoPronto;           // o fio terminou; a proxima etapa pode ir
+static _Atomic int fioVivo;
+static _Atomic int passoPronto;   // publica a conclusao do worker para a UI
 static unsigned proximoPoll;
 static unsigned loginComecouMs;
 
@@ -218,7 +220,7 @@ static char *loginPost(const char *etapa, const char *path, const char *body,
     transitorio = *st == 429 || *st >= 500 || (!*st &&
       (r == 0 || r == 5 || r == 6 || r == 7 || r == 18 || r == 28 ||
        r == 35 || r == 52 || r == 55 || r == 56));
-    espera = transitorio && tentativa < 3 ? 1 << (tentativa - 1) : 0;
+    espera = transitorio && strcmp(etapa, "cadastro") && tentativa < 3 ? 1 << (tentativa - 1) : 0;
     // Manual login takes priority over further QR retries on the shared worker.
     if (emailPedido && strcmp(etapa, "email")) espera = 0;
     printf("[login] stage=%s class=%s http=%d curl=%d attempt=%d utc=%lld backoff_ms=%d\n",
@@ -538,7 +540,7 @@ static void *fioPedir(void *u) {
   pthread_mutex_unlock(&tokTrava);
   if (precisaAnon) {
     if (!sessaoAnonima()) {
-      if (!emailPedido && estado != SES_EMAIL) estado = SES_ERRO;
+      if (!sessao_email_ocupada()) estado = SES_ERRO;
       passoPronto = 1;
       return NULL;
     }
@@ -600,11 +602,11 @@ static void *fioPedir(void *u) {
     else if (st >= 200 && st < 300) snprintf(erro, sizeof erro, "HTTP %d [response]", st);
     else snprintf(erro, sizeof erro,
                   i18n("O servidor da conta Nuvio recusou o pedido do código (HTTP %d). Tente de novo em alguns minutos."), st);
-    if (!emailPedido && estado != SES_EMAIL) estado = SES_ERRO;
+    if (!sessao_email_ocupada()) estado = SES_ERRO;
   } else {
     if (!urlLogin[0])
       snprintf(urlLogin, sizeof urlLogin, "%s?code=%s", nuvem_base_login(), codigo);
-    if (!emailPedido && estado != SES_EMAIL) estado = SES_AGUARDANDO;
+    if (!sessao_email_ocupada()) estado = SES_AGUARDANDO;
   }
   free(resp);
   apagar(tok, sizeof tok);
@@ -710,10 +712,63 @@ void sessao_email_erro_de(int st, const char *corpo, char *dst, unsigned tam) {
   }
 }
 
+void sessao_cadastro_erro_de(int st, const char *corpo, char *dst, unsigned tam) {
+  char cod[80] = "", desc[240] = "";
+  if (corpo) {
+    js_texto_raiz(corpo, "error_code", cod, sizeof cod);
+    if (!cod[0]) js_texto_raiz(corpo, "error", cod, sizeof cod);
+    js_texto_raiz(corpo, "msg", desc, sizeof desc);
+    if (!desc[0]) js_texto_raiz(corpo, "message", desc, sizeof desc);
+    if (!desc[0]) js_texto_raiz(corpo, "error_description", desc, sizeof desc);
+  }
+  // Nunca mostrar o corpo cru: pode conter o e-mail enviado pelo usuario.
+  if (!st || st >= 500)
+    snprintf(dst, tam, "%s", i18n("Não foi possível confirmar o cadastro. Tente entrar; se não conseguir, tente criar a conta novamente."));
+  else if (st == 429 || !strcmp(cod, "over_request_rate_limit") || !strcmp(cod, "over_email_send_rate_limit"))
+    snprintf(dst, tam, "%s", i18n("Muitas tentativas. Espere um minuto e tente de novo."));
+  else if (!strcmp(cod, "user_already_exists") || !strcmp(cod, "email_exists") || strstr(desc, "already registered"))
+    snprintf(dst, tam, "%s", i18n("Este e-mail já tem uma conta. Escolha Já tenho conta para entrar."));
+  else if (!strcmp(cod, "weak_password") || strstr(desc, "Password should") || strstr(desc, "password is too short"))
+    snprintf(dst, tam, "%s", i18n("Senha recusada. Use uma senha mais longa, com letras, números e símbolos."));
+  else if (!strcmp(cod, "email_address_invalid") || !strcmp(cod, "validation_failed") || strstr(desc, "Invalid email"))
+    snprintf(dst, tam, "%s", i18n("Confira o endereço de e-mail e tente novamente."));
+  else if (!strcmp(cod, "signup_disabled") || strstr(desc, "Signups not allowed") || strstr(desc, "signup is disabled"))
+    snprintf(dst, tam, "%s", i18n("O servidor está com novos cadastros desativados. Quem já tem conta pode entrar normalmente."));
+  else if (!strcmp(cod, "captcha_failed") || strstr(desc, "captcha"))
+    snprintf(dst, tam, "%s", i18n("O servidor exige uma verificação adicional. Crie a conta no site do Nuvio e depois entre aqui."));
+  else
+    snprintf(dst, tam, i18n("Não foi possível criar a conta (HTTP %d). Confira os dados e tente novamente."), st);
+}
+
+// Uma resposta 2xx sem tokens so representa confirmacao pendente quando
+// identifica um usuario. {} ou tokens truncados nunca viram cadastro concluido.
+static int cadastroConfirmacao(const char *resp) {
+  char id[100] = "", email[256] = "";
+  if (!resp || js_tem(resp, NULL, "access_token") || js_tem(resp, NULL, "error_code")) return 0;
+  js_texto_raiz(resp, "id", id, sizeof id);
+  js_texto_raiz(resp, "email", email, sizeof email);
+  return id[0] && email[0];
+}
+
+static int cadastroTokens(const char *resp) {
+  char a[TOKMAX], r[TOKMAX], payload[2200], id[100] = "";
+  const char *p1, *p2;
+  int ok = 0;
+  if (extrairTokens(resp, a, r) && r[0] &&
+      (p1 = strchr(a, '.')) && (p2 = strchr(p1 + 1, '.')) &&
+      b64url(p1 + 1, (size_t)(p2 - p1 - 1), payload, sizeof payload)) {
+    js_texto_raiz(payload, "sub", id, sizeof id);
+    ok = id[0] != 0;
+  }
+  apagar(a, sizeof a); apagar(r, sizeof r); apagar(payload, sizeof payload);
+  return ok;
+}
+
 static void *fioEmail(void *u) {
   Jsw w;
   char *resp;
-  int st = 0;
+  int st = 0, criando = cadastroEmail;
+  SesEstado resultado = SES_DESLOGADO;
   (void)u;
   jsw_iniciar(&w);
   jsw_obj_ini(&w);
@@ -721,39 +776,58 @@ static void *fioEmail(void *u) {
   jsw_cs(&w, "password", senhaPend);
   jsw_obj_fim(&w);
   apagar(senhaPend, sizeof senhaPend);
-  resp = loginPost("email", "/auth/v1/token?grant_type=password", jsw_texto_final(&w), NULL, &st);
+  resp = loginPost(criando ? "cadastro" : "email",
+      criando ? "/auth/v1/signup" : "/auth/v1/token?grant_type=password", jsw_texto_final(&w), NULL, &st);
   { char *t = (char *)jsw_texto_final(&w); if (t) apagar(t, strlen(t)); }
   jsw_livre(&w);
   apagar(emailPend, sizeof emailPend);
-  if (resp && st >= 200 && st < 300 && guardarTokens(resp, 0)) {
+  if (resp && st >= 200 && st < 300 && (!criando || cadastroTokens(resp)) && guardarTokens(resp, 0)) {
     erroEmail[0] = 0;
     codigo[0] = 0;
-    estado = SES_LOGADO;
-    printf("[sessao] logado por e-mail como %s\n", sub[0] ? sub : "(sem sub)");
+    resultado = SES_LOGADO;
+    printf("[sessao] acesso por e-mail concluido\n");
+  } else if (criando && resp && st >= 200 && st < 300 && cadastroConfirmacao(resp)) {
+    erroEmail[0] = 0;
+    resultado = SES_CONFIRMAR_EMAIL;
   } else {
     // So o status vai para o log: o corpo de erro do GoTrue repete o e-mail
     // em algumas versoes ("User with email x not found").
-    printf("[login] stage=email-response class=%s http=%d curl=%d utc=%lld\n",
-           loginClasse(st), st, loginCurl(st), (long long)time(NULL));
-    sessao_email_erro_de(st == 200 ? 0 : st, resp, erroEmail, sizeof erroEmail);
-    anexarTransporte(erroEmail, sizeof erroEmail, st);
-    if (st >= 200 && st < 300)
+    printf("[login] stage=%s-response class=%s http=%d curl=%d utc=%lld\n",
+           criando ? "cadastro" : "email", loginClasse(st), st, loginCurl(st), (long long)time(NULL));
+    if (criando) sessao_cadastro_erro_de(st >= 200 && st < 300 ? 0 : st, resp, erroEmail, sizeof erroEmail);
+    else sessao_email_erro_de(st == 200 ? 0 : st, resp, erroEmail, sizeof erroEmail);
+    if (!criando) anexarTransporte(erroEmail, sizeof erroEmail, st);
+    if (!criando && st >= 200 && st < 300)
       snprintf(erroEmail, sizeof erroEmail, "%s [response]", i18n("O servidor da conta Nuvio não respondeu. Tente de novo em alguns minutos."));
-    estado = SES_DESLOGADO;
   }
   if (resp) { apagar(resp, strlen(resp)); free(resp); }
+  estado = resultado;
   passoPronto = 1;
   return NULL;
 }
 
 static void soltar(void *(*rotina)(void *));
 
-void sessao_login_email(const char *email, const char *senha) {
+int sessao_email_ocupada(void) {
+  return estado == SES_EMAIL || estado == SES_CADASTRO || emailPedido;
+}
+
+static void emailComecar(const char *email, const char *senha, int cadastro) {
   if (!nuvem_pronta()) {
     snprintf(erroEmail, sizeof erroEmail, "%s", i18n("Este pacote foi montado sem servidor."));
     return;
   }
-  if (estado == SES_EMAIL || emailPedido) return;
+  if (sessao_email_ocupada()) return;
+  if (cadastro && (!email || !senha || !email[0] || !strchr(email, '@') ||
+                  strlen(senha) < 6 || strlen(email) >= sizeof emailPend || strlen(senha) >= sizeof senhaPend)) {
+    snprintf(erroEmail, sizeof erroEmail, "%s", i18n("Preencha um e-mail válido e uma senha com pelo menos 6 caracteres."));
+    return;
+  }
+  // Conclusao publicada pode preceder o ultimo passo do fio por um instante.
+  // Recolher no laco antes de permitir outra escrita nos buffers do pedido.
+  sessao_passo(0);
+  if (fioVivo && (estado == SES_DESLOGADO || estado == SES_LOGADO || estado == SES_CONFIRMAR_EMAIL)) return;
+  cadastroEmail = cadastro;
   snprintf(emailPend, sizeof emailPend, "%s", email ? email : "");
   snprintf(senhaPend, sizeof senhaPend, "%s", senha ? senha : "");
   erroEmail[0] = 0;
@@ -762,10 +836,13 @@ void sessao_login_email(const char *email, const char *senha) {
   // solta o fio do e-mail com fioVivo em 0) — dois fios nunca escrevem os
   // tokens ao mesmo tempo.
   codigo[0] = 0;
-  estado = SES_EMAIL;
+  estado = cadastro ? SES_CADASTRO : SES_EMAIL;
   emailPedido = 1;
   sessao_passo(0);
 }
+
+void sessao_login_email(const char *email, const char *senha) { emailComecar(email, senha, 0); }
+void sessao_cadastrar_email(const char *email, const char *senha) { emailComecar(email, senha, 1); }
 
 const char *sessao_erro_email(void) { return erroEmail; }
 
@@ -879,7 +956,7 @@ void sessao_login_comecar(void) {
     return;
   }
   if (estado == SES_PEDINDO || estado == SES_AGUARDANDO || estado == SES_TROCANDO ||
-      estado == SES_EMAIL || emailPedido) return;
+      sessao_email_ocupada()) return;
   erro[0] = 0;
   codigo[0] = 0;
   estado = SES_PEDINDO;
@@ -897,7 +974,7 @@ void sessao_passo(unsigned agoraMs) {
       apagar(emailPend, sizeof emailPend); apagar(senhaPend, sizeof senhaPend);
       return;
     }
-    estado = SES_EMAIL;
+    estado = cadastroEmail ? SES_CADASTRO : SES_EMAIL;
     soltar(fioEmail);
     if (!fioVivo) {
       apagar(emailPend, sizeof emailPend); apagar(senhaPend, sizeof senhaPend);

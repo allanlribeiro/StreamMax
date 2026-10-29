@@ -15,27 +15,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 // StreamMax: autenticacao direta por e-mail e senha, sem fluxo QR na TV.
 #define LG_BLOCO_W      lgBlocoW()
-#define LG_PILL_H         76.0f
-#define LG_EMAIL_PILL_W  560.0f
-#define LG_CAMPO_W       760.0f
-#define LG_CAMPO_H        88.0f
-#define LG_MOSTRAR_W     150.0f
+#define LG_PILL_H        lgMedida(76.0f)
+#define LG_EMAIL_PILL_W  fminf(lgCampoW(), 560.0f)
+#define LG_CAMPO_W       lgCampoW()
+#define LG_CAMPO_H       lgMedida(88.0f)
+#define LG_MOSTRAR_W     lgMedida(150.0f)
+static float lgMedida(float v) { return v * fminf(1.0f, NV_TELA_H / 1080.0f); }
+static int loginEhTvAndroid(void);
+static int lgDividido(void) { return loginEhTvAndroid() && NV_TELA_W >= 1200.0f && NV_TELA_W > NV_TELA_H; }
+static float lgCentro(void) { return NV_TELA_W * (lgDividido() ? 0.70f : 0.50f); }
+static float lgCampoW(void) { return fminf(760.0f, lgDividido() ? NV_TELA_W * 0.44f : NV_TELA_W - 2 * NV_MARGEM_X); }
 static float lgBlocoW(void) {
 #ifdef NV_TOUCH_UI
   if (NV_TELA_H > NV_TELA_W) return NV_TELA_W - 2.0f * NV_MARGEM_X;
 #endif
-  return 1100.0f;
+  return lgCampoW();
 }
 
 // Login por e-mail/senha com teclado adaptado para controle remoto.
-enum { LE_EMAIL = 0, LE_SENHA, LE_MOSTRAR, LE_ENTRAR, LE_N };
+enum { LE_EMAIL = 0, LE_SENHA, LE_MOSTRAR, LE_ENTRAR, LE_CONFIRMAR, LE_ALTERNAR, LE_N };
 static int foco;
 static int campoAberto = -1;
 static char email[TECLADO_LONGO + 1], senha[TECLADO_LONGO + 1];
-static char aviso[160];
+static char confirmar[TECLADO_LONGO + 1];
+static char aviso[256];
+static int cadastro, mostrarFalha, avisoInformativo;
 static float animFoco[LE_N];
 static int esperando;
 static int senhaVisivel;
@@ -58,29 +66,61 @@ static void abrirCampo(int c) {
   } else {
     // A senha VOLTA para a modal (em pontos): errar uma letra no fim de uma
     // senha longa nao pode obrigar a redigitar tudo no D-pad.
-    teclado_abrir_com("Senha", "A senha da sua conta StreamMax. Ela não aparece na tela.", 128, ALFA_SENHA, senha);
+    teclado_abrir_com(c == LE_CONFIRMAR ? "Confirmar senha" : "Senha",
+        cadastro ? "Use pelo menos 6 caracteres. A senha diferencia maiúsculas e minúsculas." : "A senha da sua conta StreamMax. Ela não aparece na tela.",
+        128, ALFA_SENHA, c == LE_CONFIRMAR ? confirmar : senha);
     teclado_tipo(TECLADO_TIPO_SENHA);
     teclado_mascarar(!senhaVisivel);
   }
 }
+static void alternar(void) {
+  if (sessao_email_ocupada()) return;
+  cadastro = !cadastro;
+  apagarTexto(senha, sizeof senha);
+  apagarTexto(confirmar, sizeof confirmar);
+  aviso[0] = 0; mostrarFalha = avisoInformativo = senhaVisivel = 0;
+  foco = email[0] ? LE_SENHA : LE_EMAIL;
+}
+static int emailValido(const char *s) {
+  const char *a = strchr(s, '@'), *p;
+  if (!a || a == s || strchr(a + 1, '@') || strpbrk(s, " \t\r\n")) return 0;
+  p = strrchr(a + 1, '.');
+  return p && p > a + 1 && p[1] != 0;
+}
 static void enviar(void) {
-  if (sessao_estado() == SES_EMAIL) return;
+  if (sessao_email_ocupada()) return;
+  avisoInformativo = 0;
   if (!email[0] || !senha[0]) {
     snprintf(aviso, sizeof aviso, "%s", "Preencha o e-mail e a senha.");
     foco = email[0] ? LE_SENHA : LE_EMAIL;
     return;
   }
-  aviso[0] = 0;
-  sessao_login_email(email, senha);
-  esperando = sessao_estado() == SES_EMAIL;
-  // A senha sai da memoria da tela ja: errada, a pessoa digita de novo.
+  if (cadastro && !emailValido(email)) {
+    snprintf(aviso, sizeof aviso, "%s", "Confira o endereço de e-mail.");
+    foco = LE_EMAIL; return;
+  }
+  if (cadastro && strlen(senha) < 6) {
+    snprintf(aviso, sizeof aviso, "%s", "Use uma senha com pelo menos 6 caracteres.");
+    foco = LE_SENHA; return;
+  }
+  if (cadastro && strcmp(senha, confirmar)) {
+    snprintf(aviso, sizeof aviso, "%s", "As senhas não coincidem. Digite novamente a confirmação.");
+    foco = LE_CONFIRMAR; return;
+  }
+  aviso[0] = 0; mostrarFalha = 1;
+  if (cadastro) sessao_cadastrar_email(email, senha);
+  else sessao_login_email(email, senha);
+  esperando = sessao_email_ocupada();
   apagarTexto(senha, sizeof senha);
+  apagarTexto(confirmar, sizeof confirmar);
 }
 static void okEmail(void) {
+  if (sessao_email_ocupada()) return;
   switch (foco) {
-    case LE_EMAIL: case LE_SENHA: abrirCampo(foco); break;
+    case LE_EMAIL: case LE_SENHA: case LE_CONFIRMAR: abrirCampo(foco); break;
     case LE_MOSTRAR: senhaVisivel = !senhaVisivel; break;
     case LE_ENTRAR: enviar(); break;
+    case LE_ALTERNAR: alternar(); break;
     default: break;
   }
 }
@@ -133,6 +173,9 @@ int login_fundo_desenhar(float alfa) {
 void login_soltar(void) {
   if (texFundo) { gfx_tex_esquecer(texFundo); glDeleteTextures(1, &texFundo); texFundo = 0; }
   tentouFundo = 0;
+  apagarTexto(senha, sizeof senha);
+  apagarTexto(confirmar, sizeof confirmar);
+  teclado_esquecer();
 }   // conteudo ja desenhado, para nao refazer por quadro
 
 void login_iniciar(void) {
@@ -140,7 +183,9 @@ void login_iniciar(void) {
   campoAberto = -1;
   aviso[0] = 0;
   esperando = 0;
+  cadastro = mostrarFalha = avisoInformativo = 0;
   senhaVisivel = 0;
+  apagarTexto(confirmar, sizeof confirmar);
   apagarTexto(senha, sizeof senha);
   // O login por e-mail nao necessita de sessao anonima ou codigo QR.
   // O usuario inicia a requisicao apenas ao escolher Entrar.
@@ -154,11 +199,19 @@ void login_evento(const SDL_Event *e) {
   k = e->key.keysym.sym;
   ok = (k == SDLK_RETURN || k == SDLK_KP_ENTER || k == SDLK_SPACE) && !e->key.repeat;
   voltar = k == SDLK_AC_BACK || k == SDLK_ESCAPE || e->key.keysym.scancode == NV_SCANCODE_BACK;
-  if (voltar || sessao_estado() == SES_EMAIL) return;
-  if (k == SDLK_UP)
-    foco = foco == LE_ENTRAR ? LE_SENHA : LE_EMAIL;
-  else if (k == SDLK_DOWN)
-    foco = foco == LE_EMAIL ? LE_SENHA : LE_ENTRAR;
+  if (sessao_email_ocupada()) return;
+  if (voltar) { if (cadastro) alternar(); return; }
+  if (k == SDLK_UP) {
+    if (foco == LE_ALTERNAR) foco = LE_ENTRAR;
+    else if (foco == LE_ENTRAR) foco = cadastro ? LE_CONFIRMAR : LE_SENHA;
+    else if (foco == LE_CONFIRMAR) foco = LE_SENHA;
+    else foco = LE_EMAIL;
+  } else if (k == SDLK_DOWN) {
+    if (foco == LE_EMAIL) foco = LE_SENHA;
+    else if (foco == LE_SENHA || foco == LE_MOSTRAR) foco = cadastro ? LE_CONFIRMAR : LE_ENTRAR;
+    else if (foco == LE_CONFIRMAR) foco = LE_ENTRAR;
+    else foco = LE_ALTERNAR;
+  }
   else if (k == SDLK_RIGHT && foco == LE_SENHA) foco = LE_MOSTRAR;
   else if (k == SDLK_LEFT && foco == LE_MOSTRAR) foco = LE_SENHA;
   else if (ok) okEmail();
@@ -171,7 +224,7 @@ void login_atualizar(float dt, Uint32 agora) {
   r = teclado_resultado();
   if (r != TECLADO_NADA && campoAberto >= 0) {
     int seguir = 0;
-    if (campoAberto == LE_SENHA) senhaVisivel = !teclado_mascarado();
+    if (campoAberto == LE_SENHA || campoAberto == LE_CONFIRMAR) senhaVisivel = !teclado_mascarado();
     if (r == TECLADO_PRONTO) {
       // PRONTO/ENTER AVANCA (#216): do e-mail direto para a senha, da senha
       // para Entrar. So com o controle, sao dois OK a menos.
@@ -179,21 +232,29 @@ void login_atualizar(float dt, Uint32 agora) {
         snprintf(email, sizeof email, "%s", teclado_texto());
         foco = LE_SENHA;
         seguir = 1;
-      } else {
+      } else if (campoAberto == LE_SENHA) {
         snprintf(senha, sizeof senha, "%s", teclado_texto());
+        foco = cadastro ? LE_CONFIRMAR : LE_ENTRAR;
+        if (cadastro) seguir = 1;
+      } else {
+        snprintf(confirmar, sizeof confirmar, "%s", teclado_texto());
         foco = LE_ENTRAR;
       }
-      aviso[0] = 0;
+      aviso[0] = 0; avisoInformativo = 0;
     }
     teclado_esquecer();
     campoAberto = -1;
-    if (seguir) abrirCampo(LE_SENHA);
+    if (seguir) abrirCampo(foco);
   }
   // Falhou: o foco vai para onde a pessoa conserta.
   // (O estado muda no fio do pedido, entre quadros: por isso a bandeira.)
-  if (esperando && sessao_estado() != SES_EMAIL) {
+  if (esperando && !sessao_email_ocupada()) {
     esperando = 0;
-    if (!sessao_logada()) foco = LE_SENHA;
+    if (sessao_estado() == SES_CONFIRMAR_EMAIL) {
+      cadastro = 0; mostrarFalha = 0; avisoInformativo = 1;
+      snprintf(aviso, sizeof aviso, "%s", "Confira sua caixa de e-mail e confirme o cadastro, se solicitado. Depois entre com sua senha.");
+      foco = LE_SENHA;
+    } else if (!sessao_logada()) foco = LE_SENHA;
   }
   for (i = 0; i < LE_N; i++)
     animFoco[i] = anim_mola(animFoco[i], foco == i && !teclado_aberto() ? 1.0f : 0.0f,
@@ -228,12 +289,12 @@ static int loginEhTvAndroid(void) {
 static void painelLoginStreamMax(void) {
 #ifdef NV_ANDROID
   if (!loginEhTvAndroid()) return;
-  GfxRect painel = { (NV_TELA_W - 1050.0f) * 0.5f, 82.0f, 1050.0f, 768.0f };
+  GfxRect painel = { lgCentro() - (LG_CAMPO_W + lgMedida(112)) * 0.5f, lgMedida(82), LG_CAMPO_W + lgMedida(112), lgMedida(cadastro ? 944 : 858) };
   // Fundo azul-marinho sem blur, translucido o suficiente para o splash.
-  gfx_cor(painel, 0.033f, 0.025f, 0.041f, 0.076f, 0.94f);
+  gfx_cor(painel, 0.033f, 0.025f, 0.041f, 0.076f, 0.82f);
   // Assinatura azul discreta, sem animacao permanente.
-  gfx_cor((GfxRect){ painel.x + 100.0f, painel.y + 14.0f,
-                      120.0f, 4.0f }, 0.5f, 0.14f, 0.59f, 0.96f, 0.90f);
+  gfx_cor((GfxRect){ painel.x + lgMedida(56), painel.y + lgMedida(14),
+                      lgMedida(72), lgMedida(3) }, 0.5f, 0.14f, 0.59f, 0.96f, 0.90f);
 #endif
 }
 
@@ -259,28 +320,18 @@ static void pilula(float cx, float y, float w, const char *rot, float k, float a
 static void linhaCentrada(TxtEstilo est, const char *s, int r, int g, int b,
                           float y, float alpha) {
   TxtLinha l = txt_linha_corta(est, s, r, g, b, 255, LG_BLOCO_W);
-  txt_desenhar_alpha(l, (NV_TELA_W - l.w) * 0.5f, y, alpha);
+  txt_desenhar_alpha(l, lgCentro() - l.w * 0.5f, y, alpha);
 }
 static float tituloLogin(float y) {
-#ifdef NV_TOUCH_UI
-  const char *s = i18n("Entrar na sua conta");
-  if (NV_TELA_H > NV_TELA_W && txt_largura(TXT_TITULO1, s) > LG_BLOCO_W)
-    return txt_bloco_corta(TXT_TITULO1, s, 255, 255, 255,
-                          (NV_TELA_W - LG_BLOCO_W) * 0.5f, y, LG_BLOCO_W,
-                          86.0f, 1.0f, 2) + 42.0f;
-#endif
-#ifdef NV_ANDROID
-  linhaCentrada(TXT_TITULO1, "Bem-vindo ao StreamMax", 242, 247, 255, y, 1.0f);
-#else
-  linhaCentrada(TXT_TITULO1, "Entrar na sua conta", 255, 255, 255, y, 1.0f);
-#endif
-  return 118.0f;
+  linhaCentrada(lgDividido() || NV_TELA_H < 900 ? TXT_TITULO2 : TXT_TITULO1,
+      cadastro ? "Crie sua conta" : "Bem-vindo ao StreamMax", 242, 247, 255, y, 1.0f);
+  return lgMedida(118.0f);
 }
 
 // Campo da tela de e-mail: rotulo em cima, caixa com o valor (ou pontos).
 static void campo(float y, int i, const char *rotulo, const char *valor, int oculto) {
-  float x = (NV_TELA_W - LG_CAMPO_W) * 0.5f, k = animFoco[i];
-  GfxRect cx = { x, y + 42.0f, LG_CAMPO_W, LG_CAMPO_H };
+  float x = lgCentro() - LG_CAMPO_W * 0.5f, k = animFoco[i];
+  GfxRect cx = { x, y + lgMedida(42.0f), LG_CAMPO_W, LG_CAMPO_H };
   float ar, ag, ab;
 #ifdef NV_ANDROID
   TxtLinha r = txt_linha(TXT_CAPTION, rotulo, 192, 208, 234, 255);
@@ -299,7 +350,7 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
   if (k > 0.01f)
     gfx_vidro_aro((GfxRect){ cx.x - 6, cx.y - 6, cx.w + 12, cx.h + 12 }, NV_RAIO_CARD, 2.5f,
                   ar, ag, ab, 0.95f * k);
-  ponteiro_alvo(cx.x, y, cx.w, cx.h + 42.0f, ptFocoEmail, NULL, i, 0);
+  ponteiro_alvo(cx.x, y, cx.w, cx.h + lgMedida(42.0f), ptFocoEmail, NULL, i, 0);
   if (valor[0]) {
     char pontos[TECLADO_LONGO * 3 + 1];
     TxtLinha t;
@@ -320,7 +371,7 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
   else {
     // Campo vazio continua identificavel mesmo visto a distancia da TV.
     TxtLinha t = txt_linha(TXT_BODY,
-        i == LE_EMAIL ? "Digite seu e-mail" : "Digite sua senha",
+        i == LE_EMAIL ? "Digite seu e-mail" : i == LE_CONFIRMAR ? "Repita sua senha" : "Digite sua senha",
         132, 155, 191, 255);
     txt_desenhar_alpha(t, cx.x + 24.0f,
                       cx.y + (cx.h - t.h) * 0.5f, 1.0f);
@@ -329,22 +380,19 @@ static void campo(float y, int i, const char *rotulo, const char *valor, int ocu
 }
 
 static void desenharEmail(float y, Uint32 agora) {
-  SesEstado st = sessao_estado();
-  const char *falha = sessao_erro_email();
+  const char *falha = mostrarFalha ? sessao_erro_email() : "";
+  int ocupada = sessao_email_ocupada();
   (void)agora;
-#ifdef NV_ANDROID
-  linhaCentrada(TXT_BODY, "Use seu e-mail e senha para continuar.", 179, 196, 222, y, 1.0f);
-#else
-  linhaCentrada(TXT_BODY, "Use o e-mail e a senha da sua conta StreamMax.", 176, 178, 186, y, 1.0f);
-#endif
-  y += 84.0f;
+  linhaCentrada(TXT_BODY, cadastro ? "Cadastre-se para começar a assistir." : "Entre para continuar de onde parou.",
+      179, 196, 222, y, 1.0f);
+  y += lgMedida(cadastro ? 64.0f : 84.0f);
   campo(y, LE_EMAIL, "E-mail", email, 0);
-  y += 42.0f + LG_CAMPO_H + 30.0f;
+  y += lgMedida(42.0f + (cadastro ? 20.0f : 30.0f)) + LG_CAMPO_H;
   campo(y, LE_SENHA, "Senha", senha, !senhaVisivel);
   // MOSTRAR/OCULTAR dentro do campo, a direita (como nos sites).
-  { float x = (NV_TELA_W + LG_CAMPO_W) * 0.5f - LG_MOSTRAR_W - 12.0f;
-    float yb = y + 42.0f + (LG_CAMPO_H - 60.0f) * 0.5f, k = animFoco[LE_MOSTRAR];
-    GfxRect b = { x, yb, LG_MOSTRAR_W, 60.0f };
+  { float x = lgCentro() + LG_CAMPO_W * 0.5f - LG_MOSTRAR_W - 12.0f;
+    float yb = y + lgMedida(42.0f) + (LG_CAMPO_H - lgMedida(60.0f)) * 0.5f, k = animFoco[LE_MOSTRAR];
+    GfxRect b = { x, yb, LG_MOSTRAR_W, lgMedida(60.0f) };
 #ifdef NV_ANDROID
     int tom = k >= 0.5f ? 18 : 230;
 #else
@@ -359,16 +407,26 @@ static void desenharEmail(float y, Uint32 agora) {
 #endif
     txt_desenhar_alpha(t, b.x + (b.w - t.w) * 0.5f, b.y + (b.h - t.h) * 0.5f, 1.0f);
     ponteiro_alvo(b.x, b.y, b.w, b.h, ptFocoEmail, NULL, LE_MOSTRAR, 0); }
-  y += 42.0f + LG_CAMPO_H + 48.0f;
-  pilula(NV_TELA_W * 0.5f, y, LG_EMAIL_PILL_W, st == SES_EMAIL ? "Entrando…" : "Entrar",
-         animFoco[LE_ENTRAR], 1.0f, ptFocoEmail, LE_ENTRAR);
-  y += LG_PILL_H + 36.0f;
-  if (aviso[0]) linhaCentrada(TXT_BODY, aviso, 236, 108, 108, y, 1.0f);
-  else if (st != SES_EMAIL && falha[0]) {
-    // Ja vem traduzida de sessao.c (formato com i18n): nao passa de novo.
-    TxtLinha l = txt_linha_corta(TXT_BODY, falha, 236, 108, 108, 255, LG_BLOCO_W);
-    txt_desenhar_alpha(l, (NV_TELA_W - l.w) * 0.5f, y, 1.0f);
+  if (cadastro) {
+    y += lgMedida(62.0f) + LG_CAMPO_H;
+    campo(y, LE_CONFIRMAR, "Confirmar senha", confirmar, !senhaVisivel);
   }
+  y += lgMedida(cadastro ? 66.0f : 90.0f) + LG_CAMPO_H;
+  pilula(lgCentro(), y, LG_EMAIL_PILL_W,
+      ocupada ? (cadastro ? "Criando conta…" : "Entrando…") : (cadastro ? "Criar conta" : "Entrar"),
+      animFoco[LE_ENTRAR], 1.0f, ptFocoEmail, LE_ENTRAR);
+  y += LG_PILL_H + lgMedida(16);
+  pilula(lgCentro(), y, LG_EMAIL_PILL_W,
+      cadastro ? "Já tenho conta" : "Não tem conta? Criar conta",
+      animFoco[LE_ALTERNAR], 0.86f, ptFocoEmail, LE_ALTERNAR);
+  y += LG_PILL_H + lgMedida(16);
+  { const char *mensagem = aviso[0] ? aviso : !ocupada ? falha : "";
+    if (mensagem[0])
+      txt_bloco_corta(TXT_CAPTION, mensagem, avisoInformativo ? 145 : 246,
+          avisoInformativo ? 203 : 142, avisoInformativo ? 242 : 142,
+          lgCentro() - LG_BLOCO_W * 0.5f, y, LG_BLOCO_W, lgMedida(32), 1.0f, 2);
+  }
+
 }
 
 void login_desenhar(Uint32 agora) {
@@ -382,6 +440,16 @@ void login_desenhar(Uint32 agora) {
       gfx_cor(tela, 0.0f, 0.004f, 0.010f, 0.023f, 1.0f);
       gfx_cor((GfxRect){0, 0, NV_TELA_W, 170.0f},
               0.0f, 0.008f, 0.024f, 0.054f, 0.42f);
+      if (lgDividido()) {
+        float x = NV_TELA_W * 0.06f;
+        gfx_cor((GfxRect){x, NV_TELA_H * 0.27f, lgMedida(56), lgMedida(4)}, 0.5f, 0.14f, 0.59f, 0.96f, 1);
+        logoapp_streammax_simbolo((GfxRect){x, NV_TELA_H * 0.31f, lgMedida(152), lgMedida(180)}, 1);
+        logoapp_streammax_wordmark((GfxRect){x, NV_TELA_H * 0.49f, NV_TELA_W * 0.27f, lgMedida(72)}, 1);
+        txt_bloco_corta(TXT_TITULO2, "Seu cinema.\nDo seu jeito.", 243, 246, 252,
+            x, NV_TELA_H * 0.61f, NV_TELA_W * 0.29f, lgMedida(62), 1, 2);
+        txt_bloco_corta(TXT_CAPTION, "Filmes, séries e TV ao vivo em um só lugar.", 151, 173, 204,
+            x, NV_TELA_H * 0.78f, NV_TELA_W * 0.28f, lgMedida(32), 1, 2);
+      }
       painelLoginStreamMax();
     } else
 #endif
@@ -393,12 +461,12 @@ void login_desenhar(Uint32 agora) {
 #ifdef NV_ANDROID
   // Nunca deixar o logo do Nuvio reaparecer no login Android, mesmo quando
   // a preferencia de layout ou o viewport da TV estiverem inconsistentes.
-  logoapp_streammax_simbolo(
+  if (!lgDividido()) logoapp_streammax_simbolo(
       (GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 70.0f, 84.0f }, 1.0f);
 #else
   logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);
 #endif
-  y = 118.0f;
+  y = lgMedida(118.0f);
   y += tituloLogin(y);
 
   if (!nuvem_pronta()) {

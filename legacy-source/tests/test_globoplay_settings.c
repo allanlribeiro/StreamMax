@@ -28,5 +28,8 @@ int main(void){
   valor[AJ_HOME_LAYOUT]=HOME_LAYOUT_MODERNA;
   assert(valor[AJ_MENU_TOPO]==topoSalvo);
   valor[AJ_HOME_LAYOUT]=999;assert(ajustes_home_layout()==HOME_LAYOUT_MODERNA);
+  assert(OPCOES[AJ_PS_FUNDO].n==6 && !strcmp(V_PS_FUNDO[5],"StreamMax"));
+  for(int i=0;i<6;i++) { valor[AJ_PS_FUNDO]=limita(AJ_PS_FUNDO,i); assert(ajustes_ps_fundo()==i); }
+  valor[AJ_PS_FUNDO]=999; assert(ajustes_ps_fundo()==5);
   puts("OK: cinco layouts locais; indices/padrao anteriores preservados, retorno e valores invalidos");
 }

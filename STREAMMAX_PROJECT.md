@@ -1,5 +1,25 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — cadastro direto e identidade de acesso/perfis (29/10/2026)
+
+- Pedido: criar conta no proprio StreamMax e aproximar o visual do login da
+  identidade do app; nova arte para escolha de perfil.
+- Branch `feat/streammax-cadastro-email`; candidata 1.0.28 / 20035 / 2.0.35.
+- `login.c`: Entrar/Criar conta, e-mail/senha/confirmacao, validacao local,
+  teclado/controle/ponteiro; formulario em duas colunas na TV e responsivo.
+- `sessao.c`: POST signup no mesmo servidor; mesma persistencia de tokens;
+  entrada automatica ou orientacao de confirmacao, sem repetir POST de cadastro.
+- Erros em portugues; senhas apagadas dos buffers, sem credenciais em log.
+- Arte gerada `marcas/streammax_profiles.png`, estatica via cache. Nova opcao
+  StreamMax=5; indices antigos preservados; migracao local uma unica vez.
+- Testes ASan/UBSan de sessao real com HTTP/disco controlados, teclado/foco,
+  formulario 85-150%, regressao Home/renderizador, addons, VOD, player e OTA.
+- Consulta publica real ao servidor: e-mail habilitado, signup permitido e
+  confirmacao automatica no momento da consulta. Nenhuma conta real criada
+  nos testes; ponta a ponta com conta real e TCL pendentes.
+- [Funcionamento e limites](./docs/cadastro-email/README.md).
+- Compilacao/assinatura/publicacao ainda pendentes nesta entrada inicial.
+
 ## Continuidade — Home Profissional opcional (28/10/2026)
 
 - Pedido: combinar destaque Apple TV, colecoes Disney+, foco Netflix,

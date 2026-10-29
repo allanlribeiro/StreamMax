@@ -11,6 +11,8 @@ def main(root: Path) -> int:
     required = {
         "src/login.c": [
             "LE_EMAIL", "LE_SENHA", "sessao_login_email",
+            "LE_CONFIRMAR", "LE_ALTERNAR", "sessao_cadastrar_email",
+            "Crie sua conta", "Não tem conta? Criar conta",
             "void login_iniciar(void)",
             "static void painelLoginStreamMax(void)",
             "static void loginAcento(float *r, float *g, float *b)",

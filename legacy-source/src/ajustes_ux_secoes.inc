@@ -459,6 +459,7 @@ static void ajcHomePerfil(int A) {
   // 3 Luz, 4 Projetor. (1 e 2 estavam trocados aqui: a previa de "Listras"
   // mostrava a arte borrada e a de "Arte do perfil", as listras.)
   if (v == 0) { for (i = 0; i < 24; i++) CIMG(ajArte(AJA_POSTER, AJ_POS[i % 14]), (i % 8) * 82 - 10, (i / 8) * 124 - 14, 76, 116, 8, 0.45f); }
+  else if (v == 5) logoapp_streammax_perfis(q, 1);
   else if (v == 2) ajcBorrada(ajArte(AJA_FUNDO, A), q, 22, 0.8f);
   else if (v == 1) { char c[1200]; snprintf(c, sizeof c, "%s/marcas/login-fundo.jpg", uxDirArte); ajImg(c, q, 22, 1); }
   else {

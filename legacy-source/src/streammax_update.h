@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SM_UPDATE_VERSION "1.0.27"
+#define SM_UPDATE_VERSION "1.0.28"
 #define SM_UPDATE_API  "https://api.github.com/repos/allanlribeiro/StreamMax/releases/latest"
 #define SM_UPDATE_PAGE "https://github.com/allanlribeiro/StreamMax/releases"
 #define SM_UPDATE_DOWNLOAD "https://github.com/allanlribeiro/StreamMax/releases/download/"

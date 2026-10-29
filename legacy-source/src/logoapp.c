@@ -184,3 +184,17 @@ int logoapp_streammax_abertura(GfxRect r, float alpha) {
            t, GFX_TEXTO, 0, 0, 0, 0.0f, 1, 1, 1, alpha);
   return 1;
 }
+
+int logoapp_streammax_perfis(GfxRect r, float alpha) {
+  char caminho[640];
+  float anterior = gfx_tex_aspect_atual;
+  if (alpha <= 0.004f || r.w <= 0 || r.h <= 0) return 0;
+  snprintf(caminho, sizeof caminho, "%s/marcas/streammax_profiles.png", dirArteLg);
+  GLuint t = tex_obter_larg(caminho, r.w);
+  if (!t) return 0;
+  gfx_tex_aspect_atual = tex_aspecto(caminho);
+  // CARD com foco/raio zero faz cover, sem brilho, blur ou animacao.
+  gfx_rect(r, t, GFX_CARD, 0, 0, 0, 0, 1, 1, 1, alpha);
+  gfx_tex_aspect_atual = anterior;
+  return 1;
+}

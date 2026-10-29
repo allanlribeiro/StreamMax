@@ -860,7 +860,7 @@ static const char *V_FONTE_TEXTO[] = { "Do Nuvio", "Do addon", "Logo do título"
 // Valor novo SEMPRE no fim: quem ja tinha 0 ou 1 continua com o mesmo fundo.
 // 2.0: o "Mural" virou "Filmes" (a parede de cada perfil) e entram "Luz" e
 // "Projetor" no fim — os indices 0..2 continuam os mesmos.
-static const char *V_PS_FUNDO[]  = { "Filmes", "Listras", "Arte do perfil", "Luz", "Projetor" };
+static const char *V_PS_FUNDO[]  = { "Filmes", "Listras", "Arte do perfil", "Luz", "Projetor", "StreamMax" };
 // Teto de memoria para imagens. O indice vira MB em ajustes_tex_mb; 0 e a
 // regra automatica pela RAM (tex_cache.c). Escolha por APARELHO: fica no
 // ajustes.txt e nunca vai para a conta — a TV da sala e a do quarto nao tem
@@ -1287,7 +1287,7 @@ static const Opcao OPCOES[AJ_N] = {
   // (fil_hero_fonte), a mesma da folha de fileiras. A chave continua "-":
   // quem grava a escolha e fileiras.c.
   ACAO("Catálogos do destaque"),                  // fil_hero_fonte
-  ESC("Fundo da escolha de perfil", V_PS_FUNDO, 5), // local: ver psfundo.c
+  ESC("Fundo da escolha de perfil", V_PS_FUNDO, 6), // local: ver psfundo.c
   ESC("Local do Descobrir",         V_DESCOBRIR, 3), // discoverLocation
   ESC("Rótulos nos pôsteres",       V_LIGA, 2),   // posterLabelsEnabled
   ESC("Nome do addon no catálogo",  V_LIGA, 2),   // catalogAddonNameEnabled
@@ -3139,7 +3139,7 @@ int ajustes_hero_fonte(void) {
 // escolhendo arte do catalogo como reserva; "Desligado" (indice 1) = a tela de
 // perfil volta a nao desenhar nada alem do que o proprio perfil traz.
 int ajustes_ps_fundo_automatico(void) { return lig(AJ_PS_FUNDO); }
-int ajustes_ps_fundo(void) { int v = valor[AJ_PS_FUNDO]; return v >= 0 && v <= 4 ? v : 0; }
+int ajustes_ps_fundo(void) { int v = valor[AJ_PS_FUNDO]; return v >= 0 && v <= 5 ? v : 5; }
 int ajustes_tex_mb(void) {
   int i = valor[AJ_TEX_MB];
   if (SEGURO && i >= 5) i = 0;            // 400/512 MB: volta ao automatico da RAM
@@ -4503,6 +4503,14 @@ void ajustes_dir(const char *dir) {
         printf("[ajustes] fundo da escolha de perfil -> Filmes (migracao unica da 2.0)\n");
       valor[AJ_PS_FUNDO] = 0;
       dados_gravar("perfilfundo-20.txt", "1\n");
+      gravar();
+    } }
+  // Nova arte StreamMax uma unica vez. A escolha posterior fica preservada.
+  { char *m = dados_ler("perfilfundo-streammax-128.txt");
+    if (m) free(m);
+    else {
+      valor[AJ_PS_FUNDO] = 5;
+      dados_gravar("perfilfundo-streammax-128.txt", "1\n");
       gravar();
     } }
   // MIGRACAO UNICA (2.0): a aparencia de quem ja tinha o app vira a de fabrica
@@ -6853,7 +6861,7 @@ static const char *ajudaOpcaoBase(int op) {
     case AJ_MIC_BUSCA: return "Mostra nas buscas um microfone ao lado de Digitar pelo celular: ele abre o teclado da Samsung para você falar pelo microfone do controle. Automático esconde o botão se a TV disser que não tem microfone; Ligado mostra sempre; Desligado esconde.";
     case AJ_HERO: return "O bloco grande no topo da Home, com a arte e o nome de um título em destaque.";
     case AJ_HERO_CATALOGOS: return "De onde vêm os títulos do destaque: os primeiros do catálogo, um sorteio, ou uma fileira da Home. OK troca.";
-    case AJ_PS_FUNDO: return "Fundo da tela de escolha de perfil. Filmes: os cartazes do que cada perfil assistiu, numa parede inclinada. Luz: preto com uma luz na cor do perfil. Projetor: sala de cinema antes da sessão. Arte do perfil: o fundo escolhido ao editar o perfil no app Nuvio; sem ele, o avatar desfocado. Ou as listras do login.";
+    case AJ_PS_FUNDO: return "StreamMax: arte azul estática, sem animação de fundo. As opções anteriores continuam disponíveis. Fundo da tela de escolha de perfil. Filmes: os cartazes do que cada perfil assistiu, numa parede inclinada. Luz: preto com uma luz na cor do perfil. Projetor: sala de cinema antes da sessão. Arte do perfil: o fundo escolhido ao editar o perfil no app Nuvio; sem ele, o avatar desfocado. Ou as listras do login.";
     case AJ_DESCOBRIR: return "Onde fica a tela Descobrir: junto da Busca, como item próprio na barra lateral, ou em lugar nenhum.";
     case AJ_SELO_VISTO: return "Marca no pôster dos títulos que você já assistiu: um ícone de check ou a palavra Assistido.";
     case AJ_OCULTAR_FILMES_VISTOS: return "Oculta filmes já assistidos nas fileiras de descoberta. Busca e Biblioteca continuam mostrando todos. Vale para este perfil neste aparelho.";

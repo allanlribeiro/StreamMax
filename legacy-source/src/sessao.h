@@ -5,9 +5,8 @@
 // nao pode ser distribuido: ele entrega o token Trakt e as chaves de debrid de
 // quem o montou.
 //
-// FLUXO, lido de js/core/auth/qrLoginService.js. Nao e o login por e-mail e
-// senha do web, e nao por preferencia: o teclado do busca.c so tem "a-z0-9",
-// sem maiuscula, sem "@" e sem ponto. Um e-mail nao e digitavel neste app hoje.
+// O StreamMax apresenta login/cadastro por e-mail/senha usando teclado.h.
+// O protocolo legado de pareamento abaixo continua interno, sem QR na UI.
 //   1. sessao ANONIMA (POST /auth/v1/signup; se recusar, /auth/v1/token?
 //      grant_type=anonymous). Sem ela o servidor responde 401 as duas RPC
 //      seguintes.
@@ -30,7 +29,9 @@ typedef enum {
   SES_TROCANDO,     // autorizado, trocando pelo token
   SES_LOGADO,
   SES_ERRO,
-  SES_EMAIL         // login por e-mail e senha em andamento (#216)
+  SES_EMAIL,        // login por e-mail e senha em andamento (#216)
+  SES_CADASTRO,     // criando conta por e-mail/senha; sem bloquear a interface
+  SES_CONFIRMAR_EMAIL // cadastro aceito sem sessao: confirmar e-mail e entrar
 } SesEstado;
 
 // Carrega a sessao gravada, se houver. Chamar depois de dados_iniciar e
@@ -87,12 +88,17 @@ void sessao_cancelar(void);
 // ou em sessao_erro_email() quando volta a DESLOGADO. Email, senha e token
 // NUNCA vao para o log; as copias internas sao apagadas logo depois do pedido.
 void sessao_login_email(const char *email, const char *senha);
+// Mesmo servidor das contas existentes. Nao repete automaticamente o POST de
+// cadastro: uma resposta perdida pode corresponder a uma conta ja criada.
+void sessao_cadastrar_email(const char *email, const char *senha);
+int sessao_email_ocupada(void);
 // Ultima falha do login por e-mail, ja traduzida; "" sem falha.
 const char *sessao_erro_email(void);
 
 // Puro, para tests/sessao_email.c: a frase da tela para uma resposta de erro
 // do /auth/v1/token (status + corpo). Escreve em dst.
 void sessao_email_erro_de(int status, const char *corpo, char *dst, unsigned tam);
+void sessao_cadastro_erro_de(int status, const char *corpo, char *dst, unsigned tam);
 
 // Apaga tokens do disco e da memoria. Depois disto o app volta a nao ter conta
 // nenhuma — e e isso que o usuario espera de "sair".

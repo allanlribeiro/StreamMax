@@ -1007,12 +1007,14 @@ void perfilsel_atualizar(float dt, Uint32 agora) {
   if (dt < 0.0f) dt = 0.0f;
   if (dt > 0.05f) dt = 0.05f;
 
-  ambAtualizar(dt, reduzida);
-  muralRecriar();
+  if (modoFundo() != PS_FUNDO_STREAMMAX) {
+    ambAtualizar(dt, reduzida);
+    muralRecriar();
+  }
   contAtualizar();
   // O pedido acontece no ciclo de atualização, nunca no draw. Assim a capa
   // compartilha o tex_cache da Home e o quadro só consulta GLuint pronto.
-  for (i = 0; i < muralN; i++) {
+  for (i = 0; modoFundo() != PS_FUNDO_STREAMMAX && i < muralN; i++) {
     // Revalidar em todo update marca o item como quente no LRU e substitui o
     // GLuint se o cache o despejou. `qualquer` mantém uma versão menor durante
     // a promoção; o hit não aloca nem baixa e a promoção ocorre uma vez.
@@ -1262,8 +1264,9 @@ static void giro(GfxRect av, Uint32 agora, float alfa, int reduzida) {
 static void streammaxPerfilAcabamento(float a) {
   const GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
   TxtLinha linha;
-  gfx_cor(tela, 0.0f, 0.007f, 0.017f, 0.041f, 0.64f * a);
-  if (!gfx_efeitos_minimos()) {
+  gfx_cor(tela, 0.0f, 0.007f, 0.017f, 0.041f,
+          (modoFundo() == PS_FUNDO_STREAMMAX ? 0.08f : 0.64f) * a);
+  if (modoFundo() != PS_FUNDO_STREAMMAX && !gfx_efeitos_minimos()) {
     gfx_rect((GfxRect){ NV_TELA_W*0.5f-740.0f, 80.0f, 1480.0f, 1100.0f },
              0, GFX_SOMBRA, 1.0f, 0, 0, 0.5f,
              0.035f, 0.22f, 0.52f, 0.19f*a);
@@ -1279,6 +1282,11 @@ static void streammaxPerfilAcabamento(float a) {
 
 static void desenhaFundo(void) {
   GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
+  if (modoFundo() == PS_FUNDO_STREAMMAX) {
+    gfx_cor(tela, 0, 0.031f, 0.051f, 0.094f, 1);
+    logoapp_streammax_perfis(tela, 1);
+    return;
+  }
   // Com o mural (Ajustes, AJ_PS_FUNDO ligado) a tela e preto real e o mural e
   // o unico fundo; perfis sem catalogo ainda recebem particulas. Desligado, o
   // fundo e o das listras do login (1.7.2) — a mesma familia da abertura.
@@ -1409,7 +1417,7 @@ void perfilsel_desenhar(Uint32 agora) {
         montarCena(&cena, reduzida);
         psestilos_desenhar(&cena, PS_FUNDO_LUZ,
                            a * (1.0f - cob) * (pinDe >= 0 ? 0.30f : 1.0f));
-      } else if (modo != PS_FUNDO_LISTRAS && modo != PS_FUNDO_ARTE && cob < 0.999f)
+      } else if (modo != PS_FUNDO_LISTRAS && modo != PS_FUNDO_ARTE && modo != PS_FUNDO_STREAMMAX && cob < 0.999f)
         muralDesenhar(a * (1.0f - cob) * (pinDe >= 0 ? 0.30f : 1.0f), reduzida);
     } }
 

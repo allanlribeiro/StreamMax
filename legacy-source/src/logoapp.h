@@ -41,4 +41,6 @@ int  logoapp_streammax_simbolo(GfxRect r, float alpha);
 int  logoapp_streammax_wordmark(GfxRect r, float alpha);
 // Arte estática da abertura, independente do ícone escolhido pelo usuário.
 int logoapp_streammax_abertura(GfxRect r, float alpha);
+// Arte estatica da escolha de perfil, carregada pelo cache compartilhado.
+int logoapp_streammax_perfis(GfxRect r, float alpha);
 #endif

@@ -1,9 +1,5 @@
-// Tela de login: codigo grande, endereco, e nada mais.
-//
-// Ela e a PRIMEIRA tela do app quando nao ha conta, e cobre tudo. Nao ha
-// campo de texto: o teclado do busca.c so tem "a-z0-9", sem maiuscula, sem "@"
-// e sem ponto, entao e-mail e senha nao sao digitaveis aqui. Quem digita e o
-// celular; a TV so exibe o codigo e espera.
+// Acesso StreamMax por e-mail/senha e criacao de conta na propria TV.
+// Controle remoto, teclado e ponteiro usam o mesmo formulario. Sem QR.
 #ifndef NV_LOGIN_H
 #define NV_LOGIN_H
 #include <SDL2/SDL.h>

@@ -21,6 +21,7 @@
 #define PS_FUNDO_ARTE      2
 #define PS_FUNDO_LUZ       3
 #define PS_FUNDO_PROJETOR  4
+#define PS_FUNDO_STREAMMAX 5
 
 #define PSEST_PAREDE_MAX 12
 
