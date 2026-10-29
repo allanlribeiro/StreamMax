@@ -479,6 +479,7 @@ void faixas_abrir(void) { faixas_abrir_em(0); }
 // Abre JA NA COLUNA que o botao pediu. O player tem um icone de audio e um de
 // Audio e legendas abrem paineis separados; nenhum botao muda para o outro.
 void faixas_abrir_em(int col) {
+  legendasui_fala_fechar();
   int n;
   aberta = 1;
   modo = (col == 1) ? 1 : 0;
@@ -1266,6 +1267,7 @@ static void avisarQueda(int e) {
 }
 
 void faixas_atualizar(float dt, Uint32 agora) {
+  if (!aberta && legendasui_fala_aberta()) legendasui_fala_fechar();
   if (aberta && modo && coluna == 1) legendasui_atualizar(dt);
   // #202: the platform refused the speed (LG/.tpk answer after the request):
   // the row is gone and playback is back at 1x; say it once.
@@ -2111,7 +2113,7 @@ static void faixas_desenharCorpo_(Uint32 agora) {
     if (!aberta) return;   // fechando: o painel anterior sai pela mesma animacao
     { PlrIlhaPedido p;
       memset(&p, 0, sizeof p);
-      p.w = est ? NV_TELA_W - 192.0f : 1000.0f;
+      p.w = est ? NV_TELA_W - 192.0f : modo && legendasui_fala_aberta() ? fminf(1420.0f, NV_TELA_W - 96.0f) : 1000.0f;
       p.h = est ? alturaEstilo() : modo ? legendasui_altura() : alturaLista(0);
       p.corpo = corpoIlha;
       p.centro = 1;

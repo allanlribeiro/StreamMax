@@ -78,7 +78,16 @@ typedef struct {
   // automatico, com ou sem o automatico ligado. 0 nenhum, 1 trabalhando,
   // 2 aceita, 3 nao deu (inclusive recusado na hora).
   int manualFase;
+  int porFala;                // correcao escolhida pela pessoa, nesta faixa
 } LegSyncVisao;
+
+// Documento de texto da legenda externa ativa, retido pelo chamador. Sem rede.
+// A geracao e a identidade da sessao sao conferidas de novo ao aplicar.
+LegendaDocumento *legsync_fala_documento(unsigned *geracao);
+int legsync_fala_valida(const LegendaDocumento *doc, unsigned geracao, const char *midia);
+int legsync_fala_aplicar(const LegendaDocumento *doc, unsigned geracao, const char *midia, int manualMs, int atrasoTotalMs);
+int legsync_fala_pode_desfazer(const char *midia);
+int legsync_fala_desfazer(const char *midia);
 
 void legsync_iniciar(const char *urlMidia);
 void legsync_encerrar(void);

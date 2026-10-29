@@ -1,5 +1,23 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — sincronizacao pela fala (29/10/2026)
+
+- Pedido: reproduzir o fluxo do Nuvio original de marcar fala e escolher a
+  frase da legenda; autorizado implementar e distribuir a atualizacao.
+- Branch `feat/streammax-sincronia-fala`; candidata 1.0.29 / 20036 / 2.0.36.
+- Referencia Nuvio `d14832e1c477cca2b5613b893e590fd5fcab83ee`.
+- `legfala.c/h`, `legendasui_fala.inc` e ponte em legsync: documento externo
+  imutavel reutilizado, frase completa, controle/ponteiro, captura historica,
+  correcao por sessao com ajuste fino, desfazer e guardas de fonte/faixa.
+- Correcao da fala substitui o automatico (inclusive mapa) ate desfazer; nada
+  grava esse deslocamento nas preferencias globais ou em outros filmes.
+- Primeira modalidade para principal externa SRT/VTT/ASS. Embutida, imagem e
+  IPTV ficam fora; sem reconhecimento de voz ou segundo player.
+- Testes ASan/UBSan de parser/modelo/ponte/painel, sintaxe completa e regressao
+  do app; navegacao/audio real e FPS na TCL continuam pendentes.
+- [Funcionamento, testes e limites](./docs/sincronia-fala/README.md).
+- Compilacao, assinatura e publicacao ainda pendentes nesta entrada inicial.
+
 ## Continuidade — cadastro direto e identidade de acesso/perfis (29/10/2026)
 
 - Pedido: criar conta no proprio StreamMax e aproximar o visual do login da

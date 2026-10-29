@@ -43,6 +43,7 @@ static void textoBase(const LegSyncVisao *v, char *dst, unsigned tam);
 void legsync_texto(const LegSyncVisao *v, char *dst, unsigned tam) {
   const char *a;
   if (!dst || !tam) return;
+  if (v->porFala) { snprintf(dst, tam, "%s", i18n("Sincronizada pela fala")); return; }
   textoBase(v, dst, tam);
   // O motivo do audio entra junto do estado, uma vez, quando ele ja nao e o
   // proprio estado (passthrough/plataforma da escuta pedida).
@@ -112,6 +113,7 @@ static void textoBase(const LegSyncVisao *v, char *dst, unsigned tam) {
 void legsync_texto_simples(const LegSyncVisao *v, char *dst, unsigned tam) {
   if (!dst || !tam) return;
   dst[0] = 0;
+  if (v->porFala) { snprintf(dst, tam, "%s", i18n("Sincronizada pela fala")); return; }
   if (v->fase == LEGSYNC_DESFEITA) {
     snprintf(dst, tam, "%s", i18n("Corre\xc3\xa7\xc3\xa3o desfeita; o atraso manual continua")); return;
   }
@@ -163,6 +165,7 @@ int legsync_pilula_final(const LegSyncVisao *v, const char *provedor, char *dst,
 }
 
 int legsync_pil_passo(LegSyncPil *p, const LegSyncVisao *v, unsigned agora, const char *provedor, char *texto, unsigned tam) {
+  if (v->porFala) { memset(p, 0, sizeof *p); return LEGSYNC_PIL_ZERAR; }
   int quer, r = 0;
   // Sync pedido a mao segue o mesmo ciclo, com o automatico ligado ou nao.
   int af = v->manualFase ? v->manualFase : v->autoFase;

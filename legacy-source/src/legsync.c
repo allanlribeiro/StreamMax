@@ -37,6 +37,7 @@ static struct {
   unsigned primGer;
   int falhaDownload;
   int primFase;                   // 0 baixando, 1 pronta e completa, 2 falhou/incompleta
+  int falaAtiva, falaOffsetMs, falaUndo, falaAntesAtiva, falaAntesOffset;
   LegendaDocumento *primDoc;
   char primIdioma[24];
   // referencia
@@ -136,6 +137,7 @@ void legsync_auto_habilitar(int ligado) {
 
 static void novaSessao(const char *url, int manterPrimaria) {
   L.sessao++;
+  L.falaAtiva = L.falaOffsetMs = L.falaUndo = L.falaAntesAtiva = L.falaAntesOffset = 0;
   L.manualFase = L.manualLog = 0;
   soltarSegunda();
   autosync_iniciar(L.sync, L.sessao);
@@ -235,6 +237,7 @@ void legsync_primaria_externa(const char *url, const char *idioma, const char *o
   if (m && L.criado) {
     uint64_t h = fnv(url);
     m->token = ++L.primToken; m->sessao = L.sessao;
+    L.falaAtiva = L.falaOffsetMs = L.falaUndo = L.falaAntesAtiva = L.falaAntesOffset = 0;
     m->info.sessao = L.sessao; m->info.flags = LEGENDA_DOC_COMPLETO;
     snprintf(m->info.idioma, sizeof m->info.idioma, "%s", idioma ? idioma : "");
     snprintf(m->info.origem, sizeof m->info.origem, "%s", origem && *origem ? origem : "Addon");
@@ -272,6 +275,7 @@ void legsync_primaria_outra(int embutida) {
   LegendaDocumento *velho;
   pthread_mutex_lock(&M);
   L.primToken++; L.primTipo = embutida ? 2 : 0; L.primFase = 0; L.falhaDownload = 0; L.primGer = 0;
+  L.falaAtiva = L.falaOffsetMs = L.falaUndo = L.falaAntesAtiva = L.falaAntesOffset = 0;
   velho = L.primDoc; L.primDoc = NULL;
   if (L.criado) {
     autosync_selecionar(L.sync, 0, NULL);
@@ -310,6 +314,64 @@ static int dona(void) {
   return L.primTipo == 1 && L.primFase == 1 && L.primDoc && legenda_geracao() == L.primGer;
 }
 
+static int falaValida(const LegendaDocumento *doc, unsigned geracao, const char *midia) {
+  return L.criado && doc && doc == L.primDoc && geracao == L.primGer && dona() &&
+      midia && *midia && fnv(midia) == L.urlHash &&
+      legenda_documento_info(doc)->sessao == L.sessao;
+}
+
+LegendaDocumento *legsync_fala_documento(unsigned *geracao) {
+  LegendaDocumento *doc = NULL;
+  if (geracao) *geracao = 0;
+  pthread_mutex_lock(&M);
+  if (L.criado && dona() && legenda_documento_info(L.primDoc)->sessao == L.sessao) {
+    doc = legenda_documento_reter(L.primDoc);
+    if (geracao) *geracao = L.primGer;
+  }
+  pthread_mutex_unlock(&M);
+  return doc;
+}
+
+int legsync_fala_valida(const LegendaDocumento *doc, unsigned geracao, const char *midia) {
+  int ok;
+  pthread_mutex_lock(&M); ok = falaValida(doc, geracao, midia); pthread_mutex_unlock(&M);
+  return ok;
+}
+
+int legsync_fala_aplicar(const LegendaDocumento *doc, unsigned geracao, const char *midia, int manualMs, int atrasoTotalMs) {
+  int ok = 0;
+  if (manualMs < -LEG_ATRASO_MANUAL_MAX || manualMs > LEG_ATRASO_MANUAL_MAX ||
+      atrasoTotalMs < -LEG_ATRASO_MANUAL_MAX || atrasoTotalMs > LEG_ATRASO_MANUAL_MAX) return 0;
+  pthread_mutex_lock(&M);
+  if (falaValida(doc, geracao, midia)) {
+    if (!L.falaUndo) { L.falaAntesAtiva = L.falaAtiva; L.falaAntesOffset = L.falaOffsetMs; }
+    L.falaUndo = L.falaAtiva = 1;
+    // A correcao da sessao substitui o automatico. O atraso manual continua
+    // como ajuste fino; preferencias e atraso de outros filmes nao mudam.
+    L.falaOffsetMs = manualMs - atrasoTotalMs;
+    if (L.ref) legref_pausar(L.ref, 1);
+    ok = 1;
+  }
+  pthread_mutex_unlock(&M); return ok;
+}
+
+int legsync_fala_pode_desfazer(const char *midia) {
+  int ok;
+  pthread_mutex_lock(&M);
+  ok = L.falaUndo && falaValida(L.primDoc, L.primGer, midia);
+  pthread_mutex_unlock(&M); return ok;
+}
+
+int legsync_fala_desfazer(const char *midia) {
+  int ok = 0;
+  pthread_mutex_lock(&M);
+  if (L.falaUndo && falaValida(L.primDoc, L.primGer, midia)) {
+    L.falaAtiva = L.falaAntesAtiva; L.falaOffsetMs = L.falaAntesOffset;
+    L.falaUndo = 0; ok = 1;
+  }
+  pthread_mutex_unlock(&M); return ok;
+}
+
 int legsync_offset_ms(int manual) {
   // `manual` is the user's delay (positive = subtitle shown LATER). The lookup
   // convention (legenda_cues, assrender, autosync) is the opposite: positive
@@ -320,7 +382,7 @@ int legsync_offset_ms(int manual) {
   pthread_mutex_lock(&M);
   if (L.criado && L.primTipo == 1 && L.primFase == 1 && L.primDoc && g == L.primGer &&
       legenda_documento_info(L.primDoc)->sessao == L.sessao)
-    total += autosync_offset_ms(L.sync, 0);
+    total += L.falaAtiva ? L.falaOffsetMs : autosync_offset_ms(L.sync, 0);
   pthread_mutex_unlock(&M);
   return total;
 }
@@ -334,7 +396,7 @@ double legsync_posicao(double pos) {
   pthread_mutex_lock(&M);
   if (L.criado && L.primTipo == 1 && L.primFase == 1 && L.primDoc && g == L.primGer &&
       legenda_documento_info(L.primDoc)->sessao == L.sessao)
-    t = autosync_posicao(L.sync, 0, pos);
+    t = L.falaAtiva ? pos : autosync_posicao(L.sync, 0, pos);
   pthread_mutex_unlock(&M);
   return t;
 }
@@ -619,6 +681,14 @@ void legsync_passo(const char *url, double pos, double folga, int sensivel, unsi
   // Troca de fonte no meio da sessao: outra midia, outra geracao. A escolha
   // de legenda da pessoa continua; a referencia e o offset automatico nao.
   if (url && *url && fnv(url) != L.urlHash) novaSessao(url, 1);
+  if (L.falaAtiva && (!dona() || legenda_documento_info(L.primDoc)->sessao != L.sessao)) {
+    L.falaAtiva = L.falaOffsetMs = L.falaUndo = 0;
+  }
+  if (L.falaAtiva) {
+    if (L.ref) legref_pausar(L.ref, 1);
+    L.autoDesde = agora; // undo nao transforma o tempo de leitura em timeout
+    pthread_mutex_unlock(&M); return;
+  }
   if (L.refPedido) {
     LegRefStatus st = legref_status(L.ref);
     if (st.pedido == L.refPedido) {
@@ -786,6 +856,11 @@ LegSyncVisao legsync_visao(int slot) {
   if (slot != 0) { v.fase = LEGSYNC_DEPOIS; return v; }
   pthread_mutex_lock(&M);
   if (!L.criado) { v.motivo = LEGSYNC_M_SEM_EXTERNA; goto fim; }
+  if (L.falaAtiva && dona()) {
+    v.porFala = 1; v.fase = LEGSYNC_PRONTA;
+    v.offsetTotalMs = L.falaOffsetMs;
+    goto fim;
+  }
   snprintf(v.idiomaRef, sizeof v.idiomaRef, "%s", L.idiomaRef);
   v.autoFase = L.autoFase; v.autoTrocou = L.autoTrocou;
   v.autoDesligado = !autoLigado; v.falhaDownload = L.falhaDownload;

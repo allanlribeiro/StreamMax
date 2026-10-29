@@ -2,6 +2,8 @@
 #include "legendasui.h"
 #include "legenda2.h"
 #include "legenda.h"
+#include "legfala.h"
+#include "legsync.h"
 #include "faixas.h"
 #include "idioma.h"
 #include "linguas.h"
@@ -187,7 +189,7 @@ void legendasui_definir_sync(const LegendasSyncProvider *p) {
 }
 
 // --- rows --------------------------------------------------------------------------
-typedef enum { LR_CAND, LR_NENHUMA, LR_MAIS, LR_SYNC, LR_ALVO, LR_ATRASO, LR_PAR, LR_FILTRO, LR_BUSCAR, LR_APARENCIA, LR_SINCRONIA, LR_OPCOES } LuiTipo;
+typedef enum { LR_CAND, LR_NENHUMA, LR_MAIS, LR_SYNC, LR_ALVO, LR_ATRASO, LR_PAR, LR_FILTRO, LR_BUSCAR, LR_APARENCIA, LR_SINCRONIA, LR_OPCOES, LR_FALA, LR_FALA_DESFAZER } LuiTipo;
 typedef struct {
   LuiTipo tipo;
   int slot, cand;
@@ -244,6 +246,11 @@ static void rolagemZerar(void) {
 }
 static char aviso[128];
 static Uint32 avisoAte;
+static int falaAberta;
+static void falaAbrir(void);
+static void falaAtualizar(void);
+static int falaEvento(const SDL_Event *e);
+static void falaDesenhar(GfxRect c, float a);
 
 static const char *prefLinha(int slot) {
   const char *p = slot ? ling_legenda2() : ling_legenda();
@@ -336,6 +343,10 @@ static void montarLinhas(void) {
   nLinhasV = 0;
   if (pagina == 1) {
     linhaFixa(LR_ATRASO, alvo, "sync|atraso");
+    if (!alvo && !player_id_canal()[0]) {
+      linhaFixa(LR_FALA, 0, "sync|fala");
+      if (legsync_fala_pode_desfazer(video_url_atual())) linhaFixa(LR_FALA_DESFAZER, 0, "sync|fala-desfazer");
+    }
     if (estadoSync(alvo)) linhaFixa(LR_SYNC, alvo, alvo ? "sync|s" : "sync|p");
     goto restaurarFoco;
   }
@@ -469,6 +480,7 @@ static void selecionarIdioma(void) {
 }
 
 void legendasui_abrir(void) {
+  legendasui_fala_fechar();
   char prim[24];
   int i;
   pagina = paginaVoltaSync = soExternas = 0; memset(focoVolta, 0, sizeof focoVolta);
@@ -504,6 +516,7 @@ int legendasui_mais(void) { return aberto && mais; }
 int legendasui_versoes(void) { return aberto && ver; }
 
 void legendasui_reiniciar(void) {
+  legendasui_fala_fechar();
   legenda2_reiniciar();
   aberto = menu = okPendente = okLongo = 0;
   pagina = paginaVoltaSync = soExternas = 0;
@@ -617,6 +630,7 @@ static void abrirMenu(void) {
 }
 
 void legendasui_atualizar(float dt) {
+  if (falaAberta) falaAtualizar();
   // Molas do dropdown, por quadro (faixas_atualizar): abertura e foco por linha.
   menuT = anim_mola(menuT, menu ? 1.0f : 0.0f, dt, NV_MOLA_TELA);
   for (int i = 0; i < 3; i++) menuFocoA[i] = anim_mola(menuFocoA[i], menu && i == menuFoco ? 1.0f : 0.0f, dt, NV_MOLA_FOCO);
@@ -647,6 +661,7 @@ static void menuEscolher(void) {
 }
 
 int legendasui_evento(const SDL_Event *e) {
+  if (falaAberta) return falaEvento(e);
 #ifdef NV_TOUCH_UI
   if (telefoneui_ativo() && toquerol_navegacao(e)) {
     rolagem = (int)(toqueLegendasOffset / 92.0f);
@@ -762,6 +777,10 @@ int legendasui_evento(const SDL_Event *e) {
         }
         break;
       case LR_APARENCIA: return LEGUI_ESTILO;
+      case LR_FALA: falaAbrir(); break;
+      case LR_FALA_DESFAZER:
+        if (legsync_fala_desfazer(video_url_atual())) avisar(i18n("Ajuste pela fala desfeito."));
+        break;
       case LR_SINCRONIA:
         snprintf(focoVolta[pagina], sizeof focoVolta[pagina], "sincronia");
         paginaVoltaSync = pagina; pagina = 1;
@@ -807,7 +826,7 @@ int legendasui_evento(const SDL_Event *e) {
 // `pont` = a ilha esta assentada neste quadro (alvos so entao).
 static int pont;
 static int ponteiroAqui(int i) {
-  return aberto && !menu && !faixas_estilo_topo() && i >= 0 && i < nLinhasV;
+  return aberto && !falaAberta && !menu && !faixas_estilo_topo() && i >= 0 && i < nLinhasV;
 }
 static void ponteiroLinha(int i, int b) {
   (void)b;
@@ -834,7 +853,7 @@ static void ponteiroAtraso(int i, int cx) {
   ponteiroLinha(i, 0);
   mudarAtraso(ponteiro_x() < (float)cx ? -100 : 100);
 }
-static void ponteiroAbaEstilo(int a, int b) { (void)a; (void)b; if (aberto) faixas_aba_estilo(1); }
+static void ponteiroAbaEstilo(int a, int b) { (void)a; (void)b; if (aberto && !falaAberta) faixas_aba_estilo(1); }
 
 int legendasui_teste_foco(int *alvoOut, int *syncOut) {
   if (alvoOut) *alvoOut = alvo;
@@ -860,6 +879,7 @@ static int luVis(void) {
 }
 
 float legendasui_altura(void) {
+  if (falaAberta) return fminf(880.0f, NV_VTELA_H - 96.0f);
   int n;
   montarLinhas(); atualizarIdiomas();
   n = emIdiomas ? nIdiomas + 1 : nLinhasV;
@@ -982,6 +1002,14 @@ static void textoLinha(const LuiLinha *l, char *nome, size_t tn, char *sub, size
       snprintf(nome, tn, "%s", i18n("Aparência"));
       snprintf(sub, ts, "%s", i18n("Tamanho, fonte, cor e posição"));
       *icone = "pl_captions"; break;
+    case LR_FALA:
+      snprintf(nome, tn, "%s", i18n("Sincronizar pela fala"));
+      snprintf(sub, ts, "%s", i18n("Marque a fala e escolha a frase da legenda"));
+      *icone = "aj_clock"; break;
+    case LR_FALA_DESFAZER:
+      snprintf(nome, tn, "%s", i18n("Desfazer ajuste pela fala"));
+      snprintf(sub, ts, "%s", i18n("Retorna ao sincronismo anterior desta legenda"));
+      *icone = "aj_clock"; break;
     case LR_SINCRONIA:
       snprintf(nome, tn, "%s", i18n("Sincronização"));
       snprintf(sub, ts, "%s", i18n("Atraso e sincronização automática"));
@@ -1010,7 +1038,7 @@ static void textoLinha(const LuiLinha *l, char *nome, size_t tn, char *sub, size
       // Title + the provider's state below; the chosen action is drawn
       // between < > on the right when the row has focus (desenharLinha).
       const char *s = estadoSync(l->slot);
-      snprintf(nome, tn, "%s", i18n("Sincronização automática"));
+      snprintf(nome, tn, "%s", i18n("Estado da sincronização"));
       snprintf(sub, ts, "%s", s ? s : "");
       *icone = "aj_wand";
       break; }
@@ -1228,13 +1256,13 @@ static void desenharMenu(GfxRect c, float a) {
 // a legenda em reproducao; OK abre as opcoes daquele idioma.
 static void ponteiroIdioma(int i, int b) {
   (void)b;
-  if (!aberto || menu || i < 0 || i > nIdiomas) return;
+  if (!aberto || falaAberta || menu || i < 0 || i > nIdiomas) return;
   focoIdioma = i;
   emIdiomas = 1;
 }
 static void ponteiroIdiomaAbrir(int i, int b) {
   (void)b;
-  if (!aberto || menu || i < 0 || i > nIdiomas) return;
+  if (!aberto || falaAberta || menu || i < 0 || i > nIdiomas) return;
   focoIdioma = i;
   selecionarIdioma();
   emIdiomas = 0;
@@ -1274,6 +1302,7 @@ static void desenharIdiomas(float x, float y, float w, float a) {
 }
 
 void legendasui_corpo(GfxRect c, float a) {
+  if (falaAberta) { falaDesenhar(c, a); return; }
   float x0 = c.x + LU_PAD_X, w = c.w - LU_PAD_X * 2.0f, y = c.y + LU_PAD_Y;
   int vis = luVis(), fim, i;
   montarLinhas();
@@ -1530,3 +1559,5 @@ float legendasui_altura_secundaria(const LegendasGeo *g) {
 float legendasui_topo_livre(float minimo) {
   return bandaFim > 0.0f && bandaFim + 12.0f > minimo ? bandaFim + 12.0f : minimo;
 }
+
+#include "legendasui_fala.inc"

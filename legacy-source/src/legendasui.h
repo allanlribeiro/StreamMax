@@ -39,6 +39,8 @@ float legendasui_altura(void);
 void  legendasui_corpo(GfxRect corpo, float a);
 // Media change (faixas_reiniciar): drops the second subtitle and the focus.
 void  legendasui_reiniciar(void);
+int   legendasui_fala_aberta(void);
+void  legendasui_fala_fechar(void);
 // Tests (#99 pointer): focused row index (-1 = panel closed), and the "Usar
 // como" slot (0 primary, 1 second) and the chosen AutoSync action.
 int   legendasui_teste_foco(int *alvo, int *syncAcao);
