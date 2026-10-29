@@ -1,0 +1,75 @@
+name: StreamMax Downloader - link permanente do APK
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - .github/workflows/streammax-downloader-link.yml
+  release:
+    types: [published, released]
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: streammax-downloader-latest-apk
+  cancel-in-progress: false
+
+jobs:
+  keep-latest-apk:
+    name: Atualizar APK de nome fixo na release mais recente
+    runs-on: ubuntu-latest
+    steps:
+      - name: Localizar APK Android TV da ultima release publica
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases/latest" > "${RUNNER_TEMP}/streammax-release.json"
+          tag="$(jq -r '.tag_name' "${RUNNER_TEMP}/streammax-release.json")"
+          apk="$(jq -r '[.assets[] | select(.name | startswith("StreamMax-") and endswith("-android.apk"))] | sort_by(.created_at) | last | .name // empty' "${RUNNER_TEMP}/streammax-release.json")"
+          if [[ -z "${apk}" ]]; then
+            echo "Nenhum APK Android TV publicado em ${tag}. Nada para atualizar."
+            echo "needs_upload=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          apk_digest="$(jq -r --arg apk "${apk}" '.assets[] | select(.name == $apk) | .digest // empty' "${RUNNER_TEMP}/streammax-release.json")"
+          alias_digest="$(jq -r '[.assets[] | select(.name == "StreamMax-android.apk") | .digest // empty] | first // empty' "${RUNNER_TEMP}/streammax-release.json")"
+          apk_size="$(jq -r --arg apk "${apk}" '.assets[] | select(.name == $apk) | .size' "${RUNNER_TEMP}/streammax-release.json")"
+          alias_size="$(jq -r '[.assets[] | select(.name == "StreamMax-android.apk") | .size] | first // empty' "${RUNNER_TEMP}/streammax-release.json")"
+
+          if [[ -n "${alias_digest}" && "${apk_digest}" == "${alias_digest}" && "${apk_size}" == "${alias_size}" ]]; then
+            echo "Alias ja corresponde ao APK ${apk} na release ${tag}."
+            echo "needs_upload=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "apk=${apk}" >> "${GITHUB_OUTPUT}"
+          echo "needs_upload=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Publicar nome fixo para Downloader
+        if: steps.latest.outputs.needs_upload == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.latest.outputs.tag }}
+          APK_NAME: ${{ steps.latest.outputs.apk }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/streammax-downloader"
+          mkdir -p "${dir}"
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --pattern "${APK_NAME}" --dir "${dir}"
+          mv "${dir}/${APK_NAME}" "${dir}/StreamMax-android.apk"
+          unzip -tq "${dir}/StreamMax-android.apk" >/dev/null
+          gh release upload "${RELEASE_TAG}" "${dir}/StreamMax-android.apk" --repo "${GITHUB_REPOSITORY}" --clobber
+
+          echo "Link fixo: https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/StreamMax-android.apk" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Versao: ${RELEASE_TAG}" >> "${GITHUB_STEP_SUMMARY}"
