@@ -17,4 +17,8 @@ const LegendaCue *legfala_cue(const LegFala *f, int indice);
 void legfala_frase(const LegendaCue *cue, char *dst, size_t tam);
 // Atraso positivo = aparece depois. Recusa alem de +/-60 s, sem clamp oculto.
 int legfala_calcular(const LegFala *f, int *atrasoMs);
+typedef float (*LegFalaMedir)(const char *texto, void *u);
+// Quebra sem perder caracteres, inclusive palavras maiores que a coluna.
+// Limita cada linha a 400 bytes para o componente de texto nativo (512).
+int legfala_quebrar(const char *texto, float largura, char *dst, size_t tam, LegFalaMedir medir, void *u);
 #endif

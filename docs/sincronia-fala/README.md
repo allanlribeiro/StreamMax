@@ -20,6 +20,9 @@ o filme continua; escolher uma frase nao avanca nem reabre o video.
   legendas de imagem (PGS/VobSub) e canais ao vivo ficam fora desta modalidade.
 - `legfala.c`: retencao de documento imutavel, indice de falas nao vazias,
   busca binaria da frase proxima, preservacao de UTF-8 e calculo do atraso.
+  Prepara a leitura completa com a medida real da fonte, inclusive palavras
+  sem espacos: cada linha respeita a largura e o limite do componente nativo.
+  A quebra fica em cache por frase, largura e abertura do painel.
 - `legendasui_fala.inc`: duas etapas, leitura completa com rolagem, controle,
   ponteiro, bloqueio de OK segurado/clique antigo e mensagens em portugues.
 - `legsync.c`: guarda de documento, geracao e URL da midia, prioridade do ajuste
@@ -45,6 +48,8 @@ controlados. Cobre atrasos positivos/negativos/zero e limite, frase longa,
 Unicode, arquivo incompleto, reapertura do mesmo documento, captura historica,
 OK segurado, ponteiro antigo, cancelamento, faixa/fonte/sessao diferentes,
 resultado automatico tardio, ajuste fino, desfazer e geometria 85-150%.
+Tambem cobre palavras de 767 bytes, acentos, emojis/CJK, preservacao dos
+caracteres, largura maxima de linha e buffers pequenos, sem corte de UTF-8.
 
 ASan/UBSan e sintaxe nativa completos; regressao de cadastro, contas, addons,
 VOD/guia, Watch Next, retirada de frames, Home, logo, pacote e OTA. O workflow

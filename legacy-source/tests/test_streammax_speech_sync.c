@@ -4,7 +4,30 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
+#include <ctype.h>
 static LegendaDocumentoInfo info = {.sessao=7,.flags=LEGENDA_DOC_COMPLETO,.identidade="fixture"};
+static float measure(const char *s,void *u){(void)u;return (float)strlen(s)*13;}
+static void check_lines(const char *s,float width) {
+  char copy[1536];snprintf(copy,sizeof copy,"%s",s);char *save=NULL;
+  for(char *line=strtok_r(copy,"\n",&save);line;line=strtok_r(NULL,"\n",&save)) {
+    assert(strlen(line)<=400 && measure(line,NULL)<=width);
+    for(const unsigned char *p=(const unsigned char *)line;*p;) {
+      int n=*p<0x80?1:(*p&0xe0)==0xc0?2:(*p&0xf0)==0xe0?3:(*p&0xf8)==0xf0?4:0;
+      assert(n);p++;
+      for(int i=1;i<n;i++,p++)assert((*p&0xc0)==0x80);
+    }
+  }
+}
+static void check_contents(const char *source,const char *wrapped) {
+  // Wrapping may replace whitespace, but must preserve every visible byte.
+  for(;;) {
+    while(*source && isspace((unsigned char)*source))source++;
+    while(*wrapped && isspace((unsigned char)*wrapped))wrapped++;
+    assert(*source==*wrapped);
+    if(!*source)break;
+    source++;wrapped++;
+  }
+}
 static void check(const char *body) {
   LegendaDocumento *d=legenda_documento_criar(body,&info);
   LegFala f={0}; assert(d && legfala_abrir(&f,d,42));
@@ -54,5 +77,28 @@ int main(void) {
   incomplete.flags=LEGENDA_DOC_COMPLETO|LEGENDA_DOC_JANELA;
   d=legenda_documento_de_cues(&c,1,&incomplete);assert(!legfala_abrir(&f,d,1));legenda_documento_liberar(d);
   assert(!legfala_abrir(&f,NULL,1));assert(!legfala_abrir(NULL,NULL,0));
+  char original[768],wrapped[1536];memset(original,'X',700);strcpy(original+700," fim completo");
+  assert(legfala_quebrar(original,300,wrapped,sizeof wrapped,measure,NULL));
+  int xs=0;for(char *p=wrapped;*p;p++)xs+=*p=='X';
+  assert(xs==700 && strstr(wrapped,"completo"));
+  check_lines(wrapped,300);check_contents(original,wrapped);
+  assert(legfala_quebrar(original,100000,wrapped,sizeof wrapped,measure,NULL));
+  check_lines(wrapped,100000);check_contents(original,wrapped);
+  assert(strchr(wrapped,'\n')); // native 512-byte token limit even on very wide screens
+  assert(legfala_quebrar("Português completo com acentuação.",300,wrapped,sizeof wrapped,measure,NULL));
+  assert(strstr(wrapped,"acentuação."));
+  const char *examples[]={"  Frase com\tpalavras e acentos: coração.\n\nSegunda linha!  ","éééééééééééééééééééééééé", "🙂🙂🙂🙂🙂🙂漢字漢字漢字"};
+  for(size_t i=0;i<sizeof examples/sizeof *examples;i++) {
+    assert(legfala_quebrar(examples[i],65,wrapped,sizeof wrapped,measure,NULL));
+    check_lines(wrapped,65);check_contents(examples[i],wrapped);
+  }
+  memset(original,'W',767);original[767]=0;
+  assert(legfala_quebrar(original,13,wrapped,sizeof wrapped,measure,NULL));
+  check_lines(wrapped,13);check_contents(original,wrapped);
+  assert(!legfala_quebrar(original,0,wrapped,sizeof wrapped,measure,NULL));
+  assert(!legfala_quebrar(original,300,wrapped,2,measure,NULL) && !wrapped[0]);
+  assert(!legfala_quebrar("W",12,wrapped,sizeof wrapped,measure,NULL) && !wrapped[0]);
+  assert(!legfala_quebrar("W",NAN,wrapped,sizeof wrapped,measure,NULL));
+  assert(legfala_quebrar("",300,wrapped,sizeof wrapped,measure,NULL) && !wrapped[0]);
   puts("OK: parser real SRT/VTT/ASS, frases completas, UTF-8, offsets e limites");
 }

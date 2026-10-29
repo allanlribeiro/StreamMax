@@ -12,7 +12,7 @@
 #include "player.h"
 #include "idioma.h"
 static int falaAberta,menu,okPendente,okLongo;
-static char aviso[200],lastFull[768];
+static char aviso[200],lastFull[1536];
 static void avisar(const char *s){snprintf(aviso,sizeof aviso,"%s",s);}
 static void falaAtualizar(void);
 #include "../src/legendasui_fala.inc"
@@ -42,6 +42,7 @@ void gfx_sem_recorte(void){}
 void ponteiro_alvo(float x,float y,float w,float h,PonteiroFn f,PonteiroFn a,int i,int token){(void)f;(void)a;(void)i;(void)token;bounds((GfxRect){x,y,w,h});}
 TxtLinha txt_linha_corta(TxtEstilo e,const char *s,int r,int g,int b,int a,float w){(void)e;(void)r;(void)g;(void)b;(void)a;return (TxtLinha){.w=(int)fminf(w,strlen(s)*12),.h=25};}
 void txt_desenhar_alpha(TxtLinha t,float x,float y,float a){(void)t;(void)x;(void)y;(void)a;}
+int txt_largura(TxtEstilo e,const char *s){(void)e;return (int)strlen(s)*13;}
 float txt_bloco(TxtEstilo e,const char *s,int r,int g,int b,float x,float y,float w,float lead,float a,int max){
   (void)e;(void)r;(void)g;(void)b;(void)x;(void)y;(void)max;
   if(a)snprintf(lastFull,sizeof lastFull,"%s",s);
@@ -89,7 +90,8 @@ int main(void){
     nv_layout_h=scales[i];nv_layout_w=scales[i]*16/9;
     GfxRect area={48,48,fminf(1420,nv_layout_w-96),fminf(880,nv_layout_h-96)};
     falaAbrir();falaDesenhar(area,1);key(SDLK_RETURN,1);press(SDLK_RETURN);
-    falaDesenhar(area,1);assert(!strcmp(lastFull,cues[0].texto));
+    falaDesenhar(area,1);int xs=0;for(char *p=lastFull;*p;p++)xs+=*p=='X';
+    assert(xs==700 && strstr(lastFull,"completo"));
     for(int j=0;j<100;j++)press(SDLK_RIGHT);
     assert(falaScroll==falaScrollMax);falaDesenhar(area,1);
     legendasui_fala_fechar();

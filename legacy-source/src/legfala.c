@@ -90,3 +90,56 @@ int legfala_calcular(const LegFala *f, int *atrasoMs) {
   if (!isfinite(delay) || fabs(delay) > LEG_ATRASO_MANUAL_MAX) return 0;
   *atrasoMs = (int)lround(delay); return 1;
 }
+
+static int escrever(char *dst,size_t tam,size_t *n,const char *s,size_t len,int quebra) {
+  if (*n + len + (quebra ? 1u : 0u) >= tam) { dst[0]=0; return 0; }
+  memcpy(dst+*n,s,len); *n+=len;
+  if (quebra) dst[(*n)++]='\n';
+  dst[*n]=0; return 1;
+}
+int legfala_quebrar(const char *texto,float largura,char *dst,size_t tam,LegFalaMedir medir,void *u) {
+  if (!dst || !tam) return 0;
+  dst[0]=0;
+  if (!texto || !medir || !isfinite(largura) || largura<=0 || strnlen(texto,769)>768) return 0;
+  char linha[401]="",palavra[769],tentativa[1172];
+  size_t n=0;
+  const char *p=texto;
+  while (*p) {
+    if (*p=='\n') {
+      if (!escrever(dst,tam,&n,linha,strlen(linha),1)) return 0;
+      linha[0]=0; p++; continue;
+    }
+    if (isspace((unsigned char)*p)) { p++; continue; }
+    const char *ini=p;
+    while (*p && !isspace((unsigned char)*p)) p++;
+    size_t np=(size_t)(p-ini),nl=strlen(linha);
+    memcpy(palavra,ini,np); palavra[np]=0;
+    if (nl && nl+np+1<=400) {
+      memcpy(tentativa,linha,nl); tentativa[nl]=' ';
+      memcpy(tentativa+nl+1,palavra,np+1);
+      if (medir(tentativa,u)<=largura) { memcpy(linha,tentativa,nl+np+2); continue; }
+    }
+    if (nl) {
+      if (!escrever(dst,tam,&n,linha,nl,1)) return 0;
+      linha[0]=0;
+    }
+    int fins[769],nf=0;
+    for (size_t i=1;i<=np;i++) if (i==np || ((unsigned char)palavra[i]&0xc0)!=0x80) fins[nf++]=(int)i;
+    int primeiro=0,offset=0;
+    while (primeiro<nf) {
+      int lo=primeiro,hi=nf-1,melhor=-1;
+      while (lo<=hi) {
+        int mid=lo+(hi-lo)/2,len=fins[mid]-offset;
+        if (len>400) { hi=mid-1; continue; }
+        memcpy(tentativa,palavra+offset,(size_t)len);tentativa[len]=0;
+        if (medir(tentativa,u)<=largura) { melhor=mid;lo=mid+1; } else hi=mid-1;
+      }
+      if (melhor<primeiro) { dst[0]=0; return 0; }
+      int len=fins[melhor]-offset;
+      if (melhor==nf-1) { memcpy(linha,palavra+offset,(size_t)len);linha[len]=0; }
+      else if (!escrever(dst,tam,&n,palavra+offset,(size_t)len,1)) return 0;
+      offset=fins[melhor];primeiro=melhor+1;
+    }
+  }
+  return escrever(dst,tam,&n,linha,strlen(linha),0);
+}

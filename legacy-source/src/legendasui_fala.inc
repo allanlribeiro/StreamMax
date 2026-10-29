@@ -5,6 +5,20 @@ static float falaScroll, falaScrollMax;
 static int falaEsperaSoltar;
 static unsigned falaTela;
 static char falaErro[180];
+static char falaTextoCompleto[1536];
+static float falaTextoLargura=-1;
+static unsigned falaTextoTela;
+static int falaTextoFoco=-1;
+static float falaMedir(const char *s,void *u) { (void)u; return txt_largura(TXT_ILHA_CORPO,s); }
+static const char *falaTextoPreparado(float largura) {
+  if (falaTextoLargura!=largura || falaTextoTela!=falaTela || falaTextoFoco!=fala.foco) {
+    char original[768];legfala_frase(legfala_cue(&fala,fala.foco),original,sizeof original);
+    if (!legfala_quebrar(original,largura,falaTextoCompleto,sizeof falaTextoCompleto,falaMedir,NULL))
+      snprintf(falaTextoCompleto,sizeof falaTextoCompleto,"Não foi possível preparar este trecho para leitura.");
+    falaTextoLargura=largura;falaTextoTela=falaTela;falaTextoFoco=fala.foco;
+  }
+  return falaTextoCompleto;
+}
 
 int legendasui_fala_aberta(void) { return falaAberta; }
 void legendasui_fala_fechar(void) {
@@ -143,7 +157,7 @@ static void falaDesenhar(GfxRect c, float a) {
   y += 12;
   GfxRect detalhe = {x,y,w,fmaxf(30,c.y+c.h-116-y)};
   gfx_cor(detalhe,16/detalhe.h,.035f,.055f,.095f,.95f*a);
-  char frase[768]; legfala_frase(legfala_cue(&fala,fala.foco),frase,sizeof frase);
+  const char *frase=falaTextoPreparado(w-36);
   float altura = txt_bloco(TXT_ILHA_CORPO,frase,240,244,250,x+18,0,w-36,34,0,0);
   falaScrollMax = fmaxf(0,altura - detalhe.h + 28);
   falaScroll = fminf(falaScroll,falaScrollMax);
