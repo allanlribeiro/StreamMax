@@ -17,3 +17,15 @@ ${CC:-cc} -std=gnu11 -O1 -g -Wall -Wextra -ffunction-sections -fdata-sections \
   -DNV_ANDROID -DNV_TOUCH_UI -Isrc ${SM_CFLAGS:-$(pkg-config --cflags sdl2)} "${flags[@]}" \
   tests/test_streammax_signup_ui.c -Wl,--gc-sections -lm -o "$tmp/ui"
 "$tmp/ui"
+
+python3 - <<'PYCODE'
+from pathlib import Path
+login=Path('src/login.c').read_text()
+assert 'logoapp_streammax_abertura(' in login
+assert 'logoapp_streammax_simbolo(' not in login
+assert 'logoapp_streammax_wordmark(' not in login
+profile=Path('src/perfilsel.c').read_text()
+assert 'logoapp_streammax_abertura(' in profile
+assert 'logoapp_streammax_wordmark(' not in profile
+print('OK: acesso e perfis usam a mesma logo oficial da abertura, sem arte antiga')
+PYCODE

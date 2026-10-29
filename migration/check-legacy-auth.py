@@ -22,7 +22,7 @@ def main(root: Path) -> int:
             'if (autoMobile && !strcmp(autoMobile, "0")) return 1;',
             "if (!loginEhTvAndroid()) return;",
             "if (loginEhTvAndroid()) {",
-            "logoapp_streammax_simbolo(",
+            "logoapp_streammax_abertura(",
         ],
         "src/sessao.h": [
             "SES_EMAIL", "sessao_login_email", "sessao_login_comecar",

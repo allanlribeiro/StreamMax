@@ -6,6 +6,8 @@ As contas continuam no servidor Nuvio; nao existe um segundo banco de contas.
 
 Na TV, o login passa a ter marca e apresentacao a esquerda, formulario a direita,
 fundo escuro e tons azuis. Nas telas menores o formulario fica centralizado.
+A logo do login e dos perfis usa diretamente `streammax_startup.png`, a mesma
+arte da abertura do APK oficial 1.0.27, sem redesenhar simbolo ou tipografia.
 A navegacao por controle remoto e o teclado existente sao preservados.
 
 A escolha de perfil recebe [uma nova arte azul estatica](../../legacy-source/deploy/app/art/marcas/streammax_profiles.png),
@@ -33,3 +35,15 @@ nos Ajustes e escolhas posteriores sao mantidas.
 **Limites:** nao foi criada conta real nem feito cadastro/login ponta a ponta;
 sem dispositivo TCL conectado, navegacao completa, visual e desempenho fisico
 permanecem pendentes. Testes locais e compilacao nao substituem esse teste.
+
+## Previas tecnicas
+
+![Tela de login](login.png)
+
+![Tela de cadastro](cadastro.png)
+
+Estas imagens usam **login.c, logoapp.c e gfx.c completos**, renderizados com
+Mesa/EGL no host. Os textos sao rasterizados por uma fixture com as fontes
+InterDisplay do projeto; teclado e sessao sao controlados. Nao sao capturas
+completas do APK/emulador nem fotos da TCL, e o texto pode variar na TV.
+A arte de perfil e o PNG estatico real incluido no APK, sem mockup de avatares.

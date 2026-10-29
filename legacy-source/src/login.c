@@ -443,12 +443,13 @@ void login_desenhar(Uint32 agora) {
       if (lgDividido()) {
         float x = NV_TELA_W * 0.06f;
         gfx_cor((GfxRect){x, NV_TELA_H * 0.27f, lgMedida(56), lgMedida(4)}, 0.5f, 0.14f, 0.59f, 0.96f, 1);
-        logoapp_streammax_simbolo((GfxRect){x, NV_TELA_H * 0.31f, lgMedida(152), lgMedida(180)}, 1);
-        logoapp_streammax_wordmark((GfxRect){x, NV_TELA_H * 0.49f, NV_TELA_W * 0.27f, lgMedida(72)}, 1);
+        // A mesma arte aprovada da abertura, sem reconstruir o simbolo ou a escrita.
+        logoapp_streammax_abertura((GfxRect){NV_TELA_W * 0.035f, NV_TELA_H * 0.22f,
+            NV_TELA_W * 0.35f, NV_TELA_W * 0.35f / 1.5f}, 1);
         txt_bloco_corta(TXT_TITULO2, "Seu cinema.\nDo seu jeito.", 243, 246, 252,
-            x, NV_TELA_H * 0.61f, NV_TELA_W * 0.29f, lgMedida(62), 1, 2);
+            x, NV_TELA_H * 0.68f, NV_TELA_W * 0.29f, lgMedida(62), 1, 2);
         txt_bloco_corta(TXT_CAPTION, "Filmes, séries e TV ao vivo em um só lugar.", 151, 173, 204,
-            x, NV_TELA_H * 0.78f, NV_TELA_W * 0.28f, lgMedida(32), 1, 2);
+            x, NV_TELA_H * 0.85f, NV_TELA_W * 0.28f, lgMedida(32), 1, 2);
       }
       painelLoginStreamMax();
     } else
@@ -461,8 +462,8 @@ void login_desenhar(Uint32 agora) {
 #ifdef NV_ANDROID
   // Nunca deixar o logo do Nuvio reaparecer no login Android, mesmo quando
   // a preferencia de layout ou o viewport da TV estiverem inconsistentes.
-  if (!lgDividido()) logoapp_streammax_simbolo(
-      (GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 70.0f, 84.0f }, 1.0f);
+  if (!lgDividido()) logoapp_streammax_abertura(
+      (GfxRect){ NV_MARGEM_X, lgMedida(14), lgMedida(144), lgMedida(96) }, 1.0f);
 #else
   logoapp_marca((GfxRect){ NV_MARGEM_X, NV_MARGEM_Y, 72.0f, 72.0f }, 1.0f);
 #endif

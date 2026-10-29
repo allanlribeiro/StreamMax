@@ -7,6 +7,9 @@
 - Branch `feat/streammax-cadastro-email`; candidata 1.0.28 / 20035 / 2.0.35.
 - `login.c`: Entrar/Criar conta, e-mail/senha/confirmacao, validacao local,
   teclado/controle/ponteiro; formulario em duas colunas na TV e responsivo.
+- Logo corrigida no login/perfis: usa `logoapp_streammax_abertura`, o mesmo
+  PNG verificado byte a byte contra o APK oficial 1.0.27. Nao usar o S antigo
+  de `streammax_icon.png` nem `streammax_banner.png` nestas telas.
 - `sessao.c`: POST signup no mesmo servidor; mesma persistencia de tokens;
   entrada automatica ou orientacao de confirmacao, sem repetir POST de cadastro.
 - Erros em portugues; senhas apagadas dos buffers, sem credenciais em log.

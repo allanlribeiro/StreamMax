@@ -6,6 +6,7 @@ e-mail, senha e confirmacao. As contas existentes continuam usando **Entrar**.
 
 - Login com identidade StreamMax: fundo escuro, marca, tons azuis e formulario
   separado da apresentacao em TVs de tela larga.
+- Login e perfis usam a mesma logo atual da abertura, sem o simbolo antigo.
 - Nova arte estatica azul para a escolha de perfil. As outras opcoes continuam
   disponiveis em Ajustes > Tela inicial > Escolha de perfil.
 - Cadastro com entrada automatica quando o servidor devolve uma sessao. Se o

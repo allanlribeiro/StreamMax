@@ -1274,10 +1274,10 @@ static void streammaxPerfilAcabamento(float a) {
   // Discreta linha superior: o mesmo ciano/azul do guia StreamMax.
   gfx_cor((GfxRect){ 68.0f, 47.0f, 5.0f, 53.0f }, 0.19f,
           0.035f, 0.63f, 1.0f, a);
-  // Escrita da arte original (sem recriar a fonte ou exibir o simbolo aqui).
-  logoapp_streammax_wordmark((GfxRect){90.0f, 47.0f, 236.0f, 42.0f}, a);
+  // Mesma logo da abertura oficial; nao reutilizar o banner antigo.
+  logoapp_streammax_abertura((GfxRect){82.0f, 36.0f, 240.0f, 160.0f}, a);
   linha = txt_linha(TXT_CAPTION, "ESCOLHA DE PERFIL", 136, 166, 206, 255);
-  txt_desenhar_alpha(linha, 90.0f, 92.0f, a);
+  txt_desenhar_alpha(linha, 90.0f, 204.0f, a);
 }
 
 static void desenhaFundo(void) {
