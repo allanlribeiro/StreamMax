@@ -829,6 +829,16 @@ class HomeViewModel @Inject constructor(
         onFocusedRowChangedForMdbBatch(rowKey)
     }
 
+    /** Rename the visible catalog without modifying its add-on, URL, items or stable key. */
+    fun renameHomeCatalog(catalogLegacyKey: String, newTitle: String) {
+        val title = newTitle.trim()
+        if (title.isBlank() || catalogLegacyKey.isBlank()) return
+        viewModelScope.launch {
+            val existing = layoutPreferenceDataStore.customCatalogTitles.first()
+            layoutPreferenceDataStore.setCustomCatalogTitles(existing + (catalogLegacyKey to title))
+        }
+    }
+
     /**
      * Called when Home comes back to the foreground, whether from another screen or from
      * outside the app.  Re-requests page 1 of the catalogs already loaded when the last
