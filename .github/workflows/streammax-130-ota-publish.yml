@@ -52,10 +52,17 @@ jobs:
             echo "::error::Latest release is $current, not $REFERENCE_TAG. Refusing to replace newer release."
             exit 1
           }
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::error::Release $TAG already exists. Refusing to overwrite."
-            exit 1
-          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > existing-releases.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          releases=json.loads(Path("existing-releases.json").read_text())
+          found=[x for x in releases if x["tag_name"]=="v1.0.30"]
+          if found:
+              assert len(found)==1 and found[0]["draft"] and not found[0]["prerelease"], "Found a non-draft/conflicting release; refusing to overwrite"
+              Path("existing-draft-id.txt").write_text(str(found[0]["id"]))
+              print("Resuming verified draft release", found[0]["id"])
+          PY
 
       - name: Download verified signed APK and original installed release
         shell: bash
@@ -123,23 +130,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release create "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --draft \
-            --target "$GITHUB_SHA" \
-            --title "StreamMax 1.0.30 — Preferências entre TVs" \
-            --notes-file RELEASE-STREAMMAX-1.0.30.md
-          gh release upload "$TAG" \
-            delivery/StreamMax-1.0.30-android.apk \
-            delivery/LEIA-ME.md \
-            delivery/SHA256SUMS.txt \
-            --repo "$GITHUB_REPOSITORY"
+          if [ -f existing-draft-id.txt ]; then
+            echo "Preserving existing draft assets; integrity will be verified before publication."
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title "StreamMax 1.0.30 — Preferências entre TVs" \
+              --notes-file RELEASE-STREAMMAX-1.0.30.md
+            gh release upload "$TAG" \
+              delivery/StreamMax-1.0.30-android.apk \
+              delivery/LEIA-ME.md \
+              delivery/SHA256SUMS.txt \
+              --repo "$GITHUB_REPOSITORY"
+          fi
 
       - name: Validate GitHub asset digest before enabling the OTA update
         shell: bash
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > release.json
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > all-releases.json
+          release_id="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          versions=json.loads(Path("all-releases.json").read_text())
+          found=[x for x in versions if x["tag_name"]=="v1.0.30" and x["draft"]]
+          assert len(found)==1, "Cannot identify single draft"
+          print(found[0]["id"])
+          PY
+          )"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > release.json
           python3 - <<'PY'
           import hashlib, json
           from pathlib import Path
