@@ -189,6 +189,64 @@ static void carregarProtecaoAjustes(void) {
   free(t);
 }
 
+// Sync das preferencias proprias do StreamMax: plataforma isolada do Nuvio
+// ("streammax_tv"). Nao acessamos valor[] no fio de rede: a foto e produzida
+// no fio principal, e entregamos uma copia imutavel sob mutex.
+#define SY_STREAMMAX_PLATAFORMA "streammax_tv"
+static pthread_mutex_t streammaxTrava = PTHREAD_MUTEX_INITIALIZER;
+static char *streammaxFotoLocal;
+static int streammaxFotoPerfil;
+static unsigned long streammaxFotoGeracao;
+static char *streammaxFotoRemota;
+static int streammaxRemotoPerfil;
+
+static void streammaxPendNome(int perfil, char *dst, size_t tam) {
+  snprintf(dst, tam, "streammax-pendente-p%d.txt", perfil);
+}
+static int streammaxPendente(int perfil) {
+  char nome[48], *t;
+  int sim;
+  streammaxPendNome(perfil, nome, sizeof nome);
+  t = dados_ler(nome);
+  sim = t && t[0] == '1';
+  free(t);
+  return sim;
+}
+static void streammaxFotografar(int marcarPendente) {
+  char *foto = ajustes_streammax_exportar_blob();
+  int perfil = perfis_ativo();
+  char nome[48];
+  if (!foto) return;
+  pthread_mutex_lock(&streammaxTrava);
+  free(streammaxFotoLocal);
+  streammaxFotoLocal = foto;
+  streammaxFotoPerfil = perfil;
+  streammaxFotoGeracao++;
+  if (marcarPendente && sessao_logada()) {
+    streammaxPendNome(perfil, nome, sizeof nome);
+    dados_gravar(nome, "1\n");
+  }
+  pthread_mutex_unlock(&streammaxTrava);
+}
+static void streammaxReceber(char *foto, int perfil) {
+  pthread_mutex_lock(&streammaxTrava);
+  free(streammaxFotoRemota);
+  streammaxFotoRemota = foto;
+  streammaxRemotoPerfil = foto ? perfil : 0;
+  pthread_mutex_unlock(&streammaxTrava);
+}
+static char *streammaxConsumirRemoto(int perfil) {
+  char *foto = NULL;
+  pthread_mutex_lock(&streammaxTrava);
+  if (streammaxRemotoPerfil == perfil) {
+    foto = streammaxFotoRemota;
+    streammaxFotoRemota = NULL;
+    streammaxRemotoPerfil = 0;
+  }
+  pthread_mutex_unlock(&streammaxTrava);
+  return foto;
+}
+
 // A ordem das fileiras da home, crua, tambem esperando o fio principal. Nao e
 // contada como as outras so-leitura: ela e a home da pessoa, e ate agora a
 // resposta chegava, virava um numero no resumo e era jogada fora.
@@ -895,6 +953,7 @@ static int guardarOuCopia(const char *sup, int perfil, int n, char **blob) {
 // O blob de ajustes NAO e contado, e lido: ele e o layout da pessoa. Ate agora
 // esta RPC so alimentava um numero no resumo, e as ~40 preferencias vinham dos
 // padroes transcritos a mao do perfil de quem montou o pacote.
+static int tvSettingsPullOk;
 static int puxarAjustesPerfil(const char *corpo) {
   char *r;
   int st = 0, ok = 0;
@@ -905,8 +964,10 @@ static int puxarAjustesPerfil(const char *corpo) {
   // tem o que reescrever e ficaria calado para sempre justamente na TV que
   // acabou de proteger os ajustes locais. O que a protecao decide agora e so se
   // o blob e APLICADO (temAjustesBlob abaixo), nao se ele e buscado.
+  tvSettingsPullOk = 0;
   r = rpcDoCiclo("sync_pull_profile_settings_blob", corpo, &st);
   if (!ok2xx(r, st) || !perfilDoCicloAtual()) { free(r); return 0; }
+  tvSettingsPullOk = 1;
   // A resposta e [{ "settings_json": { ... } }]; o que interessa e o objeto de
   // dentro, cru e INTEIRO.
   p = js_raiz_array(r);
@@ -1026,6 +1087,110 @@ static void empurrarAjustes(void) {
   nv_perfil_sessao_destravar();
 }
 
+// Uma plataforma propria permite copiar ajustes do StreamMax entre TVs sem
+// substituir chaves do Nuvio original ou de outro cliente na plataforma "tv".
+// A ausencia so e confirmada depois de resposta [] com HTTP 2xx. Erro do
+// servidor, resposta malformada e retrato desconhecido NAO autorizam sobrescrita.
+static void sincronizarAjustesStreammax(void) {
+  Jsw w;
+  char *resposta, *foto = NULL, *blobRemoto = NULL, *retorno;
+  const char *p;
+  unsigned long geracao = 0;
+  int st = 0, stPush = 0, perfil = perfilDoCiclo;
+  int remotoExiste = 0, remotoAusente = 0, pendente;
+  char nome[48];
+  if (!perfilDoCicloAtual()) return;
+  jsw_iniciar(&w);
+  jsw_obj_ini(&w);
+  jsw_ci(&w, "p_profile_id", perfil);
+  jsw_cs(&w, "p_platform", SY_STREAMMAX_PLATAFORMA);
+  jsw_obj_fim(&w);
+  resposta = rpcDoCiclo("sync_pull_profile_settings_blob", jsw_texto_final(&w), &st);
+  jsw_livre(&w);
+  if (!ok2xx(resposta, st) || !perfilDoCicloAtual()) { free(resposta); return; }
+
+  p = js_raiz_array(resposta);
+  if (p && *p == '{') {
+    const char *fimObj = js_fim(p), *k = strstr(p, "\"settings_json\"");
+    if (k && k < fimObj) {
+      const char *v = strchr(k, ':');
+      if (v && v < fimObj) {
+        v++;
+        while (v < fimObj && (unsigned char)*v <= ' ') v++;
+        if (v < fimObj && *v == '{') {
+          const char *fim = js_fim(v);
+          if (fim && fim <= fimObj &&
+              js_num(v, fim, "streammax_version", 0) == 1 &&
+              js_tem(v, fim, "streammax_preferences")) {
+            size_t n = (size_t)(fim - v);
+            blobRemoto = malloc(n + 1);
+            if (blobRemoto) {
+              memcpy(blobRemoto, v, n); blobRemoto[n] = 0;
+              remotoExiste = 1;
+            }
+          }
+        }
+      }
+    }
+    if (!remotoExiste) {
+      printf("[sync] retrato StreamMax desconhecido; estado remoto preservado\n");
+      free(resposta);
+      return;
+    }
+  } else {
+    const char *v = resposta;
+    while (*v && (unsigned char)*v <= ' ') v++;
+    if (*v++ == '[') {
+      while (*v && (unsigned char)*v <= ' ') v++;
+      remotoAusente = *v == ']';
+    }
+    if (!remotoAusente) { free(resposta); return; }
+  }
+  free(resposta);
+
+  pendente = streammaxPendente(perfil);
+  if (remotoExiste && !pendente) {
+    if (perfilDoCicloAtual()) streammaxReceber(blobRemoto, perfil);
+    else free(blobRemoto);
+    return;
+  }
+  free(blobRemoto);
+  if (remotoAusente && (!tvSettingsPullOk || (temAjustesPerfil && aplicarAjustes))) {
+    // Primeiro aplicar as preferencias oficiais da conta, no fio principal;
+    // so no ciclo seguinte e seguro criar a copia StreamMax da primeira TV.
+    return;
+  }
+  pthread_mutex_lock(&streammaxTrava);
+  if (streammaxFotoPerfil == perfil && streammaxFotoLocal) {
+    foto = strdup(streammaxFotoLocal);
+    geracao = streammaxFotoGeracao;
+  }
+  pthread_mutex_unlock(&streammaxTrava);
+  if (!foto || !perfilDoCicloAtual()) { free(foto); return; }
+  jsw_iniciar(&w);
+  jsw_obj_ini(&w);
+  jsw_ci(&w, "p_profile_id", perfil);
+  jsw_cs(&w, "p_platform", SY_STREAMMAX_PLATAFORMA);
+  jsw_chave(&w, "p_settings_json");
+  jsw_bruto(&w, foto);
+  jsw_obj_fim(&w);
+  retorno = rpcDoCiclo("sync_push_profile_settings_blob", jsw_texto_final(&w), &stPush);
+  jsw_livre(&w);
+  if (ok2xx(retorno, stPush) && perfilDoCicloAtual()) {
+    pthread_mutex_lock(&streammaxTrava);
+    if (geracao == streammaxFotoGeracao && perfil == streammaxFotoPerfil) {
+      streammaxPendNome(perfil, nome, sizeof nome);
+      dados_apagar(nome);
+    }
+    pthread_mutex_unlock(&streammaxTrava);
+    printf("[sync] ajustes StreamMax do perfil %d salvos na conta\n", perfil);
+  } else {
+    printf("[sync] ajustes StreamMax mantidos localmente (HTTP %d)\n", stPush);
+  }
+  free(retorno);
+  free(foto);
+}
+
 // A resposta inteira e guardada, nao interpretada aqui: quem le e catordem.c,
 // no fio principal. Interpretar neste fio e mexer na ordem das fileiras no meio
 // de um quadro que ja esta desenhando a home — a mesma razao que faz os addons
@@ -1109,6 +1274,7 @@ static void puxarSoLeitura(void) {
   snprintf(corpo, sizeof corpo,
            "{\"p_profile_id\":%d,\"p_platform\":\"tv\"}", perfil);
   temAjustesPerfil = puxarAjustesPerfil(corpo);
+  sincronizarAjustesStreammax();
 
   snprintf(corpo, sizeof corpo,
            "{\"p_profile_id\":%d,\"p_platform\":\"home_catalog_shared\"}", perfil);
@@ -1376,6 +1542,7 @@ void sync_iniciar(void) {
   addonsPerfilCiclo = perfis_ativo_addons();
   cicloInterrompido = 0;
   perfilDoCiclo = perfis_ativo();
+  streammaxFotografar(0);  // fio principal, antes de iniciar o worker
   copiaGeracaoDoCiclo = contacache_geracao();
   sessaoDoCiclo = nv_perfil_sessao_ler();
   if (!sessao_identidade_local_copiar(usuarioDoCiclo, sizeof usuarioDoCiclo,
@@ -1703,6 +1870,7 @@ void sync_passo(unsigned agoraMs) {
   else if (soFileiras) desc_remontar_fileiras();
   spMarcar(SP_REMONTAR); }
   int blobAplicado = 0, ajustesMudaram = 0;
+  int streammaxPodeAplicar = aplicarAjustes && !streammaxPendente(perfis_ativo());
   if (temAjustesBlob && ajustesBlob) {
     ajustesMudaram = ajustes_aplicar_blob(ajustesBlob);
     blobAplicado = 1;
@@ -1711,6 +1879,16 @@ void sync_passo(unsigned agoraMs) {
     // e o logout.
     temAjustesBlob = 0;
     aplicarAjustes = 0;   // daqui para frente, o que a pessoa mudar na TV fica
+  }
+  // A copia propria do StreamMax vence somente nas preferencias portateis.
+  // Nao reaplicar por cima de uma edicao local ainda pendente de upload.
+  {
+    char *fotoStreammax = streammaxConsumirRemoto(perfis_ativo());
+    if (fotoStreammax) {
+      if (streammaxPodeAplicar && perfilDoCicloAtual())
+        ajustesMudaram += ajustes_streammax_aplicar_blob(fotoStreammax);
+      free(fotoStreammax);
+    }
   }
   // #187: uma linha por blob novo (aplicado ou protegido) dizendo qual idioma
   // a TV pede ao TMDB e o que a conta guarda. A geracao muda a cada blob.
@@ -2096,11 +2274,27 @@ void sync_proteger_ajustes_locais(void) {
   // coisa; se o servidor nao tiver a funcao ou a rede estiver fora, a protecao
   // continua sendo a unica defesa — e e por isso que ela nao foi removida.
   sujoAjustes = 1;
+  streammaxFotografar(1);
 }
 
 void sync_esquecer_usuario(void) {
   // Reject old worker publications before any private cache is purged.
   perfis_invalidar_sessao();
+  {
+    int p;
+    char nome[48];
+    pthread_mutex_lock(&streammaxTrava);
+    free(streammaxFotoLocal); streammaxFotoLocal = NULL;
+    free(streammaxFotoRemota); streammaxFotoRemota = NULL;
+    streammaxFotoPerfil = streammaxRemotoPerfil = 0;
+    streammaxFotoGeracao++;
+    pthread_mutex_unlock(&streammaxTrava);
+    // Marcadores desta conta nao podem migrar para a proxima conta.
+    for (p = 1; p <= 6; p++) {
+      streammaxPendNome(p, nome, sizeof nome);
+      dados_apagar(nome);
+    }
+  }
   cat_historico_contexto("", 0);
   // A ordem importa pouco, mas o CONJUNTO nao: cada linha aqui corresponde a
   // uma coisa que sobrevivia ao logout.
