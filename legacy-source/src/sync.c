@@ -218,6 +218,14 @@ static void streammaxFotografar(int marcarPendente) {
   char nome[48];
   if (!foto) return;
   pthread_mutex_lock(&streammaxTrava);
+  // Alteracoes de buffer, decoder ou rede nao devem enviar um retrato antigo
+  // para cima das preferencias novas de outra TV.
+  if (streammaxFotoPerfil == perfil && streammaxFotoLocal &&
+      strcmp(streammaxFotoLocal, foto) == 0) {
+    free(foto);
+    pthread_mutex_unlock(&streammaxTrava);
+    return;
+  }
   free(streammaxFotoLocal);
   streammaxFotoLocal = foto;
   streammaxFotoPerfil = perfil;
@@ -1870,7 +1878,9 @@ void sync_passo(unsigned agoraMs) {
   else if (soFileiras) desc_remontar_fileiras();
   spMarcar(SP_REMONTAR); }
   int blobAplicado = 0, ajustesMudaram = 0;
-  int streammaxPodeAplicar = aplicarAjustes && !streammaxPendente(perfis_ativo());
+  // O bloqueio oficial aplicarAjustes persiste entre ciclos; para o retrato
+  // StreamMax so bloqueamos quando ha alteracao local nao enviada.
+  int streammaxPodeAplicar = !streammaxPendente(perfis_ativo());
   if (temAjustesBlob && ajustesBlob) {
     ajustesMudaram = ajustes_aplicar_blob(ajustesBlob);
     blobAplicado = 1;
@@ -1885,8 +1895,12 @@ void sync_passo(unsigned agoraMs) {
   {
     char *fotoStreammax = streammaxConsumirRemoto(perfis_ativo());
     if (fotoStreammax) {
-      if (streammaxPodeAplicar && perfilDoCicloAtual())
+      if (streammaxPodeAplicar && perfilDoCicloAtual()) {
         ajustesMudaram += ajustes_streammax_aplicar_blob(fotoStreammax);
+        // Atualizar o retrato de base; editar uma opcao local nao-portatil
+        // nao pode republicar valores obsoletos vindos de outra TV.
+        streammaxFotografar(0);
+      }
       free(fotoStreammax);
     }
   }
