@@ -1,0 +1,145 @@
+name: StreamMax 1.0.30 signed account sync update
+on:
+  push:
+    branches: [feature/streammax-sync-replace-v129-20261111]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    env:
+      GH_TOKEN: ${{ github.token }}
+      STORE_B64: ${{ secrets.STREAMMAX_RELEASE_KEYSTORE_B64 }}
+      KEY_ALIAS: ${{ secrets.STREAMMAX_RELEASE_KEY_ALIAS }}
+      KEY_PASS: ${{ secrets.STREAMMAX_RELEASE_KEY_PASSWORD }}
+      STORE_PASS: ${{ secrets.STREAMMAX_RELEASE_STORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require original release-signing key and validate sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          for k in STORE_B64 KEY_ALIAS KEY_PASS STORE_PASS; do
+            if [ -z "${!k}" ]; then
+              echo "::error::Release signing material is unavailable ($k); update cannot be safely created."
+              exit 1
+            fi
+          done
+          python3 migration/check-streammax-account-sync.py legacy-source
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK and native build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm ffmpeg unzip
+      - name: Get previous official APK and required native libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/official"
+          gh release download v1.0.29 --repo "$GITHUB_REPOSITORY" --pattern StreamMax-1.0.29-android.apk --dir "$RUNNER_TEMP/official"
+          reference="$RUNNER_TEMP/official/StreamMax-1.0.29-android.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$reference"
+          for abi in arm64-v8a armeabi-v7a; do
+            mkdir -p "$HOME/.cache/nuvio-android/prefix/$abi/lib"
+            for lib in libcurl.so libjpeg.so libwebp.so; do
+              member="lib/$abi/$lib"
+              unzip -Z1 "$reference" | grep -Fqx "$member" || {
+                echo "::error::Official StreamMax missing $member, cannot create safe update."
+                exit 1
+              }
+              unzip -p "$reference" "$member" > "$HOME/.cache/nuvio-android/prefix/$abi/lib/$lib"
+            done
+          done
+      - name: Configure public backend used by signed StreamMax releases
+        shell: bash
+        working-directory: legacy-source
+        env:
+          CLOUD_URL: https://api.nuvio.tv
+          CLOUD_PUBLIC_KEY: sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN
+        run: |
+          set -euo pipefail
+          umask 077
+          printf 'NUVIO_SUPABASE_URL=%s\nNUVIO_SUPABASE_ANON_KEY=%s\nTV_LOGIN_WEB_BASE_URL=%s\n' \
+            "$CLOUD_URL" "$CLOUD_PUBLIC_KEY" "https://nuvio.tv/tv-login" > local.properties
+          tools/env.sh --require-core >/dev/null
+      - name: Build signed release with original key
+        working-directory: legacy-source
+        env:
+          NUVIO_KEYSTORE_PASS: ${{ secrets.STREAMMAX_RELEASE_STORE_PASSWORD }}
+          NUVIO_KEY_ALIAS: ${{ secrets.STREAMMAX_RELEASE_KEY_ALIAS }}
+          NUVIO_KEY_PASS: ${{ secrets.STREAMMAX_RELEASE_KEY_PASSWORD }}
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NUVIO_KEYSTORE="$RUNNER_TEMP/streammax-original-signature.jks"
+          printf '%s' "$STORE_B64" | base64 --decode > "$NUVIO_KEYSTORE"
+          chmod 600 "$NUVIO_KEYSTORE"
+          bash tools/android.sh --release-only
+      - name: Verify in-place update compatibility before publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="$RUNNER_TEMP/official/StreamMax-1.0.29-android.apk"
+          apk="legacy-source/build/android/Nuvio-2.0.37-android.apk"
+          test -s "$apk"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$signer" verify --print-certs "$ref" > "$RUNNER_TEMP/ref-sign.txt"
+          "$signer" verify --print-certs "$apk" > "$RUNNER_TEMP/new-sign.txt"
+          old="$(awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2;exit}' "$RUNNER_TEMP/ref-sign.txt")"
+          new="$(awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2;exit}' "$RUNNER_TEMP/new-sign.txt")"
+          if [ -z "$old" ] || [ -z "$new" ] || [ "$old" != "$new" ]; then
+            echo "::error::Signature mismatch with existing release: installation cannot safely update."
+            exit 1
+          fi
+          old_line="$("$aapt" dump badging "$ref" | grep '^package:' | head -1)"
+          new_line="$("$aapt" dump badging "$apk" | grep '^package:' | head -1)"
+          [[ "$new_line" == *"versionName='1.0.30'"* ]] || {
+            echo "::error::This is not the expected StreamMax 1.0.30 update"; exit 1;
+          }
+          [[ "$new_line" == *"name='com.streammax.tv'"* ]] || {
+            echo "::error::Update has a different package name"; exit 1;
+          }
+          [[ "$old_line" == *"name='com.streammax.tv'"* ]] || {
+            echo "::error::Previous release has a different package name"; exit 1;
+          }
+          old_code="$(printf '%s' "$old_line" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")"
+          new_code="$(printf '%s' "$new_line" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")"
+          test -n "$old_code" && test -n "$new_code" && [ "$new_code" -gt "$old_code" ] || {
+            echo "::error::Version code must increase for in-place update"; exit 1;
+          }
+          for abi in arm64-v8a armeabi-v7a; do
+            for lib in libcurl.so libjpeg.so libwebp.so libmain.so libSDL2.so; do
+              unzip -Z1 "$apk" | grep -Fqx "lib/$abi/$lib" || {
+                echo "::error::Missing essential native library: $abi/$lib"; exit 1;
+              }
+            done
+          done
+          mkdir -p delivery
+          cp "$apk" delivery/StreamMax-1.0.30-Atualizacao-Assinada.apk
+          echo "Verified same original signing certificate, com.streammax.tv, versionCode $new_code > $old_code, and native libraries."
+      - name: Upload compatible APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-1.0.30-ATUALIZACAO-ASSINADA
+          path: delivery/StreamMax-1.0.30-Atualizacao-Assinada.apk
+          if-no-files-found: error
+          retention-days: 7
