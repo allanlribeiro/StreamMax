@@ -1,0 +1,173 @@
+name: StreamMax 1.0.30 - OTA official release
+
+on:
+  push:
+    branches: [feature/streammax-sync-replace-v129-20261111]
+    paths:
+      - '.github/workflows/streammax-130-ota-publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: streammax-130-ota-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify signed APK and publish to in-app updater
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.30
+      REFERENCE_TAG: v1.0.29
+      SOURCE_RUN: '43115503744'
+      SOURCE_ARTIFACT: StreamMax-1.0.30-ATUALIZACAO-ASSINADA
+    steps:
+      - name: Checkout verified release source
+        uses: actions/checkout@v4
+
+      - name: Validate StreamMax auto-update code and release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s RELEASE-STREAMMAX-1.0.30.md
+          grep -Fxq '#define SM_UPDATE_VERSION "1.0.30"' legacy-source/src/streammax_update.h
+          grep -Fq '"version": "2.0.37"' legacy-source/deploy/app/appinfo.json
+          grep -Fq 'version="2.0.37"' legacy-source/tools/tizen-config.xml
+          grep -Fq '#define SM_UPDATE_API  "https://api.github.com/repos/allanlribeiro/StreamMax/releases/latest"' legacy-source/src/streammax_update.h
+          grep -Fq 'podeAtualizarApk()' legacy-source/src/atualizacao.c
+          python3 migration/check-streammax-account-sync.py legacy-source
+          bash legacy-source/tests/streammax-updater.sh
+
+      - name: Ensure previous official version is latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')"
+          test "$current" = "$REFERENCE_TAG" || {
+            echo "::error::Latest release is $current, not $REFERENCE_TAG. Refusing to replace newer release."
+            exit 1
+          }
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. Refusing to overwrite."
+            exit 1
+          fi
+
+      - name: Download verified signed APK and original installed release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p delivery original
+          gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" --dir delivery
+          gh release download "$REFERENCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern StreamMax-1.0.29-android.apk --dir original
+          test -s delivery/StreamMax-1.0.30-Atualizacao-Assinada.apk
+          test -s original/StreamMax-1.0.29-android.apk
+
+      - name: Install APK signature inspection tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install 'build-tools;35.0.0'
+
+      - name: Verify package identity version and exact official certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          original=original/StreamMax-1.0.29-android.apk
+          signed=delivery/StreamMax-1.0.30-Atualizacao-Assinada.apk
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$signer" verify --print-certs "$original" > original.cert
+          "$signer" verify --print-certs "$signed" > new.cert
+          old="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2;exit}' original.cert)"
+          new="$(awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2;exit}' new.cert)"
+          official='a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5'
+          if [ "$old" != "$official" ] || [ "$new" != "$official" ]; then
+            echo "::error::APK must match the original StreamMax signing certificate"
+            exit 1
+          fi
+          "$aapt" dump badging "$original" | grep "^package:" > original.badging
+          "$aapt" dump badging "$signed" | grep "^package:" > new.badging
+          grep -Fq "name='com.streammax.tv'" original.badging
+          grep -Fq "versionCode='20036'" original.badging
+          grep -Fq "name='com.streammax.tv'" new.badging
+          grep -Fq "versionCode='20037'" new.badging
+          grep -Fq "versionName='1.0.30'" new.badging
+          for abi in arm64-v8a armeabi-v7a; do
+            for lib in libmain.so libSDL2.so libcurl.so libjpeg.so libwebp.so; do
+              unzip -Z1 "$signed" | grep -Fqx "lib/$abi/$lib" || {
+                echo "::error::Missing $abi/$lib"; exit 1;
+              }
+            done
+          done
+          echo "Passed: same installed-app package, original signer, increased versionCode, complete essential Android native libraries."
+
+      - name: Stage updater-compatible assets and hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv delivery/StreamMax-1.0.30-Atualizacao-Assinada.apk delivery/StreamMax-1.0.30-android.apk
+          cp RELEASE-STREAMMAX-1.0.30.md delivery/LEIA-ME.md
+          (cd delivery && sha256sum StreamMax-1.0.30-android.apk LEIA-ME.md > SHA256SUMS.txt)
+          test -s delivery/SHA256SUMS.txt
+
+      - name: Create draft release and attach official OTA asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "StreamMax 1.0.30 — Preferências entre TVs" \
+            --notes-file RELEASE-STREAMMAX-1.0.30.md
+          gh release upload "$TAG" \
+            delivery/StreamMax-1.0.30-android.apk \
+            delivery/LEIA-ME.md \
+            delivery/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: Validate GitHub asset digest before enabling the OTA update
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > release.json
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          data=json.loads(Path("release.json").read_text())
+          assert data["tag_name"]=="v1.0.30"
+          assert data["draft"] is True
+          assert not data["prerelease"]
+          assets={a["name"]:a for a in data["assets"]}
+          for name in ("StreamMax-1.0.30-android.apk","LEIA-ME.md","SHA256SUMS.txt"):
+              path=Path("delivery")/name
+              remote=assets[name]
+              assert remote["state"]=="uploaded"
+              assert remote["size"]==path.stat().st_size
+              assert remote["digest"]=="sha256:"+hashlib.sha256(path.read_bytes()).hexdigest()
+          print("Verified official APK and release asset SHA-256")
+          PY
+
+      - name: Publish latest release for existing StreamMax in-app updater
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease=false \
+            --latest=true
+          latest="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')"
+          test "$latest" = "$TAG"
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq \
+            '{tag_name,html_url,assets:[.assets[]|{name,browser_download_url,digest,size}]}'
+          echo "The StreamMax 1.0.29 in-app update checker will discover v1.0.30 automatically. Android installation still requires user confirmation." >> "$GITHUB_STEP_SUMMARY"
