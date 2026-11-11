@@ -719,6 +719,10 @@ void ajustes_perfil_esquecer(void);
 // manual, destino dos salvos): eles descrevem esta TV, nao o gosto da pessoa, e
 // a conta e uma so para a TV da sala e a do quarto. Ver somenteDesteAparelho.
 int ajustes_mesclar_blob(const char *base, char **saida);
+// Retrato seguro das preferencias pessoais do StreamMax (plataforma streammax_tv).
+// Exportar e aplicar no fio principal; o chamador libera o texto exportado.
+char *ajustes_streammax_exportar_blob(void);
+int ajustes_streammax_aplicar_blob(const char *json);
 // #187: uma linha "[tmdb] idioma dos metadados: ..." com o que a TV pede ao
 // TMDB, de onde vem (ajuste desta TV) e o tmdb_language cru da conta.
 void ajustes_tmdb_idioma_relatar(const char *blob);

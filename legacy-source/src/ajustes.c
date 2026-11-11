@@ -58,6 +58,8 @@
 #include <math.h>
 #include <time.h>
 #include "js.h"
+#include "jsw.h"
+#include <errno.h>
 #include "artehero.h"
 #include "jellyfin.h"
 #include "plex.h"
@@ -5300,6 +5302,119 @@ int ajustes_aplicar_blob(const char *json) {
   // na primeira verificacao na TV.
   printf("[ajustes] blob da conta: %d chave(s) reconhecida(s), %d mudou(aram)\n",
          reconhecidas, mudou);
+  return mudou;
+}
+
+// ---------------------------------------------------------------- StreamMax entre TVs
+//
+// A conta do Nuvio ja sincroniza suas preferencias oficiais na plataforma "tv".
+// As escolhas visuais exclusivas do StreamMax ficam em uma PLATAFORMA SEPARADA
+// ("streammax_tv"), para nao apagar chaves desconhecidas do app web/original.
+// Este retrato contem SOMENTE valores inteiros de opcoes, nunca tokens, URLs de
+// addons, credenciais, arquivos, ou escolhas dependentes de hardware.
+static int ajustes_streammax_portatil(int op) {
+  if (op < 0 || op >= AJ_N) return 0;
+  if (OPCOES[op].tipo == OP_LEITURA || OPCOES[op].tipo == OP_ACAO) return 0;
+  if (!CHAVE[op] || CHAVE[op][0] == '-') return 0;
+  // Lista positiva: controles de hardware, rede, tokens e motores de
+  // reproducao nao entram nem se o upstream mudar a classificacao local.
+  switch (op) {
+    // Preferencias pessoais de idioma, navegacao e interface.
+    case AJ_LEG_LINGUA: case AJ_AUD_LINGUA:
+    case AJ_PAUSA_OVERLAY:
+    case AJ_LANDSCAPE: case AJ_HERO_CHEIO:
+    case AJ_RAIL: case AJ_RAIL_MODERNA: case AJ_RAIL_BLUR:
+    case AJ_HERO: case AJ_DESCOBRIR: case AJ_ROTULOS:
+    case AJ_NOME_ADDON: case AJ_SUFIXO_TIPO:
+    case AJ_OCULTAR_NLANC: case AJ_NOTAS_HOME: case AJ_GRAD_CLASSICO:
+    case AJ_CW_LIGADO: case AJ_CW_ESTILO: case AJ_CW_THUMB:
+    case AJ_CW_BLUR_PROX: case AJ_CW_FURTHEST: case AJ_CW_NAO_EXIBIDOS:
+    case AJ_CW_ORDEM: case AJ_DET_BLUR_NAO_VISTOS: case AJ_DET_TRAILER:
+    case AJ_DET_META_EXT: case AJ_DET_DATA_CHEIA:
+    case AJ_DET_VEU: case AJ_DET_TRAILER_AUTO:
+    case AJ_EXPANDIR: case AJ_EXPANDIR_ATRASO: case AJ_NAV_RAPIDA:
+    case AJ_TEMA: case AJ_FOCO_TRAILER:
+    case AJ_TMDB_LIGADO: case AJ_TMDB_IDIOMA:
+    case AJ_TMDB_ARTE: case AJ_TMDB_BASICO: case AJ_TMDB_FICHA:
+    case AJ_TMDB_DATAS: case AJ_TMDB_ELENCO: case AJ_TMDB_PROD:
+    case AJ_TMDB_REDES: case AJ_TMDB_EPS: case AJ_TMDB_TRAILERS:
+    case AJ_TMDB_MAIS: case AJ_TMDB_COL: case AJ_TMDB_CW:
+    // Apresentacao exclusiva do StreamMax, independente do hardware.
+    case AJ_IDIOMA:
+    case AJ_HERO_FUNDO: case AJ_HERO_ARTE_DIF:
+    case AJ_HERO_SINOPSE_TAM: case AJ_HERO_GENERO:
+    case AJ_HERO_SINOPSE: case AJ_HERO_NOTAS:
+    case AJ_HERO_ANO: case AJ_HERO_DURACAO:
+    case AJ_HERO_TRANSICAO:
+    case AJ_CW_FONTE: case AJ_CW_PROXIMO:
+    case AJ_CW_CONCLUIDO: case AJ_CW_MINIMO:
+    case AJ_BORDA_FOCO: case AJ_FONTE_UI:
+    case AJ_HOME_LAYOUT: case AJ_MENU_TOPO:
+    case AJ_TITULO_FIL: case AJ_ESPACO_FILEIRAS: case AJ_ESPACO_TITULOS:
+    case AJ_HERO_TRAILER_SOM: case AJ_HERO_TRAILER_ESPERA:
+    case AJ_ABAS_ESTILO: case AJ_ABERTURA_ESTILO:
+      return 1;
+    default:
+      // RAM, GPU, rede, codecs, buffer, HDMI e perifericos continuam locais.
+      return 0;
+  }
+}
+
+// Chamado SOMENTE no fio principal. O ciclo de rede recebe uma copia imutavel
+// sob mutex em sync.c; nunca acessa diretamente valor[] a partir do fio HTTP.
+char *ajustes_streammax_exportar_blob(void) {
+  Jsw w;
+  char *resultado = NULL;
+  const char *json;
+  int i;
+  jsw_iniciar(&w);
+  jsw_obj_ini(&w);
+  jsw_ci(&w, "streammax_version", 1);
+  jsw_chave(&w, "streammax_preferences");
+  jsw_obj_ini(&w);
+  for (i = 0; i < AJ_N; ++i) {
+    if (ajustes_streammax_portatil(i))
+      jsw_ci(&w, CHAVE[i], valor[i]);
+  }
+  jsw_obj_fim(&w);
+  jsw_obj_fim(&w);
+  json = jsw_texto_final(&w);
+  if (json) resultado = strdup(json);
+  jsw_livre(&w);
+  return resultado;
+}
+
+// Chamado SOMENTE no fio principal, para o mesmo usuario e perfil do pull.
+// Um campo ausente ou malformado nao substitui o ajuste local.
+int ajustes_streammax_aplicar_blob(const char *json) {
+  const char *obj, *fim, *tag;
+  int i, mudou = 0, reconhecidos = 0;
+  if (!json) return 0;
+  if (js_num(json, json + strlen(json), "streammax_version", 0) != 1) return 0;
+  tag = strstr(json, "\"streammax_preferences\"");
+  if (!tag || !(obj = strchr(tag, ':'))) return 0;
+  obj++;
+  while (*obj && (unsigned char)*obj <= ' ') obj++;
+  if (*obj != '{') return 0;
+  fim = js_fim(obj);
+  if (!fim || fim <= obj) return 0;
+  for (i = 0; i < AJ_N; ++i) {
+    char bruto[64], *resto;
+    long n;
+    int novo;
+    if (!ajustes_streammax_portatil(i)) continue;
+    if (!js_bruto(obj, fim, CHAVE[i], bruto, sizeof bruto)) continue;
+    if (bruto[0] == 0 || (bruto[0] != '-' && (bruto[0] < '0' || bruto[0] > '9'))) continue;
+    errno = 0;
+    n = strtol(bruto, &resto, 10);
+    if (errno == ERANGE || resto == bruto || *resto != 0 || n < -32768 || n > 32767) continue;
+    novo = limita(i, (int)n);
+    reconhecidos++;
+    if (novo != valor[i]) { valor[i] = novo; mudou++; }
+  }
+  if (mudou) gravar();
+  printf("[ajustes] StreamMax entre TVs: %d chaves reconhecidas, %d alteradas\n",
+         reconhecidos, mudou);
   return mudou;
 }
 
