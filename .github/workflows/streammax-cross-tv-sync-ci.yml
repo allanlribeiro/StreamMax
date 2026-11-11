@@ -1,0 +1,65 @@
+name: StreamMax cross-TV sync validation
+
+on:
+  push:
+    branches:
+      - feature/streammax-account-settings-sync-20261111
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-tv-sync:
+    name: Validate sync and build experimental APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Checkout feature commit
+        uses: actions/checkout@v4
+      - name: Validate cross-TV sync safety contracts
+        run: |
+          set -euo pipefail
+          python3 migration/check-streammax-account-sync.py legacy-source
+          python3 migration/check-legacy-auth.py legacy-source
+          python3 migration/check-playback-contracts.py legacy-source
+          python3 migration/check-android-isolation.py legacy-source
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Find Android SDK manager
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "$ANDROID_HOME"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+      - name: Install Android native build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ninja-build cmake pkg-config autoconf automake libtool nasm yasm python3 ffmpeg
+      - name: Build test APK without distribution signing
+        working-directory: legacy-source
+        env:
+          NUVIO_SEM_CURL: '1'
+          NUVIO_P2P_MOTOR: 'none'
+          NUVIO_RUST_MKVCORE: '0'
+          NUVIO_BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash tools/android.sh
+      - name: Upload APK for TV testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamMax-cross-TV-sync-APK-experimental
+          path: legacy-source/build/android/*-android-debug.apk
+          if-no-files-found: error
+          retention-days: 7
