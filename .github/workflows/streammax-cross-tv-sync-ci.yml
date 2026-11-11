@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - feature/streammax-account-settings-sync-20261111
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches:
+      - streammax/legacy-migration
   workflow_dispatch:
 
 permissions:
