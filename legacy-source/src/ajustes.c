@@ -5316,9 +5316,30 @@ static int ajustes_streammax_portatil(int op) {
   if (op < 0 || op >= AJ_N) return 0;
   if (OPCOES[op].tipo == OP_LEITURA || OPCOES[op].tipo == OP_ACAO) return 0;
   if (!CHAVE[op] || CHAVE[op][0] == '-') return 0;
-  if (!somenteDesteAparelho(op)) return 1;
+  // Lista positiva: controles de hardware, rede, tokens e motores de
+  // reproducao nao entram nem se o upstream mudar a classificacao local.
   switch (op) {
-    // Apresentacao e preferencia pessoal: mesmas escolhas em qualquer Android TV.
+    // Preferencias pessoais de idioma, navegacao e interface.
+    case AJ_LEG_LINGUA: case AJ_AUD_LINGUA:
+    case AJ_PAUSA_OVERLAY:
+    case AJ_LANDSCAPE: case AJ_HERO_CHEIO:
+    case AJ_RAIL: case AJ_RAIL_MODERNA: case AJ_RAIL_BLUR:
+    case AJ_HERO: case AJ_DESCOBRIR: case AJ_ROTULOS:
+    case AJ_NOME_ADDON: case AJ_SUFIXO_TIPO:
+    case AJ_OCULTAR_NLANC: case AJ_NOTAS_HOME: case AJ_GRAD_CLASSICO:
+    case AJ_CW_LIGADO: case AJ_CW_ESTILO: case AJ_CW_THUMB:
+    case AJ_CW_BLUR_PROX: case AJ_CW_FURTHEST: case AJ_CW_NAO_EXIBIDOS:
+    case AJ_CW_ORDEM: case AJ_DET_BLUR_NAO_VISTOS: case AJ_DET_TRAILER:
+    case AJ_DET_META_EXT: case AJ_DET_DATA_CHEIA:
+    case AJ_DET_VEU: case AJ_DET_TRAILER_AUTO:
+    case AJ_EXPANDIR: case AJ_EXPANDIR_ATRASO: case AJ_NAV_RAPIDA:
+    case AJ_TEMA: case AJ_FOCO_TRAILER:
+    case AJ_TMDB_LIGADO: case AJ_TMDB_IDIOMA:
+    case AJ_TMDB_ARTE: case AJ_TMDB_BASICO: case AJ_TMDB_FICHA:
+    case AJ_TMDB_DATAS: case AJ_TMDB_ELENCO: case AJ_TMDB_PROD:
+    case AJ_TMDB_REDES: case AJ_TMDB_EPS: case AJ_TMDB_TRAILERS:
+    case AJ_TMDB_MAIS: case AJ_TMDB_COL: case AJ_TMDB_CW:
+    // Apresentacao exclusiva do StreamMax, independente do hardware.
     case AJ_IDIOMA:
     case AJ_HERO_FUNDO: case AJ_HERO_ARTE_DIF:
     case AJ_HERO_SINOPSE_TAM: case AJ_HERO_GENERO:
@@ -5392,7 +5413,7 @@ int ajustes_streammax_aplicar_blob(const char *json) {
     if (novo != valor[i]) { valor[i] = novo; mudou++; }
   }
   if (mudou) gravar();
-  printf("[ajustes] StreamMax entre TVs: %d chaves reconhecidas, %d alteradas\\n",
+  printf("[ajustes] StreamMax entre TVs: %d chaves reconhecidas, %d alteradas\n",
          reconhecidos, mudou);
   return mudou;
 }
