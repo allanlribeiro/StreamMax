@@ -50,7 +50,11 @@ jobs:
       - name: Inspect Android package and official certificate
         run: |
           set -euo pipefail
-          sdkmanager --install 'build-tools;35.0.0' >/dev/null
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install 'build-tools;35.0.0' >/dev/null
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           apk=delivery/StreamMax-1.0.31-android.apk
