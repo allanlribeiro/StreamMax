@@ -62,3 +62,17 @@ verificação de pacote `com.streammax.tv`, versionCode 20038 e comparação do
 certificado com o APK oficial 1.0.30. Utiliza os segredos de assinatura já
 existentes no repositório, sem expor a chave. O workflow apenas gera artefatos;
 não altera a release estável nem o feed OTA.
+
+
+## Entrega verificada
+
+- [APK de teste assinado](https://github.com/allanlribeiro/StreamMax/releases/download/v1.0.31-netflix-preview/StreamMax-1.0.31-android.apk)
+- [Release e hashes](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.31-netflix-preview)
+- [Manifesto da validação](./VALIDACAO-1.0.31.json)
+- Compilação e testes: workflow `43589074808`, conclusão **success**.
+- APK: 64.065.140 bytes; SHA-256
+  `f2d79423c32c7ca67f5abff2961e9e6e1f04f86ad1a22341a5f9ab72ab45f1b4`.
+- Os quatro anexos da release foram comparados por tamanho e SHA-256.
+  A publicação foi concluída por edição de metadados após a consulta do draft
+  pelo endpoint de tag retornar 404; o APK não foi recompilado ou alterado.
+- Release marcada como prévia; `/releases/latest` permaneceu em `v1.0.30`.

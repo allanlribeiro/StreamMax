@@ -10,7 +10,11 @@
 - Componentes GLES de produção, foco/scroll/settings e regressões locais;
   execução real na TCL e métricas físicas ainda pendentes.
 - [Funcionamento, validação e limites](./docs/netflix-home/README.md).
-- Workflow de teste compila com a assinatura existente; sem promoção da OTA estável.
+- Workflow `43589074808` aprovado, APK assinado com certificado oficial.
+- [Release de teste 1.0.31](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.31-netflix-preview)
+  publicada; 64.065.140 bytes, SHA-256 `f2d79423c32c7ca67f5abff2961e9e6e1f04f86ad1a22341a5f9ab72ab45f1b4`.
+- Cartazes ampliados em 16% após conferência do usuário; fonte do APK `fc8ef0141101f71c3fad46c6e1dacec0e0355d15`.
+- Sem promoção da OTA estável (`v1.0.30`); validação física ainda pendente.
 
 ## Continuidade — sincronizacao pela fala (29/10/2026)
 

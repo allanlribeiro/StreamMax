@@ -1,9 +1,6 @@
 name: StreamMax Netflix - publish verified test APK
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/streammax-netflix-home]
-    paths: ['.github/workflows/streammax-netflix-publish.yml']
 permissions:
   contents: write
   actions: read
@@ -69,7 +66,10 @@ jobs:
           set -euo pipefail
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --draft --prerelease --latest=false --title 'StreamMax 1.0.31 — Modo Netflix (teste)' --notes-file docs/netflix-home/RELEASE-1.0.31.md
           gh release upload "$TAG" delivery/* --repo "$GITHUB_REPOSITORY"
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > release.json
+          # GitHub can omit a draft from the by-tag endpoint until publication.
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id")"
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > release.json
           python3 - <<'PY'
           import hashlib,json
           from pathlib import Path
