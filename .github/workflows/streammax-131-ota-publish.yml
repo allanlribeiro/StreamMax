@@ -1,0 +1,95 @@
+name: StreamMax 1.0.31 - enable automatic update
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/streammax-netflix-home]
+    paths: ['.github/workflows/streammax-131-ota-publish.yml']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: streammax-131-stable-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v1.0.31
+      SOURCE_RUN: '43589074808'
+      SOURCE_SHA: fc8ef0141101f71c3fad46c6e1dacec0e0355d15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify successful source build and unchanged application source
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > run.json
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open('run.json'))
+          assert r['conclusion']=='success'
+          assert r['head_sha']==os.environ['SOURCE_SHA']
+          assert r['head_repository']['full_name']=='allanlribeiro/StreamMax'
+          PY
+          git diff --exit-code "$SOURCE_SHA" -- legacy-source migration
+          test "$(gh api repos/$GITHUB_REPOSITORY/releases/latest --jq .tag_name)" = v1.0.30
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to overwrite.'; exit 1
+          fi
+      - name: Download exact signed build
+        run: |
+          set -euo pipefail
+          gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --name StreamMax-1.0.31-Netflix-Preview --dir delivery
+          cd delivery
+          printf '%s  %s\n' f2d79423c32c7ca67f5abff2961e9e6e1f04f86ad1a22341a5f9ab72ab45f1b4 StreamMax-1.0.31-android.apk > SHA256.txt
+          sha256sum --check SHA256.txt
+          grep -Fq "$SOURCE_SHA" BUILD-INFO.txt
+      - name: Inspect Android package and official certificate
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          mkdir -p "$ANDROID_HOME/licenses"
+          printf '%s\n' '24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$ANDROID_HOME/licenses/android-sdk-license"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --install 'build-tools;35.0.0' >/dev/null
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          apk=delivery/StreamMax-1.0.31-android.apk
+          "$signer" verify --print-certs "$apk" > cert.txt
+          grep -Fxq 'Signer #1 certificate SHA-256 digest: a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5' cert.txt
+          "$aapt" dump badging "$apk" > badging.txt
+          grep -Fq "name='com.streammax.tv' versionCode='20038' versionName='1.0.31'" badging.txt
+          python3 legacy-source/tests/check-netflix-apk.py "$apk"
+          cp docs/netflix-home/VALIDACAO-1.0.31.json delivery/VALIDACAO-DA-COMPILACAO.json
+          printf '\nPromovido para v1.0.31 e atualizador automatico por solicitacao do usuario.\n' >> delivery/BUILD-INFO.txt
+      - name: Stage stable release and verify updater compatibility
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --draft --prerelease=false --latest=false --title 'StreamMax 1.0.31 — Modo Netflix' --notes-file docs/netflix-home/RELEASE-OTA-1.0.31.md
+          gh release upload "$TAG" delivery/* --repo "$GITHUB_REPOSITORY"
+          # GitHub can omit a draft from the by-tag endpoint until publication.
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq ".[] | select(.tag_name == \"$TAG\") | .id")"
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > release.json
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          r=json.load(open('release.json'));assert r['draft'] and not r['prerelease']
+          assets={a['name']:a for a in r['assets']}
+          for p in Path('delivery').iterdir():
+              a=assets[p.name]
+              assert a['state']=='uploaded' and a['size']==p.stat().st_size
+              assert a['digest']=='sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()
+          PY
+          python3 docs/netflix-home/check-ota-1.0.31.py release.json delivery/StreamMax-1.0.31-android.apk
+      - name: Publish stable release for automatic updater
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest=true
+          test "$(gh api repos/$GITHUB_REPOSITORY/releases/latest --jq .tag_name)" = v1.0.31
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,assets,isPrerelease
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" > latest.json
+          python3 docs/netflix-home/check-ota-1.0.31.py latest.json delivery/StreamMax-1.0.31-android.apk
