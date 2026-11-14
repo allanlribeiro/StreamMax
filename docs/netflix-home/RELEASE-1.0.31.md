@@ -2,7 +2,7 @@ Novo modo opcional **Netflix**, baseado nas referências enviadas: destaque ampl
 
 Os cartazes foram ampliados em **16%**: base de **348 × 522** na interface Full HD. Em Continuar assistindo, o selecionado expande para aproximadamente **928 × 522**, com progresso vermelho, episódio e tempo restante quando disponíveis.
 
-**Como ativar:** Ajustes → Layout → Layout da home → Netflix. Para voltar, escolha qualquer um dos cinco layouts anteriores. Conta, perfis, fontes, biblioteca e preferências da versão 1.0.30 são preservados.
+**Como ativar:** Ajustes → Tela inicial → Layout da home → Netflix. Para voltar, escolha qualquer um dos cinco layouts anteriores. Conta, perfis, fontes, biblioteca e preferências da versão 1.0.30 são preservados.
 
 **Candidata de teste:** `com.streammax.tv`, versão 1.0.31, código Android 20038; ARM de 32 e 64 bits. Assinatura comparada com o APK oficial 1.0.30. Instale por cima da versão atual, sem desinstalar.
 

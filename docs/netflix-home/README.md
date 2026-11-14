@@ -4,7 +4,7 @@ Base: versão oficial 1.0.30, commit `eb9f182b9875cf21cf6ead301066f40294475b70`.
 
 ## Ativar e voltar
 
-Na TV, abra **Ajustes → Layout → Layout da home → Netflix**. A opção é adicional;
+Na TV, abra **Ajustes → Tela inicial → Layout da home → Netflix**. A opção é adicional;
 Moderna, Padrão, Dinâmica, Globoplay e Profissional continuam disponíveis. Não é
 necessário recadastrar conta, perfis, fontes ou biblioteca.
 
