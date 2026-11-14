@@ -1,0 +1,26 @@
+{
+  "version": "1.0.31",
+  "versionCode": 20038,
+  "package": "com.streammax.tv",
+  "source_commit": "fc8ef0141101f71c3fad46c6e1dacec0e0355d15",
+  "workflow_run": 43589074808,
+  "workflow_conclusion": "success",
+  "apk_sha256": "f2d79423c32c7ca67f5abff2961e9e6e1f04f86ad1a22341a5f9ab72ab45f1b4",
+  "apk_bytes": 64065140,
+  "signer_sha256": "a48b338d58322925ed2d583992e01c092ec374f6215227c040d497983165c8a5",
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "local_and_ci_tests": "passed",
+  "physical_tcl_test": "pending",
+  "poster_size_full_hd": [
+    348,
+    522
+  ],
+  "expanded_continue_size_full_hd": [
+    928,
+    522
+  ],
+  "stable_ota_changed": false
+}
