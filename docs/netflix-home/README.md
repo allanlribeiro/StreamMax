@@ -76,3 +76,19 @@ não altera a release estável nem o feed OTA.
   A publicação foi concluída por edição de metadados após a consulta do draft
   pelo endpoint de tag retornar 404; o APK não foi recompilado ou alterado.
 - Release marcada como prévia; `/releases/latest` permaneceu em `v1.0.30`.
+
+
+## Atualização automática — disponibilizada a pedido do usuário
+
+A versão **1.0.31** está publicada como release oficial e retornada por
+`/releases/latest`. O APK é idêntico ao da prévia assinada, sem recompilação.
+O atualizador C original da 1.0.30 foi executado contra o JSON público real e
+reconheceu a versão, o arquivo correspondente e o SHA-256 corretos. O link
+público do APK também foi conferido (HTTP 206, cabeçalho APK válido).
+
+[Release oficial 1.0.31](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.31)
+· [Registro da validação OTA](./VALIDACAO-OTA-1.0.31.json).
+
+A confirmação da instalação continua sendo solicitada pelo Android na TV.
+A verificação em uma TCL física continua pendente. Os registros de prévia
+acima descrevem o estado anterior à promoção para o atualizador automático.

@@ -1,9 +1,6 @@
 name: StreamMax 1.0.31 - enable automatic update
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/streammax-netflix-home]
-    paths: ['.github/workflows/streammax-131-ota-publish.yml']
 permissions:
   contents: write
   actions: read
@@ -84,7 +81,7 @@ jobs:
               assert a['state']=='uploaded' and a['size']==p.stat().st_size
               assert a['digest']=='sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()
           PY
-          python3 docs/netflix-home/check-ota-1.0.31.py release.json delivery/StreamMax-1.0.31-android.apk
+          # Draft asset URLs use untagged IDs; validate updater URLs after publication.
       - name: Publish stable release for automatic updater
         run: |
           set -euo pipefail

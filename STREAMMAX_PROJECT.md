@@ -1,5 +1,17 @@
 # StreamMax — guia de continuidade do projeto
 
+## Atualização — modo Netflix disponível no atualizador automático
+
+- Usuário solicitou promover a 1.0.31 para atualização automática.
+- [Release oficial v1.0.31](https://github.com/allanlribeiro/StreamMax/releases/tag/v1.0.31)
+  publicada, não draft/não prerelease, e confirmada no endpoint latest.
+- Mesmo APK assinado da prévia, fonte `fc8ef0141101f71c3fad46c6e1dacec0e0355d15`;
+  SHA-256 `f2d79423c32c7ca67f5abff2961e9e6e1f04f86ad1a22341a5f9ab72ab45f1b4`.
+- Código C instalado da 1.0.30 validado contra o JSON real da release: versão,
+  URL e hash reconhecidos; download público HTTP206/PK0304.
+- [Validação OTA](./docs/netflix-home/VALIDACAO-OTA-1.0.31.json).
+- Instalação ainda precisa da confirmação Android; teste na TCL pendente.
+
 ## Continuidade — modo Netflix (13/11/2026)
 
 - Pedido: modo visual baseado nas duas fotos da Netflix, com cartazes grandes.
