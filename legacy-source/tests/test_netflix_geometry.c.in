@@ -9,13 +9,14 @@
 #define NV_ANEL_FOCO 4
 static struct{TipoFileira tipo;}fileiras[1]={{FILEIRA_CONTINUE}};
 static float scale=1;
-static float larguraFil(int r){(void)r;return 300*scale;}
-static float alturaFil(int r){(void)r;return 450*scale;}
+static float larguraFil(int r){(void)r;return SM_NETFLIX_POSTER_W*scale;}
+static float alturaFil(int r){(void)r;return SM_NETFLIX_POSTER_H*scale;}
 static float escalaDe(TipoFileira t){(void)t;return .008f;}
 static float passoFil(int r){return larguraFil(r)+24;}
 static float xOffTipo(TipoFileira t){(void)t;return 0;}
 static float homeLarguraUtil(void){return 1744;}
 int ajustes_borda_foco(void){return 1;}
+static int netflixPoster(TipoFileira t){return t==FILEIRA_CONTINUE;}
 /* REAL_SCROLL */
 static int active=1,focoHero=1,netflixAcao,pedidoAbrir,pedidoTocar,pedidoMenu,step;
 static int homeNetflixTV(void){return active;}
@@ -34,6 +35,7 @@ int main(void){
    float open=phase*.25f,scroll=alvoScrollFil(0,col,col*passoFil(0),open);
    float left=col*passoFil(0)-scroll-(larguraFil(0)*.008f*.5f);
    float width=larguraFil(0)*1.008f+(alturaFil(0)*1.008f*NV_EXP_ASPECTO-larguraFil(0)*1.008f)*open;
+   if(!(isfinite(scroll)&&scroll>=0&&left+width<=1744+.01f))fprintf(stderr,"scale=%f col=%d open=%f scroll=%f left=%f width=%f right=%f\n",scale,col,open,scroll,left,width,left+width);
    assert(isfinite(scroll)&&scroll>=0&&left+width<=1744+.01f);
    if(col>0)assert(left>=-.01f);
   }

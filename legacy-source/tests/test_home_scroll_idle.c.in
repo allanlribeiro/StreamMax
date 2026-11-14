@@ -17,6 +17,7 @@ static float xOffTipo(int tipo) { (void)tipo; return 0.0f; }
 static float homeLarguraUtil(void) { return 900.0f; }
 static float sobraDireitaFoco(int r, float abre) { (void)r; return 20.0f + 80.0f * abre; }
 
+static int netflixPoster(int t){(void)t;return 0;}
 /* GEOMETRIA_REAL */
 
 static void passo(float dt) {

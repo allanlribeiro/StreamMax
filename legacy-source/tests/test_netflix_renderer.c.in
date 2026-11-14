@@ -18,6 +18,7 @@ float nv_grad_viva[3][3],nv_ambiente_viva[4][3],nv_ambiente_forca,nv_tempo_viva;
 int nv_grad_ativo;float nv_layout_w=1920,nv_layout_h=1080;
 int ajustes_profundidade(void){return 0;}float ajustes_profundidade_brilho(void){return 0;}
 int ajustes_vidro_fosco(void){return 0;}int ajustes_vidro(void){return 0;}int ajustes_vidro_qualidade(void){return 0;}
+int tex_marca_escura(const char *s){(void)s;return 0;}
 int ajustes_hero_ligado(void){return 1;}void gpun_descartar_cor(int p){(void)p;}
 SDL_Surface *IMG_Load_RW(SDL_RWops *src,int freeSrc){
   if(freeSrc)SDL_RWclose(src);assert(!"icone de smartphone fora desta fixture de TV");return NULL;
@@ -77,7 +78,7 @@ static float desenhaCopiaHero(const CatItem *ci,int main,float x,float base,int 
 }
 
 void ponteiro_alvo(float x,float y,float w,float h,void (*f)(int,int),void(*hover)(int,int),int i,int j){(void)x;(void)y;(void)w;(void)h;(void)f;(void)hover;(void)i;(void)j;}
-const char *artehero_logo_sessao(const CatItem *ci){(void)ci;return "logo";}
+const char *artehero_logo_sessao(const CatItem *ci){(void)ci;return ci->logo[0]?ci->logo:"logo";}
 GLuint tex_obter_logo_larg(const char *s,float w){(void)w;return cachedAsset(s).id;}
 float revela_progresso(const char *id,int t,int e,float p,Uint32 now){(void)id;(void)t;(void)e;(void)now;return p;}
 /* REAL_NETFLIX */
@@ -94,12 +95,12 @@ static void scene(const char *name,int rows,int normal){
  float yy=rows?156:n.shelf;
  for(int row=0;row<(rows?2:1);row++){
   int cw=row==0&&!normal;label(cw?"continue":"row2",n.margin,yy,.97,.97,.98);
-  float x=n.margin,y=yy+54,w=300,h=450;
+  float x=n.margin,y=yy+54,w=SM_NETFLIX_POSTER_W,h=SM_NETFLIX_POSTER_H;
   const char *names[]={"poster-10","poster-12","poster-02","poster-00","poster-01","poster-04"};
   for(int i=0;i<6;i++){
    float width=cw&&rows&&i==0?h*16.f/9:w;GfxRect cardRect={x,y,width,h};
    card(cw&&rows&&i==0?"frame":names[i],cardRect);
-   if(cw){item.progresso=45+i*5;continuarNetflix(&item,cardRect,.024f);}
+   if(cw){const char *logos[]={"logo","logo-12","logo-02","logo-00","logo-01","logo-04"};snprintf(item.logo,sizeof item.logo,"%s",logos[i]);item.progresso=45+i*5;continuarNetflix(&item,cardRect,.024f);}
    if(rows&&row==0&&i==0)gfx_anel(cardRect,.024f,2.5,1,1,1,1);
    x+=width+24;
   }

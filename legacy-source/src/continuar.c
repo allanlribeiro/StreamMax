@@ -58,7 +58,7 @@ static void continuarNetflix(const CatItem *ci,GfxRect r,float raio){
  float aspect=url?tex_aspecto(url):0;
  if(logo&&aspect>0){
   float w=fminf(r.w*.72f,aspect*72),h=w/aspect;
-  gfx_rect((GfxRect){r.x+pad,r.y+r.h-h-24,w,h},logo,GFX_TEXTO,0,0,0,0,1,1,1,1);
+  gfx_rect((GfxRect){r.x+pad,r.y+r.h-h-24,w,h},logo,tex_marca_escura(url)?GFX_MARCA:GFX_TEXTO,0,0,0,0,1,1,1,1);
  }else{
   TxtLinha name=txt_linha_corta(TXT_CW_TITULO,ci->titulo,248,248,248,255,r.w-pad*2);
   txt_desenhar_alpha(name,r.x+pad,r.y+r.h-name.h-24,1);

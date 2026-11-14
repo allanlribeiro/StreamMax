@@ -13,7 +13,7 @@ common=['-std=gnu11','-O1','-g','-ffunction-sections','-fdata-sections','-I',str
 with tempfile.TemporaryDirectory(prefix='sm-netflix-test-') as name:
  d=Path(name);h.fixtures(d)
  play=Image.new("RGBA",(32,32));ImageDraw.Draw(play).polygon([(8,4),(27,16),(8,28)],fill="white");h.raw(d/"play-icon.rgba",play)
- for n in ['02','12']:
+ for n in ['00','01','02','04','12']:
   h.raw(d/f'frame-{n}.rgba',Image.open(ROOT/f'deploy/app/art/{n}.jpg'));h.raw(d/f'logo-{n}.rgba',Image.open(ROOT/f'deploy/app/art/logo/{n}.png'))
  im=Image.open(ROOT/'deploy/app/art/marcas/streammax_wordmark.png') if (ROOT/'deploy/app/art/marcas/streammax_wordmark.png').exists() else None
  if im:h.raw(d/'brand.rgba',im)

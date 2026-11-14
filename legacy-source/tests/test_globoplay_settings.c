@@ -1,5 +1,7 @@
 #include "../src/ajustes.c"
 #include <assert.h>
+static int mobileFixture;
+int layout_modo_mobile(void){return mobileFixture;}
 int selospacote_n(void){return 0;}
 void ling_conta_legenda(const char *v){(void)v;}
 void ling_conta_legenda2(const char *v){(void)v;}
@@ -22,6 +24,8 @@ int main(void){
       assert(ajustes_menu_topo()==(i==3||i==4||i==5||(t==1&&i!=2)));
     }
   }
+  mobileFixture=1;valor[AJ_HOME_LAYOUT]=HOME_LAYOUT_NETFLIX;valor[AJ_MENU_TOPO]=0;
+  assert(!ajustes_menu_topo());mobileFixture=0;
   valor[AJ_MENU_TOPO]=topoSalvo;
   valor[AJ_HOME_LAYOUT]=HOME_LAYOUT_GLOBOPLAY;
   assert(ajustes_menu_topo());

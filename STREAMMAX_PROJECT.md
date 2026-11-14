@@ -6,7 +6,7 @@
 - Base publicada 1.0.30: `eb9f182b9875cf21cf6ead301066f40294475b70`.
 - Branch `feat/streammax-netflix-home`; candidata 1.0.31 / 20038 / 2.0.38.
 - Layout opcional append-only Netflix=5; mantém modos, contas/fontes e sync.
-- Cartazes 300×450, Continuar assistindo expansível, destaque e duas ações.
+- Cartazes 348×522, Continuar assistindo expansível, destaque e duas ações.
 - Componentes GLES de produção, foco/scroll/settings e regressões locais;
   execução real na TCL e métricas físicas ainda pendentes.
 - [Funcionamento, validação e limites](./docs/netflix-home/README.md).

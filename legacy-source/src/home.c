@@ -1936,6 +1936,9 @@ static float alvoScrollFil(int r, int col, float atual, float abre) {
   float dir   = esq + larguraFil(r) + xOffTipo(fileiras[r].tipo);
   float util  = homeLarguraUtil();
   float folga = sobraDireitaFoco(r, abre);
+  /* Netflix grows to the right: don't reserve the whole expansion on both
+   * sides and let the left clamp override the right edge with large cards. */
+  float folgaEsq = netflixPoster(fileiras[r].tipo) ? 4.0f + larguraFil(r)*.004f : folga;
   float alvo  = atual;
   // HERÓI DIVIDIDO: o card em foco É o painel; a fila ao lado dele começa no
   // PRÓXIMO título (o do foco sai dela, atrás do painel).
@@ -1945,7 +1948,7 @@ static float alvoScrollFil(int r, int col, float atual, float abre) {
   // visivel apoia a caixa em repouso na margem e o que cresce (ou o anel) fica
   // por baixo da barra lateral. Na coluna 0 o alvo fica negativo e o corte
   // abaixo o devolve a zero, que e o inicio da fileira de sempre.
-  if (esq - folga - alvo < 0.0f) alvo = esq - folga;
+  if (esq - folgaEsq - alvo < 0.0f) alvo = esq - folgaEsq;
   if (alvo < 0) alvo = 0;
   return alvo;
 }

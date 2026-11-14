@@ -12,10 +12,10 @@ necessário recadastrar conta, perfis, fontes ou biblioteca.
 
 - Navegação horizontal no topo, utilizando os destinos reais já existentes.
 - Destaque amplo emoldurado, sinopse e ações **Assistir/Retomar** e **Mais informações**.
-- Cartazes verticais grandes: base de 300 × 450 em uma interface de 1920 × 1080.
+- Cartazes verticais grandes: base de 348 × 522 em uma interface de 1920 × 1080.
   A escala da interface preserva o tamanho físico aproximado dos cartazes.
 - O cartão focado em Continuar assistindo se expande para aproximadamente
-  800 × 450, com progresso vermelho, episódio e minutos restantes quando
+  928 × 522, com progresso vermelho, episódio e minutos restantes quando
   esses dados existem. Os vizinhos continuam verticais.
 - Foco branco, animação compartilhada das fileiras e memória de coluna.
 - Esquerda/direita alternam as duas ações do destaque; direita após Mais
