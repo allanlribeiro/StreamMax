@@ -3104,7 +3104,7 @@ int ajustes_rail_moderna(void)        { return lig(AJ_RAIL_MODERNA); }
 // #461: a barra no topo nao existe no Dinamica (a pilula dela ja e o topo) nem
 // no telefone em retrato (nao cabe).
 int ajustes_menu_topo(void) {
-  return (valor[AJ_MENU_TOPO] == 1 || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY || ajustes_home_layout() == HOME_LAYOUT_PROFISSIONAL || ajustes_home_layout() == HOME_LAYOUT_NETFLIX) &&
+  return (valor[AJ_MENU_TOPO] == 1 || ajustes_home_layout() == HOME_LAYOUT_GLOBOPLAY || ajustes_home_layout() == HOME_LAYOUT_PROFISSIONAL || (ajustes_home_layout() == HOME_LAYOUT_NETFLIX && !layout_modo_mobile())) &&
          ajustes_home_layout() != HOME_LAYOUT_DINAMICA && !ajRetrato();
 }
 int ajustes_abas_estilo(void) { return valor[AJ_ABAS_ESTILO]; }

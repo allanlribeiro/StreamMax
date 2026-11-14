@@ -23,7 +23,8 @@ with tempfile.TemporaryDirectory(prefix='sm-netflix-test-') as name:
   if n in ('play','resume'):
    ink=Image.new('RGBA',im.size,(18,18,18));ink.putalpha(im.getchannel('A'));h.raw(d/f'{n}-ink.rgba',ink)
  template=(ROOT/'tests/test_netflix_renderer.c.in').read_text();old=(ROOT/'tests/test_hero_preview.c.in').read_text();io=old[old.index('static char assetDir'):old.index('int main(')];io=io.replace('assert(f);','if(!f)fprintf(stderr,"Missing fixture: %s\\n",path);assert(f);')
- home=(ROOT/'src/home.c').read_text();cw=(ROOT/'src/continuar.c').read_text();net=(ROOT/'src/home_netflix.inc').read_text()
+ home=(ROOT/'src/home.c').read_text();assert '!homeNetflixTV() && ajustes_hero_ligado() && !vazioQr && heroVisivelToque()' in home,'Generic pointer target must not cover the Netflix actions'
+ cw=(ROOT/'src/continuar.c').read_text();net=(ROOT/'src/home_netflix.inc').read_text()
  template=template.replace('/* REAL_GFX */','#include "'+str(ROOT/'src/gfx.c')+'"').replace('/* FIXTURE_IO */',io).replace('/* REAL_COPY */',h.function(home,'heroCopyLayout')).replace('/* REAL_NETFLIX */',net).replace('/* REAL_CONTINUE */',h.function(cw,'continuarNetflix'))
  (d/'renderer.c').write_text(template)
  subprocess.run(cc+common+['-DNV_ANDROID','-DNV_TOUCH_UI',str(d/'renderer.c'),'-Wl,--gc-sections',*libs,'-lm','-o',str(d/'renderer')],check=True)

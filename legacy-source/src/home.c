@@ -718,7 +718,10 @@ static float escalaDoAjuste(void) {
 // destaque e como ele se comporta (desenhaHero), e o fundo por baixo das
 // fileiras (home_desenhar). MODERNA devolve exatamente as constantes que este
 // arquivo sempre usou: tests/homelayouts_shot.sh compara o quadro byte a byte.
-static int layoutHome(void) { return ajustes_home_layout(); }
+static int layoutHome(void) {
+  int lay=ajustes_home_layout();
+  return lay==HOME_LAYOUT_NETFLIX&&layout_modo_mobile()?HOME_LAYOUT_MODERNA:lay;
+}
 static int homeNetflixTV(void){return layoutHome()==HOME_LAYOUT_NETFLIX&&!layout_modo_mobile();}
 static int netflixContinue(int r){return homeNetflixTV()&&r>=0&&r<nFileiras&&
  (fileiras[r].tipo==FILEIRA_CONTINUE||fileiras[r].tipo==FILEIRA_RETORNO);}
@@ -7606,7 +7609,7 @@ static void home_desenhar_(Uint32 agora) {
     float offset=scrollY+empurraHero();
     profissionalHubsDesenhar(offset,anim_clamp(1-fmaxf(0,offset)/fmaxf(1,p.push*.75f),0,1)*(1-pd));
   }
-  if (ajustes_hero_ligado() && !vazioQr && heroVisivelToque() > 0.25f) {
+  if (!homeNetflixTV() && ajustes_hero_ligado() && !vazioQr && heroVisivelToque() > 0.25f) {
     float heroBaixo = layoutHome() == HOME_LAYOUT_DINAMICA
                     ? dinHeroY() + alturaTextoHeroDin()
                     : (homeNetflixTV()||layoutHome()==HOME_LAYOUT_GLOBOPLAY||layoutHome()==HOME_LAYOUT_PROFISSIONAL) ? heroArteRect.y+heroArteRect.h : corteFileiras();
