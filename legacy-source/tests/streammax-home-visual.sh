@@ -40,9 +40,9 @@ assert "heroTrailerArea(heroArteRect)" in home
 # O foco e o raio continuam animados e ajustáveis; acabamento do card mais fino.
 assert "#define NV_HOME_ANEL_SUTIL 2.0f" in home
 assert 'return ajustes_borda_foco() ? 0.02f : 0.045f;' in home
-assert 'gfx_borda_foco_atual = ajustes_borda_foco() ? 0.55f : 0.0f;' in home
+assert 'gfx_borda_foco_atual = homeNetflixTV()?0.0f:(ajustes_borda_foco() ? 0.55f : 0.0f);' in home
 assert "anim_mola(animFoco[r][c], alvo, dt" in home
 assert "ajustes_raio_poster_px()" in home
-assert '#define SM_UPDATE_VERSION "1.0.29"' in up
-print("OK: Home StreamMax 1.0.29: menu e fileiras da 1.0.4 preservados")
+assert '#define SM_UPDATE_VERSION "1.0.31"' in up
+print("OK: Home StreamMax 1.0.31: menu e fileiras da 1.0.4 preservados")
 PY

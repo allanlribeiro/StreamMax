@@ -115,6 +115,14 @@ static void ajcHome(const AjcHome *o) {
       ajc_barras(HX(cx + 30), HY(90), 160 * k, 2, o->hero);
     }
     fy = 186 - 150 * (1 - o->hero);
+  } else if(o->layout==HOME_LAYOUT_NETFLIX){
+    if(o->hero>.01f){
+      ajc_cartaz(HX(28),HY(44),584*k,252*k,4,o->hero);
+      ajc_veu(HX(28),HY(44),320*k,252*k,2,.9f*o->hero);
+      ajc_ret(HX(42),HY(164),190*k,23*k,4*k,1,1,1,o->hero);
+      ajc_ret(HX(42),HY(254),72*k,22*k,11*k,.95f,.95f,.95f,o->hero);
+    }
+    fy=310-200*(1-o->hero);
   } else if(o->layout==HOME_LAYOUT_PROFISSIONAL){
     if(o->hero>.01f){
       ajc_cartaz(HX(0),HY(0),640*k,245*k,4,o->hero);

@@ -1,0 +1,120 @@
+#include <EGL/egl.h>
+#include <assert.h>
+#include <stdint.h>
+/* REAL_GFX */
+#include "home.h"
+#include "focus.h"
+#include "colecoes.h"
+#include "badges.h"
+#include "text.h"
+#include "netflixhome.h"
+#include "artehero.h"
+#include "tex_cache.h"
+#define NV_TXT_TELA
+#include "escala.h"
+int perftv_enabled,perftv_blur,perftv_glass,perftv_uploads;
+float nv_cor_fundo_viva[3]={.04f,.04f,.04f},nv_acento_viva[3]={.40f,.65f,1};
+float nv_grad_viva[3][3],nv_ambiente_viva[4][3],nv_ambiente_forca,nv_tempo_viva;
+int nv_grad_ativo;float nv_layout_w=1920,nv_layout_h=1080;
+int ajustes_profundidade(void){return 0;}float ajustes_profundidade_brilho(void){return 0;}
+int ajustes_vidro_fosco(void){return 0;}int ajustes_vidro(void){return 0;}int ajustes_vidro_qualidade(void){return 0;}
+int ajustes_hero_ligado(void){return 1;}void gpun_descartar_cor(int p){(void)p;}
+SDL_Surface *IMG_Load_RW(SDL_RWops *src,int freeSrc){
+  if(freeSrc)SDL_RWclose(src);assert(!"icone de smartphone fora desta fixture de TV");return NULL;
+}
+int telefoneui_ativo(void){return 0;}static int heroCompactoTelefone(void){return 0;}
+float sinopse_entrelinha(TxtEstilo s,float h){(void)s;return h;}
+typedef struct {float logo,logoHeight,action,caption,friends,meta,secondary,synopsis;} HeroCopyLayout;
+/* REAL_COPY */
+/* FIXTURE_IO */
+static Asset cached[128];static char keys[128][80];static int nCached;
+static Asset cachedAsset(const char *s){
+  for(int i=0;i<nCached;i++)if(!strcmp(keys[i],s))return cached[i];
+  assert(nCached<128);snprintf(keys[nCached],80,"%s",s);cached[nCached]=asset(s);return cached[nCached++];
+}
+GLuint tex_obter_larg(const char *s,float w){(void)w;if(strstr(s,"aj_tv-minimal-play"))s="tv-icon";if(strstr(s,"/icones/play.png"))s="play-icon";return cachedAsset(s).id;}
+float tex_aspecto(const char *s){Asset a=cachedAsset(s);return (float)a.w/a.h;}
+static ColFolder folders[4];
+const ColFolder *col_folder(int i){return i>=0&&i<4?folders+i:NULL;}
+typedef struct {TipoFileira tipo;char titulo[96],base[64],catTipo[8],catId[64];int n,folders[41];} Fileira;
+static Fileira fileiras[1];static int nFileiras;
+static CatItem item;static HomeItem itemFoco;
+static int focoHero=1,heroAtual=0,netflixAcao,pedidoAbrir,pedidoTocar,pedidoMenu,passed,published;
+static float heroSai,heroEntra=1,scrollY;
+static int homeNetflixTV(void){return 1;}
+static void heroPasso(int d){passed+=d;}
+static float empurraHero(void){return sm_netflix_home(NV_TELA_W,NV_TELA_H).push;}
+static void publicarItemFoco(void){published++;}
+static const char *arteDoItem(const CatItem *ci,int *p){(void)ci;(void)p;return "frame";}
+int home_proximo_desfocar(const CatItem *ci,const char *p){(void)ci;(void)p;return 0;}
+const char *tex_arquivo(const char *p){(void)p;return NULL;}
+const char *i18n(const char *s){return s;}
+TxtLinha txt_linha(TxtEstilo e,const char *s,int r,int g,int b,int a){
+ (void)e;(void)g;(void)b;(void)a;
+ const char *name=!strcmp(s,"Assistir")?"play":!strcmp(s,"Retomar")?"resume":!strcmp(s,"Mais informações")?"info":!strncmp(s,"T3",2)?"episode":strstr(s,"Restantes")?"remaining":"title";
+ if(r<30&&!strcmp(name,"play"))name="play-ink";
+ if(r<30&&!strcmp(name,"resume"))name="resume-ink";
+ Asset t=cachedAsset(name);return (TxtLinha){.tex=t.id,.w=t.w,.h=t.h};
+}
+TxtLinha txt_linha_corta(TxtEstilo e,const char *s,int r,int g,int b,int a,float w){
+ TxtLinha l=txt_linha(e,s,r,g,b,a);if(l.w>w){l.h*=w/l.w;l.w=w;}return l;
+}
+void txt_desenhar_alpha(TxtLinha l,float x,float y,float a){gfx_rect((GfxRect){x,y,l.w,l.h},l.tex,GFX_TEXTO,0,0,0,0,1,1,1,a);}
+uint64_t badges_provedor(const char *s){return s&&strstr(s,"Netflix")?1:0;}
+float badges_desenhar(uint64_t m,float x,float y,float maxW,float h,float a){
+ if(!m)return 0;Asset t=cachedAsset("brand-netflix");float w=fminf(maxW,h*t.w/t.h);
+ gfx_rect((GfxRect){x,y,w,h},t.id,GFX_TEXTO,0,0,0,0,1,1,1,a);return w;
+}
+static float desenhaCopiaHero(const CatItem *ci,int main,float x,float base,int lay,int cheio,float logoH,
+                             float sinW,int lines,float a,float ca,float cin,float btnH,float gap,float slot){
+ (void)ci;(void)main;(void)lay;(void)cheio;(void)lines;(void)a;(void)ca;(void)cin;
+ SmNetflixHome p=sm_netflix_home(NV_TELA_W,NV_TELA_H);
+ HeroCopyLayout c=heroCopyLayout(base,60,1,1,0,logoH,btnH,gap,base-p.h+80,slot,0);
+ Asset l=cachedAsset("logo");float w=fminf(sinW*.9f,c.logoHeight*l.w/l.h),h=w*l.h/l.w;
+ gfx_rect((GfxRect){x,c.logo+c.logoHeight-h,w,h},l.id,GFX_TEXTO,0,0,0,0,1,1,1,1);
+ label("meta",x,c.meta,.78,.80,.84);label("nota",x,c.secondary,1,.87,.4);
+ label("sin1",x,c.synopsis,.94,.95,.98);label("sin2",x,c.synopsis+30,.94,.95,.98);return c.action;
+}
+
+void ponteiro_alvo(float x,float y,float w,float h,void (*f)(int,int),void(*hover)(int,int),int i,int j){(void)x;(void)y;(void)w;(void)h;(void)f;(void)hover;(void)i;(void)j;}
+const char *artehero_logo_sessao(const CatItem *ci){(void)ci;return "logo";}
+GLuint tex_obter_logo_larg(const char *s,float w){(void)w;return cachedAsset(s).id;}
+float revela_progresso(const char *id,int t,int e,float p,Uint32 now){(void)id;(void)t;(void)e;(void)now;return p;}
+/* REAL_NETFLIX */
+/* REAL_CONTINUE */
+static unsigned char pixels[1920*1080*4];
+static void scene(const char *name,int rows,int normal){
+ SmNetflixHome n=sm_netflix_home(1920,1080);focoHero=!rows;netflixAcao=0;
+ glClearColor(.035f,.035f,.04f,1);glClear(GL_COLOR_BUFFER_BIT);
+ Asset frame=cachedAsset("frame");GfxRect hero={n.margin,n.y,n.w,n.h};
+ if(!rows)desenhaHeroNetflix(hero,&item,NULL,"frame",NULL,frame.id,0,0,1,0);
+ gfx_cor((GfxRect){0,0,1920,132},0,.035f,.035f,.04f,1);
+ gfx_cor((GfxRect){494,35,122,54},.5,.28,.28,.30,1);label("nav",514,48,.98,.98,.98);label("clock",1780,49,.86,.86,.88);
+ gfx_cor((GfxRect){88,37,48,48},.2,.7,.1,.18,1);
+ float yy=rows?156:n.shelf;
+ for(int row=0;row<(rows?2:1);row++){
+  int cw=row==0&&!normal;label(cw?"continue":"row2",n.margin,yy,.97,.97,.98);
+  float x=n.margin,y=yy+54,w=300,h=450;
+  const char *names[]={"poster-10","poster-12","poster-02","poster-00","poster-01","poster-04"};
+  for(int i=0;i<6;i++){
+   float width=cw&&rows&&i==0?h*16.f/9:w;GfxRect cardRect={x,y,width,h};
+   card(cw&&rows&&i==0?"frame":names[i],cardRect);
+   if(cw){item.progresso=45+i*5;continuarNetflix(&item,cardRect,.024f);}
+   if(rows&&row==0&&i==0)gfx_anel(cardRect,.024f,2.5,1,1,1,1);
+   x+=width+24;
+  }
+  yy+=54+h+(cw?90:0)+46;
+ }
+ label("note",88,1048,.58,.58,.62);dump(name,"overlay");
+}
+int main(int argc,char**argv){
+ assert(argc==2);snprintf(assetDir,sizeof assetDir,"%s",argv[1]);
+ EGLDisplay d=eglGetDisplay(EGL_DEFAULT_DISPLAY);assert(eglInitialize(d,0,0)&&eglBindAPI(EGL_OPENGL_ES_API));
+ EGLint a[]={EGL_SURFACE_TYPE,EGL_PBUFFER_BIT,EGL_RENDERABLE_TYPE,EGL_OPENGL_ES2_BIT,EGL_RED_SIZE,8,EGL_GREEN_SIZE,8,EGL_BLUE_SIZE,8,EGL_ALPHA_SIZE,8,EGL_NONE};EGLConfig cfg;EGLint n;assert(eglChooseConfig(d,a,&cfg,1,&n)&&n);
+ EGLint sz[]={EGL_WIDTH,1920,EGL_HEIGHT,1080,EGL_NONE},ca[]={EGL_CONTEXT_CLIENT_VERSION,2,EGL_NONE};EGLSurface surface=eglCreatePbufferSurface(d,cfg,sz);EGLContext context=eglCreateContext(d,cfg,EGL_NO_CONTEXT,ca);assert(eglMakeCurrent(d,surface,surface,context)&&gfx_iniciar());gfx_tamanho_alvo(1920,1080);glViewport(0,0,1920,1080);gfx_icones_dir(assetDir);
+ strcpy(item.titulo,"O Astronauta");strcpy(item.tipo,"series");item.temporada=3;item.episodio=1;item.restanteMin=15;strcpy(item.nomeEpisodio,"O recomeço");
+ scene("inicio",0,0);scene("continuar",1,0);scene("catalogo",1,1);
+ glReadPixels(0,0,1920,1080,GL_RGBA,GL_UNSIGNED_BYTE,pixels);assert(glGetError()==GL_NO_ERROR);
+ puts("OK: production Netflix hero and CW functions rendered without GL errors; text/catalog fixtures");
+ eglMakeCurrent(d,EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT);eglDestroyContext(d,context);eglDestroySurface(d,surface);eglTerminate(d);
+}

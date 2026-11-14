@@ -6,6 +6,7 @@
 #include "trailerhero.h"
 #include "globoplayhome.h"
 #include "profissionalhome.h"
+#include "netflixhome.h"
 #include "perfis.h"
 #include "botoes.h"
 #include "cwretido.h"
@@ -412,6 +413,8 @@ static float okDip = 1.0f;   // escala do card sob o OK apertado (pressdip.h)
 // nada disso — ele tem um item por vez e ocupa a tela. Um bit de estado ao lado
 // do foco descreve melhor o que a tela faz: existe um degrau ACIMA da fileira 0.
 static int focoHero = 1;
+static int netflixAcao;
+static int netflixTecla(SDL_Keycode k);
 static int profHubFoco=-1,nProfPastas,profPastas[SM_PROF_PASTAS_MAX];
 static int profissionalTecla(SDL_Keycode k);
 static void profissionalEscolher(int qual);
@@ -510,8 +513,11 @@ static float  expAbre = 0.0f;   // 0 fechado, 1 aberto
 
 // Fileira que pode expandir: so a de cartaz EM PE. A de continuar assistindo e
 // a de posteres deitados ja mostram a arte larga — nao ha para o que abrir.
+static int homeNetflixTV(void);
+static int netflixContinue(int r);
 static int podeExpandir(int r) {
   if (r < 0 || r >= nFileiras) return 0;
+  if (homeNetflixTV() && (netflixContinue(r) || fileiras[r].tipo == FILEIRA_NORMAL)) return 1;
   if (fileiras[r].tipo != FILEIRA_NORMAL) return 0;
   return !ajustes_posteres_deitados();
 }
@@ -713,6 +719,14 @@ static float escalaDoAjuste(void) {
 // fileiras (home_desenhar). MODERNA devolve exatamente as constantes que este
 // arquivo sempre usou: tests/homelayouts_shot.sh compara o quadro byte a byte.
 static int layoutHome(void) { return ajustes_home_layout(); }
+static int homeNetflixTV(void){return layoutHome()==HOME_LAYOUT_NETFLIX&&!layout_modo_mobile();}
+static int netflixContinue(int r){return homeNetflixTV()&&r>=0&&r<nFileiras&&
+ (fileiras[r].tipo==FILEIRA_CONTINUE||fileiras[r].tipo==FILEIRA_RETORNO);}
+static int netflixPoster(TipoFileira t){return homeNetflixTV()&&(t==FILEIRA_NORMAL||t==FILEIRA_CONTINUE||t==FILEIRA_RETORNO||t==FILEIRA_TOP10_NUM);}
+static int homeArteFormato(TipoFileira t,int aberto){
+ if(t==FILEIRA_CONTINUE||t==FILEIRA_RETORNO)return homeNetflixTV()?(aberto?3:0):3;
+ return aberto;
+}
 // StreamMax 1.0.4: design de listas na Android TV. Layouts alternativos,
 // telefone e player continuam usando as geometrias de antes.
 static int homeCinematicaTV(void) {
@@ -730,6 +744,7 @@ static float homeShelfTop(void) {
   return homeCinematicaTV() ? 378.0f : NV_SHELF_TOP;
 }
 static float homeCabecalhoH(void) {
+  if(homeNetflixTV())return 54.0f;
   return homeCinematicaTV() ? 48.0f : NV_LEGACY_ROW_HEAD_H;
 }
 static int homeRetratoTelefone(void) {
@@ -740,6 +755,7 @@ static int homeRetratoTelefone(void) {
 #endif
 }
 static float homeConteudoX(void) {
+  if(homeNetflixTV())return sm_netflix_home(NV_TELA_W,NV_TELA_H).margin;
   if(layoutHome()==HOME_LAYOUT_PROFISSIONAL)return sm_prof_home(NV_TELA_W,NV_TELA_H).margin;
   if(layoutHome()==HOME_LAYOUT_GLOBOPLAY)return sm_globo_home(NV_TELA_W,NV_TELA_H).x;
   // Retrato usa a barra como camada. Se ainda houver uma rail visivel,
@@ -749,6 +765,7 @@ static float homeConteudoX(void) {
   return ajustes_conteudo_x();
 }
 static float homeMargemDireita(void) {
+  if(homeNetflixTV())return sm_netflix_home(NV_TELA_W,NV_TELA_H).margin;
   if(layoutHome()==HOME_LAYOUT_PROFISSIONAL)return sm_prof_home(NV_TELA_W,NV_TELA_H).margin;
   if(layoutHome()==HOME_LAYOUT_GLOBOPLAY)return sm_globo_home(NV_TELA_W,NV_TELA_H).x;
   return homeRetratoTelefone() ? homeConteudoX() : NV_HOME_SAFE_RIGHT;
@@ -819,6 +836,7 @@ static float topoFileiras(void) {
     case HOME_LAYOUT_DINAMICA: return NV_DIN_TOPO_FIL;
     case HOME_LAYOUT_GLOBOPLAY: return heroOn ? 240.0f : 132.0f;
     case HOME_LAYOUT_PROFISSIONAL: return heroOn ? 240.0f : 132.0f;
+    case HOME_LAYOUT_NETFLIX: return 156.0f;
     default:                   return homeShelfTop();
   }
 }
@@ -843,6 +861,7 @@ static float corteFileiras(void) {
     case HOME_LAYOUT_DINAMICA: return 0.0f;
     case HOME_LAYOUT_GLOBOPLAY: return 132.0f;
     case HOME_LAYOUT_PROFISSIONAL: return 132.0f;
+    case HOME_LAYOUT_NETFLIX: return 132.0f;
     default:                   return homeShelfTop() - (heroCompactoTelefone() ? 0.0f : 96.0f);
   }
 }
@@ -857,6 +876,7 @@ static float empurraHero(void) {
     case HOME_LAYOUT_PADRAO:   return 0.0f;
     case HOME_LAYOUT_GLOBOPLAY: return heroOn ? sm_globo_home(NV_TELA_W,NV_TELA_H).push : 0.0f;
     case HOME_LAYOUT_PROFISSIONAL: return heroOn ? sm_prof_home(NV_TELA_W,NV_TELA_H).push : 0.0f;
+    case HOME_LAYOUT_NETFLIX: return heroOn ? sm_netflix_home(NV_TELA_W,NV_TELA_H).push : 0.0f;
     case HOME_LAYOUT_DINAMICA: return heroOn ? repousoFileirasDin() - NV_DIN_TOPO_FIL : 0.0f;
     default:                   return empurraHeroModerna();
   }
@@ -944,6 +964,7 @@ static void medidaColecao(int forma, float *w, float *h) {
 }
 
 static float larguraDe(TipoFileira t) {
+  if(netflixPoster(t))return SM_NETFLIX_POSTER_W*gfx_poster_k()*fminf(1.25f,fmaxf(.95f,escalaDoAjuste()));
   switch (t) {
     case FILEIRA_CONTINUE: return NV_DESTAQUE_W * gfx_poster_k();
     // Opção editorial já existente: card panorâmico 16:9.
@@ -1453,6 +1474,7 @@ static int foco_pode_pressao_longa(void) {
 
 
 static float alturaDe(TipoFileira t) {
+  if(netflixPoster(t))return SM_NETFLIX_POSTER_H*gfx_poster_k()*fminf(1.25f,fmaxf(.95f,escalaDoAjuste()));
   switch (t) {
     case FILEIRA_CONTINUE: return NV_DESTAQUE_H * gfx_poster_k();
     case FILEIRA_DESTAQUE: return layoutHome() == HOME_LAYOUT_DINAMICA
@@ -1490,6 +1512,7 @@ static float alturaDe(TipoFileira t) {
   }
 }
 static int temRotulo(TipoFileira t) {
+  if(netflixPoster(t))return 0;
   // O rotulo abaixo do poster so existe no poster EM PE. No card deitado o web
   // poe a legenda DENTRO da moldura (.home-poster-landscape-copy) e esconde o
   // bloco de fora (.home-poster-card.is-landscape .home-poster-copy{display:none}).
@@ -1639,7 +1662,7 @@ static void desenhaFaixaAberta(const CatItem *ci, int r, float px, float py,
   // 5. Progresso em andamento: fio na base, dentro do raio do card.
   if (ci->progresso > 0 && ci->progresso < 90) {
     float fx = px + pad, fw = w - pad * 2, fy = py + h - 12.0f * esc, fh = 4.0f;
-    float ar, ag, ab; ajustes_acento(&ar, &ag, &ab);
+    float ar, ag, ab; ajustes_acento(&ar, &ag, &ab); if(homeNetflixTV())ar=ag=ab=1;
     gfx_cor((GfxRect){ fx, fy, fw, fh }, 0.5f, 1, 1, 1, 0.22f * a);
     // Anda do valor anterior ate o novo, como no Continuar (revela.h).
     float prog = revela_progresso(ci->imdb, ci->temporada, ci->episodio,
@@ -1672,6 +1695,7 @@ static void desenhaFaixaAberta(const CatItem *ci, int r, float px, float py,
 // 14,5 px e era isso que encostava no titulo.
 #define NV_HOME_ANEL_SUTIL 2.0f  // contorno fino somente na Home; demais telas mantem 4 px
 static float escalaDe(TipoFileira t) {
+  if(netflixPoster(t))return .008f;
   // O cartão Herói já é a fileira inteira: crescer no foco o tiraria da
   // tela. Quem diz que ele está em foco é o anel, como no redondo.
   if (t == FILEIRA_HEROI) return 0.0f;
@@ -1747,6 +1771,7 @@ static float alargaPosterG(int r) {
   return k > 1.3f ? 1.3f : k;
 }
 static float escalaFil(int r) {
+  if(homeNetflixTV()&&r>=0&&r<nFileiras&&netflixPoster(fileiras[r].tipo))return fminf(1.18f,fmaxf(1.0f,fileiras[r].escala));
   float e = (r >= 0 && r < MAX_FIL) ? fileiras[r].escala : 0.0f;
   e = e > 0.05f ? e : 1.0f;
   // O teto dos 4:3 maiores vale tambem para a fileira de colecao vestida de
@@ -1801,7 +1826,7 @@ static float extraTipo(TipoFileira t) {
        : t == FILEIRA_HEROI_DIVIDIDO ? NV_DIV_META_H : 0.0f;
 }
 static float alturaTotalFil(int r) {
-  return alturaFil(r) + (temRotulo(fileiras[r].tipo) ? NV_POSTER_COPY_H : 0.0f)
+  return (netflixContinue(r)?SM_NETFLIX_CW_CAPTION:0)+alturaFil(r) + (temRotulo(fileiras[r].tipo) ? NV_POSTER_COPY_H : 0.0f)
        + extraTipo(fileiras[r].tipo);
 }
 static float alfaFileiraHome(int r, float y, float topo, float corte) {
@@ -2547,6 +2572,7 @@ static void home_evento_(const SDL_Event *e) {
         okDesde = 0; okPressionando = 0; okLongDisparado = 0; okHold = 0.0f;
         if(layoutHome()==HOME_LAYOUT_PROFISSIONAL&&profHubFoco>=0){profissionalEscolher(profHubFoco);return;}
         if (dur >= NV_HOLD_MS) abrirMenuCartaz();
+        else if(homeNetflixTV()&&netflixAcao==0)pedidoTocar=1;
         else pedidoAbrir = 1;
         return;
       }
@@ -2665,6 +2691,7 @@ static void home_evento_(const SDL_Event *e) {
   heroUltTecla = SDL_GetTicks();
   // O DESTAQUE E UM DEGRAU ACIMA DA FILEIRA 0, e nao uma fileira do vetor: as
   // setas dele sao tratadas aqui e nao chegam ao focus_mover.
+  if(netflixTecla(k))return;
   if(profissionalTecla(k))return;
   if (focoHero) {
     if (k == SDLK_RIGHT) { heroPasso(1); return; }
@@ -3896,7 +3923,7 @@ static void home_atualizar_(float dt, Uint32 agora) {
   }
   }
   // Relogio da expansao. Zera a cada movimento; conta so com o foco parado.
-  if (ajustes_expandir_poster() && !homeRetratoTelefone()) {
+  if ((ajustes_expandir_poster()||homeNetflixTV()) && !homeRetratoTelefone()) {
     if (foco.fileira != expFileira || foco.coluna != expColuna) {
       expFileira = foco.fileira; expColuna = foco.coluna;
       expDesde = agora;
@@ -3909,11 +3936,11 @@ static void home_atualizar_(float dt, Uint32 agora) {
     if (ctx_aberto() || (okPressionando && okHold > 0.0f)) {
       if (expAbre < 0.999f) expDesde = agora;
     } else
-    { float atraso = ajustes_expandir_poster_atraso();
+    { float atraso = homeNetflixTV()?.35f:ajustes_expandir_poster_atraso();
       int pronto = expDesde && (agora - expDesde) >= (Uint32)(atraso * 1000.0f);
       // Fileira DEITADA (e a de continuar assistindo) ja mostra a arte larga:
       // nao ha para o que expandir.
-      if (pronto && podeExpandir(foco.fileira))
+      if (pronto && !focoHero && podeExpandir(foco.fileira))
         expAbre = motionReduzido ? 1.0f
                    : anim_mola(expAbre, 1.0f, dt, NV_MOLA_TELA); }
   } else {
@@ -4209,7 +4236,7 @@ int home_streaming_barra(const int **pastas) {
 float home_topo_fracao(void) {
   float f;
   // Barra no topo (#461): so com o foco no destaque, como a pilula na pagina rolada.
-  if (layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL) return 1.0f;
+  if (layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL || homeNetflixTV()) return 1.0f;
   if (layoutHome() != HOME_LAYOUT_DINAMICA) return ajustes_menu_topo() ? (float)focoHero : 1.0f;
   f = 1.0f + dinHeroY() / 140.0f;
   return f < 0.0f ? 0.0f : (f > 1.0f ? 1.0f : f);
@@ -4553,6 +4580,7 @@ static float desenhaCopiaHero(const CatItem *ci, int principal, float x,
   float minTop = 24.0f;
   if(lay==HOME_LAYOUT_GLOBOPLAY) minTop=base-sm_globo_home(NV_TELA_W,NV_TELA_H).h+104.0f;
   if(lay==HOME_LAYOUT_PROFISSIONAL)minTop=base-sm_prof_home(NV_TELA_W,NV_TELA_H).base+150.0f;
+  if(lay==HOME_LAYOUT_NETFLIX)minTop=base-sm_netflix_home(NV_TELA_W,NV_TELA_H).h+80.0f;
   if (lay == HOME_LAYOUT_PADRAO)
     minTop = base - (NV_PAD_BANNER_H - NV_PAD_TEXTO_BASE) + 24.0f;
   else if (lay == HOME_LAYOUT_DINAMICA)
@@ -4743,7 +4771,7 @@ static GfxRect heroTrailerArea(GfxRect arte) {
 }
 static GfxRect heroTrailerVideoRect(GfxRect r) {
 #ifdef NV_ANDROID
-  if(layoutHome()==HOME_LAYOUT_GLOBOPLAY||layoutHome()==HOME_LAYOUT_PROFISSIONAL){float s=gfx_escala_txt();return (GfxRect){r.x*s,r.y*s,r.w*s,r.h*s};}
+  if(homeNetflixTV()||layoutHome()==HOME_LAYOUT_GLOBOPLAY||layoutHome()==HOME_LAYOUT_PROFISSIONAL){float s=gfx_escala_txt();return (GfxRect){r.x*s,r.y*s,r.w*s,r.h*s};}
   if (homeCinematicaTV()) {
     // Enquadrar no espaco realmente visivel, com a reserva do foco no Hero.
     // A caixa antiga de 670 px centralizava o filme atras dos cartazes.
@@ -4762,6 +4790,10 @@ static float heroTrailerBase(void) {
   return homeShelfTop() + homeCabecalhoH() + fmaxf(0.0f, -scrollY);
 }
 static GfxRect heroArtworkRect(int lay, int cheio) {
+  if(homeNetflixTV()){
+    SmNetflixHome n=sm_netflix_home(NV_TELA_W,NV_TELA_H);
+    return (GfxRect){n.margin,n.y-(scrollY+empurraHero()),n.w,n.h};
+  }
   if(lay==HOME_LAYOUT_PROFISSIONAL){
     SmProfHome p=sm_prof_home(NV_TELA_W,NV_TELA_H);
     return (GfxRect){0,-(scrollY+empurraHero()),NV_TELA_W,p.heroH};
@@ -4847,6 +4879,7 @@ static void heroVeuLayout(int lay, float h) {
 }
 
 #include "home_profissional.inc"
+#include "home_netflix.inc"
 
 // Globoplay e um quarto desenho da mesma Home: catalogo, foco e player comuns.
 // Os vizinhos sao imagens; o unico decoder pertence ao painel central parado.
@@ -4986,6 +5019,10 @@ static void desenhaHero(Uint32 agora, float saida) {
     cheio=0;logoH=100.0f;sinW=r.w*.35f;sinLinhas=2;btnH=50.0f;btnGap=14.0f;
     aVis=anim_clamp(1.0f-fmaxf(0.0f,scrollY+empurraHero())/(r.h*.50f),0.0f,1.0f);
   }
+  if(homeNetflixTV()){
+    cheio=0;logoH=150;sinW=sm_netflix_home(NV_TELA_W,NV_TELA_H).copyW;sinLinhas=3;btnH=64;btnGap=18;
+    aVis=anim_clamp(1-fmaxf(0,scrollY+empurraHero())/(r.h*.5f),0,1);
+  }
   if(lay==HOME_LAYOUT_PROFISSIONAL){
     cheio=0;logoH=112;sinW=sm_prof_home(NV_TELA_W,NV_TELA_H).copyW;sinLinhas=2;btnH=54;btnGap=16;
     aVis=anim_clamp(1-fmaxf(0,scrollY+empurraHero())/(r.h*.50f),0,1);
@@ -5082,7 +5119,7 @@ static void desenhaHero(Uint32 agora, float saida) {
   // COLECAO EM FOCO: o destaque vira o banner da pasta. Moderna e Padrao; a
   // Dinamica nao tem destaque parado no topo e mostra o mesmo banner por tras
   // do cabecalho da fileira (dinArteColecao).
-  if(!focoHero&&lay!=HOME_LAYOUT_DINAMICA&&lay!=HOME_LAYOUT_GLOBOPLAY&&lay!=HOME_LAYOUT_PROFISSIONAL&&foco.fileira>=0&&foco.fileira<nFileiras&&fileiras[foco.fileira].tipo==FILEIRA_CATALOGOS) {
+  if(!focoHero&&lay!=HOME_LAYOUT_DINAMICA&&lay!=HOME_LAYOUT_GLOBOPLAY&&lay!=HOME_LAYOUT_PROFISSIONAL&&lay!=HOME_LAYOUT_NETFLIX&&foco.fileira>=0&&foco.fileira<nFileiras&&fileiras[foco.fileira].tipo==FILEIRA_CATALOGOS) {
     const ColFolder *folder=col_folder(fileiras[foco.fileira].folders[foco.coluna]);
     if(folder) {
       if(folder->editorial) {
@@ -5387,6 +5424,10 @@ static void desenhaHero(Uint32 agora, float saida) {
   if (!trailer_aberto() || trailer_dono() != TRAILER_DONO_HOME || !trailer_mostra_video())
     aTrailer = 0.0f;
 #endif
+  if(homeNetflixTV()){
+    heroArteRect=r;
+    desenhaHeroNetflix(r,ci,cAnt,arteA,arteB,tAtu,tAnt,aTrailer,aArte*aVis*(1-saida),saida);return;
+  }
   if(lay==HOME_LAYOUT_PROFISSIONAL){
     heroArteRect=r;
     desenhaHeroProfissional(r,ci,cAnt,arteA,arteB,tAtu,tAnt,aTrailer,aArte*aVis*(1-saida),saida);
@@ -5653,6 +5694,9 @@ static void desenhaHero(Uint32 agora, float saida) {
 // tinha subido. Fundo neutro nao compete com nada.
 static void desenhaFundo(Uint32 agora) {
   GfxRect tela = { 0, 0, NV_TELA_W, NV_TELA_H };
+  if(homeNetflixTV()){
+    gfx_cor_painel(tela,0,.035f,.035f,.04f,1);return;
+  }
   if(layoutHome()==HOME_LAYOUT_GLOBOPLAY){
     gfx_cor_painel(tela,0,.105f,.105f,.105f,1);return;
   }
@@ -5750,7 +5794,7 @@ static void desenhaAtalhos(int r, float y) {
     // dito pelo tamanho e pela animacao do cartaz — o que sai e so a borda.
     if (f > .01f && ajustes_borda_foco()) {
       float menor = cw < ch ? cw : ch;
-      float ar, ag, ab; ajustes_acento(&ar, &ag, &ab);
+      float ar, ag, ab; ajustes_acento(&ar, &ag, &ab); if(homeNetflixTV())ar=ag=ab=1;
       if (ajustes_vidro()) gfx_vidro_cartao(card, raio, f, 1.0f);
       else
       gfx_cor((GfxRect){x - NV_ANEL_FOCO, cy - NV_ANEL_FOCO,
@@ -6021,7 +6065,7 @@ static void shotTrailerPasso(int topo, float dt, Uint32 agora, int heroSetting, 
   heroTrailerNoCartao = dest == 1;
   alvo = dest >= 0 ? 1.0f : 0.0f;
   heroTrailerFade = anim_mola(heroTrailerFade, alvo, dt, NV_MOLA_SCROLL);
-  { int toca = topo && dest == 0 && focoHero && layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY && layoutHome() != HOME_LAYOUT_PROFISSIONAL;
+  { int toca = topo && dest == 0 && focoHero && layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY && layoutHome() != HOME_LAYOUT_PROFISSIONAL && !homeNetflixTV();
     trailercinema_passo(&heroCinema, toca, dt, ajustes_animacoes_reduzidas()); }
 }
 #endif
@@ -6086,7 +6130,7 @@ void home_trailer_passo(int topo, float dt, Uint32 agora) {
     if (!topo) motivo = HERO_GATE_OVERLAY;
     else if (!destCartao && !ajustes_hero_ligado()) motivo = HERO_GATE_DISABLED;
     else if (focoHero ? !heroSetting : !posterSetting) motivo = HERO_GATE_SETTING;
-    else if (!destCartao && !focoHero && (layoutHome() == HOME_LAYOUT_DINAMICA || layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL)) motivo = HERO_GATE_DYNAMIC;
+    else if (!destCartao && !focoHero && (layoutHome() == HOME_LAYOUT_DINAMICA || layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL || homeNetflixTV())) motivo = HERO_GATE_DYNAMIC;
     else if (!noHero && !noCartaz) motivo = HERO_GATE_POSTER_WAIT;
   }
   pronto = pronto && itemAtual >= 0 &&
@@ -6304,7 +6348,7 @@ trailer_hero_fim:
                   trailer_aberto() && !trailer_cheia() && trailer_tocando() &&
                   trailer_mostra_video()) ? 1.0f : 0.0f;   // .tpk: ate o recorte assentar (#178)
 #ifdef NV_ANDROID
-    if (!heroTrailerNoCartao && (layoutHome() == HOME_LAYOUT_MODERNA || layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL) && !homeRetratoTelefone())
+    if (!heroTrailerNoCartao && (layoutHome() == HOME_LAYOUT_MODERNA || layoutHome() == HOME_LAYOUT_GLOBOPLAY || layoutHome() == HOME_LAYOUT_PROFISSIONAL || homeNetflixTV()) && !homeRetratoTelefone())
       heroTrailerFade = sm_trailer_hero_fade(heroTrailerFade, alvo, dt, ajustes_animacoes_reduzidas());
     else
 #endif
@@ -6322,7 +6366,7 @@ trailer_hero_fim:
     // sem cinema, o texto e a arte seguem como estao.
     { int toca = topo && alvo > 0.5f && !heroTrailerNoCartao &&
                  focoHero && ajustes_trailer_hero() &&
-                 layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY && layoutHome() != HOME_LAYOUT_PROFISSIONAL
+                 layoutHome() != HOME_LAYOUT_PADRAO && layoutHome() != HOME_LAYOUT_GLOBOPLAY && layoutHome() != HOME_LAYOUT_PROFISSIONAL && !homeNetflixTV()
 #ifdef NV_ANDROID
                  // TCL: trailer permanece no hero com as fileiras visiveis.
                  && 0
@@ -7074,7 +7118,7 @@ static void desenhaRedonda(const CatItem *ci, GLuint t, const char *caminho,
   float pad = 5.0f * f, ar, ag, ab;
   GfxRect disco = { px, py, d, d }, miolo = { px + pad, py + pad, d - pad * 2, d - pad * 2 };
   ajustes_acento(&ar, &ag, &ab);
-  if (f > 0.01f && ajustes_borda_foco())
+  if (f > 0.01f && (homeNetflixTV()||ajustes_borda_foco()))
     gfx_rect(disco, 0, GFX_DISCO, 0, 0, 0, 0, ar, ag, ab, 0.72f * f);
   gfx_rect(miolo, 0, GFX_DISCO, 0, 0, 0, 0, NV_COR_ESQUELETO_R, NV_COR_ESQUELETO_G,
            NV_COR_ESQUELETO_B, 1);
@@ -7102,10 +7146,10 @@ static void desenhaHeroiCard(const CatItem *ci, const char *selo, const char *te
                              float f, float varre) {
   const float pad = NV_HEROI_PAD;
   GfxRect card = { px, py, w, h };
-  if (f > 0.01f && ajustes_borda_foco()) {
+  if (f > 0.01f && (homeNetflixTV()||ajustes_borda_foco())) {
     GfxRect borda = { px - NV_HOME_ANEL_SUTIL, py - NV_HOME_ANEL_SUTIL,
                       w + NV_HOME_ANEL_SUTIL * 2, h + NV_HOME_ANEL_SUTIL * 2 };
-    float ar, ag, ab; ajustes_acento(&ar, &ag, &ab);
+    float ar, ag, ab; ajustes_acento(&ar, &ag, &ab); if(homeNetflixTV())ar=ag=ab=1;
     { float menor = w < h ? w : h;
       if (ajustes_vidro()) gfx_vidro_cartao((GfxRect){px, py, w, h}, raio, f, 1.0f);
       else
@@ -7237,10 +7281,10 @@ static void pintarCartao(const CartaoFoco *k, float raio) {
                      f, varreFoco);
     return;
   }
-          if (f > 0.01f && ajustes_borda_foco()) {
+          if (f > 0.01f && (homeNetflixTV()||ajustes_borda_foco())) {
             GfxRect borda = { px - NV_HOME_ANEL_SUTIL, py - NV_HOME_ANEL_SUTIL,
                               w + NV_HOME_ANEL_SUTIL * 2, h + NV_HOME_ANEL_SUTIL * 2 };
-            float ar, ag, ab; ajustes_acento(&ar, &ag, &ab);
+            float ar, ag, ab; ajustes_acento(&ar, &ag, &ab); if(homeNetflixTV())ar=ag=ab=1;
             // RAIO DE FORA = raio do cartaz + espessura do anel, em pixels,
             // normalizado pelo lado menor DA BORDA. Passar o `raio` do cartaz
             // direto dava um canto de fora mais fechado que o de dentro — as
@@ -7363,9 +7407,9 @@ static void pintarCartao(const CartaoFoco *k, float raio) {
           // ultima visita (tendencia.h): ↑n verde, ↓n vermelho, "Novo" na cor
           // de realce. Sem historico ainda, sem chip — nada de inventar.
           // Progresso em andamento vira um fio na base do card.
-          if (abre > 0.01f && cItem) desenhaFaixaAberta(cItem, r, px, py, w, h, esc, abre);
+          if (abre > 0.01f && cItem && !netflixContinue(r)) desenhaFaixaAberta(cItem, r, px, py, w, h, esc, abre);
           gfx_opacidade_grupo = ogCartao;
-          if (abre > 0.01f && cItem && cItem->logo[0]) {
+          if (abre > 0.01f && cItem && cItem->logo[0] && !netflixContinue(r)) {
             // Largura pedida pela tela, nao o teto generico de 640: o logo
             // nunca passa de ~65% do card, e decodificar o arquivo inteiro
             // so para encolher depois era cache e tempo jogados fora.
@@ -7552,7 +7596,7 @@ static void home_desenhar_(Uint32 agora) {
   // O REBORDO DO CARTAZ EM FOCO e ajuste da pessoa, e ele mora no shader do
   // GFX_CARD (nao e um retangulo desenhado por cima): por isso vai por uma
   // variavel de modulo, uma vez por quadro, e nao em cada chamada.
-  gfx_borda_foco_atual = ajustes_borda_foco() ? 0.55f : 0.0f;
+  gfx_borda_foco_atual = homeNetflixTV()?0.0f:(ajustes_borda_foco() ? 0.55f : 0.0f);
   desenhaFundo(agora);
   float pd = detail_progresso();
   const int vazioQr = homevazio_ativo(nFileiras);   // sem add-ons: o cartao com o QR no lugar da Home
@@ -7565,7 +7609,7 @@ static void home_desenhar_(Uint32 agora) {
   if (ajustes_hero_ligado() && !vazioQr && heroVisivelToque() > 0.25f) {
     float heroBaixo = layoutHome() == HOME_LAYOUT_DINAMICA
                     ? dinHeroY() + alturaTextoHeroDin()
-                    : (layoutHome()==HOME_LAYOUT_GLOBOPLAY||layoutHome()==HOME_LAYOUT_PROFISSIONAL) ? heroArteRect.y+heroArteRect.h : corteFileiras();
+                    : (homeNetflixTV()||layoutHome()==HOME_LAYOUT_GLOBOPLAY||layoutHome()==HOME_LAYOUT_PROFISSIONAL) ? heroArteRect.y+heroArteRect.h : corteFileiras();
     if (heroBaixo > 0.0f)
       ponteiro_alvo(0, 0, NV_TELA_W, heroBaixo,
 #ifdef NV_TOUCH_UI
@@ -7675,6 +7719,7 @@ static void home_desenhar_(Uint32 agora) {
     int deitado = editorial(tipo) || tipo == FILEIRA_LARGA || tipo == FILEIRA_HEROI ||
                   ((tipo != FILEIRA_CONTINUE && tipo != FILEIRA_POSTER_GRANDE && tipo != FILEIRA_HEROI_DIVIDIDO) &&
                    ajustes_posteres_deitados());
+    if(netflixPoster(tipo))deitado=0;
     int rotuloFora = temRotulo(tipo);
     if (y < NV_TELA_H + 200 && y + homeCabecalhoH() + lh > -200) {
       // `catalogTypeSuffixEnabled`. formatCatalogRowTitle (homeUtils.js:62) faz
@@ -7913,7 +7958,7 @@ static void home_desenhar_(Uint32 agora) {
           // ABERTO (a mesma do desenho abaixo), usa esse atraso para baixar e
           // decodificar, e nao promove depois por largura diferente.
           if (cItem && cItem->logo[0] && abre <= 0.01f && r == expFileira &&
-              c == expColuna && ajustes_expandir_poster() && podeExpandir(r)) {
+              c == expColuna && (ajustes_expandir_poster()||homeNetflixTV()) && podeExpandir(r)) {
             float wFim = artH * (1.0f + escalaDe(tipo)) * NV_EXP_ASPECTO;
             const char *uP = artehero_logo_sessao_larg(cItem, wFim * 0.65f);
             if (uP) (void)tex_obter_logo_larg(uP, wFim * 0.65f);
@@ -7981,8 +8026,7 @@ static void home_desenhar_(Uint32 agora) {
           // A troca acontece na metade do caminho, quando a moldura ja tem
           // largura de 16:9 e o retrato comecaria a ser recortado feio.
           caminho = arte_por_identidade(idxCat,
-                                        (tipo == FILEIRA_CONTINUE || tipo == FILEIRA_RETORNO) ? 3
-                                        : (abre > 0.5f || deitado));
+                                        homeArteFormato(tipo,abre > 0.5f || deitado));
 
           // `!focoHero` E A CONDICAO QUE FALTAVA AQUI, e e o mesmo defeito que
           // o anel de foco ja tinha resolvido dez linhas acima (linha 1747).
@@ -8110,7 +8154,7 @@ static void home_desenhar_(Uint32 agora) {
           if (c2 >= 0 && c2 < fileiras[r].n) {
             int idx2 = fileiraItemIndice(&fileiras[r], c2);
             tex_lookahead_pedir(arte_por_identidade(idx2,
-              (tipo == FILEIRA_CONTINUE || tipo == FILEIRA_RETORNO) ? 3 : deitado),
+              homeArteFormato(tipo,deitado)),
               lw);
           }
         }
@@ -8200,7 +8244,7 @@ static void home_desenhar_(Uint32 agora) {
         if (x < -lw * 1.5f || x > NV_TELA_W + lw) continue;
         int idx = fileiraItemIndice(&fileiras[r], c);
         const char *cam = arte_por_identidade(idx,
-          (tipo == FILEIRA_CONTINUE || tipo == FILEIRA_RETORNO) ? 3 : deitado);
+          homeArteFormato(tipo,deitado));
         pediu = tex_lookahead_pedir(cam, lw);
       }
     }

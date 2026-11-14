@@ -146,6 +146,19 @@ static void ajMiniHome(AjMini o, float ox, float oy, float W) {
     { static const int L[4] = { 13, 15, 21, 33 };
       for (i = 0; i < 4; i++) ajImg(ajArte(AJA_FUNDO, L[i]), MR(210 + i * 428, 700, 400, 225), 14 * s, a); }
     for (i = 0; i < 7; i++) ajImg(ajArte(AJA_POSTER, AJ_POS[(i + 2) % 14]), MR(210 + i * 288, 1010, 260, 390), 14 * s, a);
+  } else if(o.lay==HOME_LAYOUT_NETFLIX){
+    gfx_cor(quad,rr/H,.035f,.035f,.04f,a);
+    gfx_cor(MR(480,38,140,54),.5f,.28f,.28f,.30f,a);
+    ajTextoMini("Início   Explorar   Biblioteca",28*s,1,MX(510),MY(50),248,248,248,a);
+    if(!o.semHero){
+      ajImg(ajArte(AJA_FUNDO,o.art),MR(88,132,1744,756),18*s,a);
+      gfx_rect(MR(88,132,900,756),0,GFX_VEU,0,0,0,0,0,0,0,.90f*a);
+      ajLogo(ajArte(AJA_LOGO,o.art),MX(126),MY(480),590*s,150*s,a);
+      gfx_cor(MR(126,754,220,64),.5f,.95f,.95f,.95f,a);
+      gfx_cor(MR(364,754,310,64),.5f,.26f,.26f,.28f,a);
+    }
+    ajTextoMini("Continuar assistindo",34*s,1,MX(88),MY(o.semHero?156:920),247,247,247,a);
+    for(i=0;i<6;i++)ajImg(ajArte(AJA_POSTER,AJ_POS[i]),MR(88+i*324,o.semHero?210:974,300,450),12*s,a);
   } else if(o.lay==HOME_LAYOUT_PROFISSIONAL){
     gfx_cor(quad,rr/H,.035f,.04f,.055f,a);
     if(!o.semHero){
@@ -286,8 +299,8 @@ static AjMini ajMiniPadrao(void) {
 }
 static float ajPreviaLayout(float x, float y, float w) {
   AjMini m = ajMiniPadrao(), o[HOME_LAYOUT_N];
-  static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay", "Profissional" };
-  static const char *const N2[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay", "Profissional" };   // v2: o nome inteiro esta no titulo
+  static const char *const N[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay", "Profissional", "Netflix" };
+  static const char *const N2[HOME_LAYOUT_N] = { "Moderna", "Padrão", "Dinâmica", "Globoplay", "Profissional", "Netflix" };   // v2: o nome inteiro esta no titulo
   int i, sel = valor[AJ_HOME_LAYOUT];
   if (ajEditandoLinha(AJ_HOME_LAYOUT)) sel = uxPendente;
   m.lay = sel;

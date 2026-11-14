@@ -1527,6 +1527,10 @@ static void topoCapsula(const TopoCapsula *c, float x0, float y, int foco, float
   GfxRect r = { x0 + c->x, y, c->w, TOPO_PILULA_H };
   float ca = limita01(c->a) * a;
   if (ca <= 0.004f || c->w <= 0.5f) return;
+  if(ajustes_home_layout()==HOME_LAYOUT_NETFLIX&&!layout_modo_mobile()){
+    gfx_cor(r,.5f,.27f,.27f,.29f,ca*(foco?1:.70f));
+    if(foco)gfx_anel(r,.5f,1.6f,1,1,1,ca);return;
+  }
   gfx_cor(r, 0.5f, 0xf3 / 255.0f, 0xf2 / 255.0f, 0xef / 255.0f, (foco ? 1.0f : .18f) * ca);
 }
 
@@ -1557,8 +1561,9 @@ static void topoDesenhar(void) {
     ponteiro_alvo(0, 0, NV_TELA_W, NV_TELA_H, NULL, ponteiroFora, 0, 0);
     ponteiro_alvo(g.x, g.y, g.w, g.h, NULL, NULL, 0, 0);
   }
-  desenhaMaterial(&g, a);
-  desenhaMaterial(&gAv, a);
+  if(ajustes_home_layout()==HOME_LAYOUT_NETFLIX&&!layout_modo_mobile()){
+    gfx_cor((GfxRect){0,0,NV_TELA_W,132},0,.035f,.035f,.04f,a);
+  }else{desenhaMaterial(&g,a);desenhaMaterial(&gAv,a);}
   // O perfil: o avatar e do tamanho de uma pilula, dentro do seu circulo de
   // trilha (CHIP_D = TAB_PILL_H); em foco ganha o aro claro.
   fAv = focos ? animFoco[MENU_RODAPE] : 0.0f;
@@ -1580,6 +1585,7 @@ static void topoDesenhar(void) {
     tr = anim_mistura(0xf3, 0x12, fm) / 255.0f;
     tg = anim_mistura(0xf2, 0x13, fm) / 255.0f;
     tb = anim_mistura(0xef, 0x16, fm) / 255.0f;
+    if(ajustes_home_layout()==HOME_LAYOUT_NETFLIX&&!layout_modo_mobile())tr=tg=tb=1;
     ta = a * anim_mistura(ajustes_vidro() && !gfx_efeitos_minimos() ? .74f : .80f, 1.0f, fmaxf(sm, fm));
     if (ponteiro_ativo() && a > 0.5f) ponteiro_alvo(r.x, r.y, r.w, r.h, ponteiroLinha, NULL, i, 0);
     if (i == MENU_BUSCAR) iconeTraco(i, r.x + r.w * 0.5f, y + TOPO_PILULA_H * 0.5f, TOPO_ICONE, tr, tg, tb, ta);

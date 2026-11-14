@@ -17,6 +17,7 @@ int ajustes_hero_ligado(void){return 1;}
 float nv_layout_w=1920,nv_layout_h=1080;
 static float scrollY;
 static int layoutHome(void){return HOME_LAYOUT_MODERNA;}
+static int homeNetflixTV(void){return 0;} /* Unchanged Moderna fixture. */
 int layout_modo_mobile(void){return 0;}
 static int homeRetratoTelefone(void){return 0;}
 static int heroCompactoTelefone(void){return 0;}

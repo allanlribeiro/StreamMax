@@ -1,5 +1,17 @@
 # StreamMax — guia de continuidade do projeto
 
+## Continuidade — modo Netflix (13/11/2026)
+
+- Pedido: modo visual baseado nas duas fotos da Netflix, com cartazes grandes.
+- Base publicada 1.0.30: `eb9f182b9875cf21cf6ead301066f40294475b70`.
+- Branch `feat/streammax-netflix-home`; candidata 1.0.31 / 20038 / 2.0.38.
+- Layout opcional append-only Netflix=5; mantém modos, contas/fontes e sync.
+- Cartazes 300×450, Continuar assistindo expansível, destaque e duas ações.
+- Componentes GLES de produção, foco/scroll/settings e regressões locais;
+  execução real na TCL e métricas físicas ainda pendentes.
+- [Funcionamento, validação e limites](./docs/netflix-home/README.md).
+- Workflow de teste compila com a assinatura existente; sem promoção da OTA estável.
+
 ## Continuidade — sincronizacao pela fala (29/10/2026)
 
 - Pedido: reproduzir o fluxo do Nuvio original de marcar fala e escolher a

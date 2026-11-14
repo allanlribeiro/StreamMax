@@ -1,5 +1,7 @@
 #include "continuar.h"
 #include "ajustes.h"
+#include "artehero.h"
+#include "tex_cache.h"
 #include "idioma.h"
 #include "layout.h"
 #include "recomenda.h"
@@ -48,6 +50,37 @@ static void pedirEpisodios(int idx, const char *imdb) {
   desc_episodios(idx, 0);
 }
 
+/* Only presentation changes here; the episode resolution below is shared. */
+static void continuarNetflix(const CatItem *ci,GfxRect r,float raio){
+ float pad=18.0f,wide=anim_clamp((r.w/fmaxf(1,r.h)-.95f)/.6f,0,1);
+ gfx_veu_base(r,raio,.38f,.80f);
+ const char *url=artehero_logo_sessao(ci);GLuint logo=url?tex_obter_logo_larg(url,r.w*.62f):0;
+ float aspect=url?tex_aspecto(url):0;
+ if(logo&&aspect>0){
+  float w=fminf(r.w*.72f,aspect*72),h=w/aspect;
+  gfx_rect((GfxRect){r.x+pad,r.y+r.h-h-24,w,h},logo,GFX_TEXTO,0,0,0,0,1,1,1,1);
+ }else{
+  TxtLinha name=txt_linha_corta(TXT_CW_TITULO,ci->titulo,248,248,248,255,r.w-pad*2);
+  txt_desenhar_alpha(name,r.x+pad,r.y+r.h-name.h-24,1);
+ }
+ if(ci->progresso>0){
+  float progress=revela_progresso(ci->imdb,ci->temporada,ci->episodio,(float)ci->progresso,SDL_GetTicks());
+  GfxRect bar={r.x+7,r.y+r.h-9,r.w-14,5};
+  gfx_cor(bar,.5f,.45f,.45f,.47f,.8f);
+  bar.w*=anim_clamp(progress/100,0,1);if(bar.w>.5f)gfx_cor(bar,.5f,.91f,.055f,.09f,1);
+ }
+ if(wide>.005f){
+  char episode[320];
+  if(!strcmp(ci->tipo,"series")&&ci->temporada>0&&ci->episodio>0)
+   snprintf(episode,sizeof episode,"T%d E%d%s%s",ci->temporada,ci->episodio,ci->nomeEpisodio[0]?" · ":"",ci->nomeEpisodio);
+  else snprintf(episode,sizeof episode,"%s",ci->meta[0]?ci->meta:i18n("Filme"));
+  TxtLinha l=txt_linha_corta(TXT_CW_META,episode,230,230,232,255,r.w);
+  txt_desenhar_alpha(l,r.x,r.y+r.h+14,wide);
+  if(ci->restanteMin>0){char remaining[96];snprintf(remaining,sizeof remaining,i18n("%dmin Restantes"),ci->restanteMin);
+   l=txt_linha_corta(TXT_CW_META,remaining,190,190,194,255,r.w);txt_desenhar_alpha(l,r.x,r.y+r.h+49,wide);}
+ }
+}
+
 void continuar_desenhar(const CatItem *ci, GfxRect r, float raio) {
   CatItem copia;
   ProxSugestao prox;
@@ -78,6 +111,8 @@ void continuar_desenhar(const CatItem *ci, GfxRect r, float raio) {
       ci = &copia;
     }
   }
+
+  if(ajustes_home_layout()==HOME_LAYOUT_NETFLIX&&!layout_modo_mobile()){continuarNetflix(ci,r,raio);return;}
 
   {
   float esc = r.w / NV_DESTAQUE_W;

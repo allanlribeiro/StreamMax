@@ -1,0 +1,49 @@
+#include "home.h"
+#include "ajustes.h"
+#include "netflixhome.h"
+#include "focus.h"
+#include <assert.h>
+#include <stdio.h>
+#include <math.h>
+#define NV_EXP_ASPECTO (16.0f/9.0f)
+#define NV_ANEL_FOCO 4
+static struct{TipoFileira tipo;}fileiras[1]={{FILEIRA_CONTINUE}};
+static float scale=1;
+static float larguraFil(int r){(void)r;return 300*scale;}
+static float alturaFil(int r){(void)r;return 450*scale;}
+static float escalaDe(TipoFileira t){(void)t;return .008f;}
+static float passoFil(int r){return larguraFil(r)+24;}
+static float xOffTipo(TipoFileira t){(void)t;return 0;}
+static float homeLarguraUtil(void){return 1744;}
+int ajustes_borda_foco(void){return 1;}
+/* REAL_SCROLL */
+static int active=1,focoHero=1,netflixAcao,pedidoAbrir,pedidoTocar,pedidoMenu,step;
+static int homeNetflixTV(void){return active;}
+static void heroPasso(int delta){step+=delta;}
+/* REAL_NAV */
+int main(void){
+ const float scales[]={.85f,1,1.25f,1.5f};
+ for(int i=0;i<4;i++){
+  SmNetflixHome n=sm_netflix_home(1920/scales[i],1080/scales[i]);
+  assert(n.margin>0&&n.y>0&&n.w+2*n.margin<=1920/scales[i]+.01f&&n.y+n.h<n.shelf);
+  assert(fabsf(n.shelf-n.push-156)<.01f);
+ }
+ for(int s=0;s<3;s++){
+  scale=1+s*.1f;
+  for(int col=0;col<100;col++)for(int phase=0;phase<=4;phase++){
+   float open=phase*.25f,scroll=alvoScrollFil(0,col,col*passoFil(0),open);
+   float left=col*passoFil(0)-scroll-(larguraFil(0)*.008f*.5f);
+   float width=larguraFil(0)*1.008f+(alturaFil(0)*1.008f*NV_EXP_ASPECTO-larguraFil(0)*1.008f)*open;
+   assert(isfinite(scroll)&&scroll>=0&&left+width<=1744+.01f);
+   if(col>0)assert(left>=-.01f);
+  }
+ }
+ netflixAcao=0;assert(netflixTecla(SDLK_RIGHT)&&netflixAcao==1&&!pedidoAbrir&&!pedidoTocar);
+ assert(netflixTecla(SDLK_LEFT)&&netflixAcao==0);assert(netflixTecla(SDLK_LEFT)&&pedidoMenu);
+ netflixAcao=1;assert(netflixTecla(SDLK_RIGHT)&&step==1&&netflixAcao==0);
+ netflixClique(0,0);assert(pedidoTocar&&!pedidoAbrir);netflixClique(1,0);assert(pedidoAbrir);
+ active=0;pedidoTocar=pedidoAbrir=0;assert(!netflixTecla(SDLK_RIGHT));netflixClique(0,0);assert(!pedidoTocar&&!pedidoAbrir);
+ active=1;focoHero=0;assert(!netflixTecla(SDLK_RIGHT));
+ int columns[]={5,8,3};Foco f;focus_iniciar(&f,3,columns);focus_mover(&f,4,0);focus_mover(&f,0,1);focus_mover(&f,2,0);focus_mover(&f,0,-1);assert(f.coluna==4);
+ puts("OK: 1500 shared scroll cases, 4 UI scales, real hero actions and column memory; previous modes pass through");
+}

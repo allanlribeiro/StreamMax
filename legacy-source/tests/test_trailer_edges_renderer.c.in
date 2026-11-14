@@ -24,6 +24,7 @@ static int ultX,ultY,ultW,ultH,ultModo,temUlt;
 static float scrollY;
 enum { TRAILER_DONO_HOME=1,TRAILER_DONO_DETALHE=2 };
 static int layoutHome(void){return layoutEscolhido;}
+static int homeNetflixTV(void){return layoutEscolhido==HOME_LAYOUT_NETFLIX&&!mobile;}
 int ajustes_home_layout(void){return layoutEscolhido;}
 int layout_modo_mobile(void){return mobile;}
 int video_largura(void){return vw;}
